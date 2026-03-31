@@ -70,5 +70,25 @@
   "TimelineItem": {
     "h5": { "source": "ant-design-vue", "name": "TimelineItem" },
     "mp": { "source": "@/components/cross-platform/Timeline", "name": "TimelineItem" }
+  },
+  "StatCard": {
+    "h5": { "source": "@/components/customized/StatCard", "name": "StatCard" },
+    "mp": { "source": "@/components/customized/StatCard", "name": "StatCard" }
+  },
+  "ModuleCard": {
+    "h5": { "source": "@/components/customized/ModuleCard", "name": "ModuleCard" },
+    "mp": { "source": "@/components/customized/ModuleCard", "name": "ModuleCard" }
+  },
+  "UserInfo": {
+    "h5": { "source": "@/components/customized/UserInfo", "name": "UserInfo" },
+    "mp": { "source": "@/components/customized/UserInfo", "name": "UserInfo" }
+  },
+  "UserAvatar": {
+    "h5": { "source": "@/components/customized/UserAvatar", "name": "UserAvatar" },
+    "mp": { "source": "@/components/customized/UserAvatar", "name": "UserAvatar" }
+  },
+  "Permission": {
+    "h5": { "source": "@/components/customized/Permission", "name": "Permission" },
+    "mp": { "source": "@/components/customized/Permission", "name": "Permission" }
   }
 }
