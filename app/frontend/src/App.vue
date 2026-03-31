@@ -5,6 +5,23 @@ export default {}
 <style lang="scss">
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@400;600;700;800&display=swap');
 
+// ============================================
+// 统一组件库样式 (OA UI Kit)
+// ============================================
+@import './components/ui-kit/styles/variables.scss';
+
+// H5 端：Ant Design 样式及主题覆盖
+/* #ifdef H5 */
+@import 'ant-design-vue/dist/reset.css';
+@import './components/ui-kit/styles/ant-theme.scss';
+/* #endif */
+
+// 小程序端：Vant 样式及主题覆盖
+/* #ifdef MP-WEIXIN || APP-PLUS */
+@import 'vant/lib/index.css';
+@import './components/ui-kit/styles/vant-theme.scss';
+/* #endif */
+
 :root,
 page {
   --font-display: 'Manrope', 'PingFang SC', 'Microsoft YaHei', sans-serif;
