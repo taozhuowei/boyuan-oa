@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -45,14 +46,13 @@ public class RoleController {
      * 职责：创建新角色
      * 请求含义：提交角色创建请求，包含角色代码、名称和权限列表
      * 响应含义：返回创建成功的角色视图响应对象
-     * 权限期望：仅允许具有首席经营者角色的用户访问
+     * 权限期望：允许财务和CEO管理角色
      */
     @PostMapping
+    @PreAuthorize("hasAnyRole('FINANCE','CEO')")
     public ResponseEntity<RoleViewResponse> create(
-        Authentication authentication,
         @Valid @RequestBody RoleUpsertRequest request
     ) {
-        ensureCanManage(authentication);
         return ResponseEntity.ok(accessManagementService.createRole(request));
     }
 
@@ -60,26 +60,14 @@ public class RoleController {
      * 职责：更新指定角色的信息
      * 请求含义：提交角色更新请求，包含要更新的角色ID和新的角色信息
      * 响应含义：返回更新后的角色视图响应对象
-     * 权限期望：仅允许具有首席经营者角色的用户访问
+     * 权限期望：允许财务和CEO管理角色
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('FINANCE','CEO')")
     public ResponseEntity<RoleViewResponse> update(
-        Authentication authentication,
         @PathVariable Long id,
         @Valid @RequestBody RoleUpsertRequest request
     ) {
-        ensureCanManage(authentication);
         return ResponseEntity.ok(accessManagementService.updateRole(id, request));
-    }
-
-    /**
-     * 验证当前用户是否具有角色管理权限
-     * @param authentication 当前用户的认证信息
-     * @throws ResponseStatusException 如果用户没有权限则抛出403禁止访问异常
-     */
-    private void ensureCanManage(Authentication authentication) {
-        if (!accessManagementService.canManageRoles(authentication)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "仅首席经营者可管理角色");
-        }
     }
 }

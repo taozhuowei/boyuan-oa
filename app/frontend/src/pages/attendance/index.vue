@@ -5,9 +5,9 @@
       <view class="hero-main">
         <view class="hero-title-row">
           <Icon name="schedule" :size="28" />
-          <text class="hero-title">考勤系统</text>
+          <text class="hero-title">考勤</text>
         </view>
-        <text class="hero-subtitle">请假、加班申请与审批管理</text>
+        <text class="hero-subtitle">请假、加班申请与审批</text>
       </view>
       <view class="hero-stats">
         <view class="hero-stat">

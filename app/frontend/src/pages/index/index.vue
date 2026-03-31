@@ -4,7 +4,7 @@
     <view class="hero hero-bar">
       <view class="hero-content">
         <view>
-          <text class="hero-greeting">欢迎回来，{{ activeUser.displayName }}</text>
+          <text class="hero-greeting">欢迎，{{ activeUser.displayName }}</text>
           <text class="hero-role">{{ activeUser.roleName }} · {{ activeUser.department }}</text>
         </view>
         <view class="hero-actions">
