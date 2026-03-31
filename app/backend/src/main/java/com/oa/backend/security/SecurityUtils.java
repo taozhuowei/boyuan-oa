@@ -106,6 +106,15 @@ public class SecurityUtils {
     }
 
     /**
+     * 判断是否为项目经理
+     */
+    public static boolean isProjectManager(Authentication authentication) {
+        if (authentication == null) return false;
+        return authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_PROJECT_MANAGER".equals(a.getAuthority()));
+    }
+
+    /**
      * 判断是否可以审批（项目经理或 CEO）
      */
     public static boolean canApprove(Authentication authentication) {
