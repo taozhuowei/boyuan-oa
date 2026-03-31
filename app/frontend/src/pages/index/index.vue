@@ -1,38 +1,45 @@
 <template>
   <view class="page workspace">
-    <!-- 顶部 Hero -->
+    <!-- 顶部用户信息区 -->
     <view class="hero-bar">
       <view class="hero-content">
-        <view>
-          <text class="hero-greeting">欢迎，{{ activeUser.displayName }}</text>
-          <text class="hero-role">{{ activeUser.roleName }} · {{ activeUser.department }}</text>
-        </view>
+        <component :is="UserInfo" v-if="UserInfo">
+          <component :is="UserAvatar" v-if="UserAvatar" :name="activeUser.displayName" />
+          <view class="user-meta">
+            <text class="hero-greeting">欢迎，{{ activeUser.displayName }}</text>
+            <text class="hero-role">{{ activeUser.roleName }} · {{ activeUser.department }}</text>
+          </view>
+        </component>
         <view class="hero-actions">
-          <oa-button type="default" size="small" @click="goToLogin">
-            <Icon name="logout" :size="16" />
+          <component
+            :is="Button"
+            v-if="Button"
+            type="default"
+            size="small"
+            @click="goToLogin"
+          >
             退出登录
-          </oa-button>
+          </component>
         </view>
       </view>
     </view>
 
     <!-- 主内容区 -->
     <view class="workspace-body">
-      <oa-row :gutter="16">
+      <component :is="Row" v-if="Row" :gutter="16">
         <!-- 左侧：待办 + 通知 -->
-        <oa-col :span="8">
-          <oa-card class="mb-16">
+        <component :is="Col" v-if="Col" :span="8">
+          <component :is="Card" v-if="Card" class="mb-16">
             <template #title>
               <view class="card-title-wrapper">
-                <Icon name="assignment" :size="18" />
                 <text>待办事项</text>
-                <oa-badge :count="pendingItems.length" />
+                <component :is="Badge" v-if="Badge" :count="pendingItems.length" />
               </view>
             </template>
             <view class="todo-list">
-              <view 
-                v-for="item in pendingItems" 
-                :key="item.title" 
+              <view
+                v-for="item in pendingItems"
+                :key="item.title"
                 class="todo-item"
                 @click="handleTodo(item)"
               >
@@ -40,26 +47,27 @@
                   <text class="todo-title">{{ item.title }}</text>
                   <text class="todo-category">{{ item.category }}</text>
                 </view>
-                <oa-badge 
-                  :status="getPriorityStatus(item.priority)" 
-                  :text="item.priority" 
+                <component
+                  :is="Badge"
+                  v-if="Badge"
+                  :status="getPriorityStatus(item.priority)"
+                  :text="item.priority"
                 />
               </view>
-              <oa-empty v-if="!pendingItems.length" description="暂无待办事项" />
+              <component :is="Empty" v-if="Empty && !pendingItems.length" description="暂无待办事项" />
             </view>
-          </oa-card>
+          </component>
 
-          <oa-card>
+          <component :is="Card" v-if="Card">
             <template #title>
               <view class="card-title-wrapper">
-                <Icon name="notifications" :size="18" />
                 <text>系统通知</text>
               </view>
             </template>
             <view class="notice-list">
-              <view 
-                v-for="item in noticeItems" 
-                :key="item.title" 
+              <view
+                v-for="item in noticeItems"
+                :key="item.title"
                 class="notice-item"
               >
                 <view class="notice-dot" />
@@ -69,93 +77,117 @@
                 </view>
               </view>
             </view>
-          </oa-card>
-        </oa-col>
+          </component>
+        </component>
 
         <!-- 右侧：系统入口 + 快捷统计 -->
-        <oa-col :span="16">
-          <!-- 快捷统计（CEO可见） -->
-          <oa-row v-if="isCEO" :gutter="16" class="mb-16">
-            <oa-col :span="6">
-              <view class="quick-stat">
-                <Icon name="groups" :size="24" />
-                <view class="stat-info">
-                  <text class="stat-value">{{ dashboardStats.employees }}</text>
-                  <text class="stat-label">员工总数</text>
-                </view>
-              </view>
-            </oa-col>
-            <oa-col :span="6">
-              <view class="quick-stat">
-                <Icon name="pending-actions" :size="24" />
-                <view class="stat-info">
-                  <text class="stat-value">{{ dashboardStats.pendingApprovals }}</text>
-                  <text class="stat-label">待审批</text>
-                </view>
-              </view>
-            </oa-col>
-            <oa-col :span="6">
-              <view class="quick-stat">
-                <Icon name="folder-open" :size="24" />
-                <view class="stat-info">
-                  <text class="stat-value">{{ dashboardStats.activeProjects }}</text>
-                  <text class="stat-label">进行中项目</text>
-                </view>
-              </view>
-            </oa-col>
-            <oa-col :span="6">
-              <view class="quick-stat">
-                <Icon name="payments" :size="24" />
-                <view class="stat-info">
-                  <text class="stat-value">{{ dashboardStats.monthlyPayroll }}</text>
-                  <text class="stat-label">本月支出</text>
-                </view>
-              </view>
-            </oa-col>
-          </oa-row>
+        <component :is="Col" v-if="Col" :span="16">
+          <!-- 快捷统计 -->
+          <component :is="Permission" v-if="Permission" :roles="['ceo', 'finance', 'project_manager']">
+            <component :is="Row" v-if="Row" :gutter="16" class="mb-16">
+              <component :is="Col" v-if="Col" :span="6">
+                <component
+                  :is="StatCard"
+                  v-if="StatCard"
+                  title="员工总数"
+                  :value="dashboardStats.employees"
+                  icon="👥"
+                  theme="primary"
+                />
+              </component>
+              <component :is="Col" v-if="Col" :span="6">
+                <component
+                  :is="StatCard"
+                  v-if="StatCard"
+                  title="待审批"
+                  :value="dashboardStats.pendingApprovals"
+                  icon="📋"
+                  theme="warning"
+                />
+              </component>
+              <component :is="Col" v-if="Col" :span="6">
+                <component
+                  :is="StatCard"
+                  v-if="StatCard"
+                  title="进行中项目"
+                  :value="dashboardStats.activeProjects"
+                  icon="📁"
+                  theme="success"
+                />
+              </component>
+              <component :is="Col" v-if="Col" :span="6">
+                <component
+                  :is="StatCard"
+                  v-if="StatCard"
+                  title="本月支出"
+                  :value="dashboardStats.monthlyPayroll"
+                  icon="💰"
+                  theme="purple"
+                />
+              </component>
+            </component>
+          </component>
 
           <!-- 系统入口 -->
-          <oa-card>
+          <component :is="Card" v-if="Card">
             <template #title>
               <view class="card-title-wrapper">
-                <Icon name="dashboard" :size="18" />
                 <text>系统入口</text>
               </view>
             </template>
             <view class="system-grid">
-              <view
+              <component
+                :is="ModuleCard"
+                v-if="ModuleCard"
                 v-for="item in visibleSystems"
                 :key="item.key"
-                class="system-item"
-                @click="navigateTo(item.path)"
-              >
-                <view class="system-icon" :class="item.key">
-                  <Icon :name="item.icon" :size="28" />
-                </view>
-                <view class="system-info">
-                  <text class="system-name">{{ item.title }}</text>
-                  <text class="system-desc">{{ item.description }}</text>
-                </view>
-                <Icon name="arrow-forward" :size="16" class="system-arrow" />
-              </view>
+                :title="item.title"
+                :description="item.description"
+                :icon="item.icon"
+                :icon-theme="item.iconTheme"
+                :path="item.path"
+                :badge="item.badge"
+              />
             </view>
-          </oa-card>
-        </oa-col>
-      </oa-row>
+          </component>
+        </component>
+      </component>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Icon } from '../../components/ui'
-import {
-  OaCard, OaRow, OaCol, OaBadge,
-  OaButton, OaEmpty
-} from '../../components/ui-kit'
-import { systemEntries, getPendingItems, noticeItems } from './workbench-data'
+import { ref, computed, onMounted } from 'vue'
+import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
 import { roleNameMap } from '../../utils/access'
+
+// 异步获取组件
+const UserInfo = ref(null)
+const UserAvatar = ref(null)
+const Permission = ref(null)
+const StatCard = ref(null)
+const ModuleCard = ref(null)
+const Card = ref(null)
+const Row = ref(null)
+const Col = ref(null)
+const Button = ref(null)
+const Badge = ref(null)
+const Empty = ref(null)
+
+onMounted(async () => {
+  UserInfo.value = await getComponent('UserInfo')
+  UserAvatar.value = await getComponent('UserAvatar')
+  Permission.value = await getComponent('Permission')
+  StatCard.value = await getComponent('StatCard')
+  ModuleCard.value = await getComponent('ModuleCard')
+  Card.value = await getComponent('Card')
+  Row.value = await getComponent('Row')
+  Col.value = await getComponent('Col')
+  Button.value = await getComponent('Button')
+  Badge.value = await getComponent('Badge')
+  Empty.value = await getComponent('Empty')
+})
 
 const userStore = useUserStore()
 
@@ -176,25 +208,111 @@ const activeUser = computed(() => {
 })
 
 const isCEO = computed(() => activeUser.value.role === 'ceo')
+const isFinance = computed(() => activeUser.value.role === 'finance')
+const isPM = computed(() => activeUser.value.role === 'project_manager')
+const isWorker = computed(() => activeUser.value.role === 'worker')
 
 // 根据角色过滤可见系统
 const visibleSystems = computed(() => {
-  return systemEntries.filter(item => item.roles.includes(activeUser.value.role))
+  const allSystems = [
+    {
+      key: 'attendance',
+      title: '考勤管理',
+      description: '请假、加班申请与审批',
+      icon: '📅',
+      iconTheme: 'primary' as const,
+      path: '/pages/attendance/index',
+      roles: ['ceo', 'finance', 'project_manager', 'employee', 'worker'],
+      badge: 0
+    },
+    {
+      key: 'payroll',
+      title: '薪资档案',
+      description: '薪资查询与结算管理',
+      icon: '💰',
+      iconTheme: 'success' as const,
+      path: '/pages/payroll/index',
+      roles: ['ceo', 'finance', 'employee', 'worker'],
+      badge: 0
+    },
+    {
+      key: 'projects',
+      title: '施工日志',
+      description: '项目管理与日志填报',
+      icon: '🏗️',
+      iconTheme: 'purple' as const,
+      path: '/pages/projects/index',
+      roles: ['ceo', 'project_manager', 'worker'],
+      badge: 0
+    },
+    {
+      key: 'employees',
+      title: '员工管理',
+      description: '员工信息与权限管理',
+      icon: '👥',
+      iconTheme: 'orange' as const,
+      path: '/pages/employees/index',
+      roles: ['ceo', 'finance', 'project_manager'],
+      badge: 0
+    },
+    {
+      key: 'role',
+      title: '角色管理',
+      description: '角色与权限配置',
+      icon: '🔐',
+      iconTheme: 'error' as const,
+      path: '/pages/role/index',
+      roles: ['ceo', 'finance'],
+      badge: 0
+    }
+  ]
+
+  return allSystems.filter(item => item.roles.includes(activeUser.value.role))
 })
 
-// 根据角色获取待办事项
-const pendingItems = computed(() => getPendingItems(activeUser.value.role))
+// 待办事项（根据角色动态生成）
+const pendingItems = computed(() => {
+  const items = []
 
-// 快捷统计数据（仅CEO）
-const dashboardStats = computed(() => ({
+  if (isCEO.value || isFinance.value) {
+    items.push(
+      { title: '薪资审批', category: '财务', priority: '高', path: '/pages/payroll/index' },
+      { title: '请假审批', category: '考勤', priority: '中', path: '/pages/attendance/index' }
+    )
+  }
+
+  if (isPM.value) {
+    items.push(
+      { title: '请假审批', category: '考勤', priority: '中', path: '/pages/attendance/index' },
+      { title: '日志审核', category: '项目', priority: '低', path: '/pages/projects/index' }
+    )
+  }
+
+  if (isWorker.value) {
+    items.push(
+      { title: '今日施工日志', category: '项目', priority: '高', path: '/pages/projects/index' }
+    )
+  }
+
+  return items
+})
+
+// 系统通知
+const noticeItems = ref([
+  { title: '系统升级通知：本周六凌晨进行系统维护', time: '2小时前' },
+  { title: '五一假期安排：5月1日至5月5日放假', time: '1天前' }
+])
+
+// 快捷统计（仅CEO可见全部）
+const dashboardStats = ref({
   employees: 28,
   pendingApprovals: 5,
   activeProjects: 8,
   monthlyPayroll: '48.6万'
-}))
+})
 
 const getPriorityStatus = (priority: string) => {
-  const map: Record<string, any> = {
+  const map: Record<string, string> = {
     '高': 'error',
     '中': 'warning',
     '低': 'success'
@@ -212,10 +330,6 @@ const goToLogin = () => {
   userStore.logout()
   uni.navigateTo({ url: '/pages/login/index' })
 }
-
-const navigateTo = (path: string) => {
-  uni.navigateTo({ url: path })
-}
 </script>
 
 <style lang="scss" scoped>
@@ -229,7 +343,7 @@ const navigateTo = (path: string) => {
   color: #fff;
   padding: 20px 24px;
   margin: 16px 16px 0;
-  border-radius: var(--oa-border-radius-lg);
+  border-radius: var(--oa-radius-lg);
 }
 
 .hero-content {
@@ -238,18 +352,22 @@ const navigateTo = (path: string) => {
   align-items: center;
 }
 
+.user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 12px;
+}
+
 .hero-greeting {
-  font-family: var(--font-display);
+  font-family: var(--oa-font-family-display);
   font-size: 20px;
   font-weight: 700;
-  display: block;
 }
 
 .hero-role {
   font-size: 13px;
   opacity: 0.9;
-  margin-top: 4px;
-  display: block;
 }
 
 .hero-actions {
@@ -275,7 +393,7 @@ const navigateTo = (path: string) => {
     justify-content: space-between;
     align-items: center;
     padding: 12px;
-    border-radius: var(--oa-border-radius-md);
+    border-radius: var(--oa-radius-md);
     margin-bottom: 8px;
     background: var(--oa-bg);
     cursor: pointer;
@@ -347,100 +465,10 @@ const navigateTo = (path: string) => {
   }
 }
 
-.quick-stat {
-  background: #fff;
-  border-radius: var(--oa-border-radius-lg);
-  padding: 20px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  color: var(--oa-primary);
-
-  .stat-info {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .stat-value {
-    font-size: 20px;
-    font-weight: 700;
-    color: var(--oa-text);
-  }
-
-  .stat-label {
-    font-size: 12px;
-    color: var(--oa-text-secondary);
-    margin-top: 4px;
-  }
-}
-
 .system-grid {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.system-item {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 20px;
-  background: var(--oa-bg);
-  border-radius: var(--oa-border-radius-lg);
-  cursor: pointer;
-  transition: all 0.2s;
-
-  &:hover {
-    background: var(--oa-primary-light);
-    transform: translateX(4px);
-  }
-}
-
-.system-icon {
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  border-radius: var(--oa-border-radius-md);
-
-  &.attendance {
-    background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-  }
-
-  &.payroll {
-    background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
-  }
-
-  &.projects {
-    background: linear-gradient(135deg, #722ed1 0%, #531dab 100%);
-  }
-
-  &.employees {
-    background: linear-gradient(135deg, #fa8c16 0%, #d46b08 100%);
-  }
-}
-
-.system-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.system-name {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.system-desc {
-  font-size: 13px;
-  color: var(--oa-text-secondary);
-}
-
-.system-arrow {
-  color: var(--oa-text-tertiary);
 }
 
 .mb-16 {
