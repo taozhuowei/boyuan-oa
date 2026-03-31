@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+
+<html class="light" lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>审批中心 - 工程企业智慧办公</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-tertiary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-primary-container": "#93bcfc",
+                        "surface-tint": "#335f99",
+                        "surface-variant": "#e2e2e7",
+                        "on-surface": "#1a1c20",
+                        "surface": "#f9f9fe",
+                        "surface-container-high": "#e8e8ed",
+                        "surface-container-lowest": "#ffffff",
+                        "on-error": "#ffffff",
+                        "primary-container": "#1a4b84",
+                        "tertiary-fixed": "#ffdcbf",
+                        "tertiary": "#4f2b00",
+                        "on-background": "#1a1c20",
+                        "surface-bright": "#f9f9fe",
+                        "on-error-container": "#93000a",
+                        "secondary-container": "#659dfe",
+                        "primary-fixed-dim": "#a6c8ff",
+                        "surface-dim": "#d9d9df",
+                        "surface-container-low": "#f3f3f9",
+                        "on-tertiary-fixed": "#2d1600",
+                        "inverse-surface": "#2f3035",
+                        "on-primary-fixed-variant": "#144780",
+                        "surface-container-highest": "#e2e2e7",
+                        "inverse-primary": "#a6c8ff",
+                        "primary": "#003466",
+                        "inverse-on-surface": "#f0f0f6",
+                        "on-secondary-container": "#003370",
+                        "outline": "#737781",
+                        "on-tertiary-fixed-variant": "#6a3b00",
+                        "surface-container": "#ededf3",
+                        "error-container": "#ffdad6",
+                        "on-secondary-fixed-variant": "#004491",
+                        "secondary": "#115cb9",
+                        "on-surface-variant": "#424750",
+                        "on-primary-fixed": "#001c3b",
+                        "error": "#ba1a1a",
+                        "primary-fixed": "#d5e3ff",
+                        "on-tertiary-container": "#ffa64a",
+                        "outline-variant": "#c3c6d1",
+                        "secondary-fixed-dim": "#acc7ff",
+                        "tertiary-container": "#703e00",
+                        "on-secondary-fixed": "#001a40",
+                        "tertiary-fixed-dim": "#ffb874",
+                        "background": "#f9f9fe",
+                        "secondary-fixed": "#d7e2ff",
+                        "on-secondary": "#ffffff"
+                    },
+                    fontFamily: {
+                        "headline": ["Manrope"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', 'PingFang SC', sans-serif; }
+        .font-headline { font-family: 'Manrope', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center px-6 py-3 w-full sticky top-0 bg-slate-50/80 dark:bg-slate-900/80 backdrop-blur-md z-50 shadow-sm dark:shadow-none font-['Manrope'] antialiased">
+<div class="flex items-center gap-8">
+<span class="text-xl font-bold tracking-tight text-blue-900 dark:text-blue-100">工程企业智慧办公</span>
+<div class="hidden md:flex items-center space-x-6">
+<nav class="flex items-center space-x-6 text-sm font-medium">
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-800 dark:hover:text-blue-300 transition-all duration-200" href="#">工作台</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-blue-800 dark:hover:text-blue-300 transition-all duration-200" href="#">考勤管理</a>
+<a class="text-blue-900 dark:text-blue-400 font-semibold border-b-2 border-blue-900 dark:border-blue-400 transition-all duration-200" href="#">审批中心</a>
+</nav>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="pl-10 pr-4 py-1.5 bg-surface-container-low border-none rounded-lg text-sm w-64 focus:ring-1 focus:ring-primary" placeholder="搜索审批事项..." type="text"/>
+</div>
+<button class="p-2 text-on-surface-variant hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-all duration-200 active:scale-95">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img alt="User Avatar" data-alt="professional headshot of a middle-aged male executive with a confident expression in a corporate setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuATiTRj8vEOoIq46KZRm6RBlDbyvU2Dx-GeSwgJHk63GkbWstl7pPDzJNYVqK2iDJpWDM005Je2H4Nue6DkKrRsYuKWEAFi4fCu9oL9chIPPYr-S9cbhqwp9kTDYqYARZ8-4rFh49uVieEqywstWU440oAMX27Sbrpzs91_3JG85HbGGKWG4A_9vt3Y_00TsfLP16d1aWoJpndsN5XaOt0mI4kfLap2ioIcq76VIstRpNHOYFxD6ykWTcsZrzQng2P_y9agDj2AKiU"/>
+</div>
+</div>
+</header>
+<div class="flex h-[calc(100vh-60px)]">
+<!-- SideNavBar (Desktop Only for this context) -->
+<aside class="hidden md:flex flex-col h-full p-4 gap-2 w-64 bg-slate-100 dark:bg-slate-950 border-r border-slate-200/50 dark:border-slate-800/50 font-['Inter'] text-sm font-medium z-40">
+<div class="mb-6 px-2">
+<div class="text-lg font-black text-blue-900 dark:text-blue-100">审批中心</div>
+<div class="text-[10px] uppercase tracking-widest text-on-surface-variant opacity-70">Operational Excellence</div>
+</div>
+<div class="space-y-1">
+<button class="flex items-center gap-3 w-full px-4 py-2.5 text-blue-900 dark:text-blue-300 bg-white dark:bg-blue-900/20 rounded-lg shadow-sm font-bold transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">assignment_turned_in</span>
+<span>待我处理</span>
+<span class="ml-auto bg-error text-white text-[10px] px-1.5 py-0.5 rounded-full">12</span>
+</button>
+<button class="flex items-center gap-3 w-full px-4 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-900 rounded-lg transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined">forward_to_inbox</span>
+<span>抄送我的</span>
+</button>
+<button class="flex items-center gap-3 w-full px-4 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-900 rounded-lg transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined">send</span>
+<span>我发起的</span>
+</button>
+<div class="my-4 border-t border-outline-variant/20"></div>
+<button class="flex items-center gap-3 w-full px-4 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-900 rounded-lg transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined">history</span>
+<span>已处理</span>
+</button>
+</div>
+<div class="mt-auto">
+<button class="flex items-center gap-3 w-full px-4 py-2.5 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-900 rounded-lg transition-transform duration-200 hover:translate-x-1">
+<span class="material-symbols-outlined">help</span>
+<span>帮助中心</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area: Split Pane Layout -->
+<main class="flex-1 flex overflow-hidden bg-surface-container-low">
+<!-- Left Pane: Approval List -->
+<section class="w-full md:w-[400px] flex flex-col border-r border-outline-variant/30 bg-surface">
+<div class="p-4 bg-surface flex items-center justify-between">
+<h2 class="font-headline font-bold text-primary text-lg">待办审批</h2>
+<button class="text-xs text-secondary font-semibold hover:underline">批量处理</button>
+</div>
+<div class="flex-1 overflow-y-auto">
+<!-- List Item: Active -->
+<div class="p-4 bg-surface-container-lowest border-l-4 border-primary transition-all duration-200 cursor-pointer shadow-sm">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[10px] px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold uppercase tracking-wider">采购审批</span>
+<span class="text-[11px] font-headline text-on-surface-variant">10:45 AM</span>
+</div>
+<h3 class="font-bold text-on-surface mb-1">中建三局二公司钢筋采购申请</h3>
+<p class="text-xs text-on-surface-variant line-clamp-1 mb-3">项目编号: PJ-2023-0892 | 总计: ¥1,280,000.00</p>
+<div class="flex items-center gap-2">
+<img alt="Initiator" class="w-5 h-5 rounded-full" data-alt="close up headshot of a young professional asian man with glasses" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCY4MkcCHKWl4UDE8bH1ykqe0sAtzg4UdS9M9jALtSrvK4rIgjwktLTRXzqrhHrjKMWwSISLlkHzOHGktV9G5pXm0YzCEGRRHEW4qy7B8R2EXmUJR0oyRpjCWJG3myluNrGSrE5AziqgkQi0Y5ggx0RXiJMldM98FsCZAjquMwwTD4rzhs30s7bGWKpB0WMoVO8mFPUm-WsrKoy7NW6CALPtBRiRkC_3qcxb0E5cvgBVmEraBuGttZi9p2htMiZaOkLpEQehpvttOI"/>
+<span class="text-[11px] text-on-surface-variant">发起人: 张建国</span>
+</div>
+</div>
+<!-- List Item: Regular -->
+<div class="p-4 border-b border-outline-variant/10 hover:bg-surface-container-low transition-all duration-200 cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold uppercase tracking-wider">用印申请</span>
+<span class="text-[11px] font-headline text-on-surface-variant">09:12 AM</span>
+</div>
+<h3 class="font-semibold text-on-surface mb-1">施工许可证延期用印</h3>
+<p class="text-xs text-on-surface-variant line-clamp-1 mb-3">朝阳区东四环大望路路段改造工程</p>
+<div class="flex items-center gap-2">
+<img alt="Initiator" class="w-5 h-5 rounded-full" data-alt="professional female employee headshot with a friendly smile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBAdHUiukboVeQOFF8CnJnfgZifZFvC0RW5Zwl5Lr1N5Qd2m1j6X1Ii54dR0BjfGwPCSg_5B821LJXDJA3wE18ctQ25vJcjVspkbbRB5j8QrhEJMxn0XgRYBGHVsbx7tF0Z8TWE9tacJMTkhJQTpxM1H-g6Z4tNEuZcz_me5iPJtVZjhUqwBm0eKenYpMbgHR9EukAkXMWC0epSphpKAwcvlCXHWpPNVpuFII1kwkmo7hRdL7izO4gU6-qCVgJy7BrYpEr9VKeox2s"/>
+<span class="text-[11px] text-on-surface-variant">发起人: 李丽华</span>
+</div>
+</div>
+<!-- List Item: Regular -->
+<div class="p-4 border-b border-outline-variant/10 hover:bg-surface-container-low transition-all duration-200 cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[10px] px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-bold uppercase tracking-wider">款项支付</span>
+<span class="text-[11px] font-headline text-on-surface-variant">昨天</span>
+</div>
+<h3 class="font-semibold text-on-surface mb-1">劳务分包九月份工资支付凭证</h3>
+<p class="text-xs text-on-surface-variant line-clamp-1 mb-3">恒大翡翠华庭3期主体结构劳务费</p>
+<div class="flex items-center gap-2">
+<img alt="Initiator" class="w-5 h-5 rounded-full" data-alt="mature professional male headshot in studio setting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDJfiCyC2y8YK8j_FQ1JCo7gKRKa7Z04YGJdcsFI4usYFFi3yXnHEc-FSMGU4MpTVlueOF21DtVYGyMyttomvMKT5Tp6kQ6UuZ74wR5lbWWSWxxsF6beeR5qsazn_7c7JLHi6-8XHpd6KM6DszPsNDRFZXyJ47UT6XrxZVk4HAFYMxCAkHZryux0-ZXACo7mTX6zm4ogdN2o1EA2UOIcS-fxinbFDIurYhFLDiR6rrI9xiT2Nk-ipqQQ4QJO02gIj-wuLAzWZLWjNI"/>
+<span class="text-[11px] text-on-surface-variant">发起人: 王志明</span>
+</div>
+</div>
+<!-- List Item: Regular -->
+<div class="p-4 border-b border-outline-variant/10 hover:bg-surface-container-low transition-all duration-200 cursor-pointer">
+<div class="flex justify-between items-start mb-1">
+<span class="text-[10px] px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-bold uppercase tracking-wider">采购审批</span>
+<span class="text-[11px] font-headline text-on-surface-variant">昨天</span>
+</div>
+<h3 class="font-semibold text-on-surface mb-1">混凝土搅拌机备件采购</h3>
+<p class="text-xs text-on-surface-variant line-clamp-1 mb-3">设备编号: EQ-HNT-023 | 紧急更换</p>
+<div class="flex items-center gap-2">
+<img alt="Initiator" class="w-5 h-5 rounded-full" data-alt="female professional portrait with arms crossed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMxrz-p9KnJa7_gEddptOTYsuXxeGb7yC3GbTZgGDux7Fll2IoJecH-I1Z7y07-iljHm1S6h6s-xLSGcA2jphGYHkLHPpHNMyyaDCyFlbIHl84bPFhMFqZE07JEzFi0hSCBjSHqTNHrqsM_HTEAEle0vlPEXXxR_BA4fqiOfi2CxRCoSZUquRNJTi_HCLcTecGnb680Jrb-wO2WdmK8F83w3homsW0zT_WjS52Q46p8reEO9lGnzEvEn5IjB9AhV-wC3hrlgo42pM"/>
+<span class="text-[11px] text-on-surface-variant">发起人: 周美玲</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Pane: Detail View -->
+<section class="flex-1 flex flex-col bg-surface-container-low overflow-hidden">
+<!-- Detail Header -->
+<div class="bg-primary-container text-on-primary p-6 shadow-md z-10">
+<div class="flex justify-between items-start">
+<div>
+<div class="flex items-center gap-3 mb-2">
+<span class="bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold tracking-widest uppercase">采购审批单</span>
+<span class="text-on-primary-container text-sm font-headline">No. OA-2023-1024-001</span>
+</div>
+<h1 class="text-2xl font-extrabold font-headline leading-tight">中建三局二公司钢筋采购申请</h1>
+</div>
+<div class="text-right">
+<span class="inline-block px-3 py-1 rounded-full bg-tertiary-container text-on-tertiary-container text-xs font-bold mb-2">审批中</span>
+<div class="text-[11px] opacity-80 font-headline">创建时间: 2023-10-24 10:45:22</div>
+</div>
+</div>
+</div>
+<!-- Detail Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6">
+<!-- Form Content Card -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant/10 flex items-center justify-between">
+<h3 class="font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">description</span>
+                                表单详情
+                            </h3>
+<button class="text-secondary text-xs hover:underline">查看PDF原文</button>
+</div>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<div>
+<label class="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">发起人</label>
+<p class="text-sm font-medium">张建国 (采购经理)</p>
+</div>
+<div>
+<label class="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">所属项目</label>
+<p class="text-sm font-medium">北京通州新城基础设施扩建项目</p>
+</div>
+<div>
+<label class="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">预算科目</label>
+<p class="text-sm font-medium">项目主材-钢筋</p>
+</div>
+<div>
+<label class="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">物料规格</label>
+<p class="text-sm font-medium">HRB400E Φ12 / Φ14 / Φ16</p>
+</div>
+<div>
+<label class="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">申请总量</label>
+<p class="text-sm font-medium font-headline">320.5 吨</p>
+</div>
+<div>
+<label class="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">预估金额</label>
+<p class="text-sm font-bold text-primary font-headline">¥ 1,280,000.00</p>
+</div>
+<div class="col-span-full">
+<label class="block text-[10px] uppercase font-bold text-on-surface-variant mb-1">采购事由说明</label>
+<p class="text-sm leading-relaxed text-on-surface">根据最新施工进度计划，主体结构3-5层即将开始施工。由于近期钢材市场价格波动较大，经项目部会议决定，提前采购后续一个月所需的钢材总量，以锁定成本。已对比三家合格供应商报价，建议采用首钢长治供应方案。</p>
+</div>
+</div>
+</div>
+<!-- Attachments -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden">
+<div class="px-6 py-4 border-b border-outline-variant/10">
+<h3 class="font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">attachment</span>
+                                附件清单 (3)
+                            </h3>
+</div>
+<div class="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+<div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer border border-transparent hover:border-outline-variant/30">
+<span class="material-symbols-outlined text-red-600">picture_as_pdf</span>
+<div class="overflow-hidden">
+<p class="text-xs font-semibold truncate">三方询价比价表.pdf</p>
+<p class="text-[10px] text-on-surface-variant">1.2 MB</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer border border-transparent hover:border-outline-variant/30">
+<span class="material-symbols-outlined text-blue-600">image</span>
+<div class="overflow-hidden">
+<p class="text-xs font-semibold truncate">现场库存照片.jpg</p>
+<p class="text-[10px] text-on-surface-variant">4.5 MB</p>
+</div>
+</div>
+<div class="flex items-center gap-3 p-3 bg-surface-container-low rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer border border-transparent hover:border-outline-variant/30">
+<span class="material-symbols-outlined text-green-600">description</span>
+<div class="overflow-hidden">
+<p class="text-xs font-semibold truncate">拟定合同样本.docx</p>
+<p class="text-[10px] text-on-surface-variant">420 KB</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Approval Flow Visualization -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden mb-8">
+<div class="px-6 py-4 border-b border-outline-variant/10">
+<h3 class="font-bold text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">account_tree</span>
+                                审批流程
+                            </h3>
+</div>
+<div class="p-8">
+<div class="relative space-y-8">
+<!-- Process Node 1: Finished -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[15px] top-[30px] w-[2px] h-[calc(100%+8px)] bg-primary"></div>
+<div class="z-10 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white ring-4 ring-primary/10">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<div class="flex-1 pb-4">
+<div class="flex justify-between">
+<h4 class="font-bold text-sm">流程发起</h4>
+<span class="text-[11px] text-on-surface-variant font-headline">2023-10-24 10:45</span>
+</div>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-xs text-on-surface font-medium">张建国</span>
+<span class="text-[10px] text-on-surface-variant px-1.5 py-0.5 bg-surface-container-high rounded">发起人</span>
+</div>
+<p class="text-xs text-on-surface-variant mt-1 italic">"请各位领导审批本次紧急钢材采购。"</p>
+</div>
+</div>
+<!-- Process Node 2: Finished -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[15px] top-[30px] w-[2px] h-[calc(100%+8px)] bg-primary"></div>
+<div class="z-10 w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white ring-4 ring-primary/10">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check</span>
+</div>
+<div class="flex-1 pb-4">
+<div class="flex justify-between">
+<h4 class="font-bold text-sm">项目部复核</h4>
+<span class="text-[11px] text-on-surface-variant font-headline">2023-10-24 13:20</span>
+</div>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-xs text-on-surface font-medium">刘东胜</span>
+<span class="text-[10px] text-on-surface-variant px-1.5 py-0.5 bg-surface-container-high rounded">复核人</span>
+</div>
+<div class="mt-2 flex items-center gap-1 text-[11px] text-primary">
+<span class="material-symbols-outlined text-xs">verified</span>
+<span>已通过 - 经核查库存及用量准确</span>
+</div>
+</div>
+</div>
+<!-- Process Node 3: Current -->
+<div class="flex gap-4 relative">
+<div class="absolute left-[15px] top-[30px] w-[2px] h-[calc(100%+8px)] border-l-2 border-dashed border-outline-variant"></div>
+<div class="z-10 w-8 h-8 rounded-full bg-white border-2 border-primary flex items-center justify-center text-primary ring-4 ring-primary/5">
+<span class="material-symbols-outlined text-sm">pending</span>
+</div>
+<div class="flex-1 pb-4">
+<div class="flex justify-between">
+<h4 class="font-bold text-sm text-primary">财务中心审批</h4>
+<span class="text-[11px] text-primary font-bold">待处理 (当前环节)</span>
+</div>
+<div class="flex items-center gap-2 mt-1">
+<span class="text-xs text-on-surface font-medium">王伟 (您)</span>
+<span class="text-[10px] text-on-surface-variant px-1.5 py-0.5 bg-surface-container-high rounded">审批人</span>
+</div>
+</div>
+</div>
+<!-- Process Node 4: Waiting -->
+<div class="flex gap-4">
+<div class="z-10 w-8 h-8 rounded-full bg-surface-container-low border border-outline-variant/30 flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-sm">radio_button_unchecked</span>
+</div>
+<div class="flex-1">
+<div class="flex justify-between opacity-50">
+<h4 class="font-bold text-sm">工程副总裁终审</h4>
+<span class="text-[11px] font-headline">等待中</span>
+</div>
+<div class="flex items-center gap-2 mt-1 opacity-50">
+<span class="text-xs text-on-surface font-medium">陈建华</span>
+<span class="text-[10px] text-on-surface-variant px-1.5 py-0.5 bg-surface-container-high rounded">终审人</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Action Toolbar: Fixed at Bottom -->
+<div class="bg-surface p-4 flex items-center justify-between border-t border-outline-variant/20 shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+<div class="flex-1 pr-4">
+<input class="w-full bg-surface-container-low border-none rounded-lg text-sm px-4 py-2.5 focus:ring-1 focus:ring-primary" placeholder="填写审批意见 (选填)..." type="text"/>
+</div>
+<div class="flex items-center gap-3">
+<button class="px-6 py-2.5 bg-surface-container-high text-on-surface font-bold text-sm rounded-lg hover:bg-surface-container-highest transition-colors active:scale-95 duration-100">
+                            驳回
+                        </button>
+<button class="px-8 py-2.5 bg-primary text-on-primary font-bold text-sm rounded-lg hover:brightness-110 shadow-lg shadow-primary/20 transition-all active:scale-95 duration-100 flex items-center gap-2">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+                            同意审批
+                        </button>
+</div>
+</div>
+</section>
+</main>
+</div>
+</body></html>

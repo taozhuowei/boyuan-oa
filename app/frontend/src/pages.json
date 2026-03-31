@@ -1,0 +1,64 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "工作台"
+      }
+    },
+    {
+      "path": "pages/role/index",
+      "style": {
+        "navigationBarTitleText": "角色管理"
+      }
+    },
+    {
+      "path": "pages/forms/index",
+      "style": {
+        "navigationBarTitleText": "表单中心"
+      }
+    },
+    {
+      "path": "pages/employees/index",
+      "style": {
+        "navigationBarTitleText": "员工管理"
+      }
+    },
+    {
+      "path": "pages/projects/index",
+      "style": {
+        "navigationBarTitleText": "项目管理"
+      }
+    },
+    {
+      "path": "pages/directory/index",
+      "style": {
+        "navigationBarTitleText": "通讯录导入"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "众维OA工作台",
+    "navigationBarBackgroundColor": "#fff",
+    "backgroundColor": "#f5f5f5"
+  },
+  "tabBar": {
+    "color": "#999",
+    "selectedColor": "#324963",
+    "backgroundColor": "#fff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "工作台"
+      }
+    ]
+  }
+}

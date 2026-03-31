@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Inter:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "secondary-fixed": "#d7e2ff",
+              "on-primary-container": "#93bcfc",
+              "on-primary-fixed": "#001c3b",
+              "on-primary": "#ffffff",
+              "surface-variant": "#e2e2e7",
+              "on-surface-variant": "#424750",
+              "surface-dim": "#d9d9df",
+              "surface-bright": "#f9f9fe",
+              "on-error": "#ffffff",
+              "outline-variant": "#c3c6d1",
+              "tertiary": "#4f2b00",
+              "primary-container": "#1a4b84",
+              "on-tertiary-fixed-variant": "#6a3b00",
+              "on-primary-fixed-variant": "#144780",
+              "on-error-container": "#93000a",
+              "primary": "#003466",
+              "inverse-primary": "#a6c8ff",
+              "secondary-fixed-dim": "#acc7ff",
+              "on-secondary-fixed": "#001a40",
+              "surface-container-high": "#e8e8ed",
+              "on-tertiary": "#ffffff",
+              "surface-container-highest": "#e2e2e7",
+              "surface-tint": "#335f99",
+              "surface-container": "#ededf3",
+              "on-secondary": "#ffffff",
+              "surface-container-low": "#f3f3f9",
+              "primary-fixed": "#d5e3ff",
+              "outline": "#737781",
+              "background": "#f9f9fe",
+              "surface-container-lowest": "#ffffff",
+              "on-background": "#1a1c20",
+              "inverse-on-surface": "#f0f0f6",
+              "tertiary-fixed-dim": "#ffb874",
+              "tertiary-container": "#703e00",
+              "on-tertiary-fixed": "#2d1600",
+              "inverse-surface": "#2f3035",
+              "on-surface": "#1a1c20",
+              "surface": "#f9f9fe",
+              "on-secondary-container": "#003370",
+              "primary-fixed-dim": "#a6c8ff",
+              "on-tertiary-container": "#ffa64a",
+              "secondary": "#115cb9",
+              "tertiary-fixed": "#ffdcbf",
+              "secondary-container": "#659dfe",
+              "error-container": "#ffdad6",
+              "on-secondary-fixed-variant": "#004491",
+              "error": "#ba1a1a"
+            },
+            fontFamily: {
+              "headline": ["Manrope"],
+              "body": ["Inter"],
+              "label": ["Inter"]
+            },
+            borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Inter', 'PingFang SC', sans-serif; }
+        .font-headline { font-family: 'Manrope', sans-serif; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-slate-900 dark:bg-black docked full-width top-0 sticky z-50 shadow-[0px_8px_24px_rgba(0,52,102,0.06)] bg-gradient-to-r from-[#003466] to-[#1A4B84] flex justify-between items-center w-full px-4 h-16">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-white" data-icon="construction">construction</span>
+<h1 class="font-['Manrope'] tracking-tight font-bold text-lg uppercase text-white">ENGINEERING OA</h1>
+</div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-blue-200 border border-white/20 overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="professional portrait of a civil engineer wearing a white hard hat with a confident expression in soft daylight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGRsjifAqTe6Ypz7iE6yOAryUmWOAqNNy8nuXKVnaLO5RJDhIQi9dM1FKPhBafOwq42ocLg29whFH0OZLKv2_yMI7lhehBjjPvPM5hRLRct_eFTQjSrbb5Y_Gp4b5lLkI4TGPgvlcUtpsIyVCZw0sOnnFcpcsYuS_hurYGQ_71l-ze3SvIoGI59eUxLGbmmoxRHqMqmT1HdrtXSJmyudfSgNTsn9SR72BffTxeM3HjHc_hRxcwKyYRldSdCTCf-1YjJt9mgbwp4gg"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 bg-surface-container-low px-4 pt-4 pb-24">
+<!-- Search & Filter Area (Tonal Stacking) -->
+<div class="bg-surface-container-lowest rounded-xl p-3 mb-4 shadow-sm">
+<div class="flex items-center bg-surface-container rounded-lg px-3 py-2">
+<span class="material-symbols-outlined text-on-surface-variant mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-full font-body" placeholder="搜索施工日志..." type="text"/>
+</div>
+<div class="flex gap-2 mt-3 overflow-x-auto pb-1">
+<span class="bg-primary text-white text-xs px-3 py-1.5 rounded-full font-semibold">全部</span>
+<span class="bg-surface-container-high text-on-surface-variant text-xs px-3 py-1.5 rounded-full font-semibold">本周</span>
+<span class="bg-surface-container-high text-on-surface-variant text-xs px-3 py-1.5 rounded-full font-semibold">滨海新区</span>
+<span class="bg-surface-container-high text-on-surface-variant text-xs px-3 py-1.5 rounded-full font-semibold">待审批</span>
+</div>
+</div>
+<!-- High-Density Log List -->
+<div class="space-y-3">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border-l-4 border-primary transition-all active:opacity-90">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline font-bold text-primary text-base leading-tight">滨海新区地基钢筋绑扎</h3>
+<span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-sm font-bold">无异常</span>
+</div>
+<div class="grid grid-cols-2 gap-y-2 mb-3">
+<div class="flex items-center text-on-surface-variant text-xs">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="calendar_today">calendar_today</span>
+<span class="font-headline tracking-tighter">2023-10-23</span>
+</div>
+<div class="flex items-center text-on-surface-variant text-xs justify-end">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="person">person</span>
+<span>李伟</span>
+</div>
+</div>
+<p class="text-on-surface text-sm leading-relaxed line-clamp-2 opacity-80">
+                    今日完成地下二层B区钢筋绑扎，监理已完成隐蔽工程验收，准备进行混凝土浇筑。
+                </p>
+<div class="mt-3 flex gap-2">
+<div class="w-12 h-12 rounded bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="close-up of rebar reinforcement mesh on a construction site with professional industrial lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA4VCC0uts2rtkm3-3PFcmtdR-ZHZoBZWDX0P6KwrUuQKL-3kEuPMAKSvuiNBoZDRNaA4vuhtdukqdXWzLd_7BIiwgoJSRc1oVrOnWhB7AwLnYrSf-ZOC6ZRvwGIz3BT5umjj8Jw5mtyHWKIo9M2pvNSSPZsaYBAtRgOM7GYATHrf11DOvCpQYm5Mxu1Su_WfVme9UbHbcy2Xh2E2LM3OsYVfdlwDqOGOOMnLvpVZmDauOVHt_DV9x4CWQ2tl6M4hFu5ln6SrTV5v8"/>
+</div>
+<div class="w-12 h-12 rounded bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="construction site landscape with heavy machinery and industrial structures during early morning" src="https://lh3.googleusercontent.com/aida-public/AB6AXuARfvVDJxiAYaqoqmaX_Ax66YbzSHCcM3OhVkhp0XxTKIvQgQPnMQwstZkMx2GJlv5cw_GsPrbSYeMJwxuOKO5y8tSLyjwUJ9TC9YMvAJ_LIo77we9I4fed0DpXuBTCP8N1mWMlTVZ8lvQWxW7hlcjJ8Tex7iOG1hsrfnJ51bRv7MoEt1K6Z1PbaWisLvrRVtxr222nbl5ncYYXk7hDE8q0ZpM6kovyeYOTLDUy-g0CbJLP3iTd2vzamA1P4EmXcowY29MA3sDogGg"/>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border-l-4 border-tertiary-container transition-all active:opacity-90">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline font-bold text-primary text-base leading-tight">高新区5号楼外墙保温</h3>
+<span class="bg-orange-100 text-tertiary-container text-[10px] px-2 py-0.5 rounded-sm font-bold">待复核</span>
+</div>
+<div class="grid grid-cols-2 gap-y-2 mb-3">
+<div class="flex items-center text-on-surface-variant text-xs">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="calendar_today">calendar_today</span>
+<span class="font-headline tracking-tighter">2023-10-22</span>
+</div>
+<div class="flex items-center text-on-surface-variant text-xs justify-end">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="person">person</span>
+<span>王志强</span>
+</div>
+</div>
+<p class="text-on-surface text-sm leading-relaxed line-clamp-2 opacity-80">
+                    保温材料到场，抽检合格。今日降雨，外墙作业暂停，转入室内抹灰施工。
+                </p>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border-l-4 border-primary transition-all active:opacity-90">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline font-bold text-primary text-base leading-tight">轨道交通3号线盾构掘进</h3>
+<span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-sm font-bold">无异常</span>
+</div>
+<div class="grid grid-cols-2 gap-y-2 mb-3">
+<div class="flex items-center text-on-surface-variant text-xs">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="calendar_today">calendar_today</span>
+<span class="font-headline tracking-tighter">2023-10-21</span>
+</div>
+<div class="flex items-center text-on-surface-variant text-xs justify-end">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="person">person</span>
+<span>张晓明</span>
+</div>
+</div>
+<p class="text-on-surface text-sm leading-relaxed line-clamp-2 opacity-80">
+                    盾构机“开拓号”今日推进12环，土压平衡稳定，同步注浆量符合设计要求。
+                </p>
+<div class="mt-3 flex gap-2">
+<div class="w-12 h-12 rounded bg-surface-container overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="industrial tunnel interior with concrete segments and technical piping in cool blue tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD0obi7vegW-1amylj8KhUwd2Ji0ZaORVYydKwWPBisxIWIcuuSjDSsUb38uo5cSvgRksmCUeJsFXaHUJ7NQhUv4jFbAeY0miKQ850B9Jak7IzSCXSH1E5bvxqELyECzCpz7vYVcJlslqRHqaGKDWGiKGNeexhTh-ZqSb0No3W0BVeS85aVynAuVmIaN4PKYEmfeOOjaBwRryxpwdSoZSDdjs-dznWMW6ipU8UbXCjTHCY3V3e9rY6AzPBqdSRvVEhWoQoTedKqXi0"/>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl border-l-4 border-primary transition-all active:opacity-90">
+<div class="flex justify-between items-start mb-2">
+<h3 class="font-headline font-bold text-primary text-base leading-tight">智慧园区A1电力排管</h3>
+<span class="bg-green-100 text-green-700 text-[10px] px-2 py-0.5 rounded-sm font-bold">无异常</span>
+</div>
+<div class="grid grid-cols-2 gap-y-2 mb-3">
+<div class="flex items-center text-on-surface-variant text-xs">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="calendar_today">calendar_today</span>
+<span class="font-headline tracking-tighter">2023-10-21</span>
+</div>
+<div class="flex items-center text-on-surface-variant text-xs justify-end">
+<span class="material-symbols-outlined text-[14px] mr-1" data-icon="person">person</span>
+<span>赵括</span>
+</div>
+</div>
+<p class="text-on-surface text-sm leading-relaxed line-clamp-2 opacity-80">
+                    电力排管敷设完成200米，包封混凝土养护中，明日计划进行回填夯实工作。
+                </p>
+</div>
+</div>
+</main>
+<!-- Floating Action Button -->
+<button class="fixed right-6 bottom-24 w-14 h-14 bg-primary text-white rounded-full shadow-lg flex items-center justify-center transition-transform active:scale-95 z-40">
+<span class="material-symbols-outlined text-3xl" data-icon="add" style="font-variation-settings: 'FILL' 1;">add</span>
+</button>
+<!-- BottomNavBar -->
+<nav class="fixed bottom-0 left-0 w-full flex justify-around items-center px-2 py-2 bg-white/85 dark:bg-slate-900/85 backdrop-blur-xl border-t border-slate-200 dark:border-slate-800 z-50 pb-safe">
+<!-- Log (Active) -->
+<a class="flex flex-col items-center justify-center text-[#003466] dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/20 rounded-lg py-1 w-16 Active: scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="engineering" style="font-variation-settings: 'FILL' 1;">engineering</span>
+<span class="font-['Manrope'] text-[11px] font-semibold uppercase tracking-wider mt-0.5">Log</span>
+</a>
+<!-- Approvals -->
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 py-1 w-16 hover:text-[#1A4B84] dark:hover:text-blue-300 Active: scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="fact_check">fact_check</span>
+<span class="font-['Manrope'] text-[11px] font-semibold uppercase tracking-wider mt-0.5">Approvals</span>
+</a>
+<!-- Payroll -->
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 py-1 w-16 hover:text-[#1A4B84] dark:hover:text-blue-300 Active: scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="payments">payments</span>
+<span class="font-['Manrope'] text-[11px] font-semibold uppercase tracking-wider mt-0.5">Payroll</span>
+</a>
+<!-- Mine -->
+<a class="flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 py-1 w-16 hover:text-[#1A4B84] dark:hover:text-blue-300 Active: scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="account_circle">account_circle</span>
+<span class="font-['Manrope'] text-[11px] font-semibold uppercase tracking-wider mt-0.5">Mine</span>
+</a>
+</nav>
+</body></html>

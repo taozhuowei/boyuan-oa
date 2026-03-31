@@ -1,0 +1,19 @@
+# dependencies
+app/node_modules/
+app/frontend/node_modules/
+
+# build output
+app/frontend/dist/
+app/backend/target/
+
+# logs and temp files
+*.log
+*.err.log
+test_output.txt
+
+# local automation/browser traces
+.playwright-cli/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db

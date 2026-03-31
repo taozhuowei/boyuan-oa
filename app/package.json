@@ -1,0 +1,23 @@
+{
+  "name": "oa-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev:web": "yarn --cwd frontend dev:web",
+    "dev:mp-weixin": "yarn --cwd frontend dev:mp-weixin",
+    "preview:mp-weixin": "yarn --cwd frontend preview:mp-weixin",
+    "build:web": "yarn --cwd frontend build:web",
+    "build:mp-weixin": "yarn --cwd frontend build:mp-weixin",
+    "test:web": "yarn --cwd frontend test:web",
+    "test:mp": "yarn --cwd frontend test:mp",
+    "test:api": "powershell -ExecutionPolicy Bypass -File ../tools/scripts/test-api.ps1",
+    "install:all": "yarn --cwd frontend install",
+    "dev:backend": "cd backend && mvn spring-boot:run",
+    "build:backend": "cd backend && mvn clean package",
+    "db:init": "psql -U postgres -f backend/src/main/resources/db/schema.sql"
+  }
+}
