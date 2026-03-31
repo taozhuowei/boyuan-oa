@@ -6,7 +6,7 @@ import com.oa.backend.dto.DirectoryImportPreviewResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -27,13 +27,9 @@ public class DirectoryImportController {
      * 权限：仅财务
      */
     @PostMapping("/import-preview")
+    @PreAuthorize("hasRole('FINANCE')")
     public ResponseEntity<DirectoryImportPreviewResponse> importPreview(
-            @Valid @RequestBody DirectoryImportPreviewRequest request,
-            Authentication authentication) {
-        if (!isFinance(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
-
+            @Valid @RequestBody DirectoryImportPreviewRequest request) {
         int total = request.records().size();
         int valid = 0;
         int duplicate = 0;
@@ -82,18 +78,8 @@ public class DirectoryImportController {
      * 权限：仅财务
      */
     @PostMapping("/import-apply")
-    public ResponseEntity<String> importApply(
-            @Valid @RequestBody DirectoryImportApplyRequest request,
-            Authentication authentication) {
-        if (!isFinance(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+    @PreAuthorize("hasRole('FINANCE')")
+    public ResponseEntity<String> importApply(@Valid @RequestBody DirectoryImportApplyRequest request) {
         return ResponseEntity.ok("导入成功，共导入 " + request.selectedIndices().size() + " 条记录");
-    }
-
-    private boolean isFinance(Authentication authentication) {
-        if (authentication == null) return false;
-        return authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_FINANCE".equals(a.getAuthority()));
     }
 }

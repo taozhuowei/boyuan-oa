@@ -4,6 +4,7 @@ import com.oa.backend.entity.User;
 import com.oa.backend.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -23,9 +24,10 @@ public class UserController {
      * 职责：获取系统中所有用户的列表
      * 请求含义：查询所有用户的基本信息
      * 响应含义：返回用户实体对象列表
-     * 权限期望：需要已认证用户访问
+     * 权限期望：需要 CEO 角色访问
      */
     @GetMapping
+    @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<List<User>> list() {
         return ResponseEntity.ok(userService.list());
     }
@@ -34,9 +36,10 @@ public class UserController {
      * 职责：根据ID获取指定用户的详细信息
      * 请求含义：通过路径参数传递用户ID查询特定用户
      * 响应含义：返回指定ID的用户实体对象
-     * 权限期望：需要已认证用户访问
+     * 权限期望：需要 CEO 角色访问
      */
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<User> getById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getById(id));
     }
@@ -45,9 +48,10 @@ public class UserController {
      * 职责：创建新用户
      * 请求含义：提交用户实体对象进行新增操作
      * 响应含义：返回操作是否成功的布尔值
-     * 权限期望：需要具有用户管理权限的已认证用户访问
+     * 权限期望：需要 CEO 角色访问
      */
     @PostMapping
+    @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<Boolean> save(@RequestBody User user) {
         return ResponseEntity.ok(userService.save(user));
     }
@@ -56,9 +60,10 @@ public class UserController {
      * 职责：更新指定用户的信息
      * 请求含义：通过路径参数传递用户ID，并提交更新后的用户实体对象
      * 响应含义：返回操作是否成功的布尔值
-     * 权限期望：需要具有用户管理权限的已认证用户访问
+     * 权限期望：需要 CEO 角色访问
      */
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<Boolean> update(@PathVariable Long id, @RequestBody User user) {
         user.setId(id);
         return ResponseEntity.ok(userService.updateById(user));
@@ -68,9 +73,10 @@ public class UserController {
      * 职责：删除指定用户
      * 请求含义：通过路径参数传递用户ID进行删除操作
      * 响应含义：返回操作是否成功的布尔值
-     * 权限期望：需要具有用户管理权限的已认证用户访问
+     * 权限期望：需要 CEO 角色访问
      */
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<Boolean> delete(@PathVariable Long id) {
         return ResponseEntity.ok(userService.removeById(id));
     }

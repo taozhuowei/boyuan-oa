@@ -6,7 +6,7 @@ import com.oa.backend.service.OaDataService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,10 +26,8 @@ public class BackupController {
      * 权限：CEO
      */
     @GetMapping("/tasks")
-    public ResponseEntity<List<BackupTaskResponse>> listBackupTasks(Authentication authentication) {
-        if (!isCEO(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<List<BackupTaskResponse>> listBackupTasks() {
         return ResponseEntity.ok(oaDataService.listBackupTasks());
     }
 
@@ -38,12 +36,9 @@ public class BackupController {
      * 权限：CEO
      */
     @PostMapping("/tasks")
+    @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<BackupTaskResponse> createBackupTask(
-            @Valid @RequestBody BackupTaskCreateRequest request,
-            Authentication authentication) {
-        if (!isCEO(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+            @Valid @RequestBody BackupTaskCreateRequest request) {
         BackupTaskResponse response = oaDataService.createBackupTask(
                 request.dataScope(), request.scopeId(), request.taskName(),
                 request.dataTypes(), request.compress());
@@ -55,22 +50,12 @@ public class BackupController {
      * 权限：CEO
      */
     @PostMapping("/tasks/{id}/retry")
-    public ResponseEntity<String> retryBackupTask(
-            @PathVariable Long id,
-            Authentication authentication) {
-        if (!isCEO(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<String> retryBackupTask(@PathVariable Long id) {
         boolean success = oaDataService.retryBackupTask(id);
         if (!success) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok("重试已启动");
-    }
-
-    private boolean isCEO(Authentication authentication) {
-        if (authentication == null) return false;
-        return authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_CEO".equals(a.getAuthority()));
     }
 }

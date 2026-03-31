@@ -318,7 +318,7 @@ public class OaDataService {
 
     private PayrollCycleResponse toPayrollCycleResponse(PayrollCycleData c) {
         return new PayrollCycleResponse(c.id, c.cycleNo, c.cycleName, c.startDate, c.endDate, c.status,
-            c.version, c.locked, c.startDate, c.settleTime != null ? c.startDate : null, c.employeeCount, c.totalAmount);
+            c.version, c.locked, c.precheckTime, c.settleTime, c.employeeCount, c.totalAmount);
     }
 
     public List<PayrollSlipResponse> listPayrollSlips(Long cycleId) {

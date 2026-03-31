@@ -4,7 +4,7 @@ import com.oa.backend.dto.CleanupTaskResponse;
 import com.oa.backend.service.OaDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -24,10 +24,8 @@ public class CleanupController {
      * 权限：CEO
      */
     @GetMapping("/tasks")
-    public ResponseEntity<List<CleanupTaskResponse>> listCleanupTasks(Authentication authentication) {
-        if (!isCEO(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<List<CleanupTaskResponse>> listCleanupTasks() {
         return ResponseEntity.ok(oaDataService.listCleanupTasks());
     }
 
@@ -36,12 +34,8 @@ public class CleanupController {
      * 权限：CEO
      */
     @PostMapping("/tasks")
-    public ResponseEntity<CleanupTaskResponse> createCleanupTask(
-            @RequestParam String dataCategory,
-            Authentication authentication) {
-        if (!isCEO(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<CleanupTaskResponse> createCleanupTask(@RequestParam String dataCategory) {
         return ResponseEntity.ok(oaDataService.createCleanupTask(dataCategory));
     }
 
@@ -50,22 +44,12 @@ public class CleanupController {
      * 权限：CEO
      */
     @PostMapping("/tasks/{id}/retry")
-    public ResponseEntity<String> retryCleanupTask(
-            @PathVariable Long id,
-            Authentication authentication) {
-        if (!isCEO(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<String> retryCleanupTask(@PathVariable Long id) {
         boolean success = oaDataService.retryCleanupTask(id);
         if (!success) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok("重试已启动");
-    }
-
-    private boolean isCEO(Authentication authentication) {
-        if (authentication == null) return false;
-        return authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_CEO".equals(a.getAuthority()));
     }
 }

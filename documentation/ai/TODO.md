@@ -18,28 +18,28 @@
 ## 阶段一：前端基础架构重构
 
 ### 1.1 组件库与样式系统
-- [ ] 创建 UI 组件目录结构
-- [ ] 创建 Icon.vue（SVG 内联，小程序兼容）
-- [ ] 创建 Panel.vue、Button.vue、Empty.vue、Badge.vue
-- [ ] 创建 ListItem.vue、StatCard.vue、ModuleCard.vue、Timeline.vue
-- [ ] 重构 App.vue 全局样式与 CSS 变量
-- [ ] 创建 useDevice 组合式函数
+- [x] 2026-03-31 18:20 创建 UI 组件目录结构
+- [x] 2026-03-31 18:20 创建 Icon.vue（SVG 内联，小程序兼容）
+- [x] 2026-03-31 18:20 创建 Panel.vue、Button.vue、Empty.vue、Badge.vue
+- [x] 2026-03-31 18:20 创建 ListItem.vue、StatCard.vue、ModuleCard.vue、Timeline.vue
+- [x] 2026-03-31 18:20 重构 App.vue 全局样式与 CSS 变量
+- [x] 2026-03-31 18:20 创建 useDevice 组合式函数
 
 ### 1.2 登录页重构
-- [ ] 使用新组件重写 login/index.vue
-- [ ] 保持业务逻辑，简化样式
+- [x] 2026-03-31 18:20 使用新组件重写 login/index.vue
+- [x] 2026-03-31 18:20 保持业务逻辑，简化样式
 
 ### 1.3 工作台重构
-- [ ] 重写 index/index.vue
-- [ ] 使用 StatCard/ModuleCard/ListItem 组件
-- [ ] 引入图标替代文字
-- [ ] 简化 workbench-data.ts
+- [x] 2026-03-31 18:20 重写 index/index.vue
+- [x] 2026-03-31 18:20 使用 StatCard/ModuleCard/ListItem 组件
+- [x] 2026-03-31 18:20 引入图标替代文字
+- [x] 2026-03-31 18:20 简化 workbench-data.ts
 
 ### 1.4 前端测试补充
-- [ ] Icon/Button/Panel 单元测试
-- [ ] 登录页/工作台单元测试
-- [ ] 运行 yarn test:web 通过
-- [ ] **Git 提交**
+- [x] 2026-03-31 18:20 Icon/Button/Panel 单元测试
+- [x] 2026-03-31 18:20 登录页/工作台单元测试
+- [x] 2026-03-31 18:20 运行 yarn test:web 通过
+- [x] 2026-03-31 18:20 **Git 提交**
 
 ---
 

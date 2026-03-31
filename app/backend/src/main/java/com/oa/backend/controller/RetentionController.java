@@ -5,7 +5,7 @@ import com.oa.backend.service.OaDataService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,10 +25,8 @@ public class RetentionController {
      * 权限：CEO
      */
     @GetMapping("/policies")
-    public ResponseEntity<List<RetentionPolicyResponse>> listRetentionPolicies(Authentication authentication) {
-        if (!isCEO(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<List<RetentionPolicyResponse>> listRetentionPolicies() {
         return ResponseEntity.ok(oaDataService.listRetentionPolicies());
     }
 
@@ -37,12 +35,9 @@ public class RetentionController {
      * 权限：CEO
      */
     @PostMapping("/policies/extend")
+    @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<RetentionPolicyResponse> extendRetentionPolicy(
-            @Valid @RequestBody RetentionExtendRequest request,
-            Authentication authentication) {
-        if (!isCEO(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+            @Valid @RequestBody RetentionExtendRequest request) {
         return oaDataService.extendRetentionPolicy(request.policyId(), request.extendDays())
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -53,16 +48,8 @@ public class RetentionController {
      * 权限：CEO
      */
     @GetMapping("/reminders")
-    public ResponseEntity<List<RetentionReminderResponse>> listRetentionReminders(Authentication authentication) {
-        if (!isCEO(authentication)) {
-            return ResponseEntity.status(403).build();
-        }
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<List<RetentionReminderResponse>> listRetentionReminders() {
         return ResponseEntity.ok(oaDataService.listRetentionReminders());
-    }
-
-    private boolean isCEO(Authentication authentication) {
-        if (authentication == null) return false;
-        return authentication.getAuthorities().stream()
-                .anyMatch(a -> "ROLE_CEO".equals(a.getAuthority()));
     }
 }
