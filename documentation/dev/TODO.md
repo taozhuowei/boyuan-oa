@@ -15,31 +15,27 @@
 ## 前端进度
 
 ### 当前阶段
-**阶段二：工程基础与启动能力** → **架构重构中**
+**阶段三：业务功能完善** → **架构重构中**
 
 ### 架构重构任务
 
-#### Phase 1: 基础设施（并行）
-- [ ] 创建 `adapters/config/components.json` - 组件映射配置
-- [ ] 创建 `adapters/config/props-map.json` - 属性映射配置
-- [ ] 创建 `adapters/resolver.ts` - 配置解析器
-- [ ] 创建 `adapters/index.ts` - 统一导出
-- [ ] 创建 `styles/variables.scss` - SCSS 变量
+#### Phase 1: 基础设施（已完成）
+- [x] 创建 `adapters/config/components.json` - 组件映射配置
+- [x] 创建 `adapters/config/props-map.json` - 属性映射配置
+- [x] 创建 `adapters/resolver.ts` - 配置解析器
+- [x] 创建 `styles/variables.scss` - SCSS 变量
+- [ ] 创建 `adapters/index.ts` - 统一导出（待补充）
 - [ ] 创建 `styles/antd-override.scss` - AntD 样式覆盖
 - [ ] 创建 `styles/vant-override.scss` - Vant 样式覆盖
 
-#### Phase 2: 核心组件（依赖 Phase 1）
+#### Phase 2: 核心组件（进行中）
 - [ ] 创建 `components/cross-platform/Card.vue` - 双端卡片对齐
 - [ ] 创建 `components/cross-platform/Timeline.vue` - 时间轴
-- [ ] 重写 `components/customized/StatCard.vue` - 统计卡片
-- [ ] 重写 `components/customized/ModuleCard.vue` - 模块入口卡片
+- [ ] 创建 `components/cross-platform/Table.vue` - 表格组件
+- [ ] 创建 `components/customized/StatCard.vue` - 统计卡片
+- [ ] 创建 `components/customized/ModuleCard.vue` - 模块入口卡片
 
-#### Phase 3: 清理旧代码
-- [ ] 删除 `components/ui-kit/` - 旧组件库
-- [ ] 删除 `components/ui/` - 旧业务组件
-- [ ] 删除 `components/layout/` - 如无特殊需求
-
-#### Phase 4: 页面迁移（并行）
+#### Phase 3: 页面迁移（依赖 Phase 2）
 - [ ] 迁移 `pages/login/index.vue`
 - [ ] 迁移 `pages/index/index.vue`
 - [ ] 迁移 `pages/attendance/index.vue`（添加 Timeline 审批流程）
@@ -48,9 +44,15 @@
 - [ ] 迁移 `pages/employees/index.vue`
 - [ ] 迁移 `pages/role/index.vue`
 
+#### Phase 4: 清理旧代码（页面迁移完成后）
+- [ ] 删除 `components/ui-kit/` - 旧组件库
+- [ ] 删除 `components/ui/` - 旧业务组件
+- [ ] 删除 `components/layout/` - 如无特殊需求
+
 #### Phase 5: 验证与提交
 - [ ] `yarn type-check` 类型检查
 - [ ] `yarn dev:web` H5 验证
+- [ ] `yarn dev:mp-weixin` 小程序验证
 - [ ] Git 提交
 
 ### 业务模块进度
@@ -105,10 +107,11 @@
 - [x] SecurityUtils 工具类
 
 #### 基础实体
-- [x] 用户实体
-- [x] 角色实体
-- [x] 部门实体
-- [x] 项目实体
+- [x] 用户实体 (User)
+- [x] 角色实体 (Role)
+- [x] 部门实体 (Department)
+- [x] 项目实体 (Project)
+- [x] 员工实体 (Employee)
 
 ### 待开发
 
@@ -118,7 +121,8 @@
 - [ ] 考勤统计接口
 
 #### 薪资模块
-- [ ] 薪资记录实体
+- [x] 薪资周期实体 (PayrollCycle)
+- [x] 工资条实体 (PayrollSlip)
 - [ ] 薪资查询接口
 - [ ] 薪资计算服务
 
@@ -128,13 +132,19 @@
 - [ ] 项目 CRUD 接口
 
 #### 员工模块
-- [ ] 员工信息 CRUD
-- [ ] 员工搜索/筛选
-- [ ] 员工权限管理
+- [x] 员工信息实体 (Employee)
+- [ ] 员工搜索/筛选接口
+- [ ] 员工权限管理接口
 
 ---
 
 ## 历史记录
+
+### 2026-03-31 架构重构更新
+- [x] 前端 README 更新，与新架构保持一致
+- [x] 适配器基础设施完成（components.json, props-map.json, resolver.ts）
+- [x] 全局 SCSS 变量配置完成
+- [ ] 待完成：cross-platform 组件、customized 组件、页面迁移
 
 ### 2026-03-31 前期完成（旧架构）
 - [x] 工程稳定性修复（前后端编译、测试通过）
@@ -151,7 +161,7 @@
 | 目录 | 用途 | 示例 |
 |------|------|------|
 | `adapters/` | 平台适配 | 读取 JSON 配置返回对应平台组件 |
-| `components/cross-platform/` | 双端对齐 | Card, Timeline（组件库表现不一致时） |
+| `components/cross-platform/` | 双端对齐 | Card, Timeline, Table（组件库表现不一致时） |
 | `components/customized/` | 定制扩展 | StatCard, ModuleCard（组件库没有） |
 | `components/business/` | 业务逻辑 | （暂无，需要时创建） |
 
