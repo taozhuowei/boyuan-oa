@@ -28,14 +28,16 @@
 - [ ] 创建 `styles/antd-override.scss` - AntD 样式覆盖
 - [ ] 创建 `styles/vant-override.scss` - Vant 样式覆盖
 
-#### Phase 2: 核心组件（进行中）
-- [ ] 创建 `components/cross-platform/Card.vue` - 双端卡片对齐
-- [ ] 创建 `components/cross-platform/Timeline.vue` - 时间轴
-- [ ] 创建 `components/cross-platform/Table.vue` - 表格组件
-- [ ] 创建 `components/customized/StatCard.vue` - 统计卡片
-- [ ] 创建 `components/customized/ModuleCard.vue` - 模块入口卡片
+#### Phase 2: 核心组件（已完成）
+- [x] 创建 `components/cross-platform/Timeline/` - 时间轴
+- [x] 创建 `components/customized/StatCard.vue` - 统计卡片
+- [x] 创建 `components/customized/ModuleCard.vue` - 模块入口卡片
+- [x] 创建 `components/customized/UserInfo.vue` - 用户信息
+- [x] 创建 `components/customized/UserAvatar.vue` - 用户头像
+- [x] 创建 `components/customized/Permission.vue` - 权限控制
+- [x] 更新 `adapters/config/components.json` - 注册新组件
 
-#### Phase 3: 页面迁移（依赖 Phase 2）
+#### Phase 3: 页面迁移（进行中）
 - [ ] 迁移 `pages/login/index.vue`
 - [ ] 迁移 `pages/index/index.vue`
 - [ ] 迁移 `pages/attendance/index.vue`（添加 Timeline 审批流程）
