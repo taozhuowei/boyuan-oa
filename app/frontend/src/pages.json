@@ -13,15 +13,21 @@
       }
     },
     {
-      "path": "pages/role/index",
+      "path": "pages/attendance/index",
       "style": {
-        "navigationBarTitleText": "角色管理"
+        "navigationBarTitleText": "考勤系统"
       }
     },
     {
-      "path": "pages/forms/index",
+      "path": "pages/payroll/index",
       "style": {
-        "navigationBarTitleText": "表单中心"
+        "navigationBarTitleText": "薪酬系统"
+      }
+    },
+    {
+      "path": "pages/logs/index",
+      "style": {
+        "navigationBarTitleText": "施工日志"
       }
     },
     {
@@ -37,9 +43,9 @@
       }
     },
     {
-      "path": "pages/directory/index",
+      "path": "pages/role/index",
       "style": {
-        "navigationBarTitleText": "通讯录导入"
+        "navigationBarTitleText": "角色管理"
       }
     }
   ],

@@ -184,6 +184,13 @@ public class OaDataService {
             .collect(Collectors.toList());
     }
 
+    public List<FormRecordResponse> listFormsByTypes(List<String> formTypes) {
+        return forms.values().stream()
+            .filter(f -> formTypes == null || formTypes.contains(f.formType))
+            .map(this::toFormResponse)
+            .collect(Collectors.toList());
+    }
+
     public List<FormRecordResponse> listFormsBySubmitter(String submitter) {
         return forms.values().stream()
             .filter(f -> f.submitterName.equals(submitter))
@@ -318,7 +325,10 @@ public class OaDataService {
 
     private PayrollCycleResponse toPayrollCycleResponse(PayrollCycleData c) {
         return new PayrollCycleResponse(c.id, c.cycleNo, c.cycleName, c.startDate, c.endDate, c.status,
-            c.version, c.locked, c.precheckTime, c.settleTime, c.employeeCount, c.totalAmount);
+            c.version, c.locked, 
+            c.precheckTime != null ? c.precheckTime.toLocalDate() : null, 
+            c.settleTime != null ? c.settleTime.toLocalDate() : null, 
+            c.employeeCount, c.totalAmount);
     }
 
     public List<PayrollSlipResponse> listPayrollSlips(Long cycleId) {

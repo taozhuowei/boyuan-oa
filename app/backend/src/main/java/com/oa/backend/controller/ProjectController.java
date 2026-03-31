@@ -4,12 +4,11 @@ import com.oa.backend.dto.ProjectResponse;
 import com.oa.backend.service.OaDataService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -24,20 +23,11 @@ public class ProjectController {
 
     /**
      * 获取项目列表
-     * 权限：员工、财务、项目经理、CEO
+     * 权限：员工、财务、项目经理、CEO、劳工
      */
     @GetMapping
-    public ResponseEntity<List<ProjectResponse>> listProjects(Authentication authentication) {
-        if (authentication == null) {
-            return ResponseEntity.status(401).build();
-        }
-        // 检查权限
-        boolean hasAccess = authentication.getAuthorities().stream()
-                .anyMatch(a -> Arrays.asList("ROLE_EMPLOYEE", "ROLE_FINANCE", "ROLE_PROJECT_MANAGER", "ROLE_CEO", "ROLE_WORKER")
-                        .contains(a.getAuthority()));
-        if (!hasAccess) {
-            return ResponseEntity.status(403).build();
-        }
+    @PreAuthorize("hasAnyRole('EMPLOYEE','FINANCE','PROJECT_MANAGER','CEO','WORKER')")
+    public ResponseEntity<List<ProjectResponse>> listProjects() {
         return ResponseEntity.ok(oaDataService.listProjects());
     }
 }

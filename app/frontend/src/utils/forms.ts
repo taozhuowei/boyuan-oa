@@ -67,16 +67,17 @@ export interface FormTypeOption {
   code: string
   name: string
   description: string
+  icon?: string
 }
 
 const officeFormOptions: FormTypeOption[] = [
-  { code: 'LEAVE', name: '请假申请', description: '处理年假、事假、病假等请休假单据。' },
-  { code: 'OVERTIME', name: '加班申请', description: '登记项目赶工、临时支援和加班补贴依据。' }
+  { code: 'LEAVE', name: '请假申请', description: '处理年假、事假、病假等请休假单据。', icon: 'schedule' },
+  { code: 'OVERTIME', name: '加班申请', description: '登记项目赶工、临时支援和加班补贴依据。', icon: 'work' }
 ]
 
 const laborExtraFormOptions: FormTypeOption[] = [
-  { code: 'INJURY', name: '工伤补偿', description: '记录工伤情况并提交补偿审批。' },
-  { code: 'LOG', name: '施工日志', description: '沉淀现场进度、天气、问题与施工内容。' }
+  { code: 'INJURY', name: '工伤补偿', description: '记录工伤情况并提交补偿审批。', icon: 'warning' },
+  { code: 'LOG', name: '施工日志', description: '沉淀现场进度、天气、问题与施工内容。', icon: 'assignment' }
 ]
 
 function getUniInstance() {

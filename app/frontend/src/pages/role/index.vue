@@ -1,293 +1,505 @@
+<!-- 角色管理页面：CEO专属 -->
 <template>
-  <view class="page">
-    <view class="header">
-      <view class="header-left">
-        <text class="header-title">角色管理</text>
-        <text class="header-sub">配置系统角色与权限</text>
+  <view class="page role-page">
+    <!-- Hero -->
+    <view class="hero">
+      <view class="hero-main">
+        <view class="hero-title-row">
+          <Icon name="settings" :size="28" />
+          <text class="hero-title">角色管理</text>
+        </view>
+        <text class="hero-subtitle">配置系统角色与权限</text>
       </view>
-      <button class="btn-text" @click="goBack">返回</button>
+      <view class="hero-stats">
+        <view class="hero-stat">
+          <text class="stat-num">{{ roles.length }}</text>
+          <text class="stat-label">角色数量</text>
+        </view>
+      </view>
     </view>
 
-    <view class="main">
-      <!-- 角色列表 -->
-      <view class="card">
+    <view class="role-container">
+      <!-- 左侧角色列表 -->
+      <view class="card list-card">
         <view class="card-header">
-          <text class="card-title">角色列表</text>
-          <button class="btn-primary" @click="showAdd = true">新增角色</button>
+          <view class="card-header-title">
+            <Icon name="list" :size="18" />
+            <text class="card-title">角色列表</text>
+          </view>
         </view>
-
-        <view v-if="roles.length" class="role-list">
-          <view v-for="role in roles" :key="role.id" class="role-item">
-            <view class="role-info">
-              <text class="role-name">{{ role.roleName }}</text>
-              <text class="role-code">{{ role.roleCode }}</text>
+        <view class="list-body">
+          <view
+            v-for="item in roles"
+            :key="item.id"
+            class="role-item"
+            :class="{ active: selected?.id === item.id }"
+            @click="selectRole(item)"
+          >
+            <view class="role-icon">
+              <Icon :name="getRoleIcon(item.roleCode)" :size="20" />
             </view>
-            <view class="role-actions">
-              <button class="btn-icon" @click="edit(role)">
-                <Icon name="edit" :size="18" />
-              </button>
-              <button v-if="!role.isSystem" class="btn-icon danger" @click="remove(role.id)">
-                <Icon name="delete" :size="18" />
-              </button>
+            <view class="role-info">
+              <text class="role-name">{{ item.roleName }}</text>
+              <text class="role-code">{{ item.roleCode }}</text>
+            </view>
+            <view v-if="item.isSystem" class="system-tag">系统</view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 右侧详情/编辑 -->
+      <view class="card detail-card">
+        <view class="card-header">
+          <view class="card-header-title">
+            <Icon name="edit" :size="18" />
+            <text class="card-title">{{ isEditing ? '编辑角色' : '角色详情' }}</text>
+          </view>
+        </view>
+        <view v-if="selected" class="detail-body">
+          <!-- 查看模式 -->
+          <view v-if="!isEditing" class="view-mode">
+            <view class="info-section">
+              <view class="info-row">
+                <text class="info-label">角色代码</text>
+                <text class="info-value">{{ selected.roleCode }}</text>
+              </view>
+              <view class="info-row">
+                <text class="info-label">角色名称</text>
+                <text class="info-value">{{ selected.roleName }}</text>
+              </view>
+              <view class="info-row">
+                <text class="info-label">描述</text>
+                <text class="info-value">{{ selected.description }}</text>
+              </view>
+              <view class="info-row">
+                <text class="info-label">系统角色</text>
+                <Badge :variant="selected.isSystem ? 'success' : 'default'">
+                  {{ selected.isSystem ? '是' : '否' }}
+                </Badge>
+              </view>
+            </view>
+
+            <view class="permissions-section">
+              <view class="section-title">
+                <Icon name="lock" :size="14" />
+                <text>权限列表</text>
+              </view>
+              <view class="permissions-list">
+                <view v-for="perm in selected.permissions" :key="perm" class="permission-tag">
+                  {{ perm }}
+                </view>
+              </view>
+            </view>
+
+            <view v-if="!selected.isSystem" class="actions">
+              <Button variant="primary" @click="startEdit">编辑角色</Button>
+            </view>
+          </view>
+
+          <!-- 编辑模式 -->
+          <view v-else class="edit-mode">
+            <view class="form-field">
+              <text class="field-label">角色名称</text>
+              <input v-model="editForm.roleName" class="field-input" />
+            </view>
+            <view class="form-field">
+              <text class="field-label">描述</text>
+              <textarea v-model="editForm.description" class="field-textarea" />
+            </view>
+            <view class="form-field">
+              <text class="field-label">权限配置</text>
+              <view class="permissions-checkboxes">
+                <view v-for="perm in allPermissions" :key="perm" class="checkbox-item">
+                  <checkbox :checked="editForm.permissions.includes(perm)" @click="togglePermission(perm)" />
+                  <text>{{ perm }}</text>
+                </view>
+              </view>
+            </view>
+            <view class="form-actions">
+              <Button variant="ghost" @click="cancelEdit">取消</Button>
+              <Button variant="primary" @click="saveRole">保存</Button>
             </view>
           </view>
         </view>
-        <text v-else class="empty">暂无角色</text>
-      </view>
-    </view>
-
-    <!-- 新增/编辑弹窗 -->
-    <view v-if="showAdd || editingRole" class="modal">
-      <view class="modal-mask" @click="closeModal" />
-      <view class="modal-content card">
-        <text class="modal-title">{{ editingRole ? '编辑角色' : '新增角色' }}</text>
-        
-        <view class="field">
-          <text class="field-label">角色编码 *</text>
-          <input v-model="form.roleCode" class="field-input" placeholder="如：manager" :disabled="!!editingRole" />
-        </view>
-
-        <view class="field">
-          <text class="field-label">角色名称 *</text>
-          <input v-model="form.roleName" class="field-input" placeholder="如：项目经理" />
-        </view>
-
-        <view class="field">
-          <text class="field-label">描述</text>
-          <textarea v-model="form.description" class="field-textarea" placeholder="角色职责描述" />
-        </view>
-
-        <view class="modal-actions">
-          <button class="btn-secondary" @click="closeModal">取消</button>
-          <button class="btn-primary" @click="save">保存</button>
-        </view>
+        <Empty v-else text="请选择左侧角色查看详情" />
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { Icon } from '../../components/ui'
-import { fetchRoles, saveRole } from '../../utils/access'
-import { useUserStore } from '../../stores'
+import { ref, reactive } from 'vue'
+import { Icon, Button, Badge, Empty } from '../../components/ui'
 
-const userStore = useUserStore()
-const roles = ref<any[]>([])
-const showAdd = ref(false)
-const editingRole = ref<any>(null)
+// 系统预设角色
+const roles = ref([
+  {
+    id: 1,
+    roleCode: 'employee',
+    roleName: '员工',
+    description: '普通员工，可提交请假、加班申请，查看并确认自己的工资条',
+    isSystem: true,
+    permissions: ['考勤系统', '薪酬系统-查看']
+  },
+  {
+    id: 2,
+    roleCode: 'worker',
+    roleName: '劳工',
+    description: '现场施工人员，可提交施工日志、工伤申报，查看工资条',
+    isSystem: true,
+    permissions: ['考勤系统', '施工日志系统', '薪酬系统-查看']
+  },
+  {
+    id: 3,
+    roleCode: 'finance',
+    roleName: '财务',
+    description: '财务人员，可管理薪资周期，查看全部工资条',
+    isSystem: true,
+    permissions: ['考勤系统', '薪酬系统-管理', '员工管理']
+  },
+  {
+    id: 4,
+    roleCode: 'project_manager',
+    roleName: '项目经理',
+    description: '项目负责人，可审批考勤和施工日志，查看项目信息',
+    isSystem: true,
+    permissions: ['考勤系统', '施工日志系统', '项目管理']
+  },
+  {
+    id: 5,
+    roleCode: 'ceo',
+    roleName: '首席经营者',
+    description: '最高管理者，拥有所有权限，可配置角色',
+    isSystem: true,
+    permissions: ['考勤系统', '施工日志系统', '薪酬系统-管理', '员工管理', '项目管理', '角色管理']
+  }
+])
 
-const form = reactive({
-  id: undefined as number | undefined,
-  roleCode: '',
+const selected = ref<any>(null)
+const isEditing = ref(false)
+
+const allPermissions = [
+  '考勤系统',
+  '施工日志系统',
+  '薪酬系统-查看',
+  '薪酬系统-管理',
+  '员工管理',
+  '项目管理',
+  '角色管理'
+]
+
+const editForm = reactive({
   roleName: '',
   description: '',
-  status: 1,
   permissions: [] as string[]
 })
 
-const loadRoles = async () => {
-  roles.value = await fetchRoles(userStore.token)
-}
-
-const edit = (role: any) => {
-  editingRole.value = role
-  form.id = role.id
-  form.roleCode = role.roleCode
-  form.roleName = role.roleName
-  form.description = role.description
-  form.status = role.status
-  form.permissions = [...role.permissions]
-}
-
-const closeModal = () => {
-  showAdd.value = false
-  editingRole.value = null
-  form.id = undefined
-  form.roleCode = ''
-  form.roleName = ''
-  form.description = ''
-  form.permissions = []
-}
-
-const save = async () => {
-  if (!form.roleCode || !form.roleName) {
-    uni.showToast({ title: '请填写完整', icon: 'none' })
-    return
+const getRoleIcon = (code: string) => {
+  const icons: Record<string, string> = {
+    employee: 'person',
+    worker: 'construction',
+    finance: 'attach-money',
+    project_manager: 'business',
+    ceo: 'settings'
   }
-  await saveRole({ ...form }, userStore.token)
-  await loadRoles()
-  closeModal()
+  return icons[code] || 'person'
+}
+
+const selectRole = (role: any) => {
+  selected.value = role
+  isEditing.value = false
+}
+
+const startEdit = () => {
+  editForm.roleName = selected.value.roleName
+  editForm.description = selected.value.description
+  editForm.permissions = [...selected.value.permissions]
+  isEditing.value = true
+}
+
+const cancelEdit = () => {
+  isEditing.value = false
+}
+
+const togglePermission = (perm: string) => {
+  const idx = editForm.permissions.indexOf(perm)
+  if (idx > -1) {
+    editForm.permissions.splice(idx, 1)
+  } else {
+    editForm.permissions.push(perm)
+  }
+}
+
+const saveRole = () => {
+  selected.value.roleName = editForm.roleName
+  selected.value.description = editForm.description
+  selected.value.permissions = [...editForm.permissions]
+  isEditing.value = false
   uni.showToast({ title: '保存成功', icon: 'success' })
 }
-
-const remove = async (id: number) => {
-  uni.showModal({
-    title: '确认删除',
-    content: '删除后不可恢复',
-    success: async (res) => {
-      if (res.confirm) {
-        roles.value = roles.value.filter(r => r.id !== id)
-        uni.showToast({ title: '已删除', icon: 'success' })
-      }
-    }
-  })
-}
-
-const goBack = () => uni.navigateBack()
-
-onMounted(loadRoles)
 </script>
 
 <style lang="scss" scoped>
-.page { padding: 16px; }
-
-.header {
+.role-page {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  flex-direction: column;
+}
+
+.hero {
+  background: linear-gradient(135deg, #003466 0%, #324963 100%);
+  color: #fff;
+  padding: 24px;
+  margin: 16px 16px 0;
+  border-radius: var(--radius-lg);
+}
+
+.hero-main {
   margin-bottom: 16px;
 }
 
-.header-left { display: flex; flex-direction: column; gap: 4px; }
-
-.header-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--on-surface);
+.hero-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
 }
 
-.header-sub { font-size: 13px; color: var(--on-surface-variant); }
+.hero-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 700;
+}
 
-.btn-text { font-size: 14px; color: var(--primary); padding: 8px 12px; }
+.hero-subtitle {
+  font-size: 14px;
+  opacity: 0.9;
+}
 
-.main { max-width: 800px; }
+.hero-stats {
+  display: flex;
+  gap: 24px;
+}
+
+.hero-stat {
+  text-align: center;
+}
+
+.stat-num {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.stat-label {
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.role-container {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 16px;
+  padding: 16px;
+}
 
 .card {
-  background: var(--surface-lowest);
+  background: #fff;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
 }
 
-.card-title { font-family: var(--font-display); font-size: 16px; font-weight: 700; }
+.card-header-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 
-.btn-primary {
-  height: 36px;
-  padding: 0 16px;
-  background: var(--primary);
-  color: var(--on-primary);
+.card-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.list-card {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+}
+
+.list-body {
+  padding: 12px;
+}
+
+.role-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover {
+    background: var(--bg-secondary);
+  }
+  &.active {
+    background: var(--primary-light);
+  }
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.role-icon {
+  width: 40px;
+  height: 40px;
+  background: var(--primary-color);
+  color: #fff;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.role-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.role-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.role-code {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.system-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  border-radius: 4px;
+}
+
+.detail-body {
+  padding: 24px;
+}
+
+.info-section {
+  margin-bottom: 24px;
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.info-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.info-value {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.permissions-section {
+  margin-bottom: 24px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.permissions-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.permission-tag {
+  padding: 6px 12px;
+  background: var(--bg-secondary);
   border-radius: var(--radius-md);
   font-size: 13px;
 }
 
-.btn-secondary {
-  height: 40px;
-  padding: 0 20px;
-  background: var(--surface-low);
-  color: var(--on-surface);
-  border-radius: var(--radius-md);
-  font-size: 14px;
-}
-
-.role-list { display: flex; flex-direction: column; gap: 8px; }
-
-.role-item {
+.actions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px;
-  border-radius: var(--radius-md);
-  background: var(--surface-low);
+  justify-content: flex-end;
 }
 
-.role-info { display: flex; flex-direction: column; gap: 2px; }
-
-.role-name { font-size: 15px; font-weight: 600; color: var(--on-surface); }
-
-.role-code { font-size: 12px; color: var(--on-surface-variant); }
-
-.role-actions { display: flex; gap: 8px; }
-
-.btn-icon {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-md);
-  background: var(--surface-high);
-  color: var(--on-surface-variant);
-}
-
-.btn-icon.danger { color: var(--error); }
-
-.empty { text-align: center; color: var(--on-surface-variant); padding: 40px; }
-
-.modal {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-}
-
-.modal-mask {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.4);
-}
-
-.modal-content {
-  position: relative;
-  width: 90%;
-  max-width: 480px;
-  max-height: 80vh;
-  overflow-y: auto;
-}
-
-.modal-title {
-  font-family: var(--font-display);
-  font-size: 18px;
-  font-weight: 700;
+.form-field {
   margin-bottom: 20px;
 }
 
-.field { margin-bottom: 16px; }
-
-.field-label { font-size: 13px; color: var(--on-surface-variant); margin-bottom: 6px; display: block; }
+.field-label {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 8px;
+}
 
 .field-input {
   width: 100%;
-  height: 44px;
-  padding: 0 12px;
-  border: 1px solid var(--surface-high);
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--surface-low);
+  background: var(--bg-secondary);
+  font-size: 14px;
 }
 
 .field-textarea {
   width: 100%;
   min-height: 80px;
-  padding: 12px;
-  border: 1px solid var(--surface-high);
+  padding: 12px 16px;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  background: var(--surface-low);
+  background: var(--bg-secondary);
+  font-size: 14px;
 }
 
-.modal-actions {
+.permissions-checkboxes {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border-color);
 }
 </style>

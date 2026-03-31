@@ -5,7 +5,7 @@
       <view class="hero-content">
         <view>
           <text class="hero-greeting">欢迎回来，{{ activeUser.displayName }}</text>
-          <text class="hero-role">{{ displayRole }} · {{ activeUser.department }}</text>
+          <text class="hero-role">{{ activeUser.roleName }} · {{ activeUser.department }}</text>
         </view>
         <view class="hero-actions">
           <button class="btn-icon" @click="goToLogin">
@@ -54,38 +54,31 @@
         </view>
       </view>
 
-      <!-- 右侧：数据 + 功能 -->
+      <!-- 右侧：系统入口 -->
       <view class="workspace-main">
-        <!-- 统计卡片 -->
-        <view class="stats-row">
-          <view v-for="stat in progressStats" :key="stat.label" class="card stat-card">
-            <text class="stat-label">{{ stat.label }}</text>
-            <text class="stat-value">{{ stat.value }}</text>
-            <text class="stat-note">{{ stat.note }}</text>
-          </view>
-        </view>
-
-        <!-- 功能模块 -->
         <view class="card">
           <view class="card-header">
             <view class="card-title">
               <Icon name="dashboard" :size="18" />
-              <text>功能模块</text>
+              <text>系统入口</text>
             </view>
           </view>
           <view class="card-body">
-            <view class="module-grid">
+            <view class="system-grid">
               <view
-                v-for="item in visibleModules"
+                v-for="item in visibleSystems"
                 :key="item.key"
-                class="module-item"
-                :class="{ 'module-disabled': !item.path }"
-                @click="handleModuleClick(item)"
+                class="system-item"
+                @click="navigateTo(item.path)"
               >
-                <view class="module-icon">
-                  <Icon :name="item.icon" :size="24" />
+                <view class="system-icon">
+                  <Icon :name="item.icon" :size="28" />
                 </view>
-                <text class="module-name">{{ item.title }}</text>
+                <view class="system-info">
+                  <text class="system-name">{{ item.title }}</text>
+                  <text class="system-desc">{{ item.description }}</text>
+                </view>
+                <Icon name="arrow-forward" :size="16" class="system-arrow" />
               </view>
             </view>
           </view>
@@ -98,35 +91,43 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Icon } from '../../components/ui'
-import { moduleEntries, noticeItems, pendingItems, progressStats, userProfile } from './workbench-data'
+import { systemEntries, getPendingItems, noticeItems } from './workbench-data'
 import { useUserStore } from '../../stores'
 import { roleNameMap } from '../../utils/access'
 
 const userStore = useUserStore()
 
 const activeUser = computed(() => {
-  if (userStore.userInfo) return userStore.userInfo
+  if (userStore.userInfo) {
+    return {
+      ...userStore.userInfo,
+      roleName: userStore.userInfo.roleName || roleNameMap[userStore.userInfo.role] || userStore.userInfo.role
+    }
+  }
   return {
-    username: userProfile.username,
-    displayName: userProfile.name,
-    role: userProfile.role,
-    roleName: roleNameMap[userProfile.role] ?? '首席经营者',
-    department: userProfile.department,
-    employeeType: userProfile.employeeType
+    username: '',
+    displayName: '未登录',
+    role: 'employee',
+    roleName: '员工',
+    department: '未分配部门'
   }
 })
 
-const displayRole = computed(() => activeUser.value.roleName ?? roleNameMap[activeUser.value.role] ?? activeUser.value.role)
+// 根据角色过滤可见系统
+const visibleSystems = computed(() => {
+  return systemEntries.filter(item => item.roles.includes(activeUser.value.role))
+})
 
-const visibleModules = computed(() =>
-  moduleEntries.filter((item) => !item.roles || item.roles.includes(activeUser.value.role))
-)
+// 根据角色获取待办事项
+const pendingItems = computed(() => getPendingItems(activeUser.value.role))
 
-const goToLogin = () => uni.navigateTo({ url: '/pages/login/index' })
+const goToLogin = () => {
+  userStore.logout()
+  uni.navigateTo({ url: '/pages/login/index' })
+}
 
-const handleModuleClick = (item: { path?: string }) => {
-  if (item.path) uni.navigateTo({ url: item.path })
-  else uni.showToast({ title: '建设中', icon: 'none' })
+const navigateTo = (path: string) => {
+  uni.navigateTo({ url: path })
 }
 </script>
 
@@ -137,7 +138,9 @@ const handleModuleClick = (item: { path?: string }) => {
 }
 
 .hero-bar {
-  padding: 20px;
+  background: linear-gradient(135deg, #003466 0%, #324963 100%);
+  color: #fff;
+  padding: 20px 24px;
   margin: 16px 16px 0;
   border-radius: var(--radius-lg);
 }
@@ -175,7 +178,9 @@ const handleModuleClick = (item: { path?: string }) => {
   justify-content: center;
   background: rgba(255,255,255,0.15);
   border-radius: var(--radius-md);
-  color: var(--on-primary);
+  color: #fff;
+  border: none;
+  cursor: pointer;
 }
 
 .workspace-body {
@@ -198,59 +203,50 @@ const handleModuleClick = (item: { path?: string }) => {
 }
 
 .card {
-  background: var(--surface-lowest);
+  background: #fff;
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .card-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--surface-high);
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .card-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-display);
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--on-surface);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.badge {
+  background: var(--primary-color);
+  color: #fff;
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 .card-body {
   padding: 12px;
 }
 
-.badge {
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--primary-container);
-  color: var(--on-primary);
-  border-radius: 10px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
 .list-item {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: 12px;
-  border-radius: var(--radius-sm);
-  transition: background 0.15s ease;
-}
-
-.list-item:active {
-  background: var(--surface-low);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  background: var(--bg-secondary);
+  &:last-child {
+    margin-bottom: 0;
+  }
 }
 
 .list-item-compact {
@@ -258,150 +254,101 @@ const handleModuleClick = (item: { path?: string }) => {
 }
 
 .list-item-main {
-  flex: 1;
-  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .list-item-title {
   font-size: 14px;
   font-weight: 500;
-  color: var(--on-surface);
-  display: block;
+  &.text-sm {
+    font-size: 13px;
+  }
 }
 
 .list-item-desc {
   font-size: 12px;
-  color: var(--on-surface-variant);
-  margin-top: 2px;
-  display: block;
+  color: var(--text-secondary);
 }
 
 .list-item-meta {
-  font-size: 12px;
-  color: var(--outline);
+  font-size: 11px;
+  color: var(--text-secondary);
 }
 
 .tag {
+  font-size: 11px;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
+  font-weight: 500;
 }
 
 .tag-danger {
-  background: var(--error-container);
-  color: var(--error);
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .tag-warning {
-  background: #fff3e0;
-  color: #ed6c02;
+  background: #fef3c7;
+  color: #d97706;
 }
 
 .tag-success {
-  background: #e8f5e9;
-  color: var(--success);
+  background: #d1fae5;
+  color: #059669;
 }
 
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
-}
-
-.stat-card {
-  padding: 20px;
-}
-
-.stat-label {
-  font-size: 12px;
-  color: var(--on-surface-variant);
-  display: block;
-}
-
-.stat-value {
-  font-family: var(--font-display);
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--primary);
-  margin-top: 8px;
-  display: block;
-}
-
-.stat-note {
-  font-size: 12px;
-  color: var(--outline);
-  margin-top: 4px;
-  display: block;
-}
-
-.module-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  padding: 8px;
-}
-
-.module-item {
+.system-grid {
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.system-item {
+  display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 20px 12px;
-  border-radius: var(--radius-md);
-  background: var(--surface-low);
-  transition: all 0.15s ease;
+  gap: 16px;
+  padding: 20px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover {
+    background: var(--primary-light);
+    transform: translateX(4px);
+  }
 }
 
-.module-item:active:not(.module-disabled) {
-  background: var(--surface-high);
-  transform: scale(0.98);
-}
-
-.module-disabled {
-  opacity: 0.5;
-}
-
-.module-icon {
+.system-icon {
   width: 48px;
   height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
-  color: var(--on-primary);
+  background: var(--primary-color);
+  color: #fff;
   border-radius: var(--radius-md);
 }
 
-.module-name {
+.system-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.system-name {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.system-desc {
   font-size: 13px;
-  font-weight: 500;
-  color: var(--on-surface);
+  color: var(--text-secondary);
 }
 
-@media (max-width: 960px) {
-  .workspace-body {
-    grid-template-columns: 1fr;
-  }
-  .stats-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .module-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-@media (max-width: 600px) {
-  .stats-row {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .module-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .hero-content {
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
+.system-arrow {
+  color: var(--text-secondary);
 }
 </style>

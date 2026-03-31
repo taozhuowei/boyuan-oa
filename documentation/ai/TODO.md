@@ -46,8 +46,8 @@
 ## 阶段二：后端代码 Review 与重构
 
 ### 2.1 后端 Review
-- [ ] 子 Agent 审查后端代码
-- [ ] 输出 review 报告到 test/reports/backend-review.md
+- [x] 2026-03-31 18:30 子 Agent 审查后端代码
+- [x] 2026-03-31 18:30 输出 review 报告到 test/reports/backend-review.md
 
 ### 2.2 权限重构
 - [ ] 提取通用权限注解/AOP
@@ -68,8 +68,8 @@
 ## 阶段三：业务页面重构与开发
 
 ### 3.1 表单中心
-- [ ] 重构 forms/index.vue
-- [ ] 优化表单渲染与审批 UX
+- [x] 2026-03-31 18:30 重构 forms/index.vue（精简版）
+- [x] 2026-03-31 18:30 优化表单渲染与审批 UX
 
 ### 3.2 组织管理页面
 - [ ] 重构 employees/index.vue
@@ -78,7 +78,7 @@
 - [ ] **Git 提交**
 
 ### 3.3 角色管理
-- [ ] 重构 role/index.vue
+- [x] 2026-03-31 18:30 重构 role/index.vue（精简版）
 
 ### 3.4 薪资页面
 - [ ] 创建 payroll/index.vue
