@@ -76,6 +76,23 @@ export interface DatePickerProps {
   format?: string
 }
 
+// 单选框
+export interface RadioProps {
+  modelValue?: any
+  options?: Array<{ label: string; value: any; disabled?: boolean }>
+  disabled?: boolean
+  size?: 'large' | 'default' | 'small'
+  buttonStyle?: 'outline' | 'solid'
+}
+
+// 复选框
+export interface CheckboxProps {
+  modelValue?: boolean | (string | number)[]
+  label?: string
+  disabled?: boolean
+  indeterminate?: boolean
+}
+
 // 卡片
 export interface CardProps {
   title?: string
@@ -110,7 +127,7 @@ export interface TableProps {
 
 // 弹窗
 export interface ModalProps {
-  visible?: boolean
+  modelValue?: boolean
   title?: string
   width?: string | number
   centered?: boolean
@@ -124,8 +141,8 @@ export interface ModalProps {
 
 // 徽标
 export interface BadgeProps {
-  count?: number | string
-  max?: number
+  count?: number
+  overflowCount?: number
   dot?: boolean
   showZero?: boolean
   status?: 'success' | 'processing' | 'default' | 'error' | 'warning'

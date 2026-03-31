@@ -1,69 +1,127 @@
 <template>
   <view class="page workspace">
     <!-- 顶部 Hero -->
-    <view class="hero hero-bar">
+    <view class="hero-bar">
       <view class="hero-content">
         <view>
           <text class="hero-greeting">欢迎，{{ activeUser.displayName }}</text>
           <text class="hero-role">{{ activeUser.roleName }} · {{ activeUser.department }}</text>
         </view>
         <view class="hero-actions">
-          <button class="btn-icon" @click="goToLogin">
-            <Icon name="logout" :size="20" />
-          </button>
+          <oa-button type="default" size="small" @click="goToLogin">
+            <Icon name="logout" :size="16" />
+            退出登录
+          </oa-button>
         </view>
       </view>
     </view>
 
     <!-- 主内容区 -->
     <view class="workspace-body">
-      <!-- 左侧：待办 + 通知 -->
-      <view class="workspace-side">
-        <view class="card">
-          <view class="card-header">
-            <view class="card-title">
-              <Icon name="assignment" :size="18" />
-              <text>待办事项</text>
-            </view>
-            <text class="badge">{{ pendingItems.length }}</text>
-          </view>
-          <view class="card-body">
-            <view v-for="item in pendingItems" :key="item.title" class="list-item">
-              <view class="list-item-main">
-                <text class="list-item-title">{{ item.title }}</text>
-                <text class="list-item-desc">{{ item.category }}</text>
+      <oa-row :gutter="16">
+        <!-- 左侧：待办 + 通知 -->
+        <oa-col :span="8">
+          <oa-card class="mb-16">
+            <template #title>
+              <view class="card-title-wrapper">
+                <Icon name="assignment" :size="18" />
+                <text>待办事项</text>
+                <oa-badge :count="pendingItems.length" />
               </view>
-              <text :class="['tag', item.priority === '高' ? 'tag-danger' : item.priority === '中' ? 'tag-warning' : 'tag-success']">{{ item.priority }}</text>
+            </template>
+            <view class="todo-list">
+              <view 
+                v-for="item in pendingItems" 
+                :key="item.title" 
+                class="todo-item"
+                @click="handleTodo(item)"
+              >
+                <view class="todo-main">
+                  <text class="todo-title">{{ item.title }}</text>
+                  <text class="todo-category">{{ item.category }}</text>
+                </view>
+                <oa-badge 
+                  :status="getPriorityStatus(item.priority)" 
+                  :text="item.priority" 
+                />
+              </view>
+              <empty v-if="!pendingItems.length" text="暂无待办事项" />
             </view>
-          </view>
-        </view>
+          </oa-card>
 
-        <view class="card">
-          <view class="card-header">
-            <view class="card-title">
-              <Icon name="notifications" :size="18" />
-              <text>系统通知</text>
+          <oa-card>
+            <template #title>
+              <view class="card-title-wrapper">
+                <Icon name="notifications" :size="18" />
+                <text>系统通知</text>
+              </view>
+            </template>
+            <view class="notice-list">
+              <view 
+                v-for="item in noticeItems" 
+                :key="item.title" 
+                class="notice-item"
+              >
+                <view class="notice-dot" />
+                <view class="notice-content">
+                  <text class="notice-title">{{ item.title }}</text>
+                  <text class="notice-time">{{ item.time }}</text>
+                </view>
+              </view>
             </view>
-          </view>
-          <view class="card-body">
-            <view v-for="item in noticeItems" :key="item.title" class="list-item list-item-compact">
-              <text class="list-item-title text-sm">{{ item.title }}</text>
-              <text class="list-item-meta">{{ item.time }}</text>
-            </view>
-          </view>
-        </view>
-      </view>
+          </oa-card>
+        </oa-col>
 
-      <!-- 右侧：系统入口 -->
-      <view class="workspace-main">
-        <view class="card">
-          <view class="card-header">
-            <view class="card-title">
-              <Icon name="dashboard" :size="18" />
-              <text>系统入口</text>
-            </view>
-          </view>
-          <view class="card-body">
+        <!-- 右侧：系统入口 + 快捷统计 -->
+        <oa-col :span="16">
+          <!-- 快捷统计（CEO可见） -->
+          <oa-row v-if="isCEO" :gutter="16" class="mb-16">
+            <oa-col :span="6">
+              <view class="quick-stat">
+                <Icon name="groups" :size="24" />
+                <view class="stat-info">
+                  <text class="stat-value">{{ dashboardStats.employees }}</text>
+                  <text class="stat-label">员工总数</text>
+                </view>
+              </view>
+            </oa-col>
+            <oa-col :span="6">
+              <view class="quick-stat">
+                <Icon name="pending-actions" :size="24" />
+                <view class="stat-info">
+                  <text class="stat-value">{{ dashboardStats.pendingApprovals }}</text>
+                  <text class="stat-label">待审批</text>
+                </view>
+              </view>
+            </oa-col>
+            <oa-col :span="6">
+              <view class="quick-stat">
+                <Icon name="folder-open" :size="24" />
+                <view class="stat-info">
+                  <text class="stat-value">{{ dashboardStats.activeProjects }}</text>
+                  <text class="stat-label">进行中项目</text>
+                </view>
+              </view>
+            </oa-col>
+            <oa-col :span="6">
+              <view class="quick-stat">
+                <Icon name="payments" :size="24" />
+                <view class="stat-info">
+                  <text class="stat-value">{{ dashboardStats.monthlyPayroll }}</text>
+                  <text class="stat-label">本月支出</text>
+                </view>
+              </view>
+            </oa-col>
+          </oa-row>
+
+          <!-- 系统入口 -->
+          <oa-card>
+            <template #title>
+              <view class="card-title-wrapper">
+                <Icon name="dashboard" :size="18" />
+                <text>系统入口</text>
+              </view>
+            </template>
             <view class="system-grid">
               <view
                 v-for="item in visibleSystems"
@@ -71,7 +129,7 @@
                 class="system-item"
                 @click="navigateTo(item.path)"
               >
-                <view class="system-icon">
+                <view class="system-icon" :class="item.key">
                   <Icon :name="item.icon" :size="28" />
                 </view>
                 <view class="system-info">
@@ -81,16 +139,20 @@
                 <Icon name="arrow-forward" :size="16" class="system-arrow" />
               </view>
             </view>
-          </view>
-        </view>
-      </view>
+          </oa-card>
+        </oa-col>
+      </oa-row>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Icon } from '../../components/ui'
+import { Icon, Empty } from '../../components/ui'
+import { 
+  OaCard, OaRow, OaCol, OaBadge, 
+  OaButton 
+} from '../../components/ui-kit'
 import { systemEntries, getPendingItems, noticeItems } from './workbench-data'
 import { useUserStore } from '../../stores'
 import { roleNameMap } from '../../utils/access'
@@ -113,6 +175,8 @@ const activeUser = computed(() => {
   }
 })
 
+const isCEO = computed(() => activeUser.value.role === 'ceo')
+
 // 根据角色过滤可见系统
 const visibleSystems = computed(() => {
   return systemEntries.filter(item => item.roles.includes(activeUser.value.role))
@@ -120,6 +184,29 @@ const visibleSystems = computed(() => {
 
 // 根据角色获取待办事项
 const pendingItems = computed(() => getPendingItems(activeUser.value.role))
+
+// 快捷统计数据（仅CEO）
+const dashboardStats = computed(() => ({
+  employees: 28,
+  pendingApprovals: 5,
+  activeProjects: 8,
+  monthlyPayroll: '48.6万'
+}))
+
+const getPriorityStatus = (priority: string) => {
+  const map: Record<string, any> = {
+    '高': 'error',
+    '中': 'warning',
+    '低': 'success'
+  }
+  return map[priority] || 'default'
+}
+
+const handleTodo = (item: any) => {
+  if (item.path) {
+    uni.navigateTo({ url: item.path })
+  }
+}
 
 const goToLogin = () => {
   userStore.logout()
@@ -133,8 +220,8 @@ const navigateTo = (path: string) => {
 
 <style lang="scss" scoped>
 .workspace {
-  display: flex;
-  flex-direction: column;
+  min-height: 100vh;
+  background: var(--oa-bg);
 }
 
 .hero-bar {
@@ -142,7 +229,7 @@ const navigateTo = (path: string) => {
   color: #fff;
   padding: 20px 24px;
   margin: 16px 16px 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--oa-border-radius-lg);
 }
 
 .hero-content {
@@ -170,53 +257,11 @@ const navigateTo = (path: string) => {
   gap: 8px;
 }
 
-.btn-icon {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.15);
-  border-radius: var(--radius-md);
-  color: #fff;
-  border: none;
-  cursor: pointer;
-}
-
 .workspace-body {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 16px;
   padding: 16px;
 }
 
-.workspace-side {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.workspace-main {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.card {
-  background: #fff;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.card-title {
+.card-title-wrapper {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -224,79 +269,109 @@ const navigateTo = (path: string) => {
   font-size: 14px;
 }
 
-.badge {
-  background: var(--primary-color);
-  color: #fff;
-  font-size: 12px;
-  padding: 2px 8px;
-  border-radius: 10px;
-}
+.todo-list {
+  .todo-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    border-radius: var(--oa-border-radius-md);
+    margin-bottom: 8px;
+    background: var(--oa-bg);
+    cursor: pointer;
+    transition: all 0.2s;
 
-.card-body {
-  padding: 12px;
-}
+    &:hover {
+      background: var(--oa-primary-light);
+    }
 
-.list-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px;
-  border-radius: var(--radius-md);
-  margin-bottom: 8px;
-  background: var(--bg-secondary);
-  &:last-child {
-    margin-bottom: 0;
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .todo-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .todo-title {
+    font-size: 14px;
+    font-weight: 500;
+  }
+
+  .todo-category {
+    font-size: 12px;
+    color: var(--oa-text-secondary);
   }
 }
 
-.list-item-compact {
-  padding: 10px 12px;
-}
+.notice-list {
+  .notice-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--oa-border-split);
 
-.list-item-main {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
+    &:last-child {
+      border-bottom: none;
+    }
+  }
 
-.list-item-title {
-  font-size: 14px;
-  font-weight: 500;
-  &.text-sm {
+  .notice-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--oa-primary);
+    margin-top: 8px;
+    flex-shrink: 0;
+  }
+
+  .notice-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .notice-title {
     font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .notice-time {
+    font-size: 11px;
+    color: var(--oa-text-tertiary);
   }
 }
 
-.list-item-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
+.quick-stat {
+  background: #fff;
+  border-radius: var(--oa-border-radius-lg);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: var(--oa-primary);
 
-.list-item-meta {
-  font-size: 11px;
-  color: var(--text-secondary);
-}
+  .stat-info {
+    display: flex;
+    flex-direction: column;
+  }
 
-.tag {
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  font-weight: 500;
-}
+  .stat-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--oa-text);
+  }
 
-.tag-danger {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.tag-warning {
-  background: #fef3c7;
-  color: #d97706;
-}
-
-.tag-success {
-  background: #d1fae5;
-  color: #059669;
+  .stat-label {
+    font-size: 12px;
+    color: var(--oa-text-secondary);
+    margin-top: 4px;
+  }
 }
 
 .system-grid {
@@ -310,12 +385,13 @@ const navigateTo = (path: string) => {
   align-items: center;
   gap: 16px;
   padding: 20px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-lg);
+  background: var(--oa-bg);
+  border-radius: var(--oa-border-radius-lg);
   cursor: pointer;
   transition: all 0.2s;
+
   &:hover {
-    background: var(--primary-light);
+    background: var(--oa-primary-light);
     transform: translateX(4px);
   }
 }
@@ -326,9 +402,24 @@ const navigateTo = (path: string) => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--primary-color);
   color: #fff;
-  border-radius: var(--radius-md);
+  border-radius: var(--oa-border-radius-md);
+
+  &.attendance {
+    background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
+  }
+
+  &.payroll {
+    background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
+  }
+
+  &.projects {
+    background: linear-gradient(135deg, #722ed1 0%, #531dab 100%);
+  }
+
+  &.employees {
+    background: linear-gradient(135deg, #fa8c16 0%, #d46b08 100%);
+  }
 }
 
 .system-info {
@@ -345,10 +436,14 @@ const navigateTo = (path: string) => {
 
 .system-desc {
   font-size: 13px;
-  color: var(--text-secondary);
+  color: var(--oa-text-secondary);
 }
 
 .system-arrow {
-  color: var(--text-secondary);
+  color: var(--oa-text-tertiary);
+}
+
+.mb-16 {
+  margin-bottom: 16px;
 }
 </style>

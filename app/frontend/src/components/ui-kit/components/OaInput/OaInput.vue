@@ -79,7 +79,7 @@ const slots = useSlots()
 
 // 双向绑定
 const modelValue = computed({
-  get: () => props.modelValue,
+  get: () => props.modelValue ?? '',
   set: (val) => emit('update:modelValue', val)
 })
 
@@ -93,7 +93,7 @@ const fieldType = computed(() => {
     'email': 'text',
     'textarea': 'textarea'
   }
-  return typeMap[props.type] || 'text'
+  return typeMap[props.type ?? 'text'] || 'text'
 })
 
 // H5 事件处理

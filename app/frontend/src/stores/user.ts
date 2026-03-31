@@ -153,6 +153,16 @@ export const useUserStore = defineStore('user', () => {
     persist()
   }
 
+  // 更新用户信息（保留token）
+  const setUserInfo = (nextUser: Partial<SessionUser>) => {
+    if (userInfo.value) {
+      userInfo.value = { ...userInfo.value, ...nextUser } as SessionUser
+    } else {
+      userInfo.value = nextUser as SessionUser
+    }
+    persist()
+  }
+
   // 登出方法
   const logout = () => {
     token.value = ''
@@ -166,6 +176,7 @@ export const useUserStore = defineStore('user', () => {
     userInfo,
     isLoggedIn,
     setSession,
+    setUserInfo,
     logout
   }
 })

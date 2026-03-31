@@ -7,430 +7,400 @@
           <Icon name="schedule" :size="28" />
           <text class="hero-title">考勤</text>
         </view>
-        <text class="hero-subtitle">请假、加班申请与审批</text>
+        <text class="hero-subtitle">
+          {{ isCEO ? '考勤数据总览与审批管理' : '请假、加班申请与审批' }}
+        </text>
       </view>
       <view class="hero-stats">
-        <view class="hero-stat">
+        <view v-if="!isCEO" class="hero-stat">
           <text class="stat-num">{{ myLeaveCount }}</text>
           <text class="stat-label">请假记录</text>
         </view>
-        <view class="hero-stat">
+        <view v-if="!isCEO" class="hero-stat">
           <text class="stat-num">{{ myOvertimeCount }}</text>
           <text class="stat-label">加班记录</text>
         </view>
-        <view v-if="canApprove" class="hero-stat">
-          <text class="stat-num">{{ todoCount }}</text>
+        <view v-if="isCEO" class="hero-stat">
+          <text class="stat-num">{{ totalPending }}</text>
           <text class="stat-label">待审批</text>
+        </view>
+        <view class="hero-stat">
+          <text class="stat-num">{{ attendanceStats.completionRate }}</text>
+          <text class="stat-label">完成率</text>
         </view>
       </view>
     </view>
 
-    <view class="attendance-container">
-      <!-- 左侧边栏 -->
-      <view class="card sidebar">
-        <!-- 申请入口 -->
-        <view class="section">
-          <view class="section-header">
-            <view class="section-title">
-              <Icon name="add-circle" :size="16" />
-              <text>发起申请</text>
-            </view>
-          </view>
-          <view class="action-list">
-            <view 
-              class="action-item" 
-              :class="{ active: activeTab === 'leave' }"
-              @click="switchTab('leave')"
-            >
-              <Icon name="event-busy" :size="18" />
-              <text>请假申请</text>
-            </view>
-            <view 
-              class="action-item" 
-              :class="{ active: activeTab === 'overtime' }"
-              @click="switchTab('overtime')"
-            >
-              <Icon name="more-time" :size="18" />
-              <text>加班申请</text>
-            </view>
-          </view>
-        </view>
-
-        <!-- 我的记录 -->
-        <view class="section">
-          <view class="section-header">
-            <view class="section-title">
-              <Icon name="receipt" :size="16" />
-              <text>我的记录</text>
-            </view>
-            <Badge variant="info">{{ myRecords.length }}</Badge>
-          </view>
-          <view class="record-list">
-            <view
-              v-for="item in myRecords"
-              :key="item.id"
-              class="record-item"
-              :class="{ active: selectedRecord?.id === item.id }"
-              @click="selectRecord(item)"
-            >
-              <view class="record-main">
-                <text class="record-title">{{ item.type === 'LEAVE' ? '请假' : '加班' }}</text>
-                <text class="record-meta">{{ item.createTime }}</text>
+    <!-- CEO 总览视图 -->
+    <view v-if="isCEO" class="attendance-container">
+      <oa-row :gutter="16">
+        <!-- 左侧：待审批列表 -->
+        <oa-col :span="8">
+          <oa-card title="待审批事项" :bordered="true">
+            <view v-if="pendingList.length" class="approval-list">
+              <view
+                v-for="item in pendingList"
+                :key="item.id"
+                class="approval-item"
+                :class="{ active: selectedItem?.id === item.id }"
+                @click="selectItem(item)"
+              >
+                <view class="approval-info">
+                  <text class="approval-title">{{ item.applicant }} - {{ item.type }}</text>
+                  <text class="approval-meta">{{ item.date }} · {{ item.duration }}</text>
+                </view>
+                <oa-badge :status="item.urgency === 'high' ? 'error' : 'warning'" />
               </view>
-              <Badge :variant="statusVariant(item.status)">{{ statusText(item.status) }}</Badge>
             </view>
-          </view>
-        </view>
+            <empty v-else text="暂无待审批事项" />
+          </oa-card>
+        </oa-col>
 
-        <!-- 审批待办 - 仅审批角色可见 -->
-        <view v-if="canApprove" class="section">
-          <view class="section-header">
-            <view class="section-title">
-              <Icon name="approval" :size="16" />
-              <text>审批待办</text>
-            </view>
-            <Badge v-if="todoList.length" variant="warning">{{ todoList.length }}</Badge>
-          </view>
-          <view v-if="todoList.length" class="record-list">
-            <view
-              v-for="item in todoList"
-              :key="item.id"
-              class="record-item"
-              :class="{ active: selectedRecord?.id === item.id }"
-              @click="selectRecord(item)"
-            >
-              <view class="record-main">
-                <text class="record-title">{{ item.employeeName }} - {{ item.type === 'LEAVE' ? '请假' : '加班' }}</text>
-                <text class="record-meta">{{ item.createTime }}</text>
+        <!-- 右侧：审批详情/统计 -->
+        <oa-col :span="16">
+          <oa-card v-if="selectedItem" title="审批详情">
+            <view class="detail-content">
+              <view class="detail-row">
+                <text class="label">申请人</text>
+                <text class="value">{{ selectedItem.applicant }}</text>
               </view>
-              <Badge variant="warning">待审批</Badge>
+              <view class="detail-row">
+                <text class="label">申请类型</text>
+                <text class="value">{{ selectedItem.type }}</text>
+              </view>
+              <view class="detail-row">
+                <text class="label">时间范围</text>
+                <text class="value">{{ selectedItem.date }}</text>
+              </view>
+              <view class="detail-row">
+                <text class="label">时长</text>
+                <text class="value">{{ selectedItem.duration }}</text>
+              </view>
+              <view class="detail-row">
+                <text class="label">原因</text>
+                <text class="value">{{ selectedItem.reason }}</text>
+              </view>
+              <view class="detail-actions">
+                <oa-button type="default" @click="rejectItem">驳回</oa-button>
+                <oa-button type="primary" @click="approveItem">通过</oa-button>
+              </view>
             </view>
-          </view>
-          <Empty v-else text="暂无待审批事项" />
-        </view>
-      </view>
+          </oa-card>
 
-      <!-- 右侧主内容 -->
-      <view class="main-content">
-        <!-- 请假申请表单 -->
-        <view v-if="activeTab === 'leave' && !selectedRecord" class="card form-card">
-          <view class="card-header">
-            <view class="card-header-title">
-              <Icon name="event-busy" :size="20" />
-              <text class="card-title">请假申请</text>
-            </view>
-          </view>
-          <view class="form-body">
-            <view class="form-field">
-              <text class="field-label">请假类型 <text class="required">*</text></text>
-              <picker class="field-picker" :range="leaveTypes" @change="onLeaveTypeChange">
-                <view class="picker-display">
-                  <text>{{ form.leaveType || '请选择请假类型' }}</text>
-                  <Icon name="arrow-forward" :size="14" />
+          <oa-card v-else title="本月考勤统计">
+            <oa-row :gutter="16" class="stats-grid">
+              <oa-col :span="6">
+                <view class="stat-card">
+                  <text class="stat-value">{{ attendanceStats.total }}</text>
+                  <text class="stat-label">总申请</text>
                 </view>
-              </picker>
-            </view>
-            <view class="form-field">
-              <text class="field-label">开始日期 <text class="required">*</text></text>
-              <picker class="field-picker" mode="date" @change="onStartDateChange">
-                <view class="picker-display">
-                  <text>{{ form.startDate || '请选择开始日期' }}</text>
-                  <Icon name="arrow-forward" :size="14" />
+              </oa-col>
+              <oa-col :span="6">
+                <view class="stat-card">
+                  <text class="stat-value">{{ attendanceStats.approved }}</text>
+                  <text class="stat-label">已批准</text>
                 </view>
-              </picker>
-            </view>
-            <view class="form-field">
-              <text class="field-label">结束日期 <text class="required">*</text></text>
-              <picker class="field-picker" mode="date" @change="onEndDateChange">
-                <view class="picker-display">
-                  <text>{{ form.endDate || '请选择结束日期' }}</text>
-                  <Icon name="arrow-forward" :size="14" />
+              </oa-col>
+              <oa-col :span="6">
+                <view class="stat-card">
+                  <text class="stat-value">{{ attendanceStats.pending }}</text>
+                  <text class="stat-label">待审批</text>
                 </view>
-              </picker>
-            </view>
-            <view class="form-field">
-              <text class="field-label">请假天数 <text class="required">*</text></text>
-              <input 
-                v-model="form.duration" 
-                class="field-input" 
-                type="digit" 
-                placeholder="请输入天数"
-              />
-            </view>
-            <view class="form-field">
-              <text class="field-label">请假原因 <text class="required">*</text></text>
-              <textarea 
-                v-model="form.reason" 
-                class="field-textarea" 
-                placeholder="请输入请假原因"
-              />
-            </view>
-            <view class="form-actions">
-              <Button variant="ghost" @click="resetForm">重置</Button>
-              <Button variant="primary" @click="submitLeave">提交申请</Button>
-            </view>
-          </view>
-        </view>
+              </oa-col>
+              <oa-col :span="6">
+                <view class="stat-card">
+                  <text class="stat-value">{{ attendanceStats.rejected }}</text>
+                  <text class="stat-label">已驳回</text>
+                </view>
+              </oa-col>
+            </oa-row>
+          </oa-card>
+        </oa-col>
+      </oa-row>
+    </view>
 
-        <!-- 加班申请表单 -->
-        <view v-if="activeTab === 'overtime' && !selectedRecord" class="card form-card">
-          <view class="card-header">
-            <view class="card-header-title">
-              <Icon name="more-time" :size="20" />
-              <text class="card-title">加班申请</text>
+    <!-- 普通员工申请视图 -->
+    <view v-else class="attendance-container">
+      <oa-row :gutter="16">
+        <!-- 左侧：功能菜单 -->
+        <oa-col :span="6">
+          <oa-card :bordered="true">
+            <view class="menu-list">
+              <view 
+                class="menu-item" 
+                :class="{ active: activeTab === 'leave' }"
+                @click="switchTab('leave')"
+              >
+                <Icon name="event-busy" :size="18" />
+                <text>请假申请</text>
+              </view>
+              <view 
+                class="menu-item" 
+                :class="{ active: activeTab === 'overtime' }"
+                @click="switchTab('overtime')"
+              >
+                <Icon name="more-time" :size="18" />
+                <text>加班申请</text>
+              </view>
+              <view 
+                class="menu-item" 
+                :class="{ active: activeTab === 'history' }"
+                @click="switchTab('history')"
+              >
+                <Icon name="receipt" :size="18" />
+                <text>我的记录</text>
+              </view>
             </view>
-          </view>
-          <view class="form-body">
-            <view class="form-field">
-              <text class="field-label">加班日期 <text class="required">*</text></text>
-              <picker class="field-picker" mode="date" @change="onOvertimeDateChange">
-                <view class="picker-display">
-                  <text>{{ form.overtimeDate || '请选择加班日期' }}</text>
-                  <Icon name="arrow-forward" :size="14" />
-                </view>
-              </picker>
-            </view>
-            <view class="form-row">
-              <view class="form-field half">
-                <text class="field-label">开始时间 <text class="required">*</text></text>
-                <picker class="field-picker" mode="time" @change="onStartTimeChange">
-                  <view class="picker-display">
-                    <text>{{ form.startTime || '开始时间' }}</text>
-                    <Icon name="arrow-forward" :size="14" />
+          </oa-card>
+        </oa-col>
+
+        <!-- 右侧：表单/列表 -->
+        <oa-col :span="18">
+          <!-- 请假表单 -->
+          <oa-card v-if="activeTab === 'leave'" title="请假申请">
+            <oa-form :model="leaveForm">
+              <oa-row :gutter="16">
+                <oa-col :span="12">
+                  <view class="form-item">
+                    <label>请假类型 <text class="required">*</text></label>
+                    <oa-select
+                      v-model="leaveForm.type"
+                      :options="leaveTypes"
+                      placeholder="请选择请假类型"
+                    />
                   </view>
-                </picker>
-              </view>
-              <view class="form-field half">
-                <text class="field-label">结束时间 <text class="required">*</text></text>
-                <picker class="field-picker" mode="time" @change="onEndTimeChange">
-                  <view class="picker-display">
-                    <text>{{ form.endTime || '结束时间' }}</text>
-                    <Icon name="arrow-forward" :size="14" />
+                </oa-col>
+                <oa-col :span="12">
+                  <view class="form-item">
+                    <label>请假天数 <text class="required">*</text></label>
+                    <oa-input
+                      v-model="leaveForm.days"
+                      type="number"
+                      placeholder="请输入天数"
+                    />
                   </view>
-                </picker>
+                </oa-col>
+              </oa-row>
+              <oa-row :gutter="16">
+                <oa-col :span="12">
+                  <view class="form-item">
+                    <label>开始日期 <text class="required">*</text></label>
+                    <oa-date-picker
+                      v-model="leaveForm.startDate"
+                      placeholder="请选择开始日期"
+                    />
+                  </view>
+                </oa-col>
+                <oa-col :span="12">
+                  <view class="form-item">
+                    <label>结束日期 <text class="required">*</text></label>
+                    <oa-date-picker
+                      v-model="leaveForm.endDate"
+                      placeholder="请选择结束日期"
+                    />
+                  </view>
+                </oa-col>
+              </oa-row>
+              <view class="form-item">
+                <label>请假原因 <text class="required">*</text></label>
+                <oa-input
+                  v-model="leaveForm.reason"
+                  type="textarea"
+                  :rows="4"
+                  placeholder="请输入请假原因"
+                />
+              </view>
+              <view class="form-actions">
+                <oa-button type="default" @click="resetForm">重置</oa-button>
+                <oa-button type="primary" @click="submitLeave">提交申请</oa-button>
+              </view>
+            </oa-form>
+          </oa-card>
+
+          <!-- 加班表单 -->
+          <oa-card v-else-if="activeTab === 'overtime'" title="加班申请">
+            <oa-form :model="overtimeForm">
+              <oa-row :gutter="16">
+                <oa-col :span="12">
+                  <view class="form-item">
+                    <label>加班日期 <text class="required">*</text></label>
+                    <oa-date-picker
+                      v-model="overtimeForm.date"
+                      placeholder="请选择加班日期"
+                    />
+                  </view>
+                </oa-col>
+                <oa-col :span="12">
+                  <view class="form-item">
+                    <label>加班时长(小时) <text class="required">*</text></label>
+                    <oa-input
+                      v-model="overtimeForm.hours"
+                      type="number"
+                      placeholder="请输入小时数"
+                    />
+                  </view>
+                </oa-col>
+              </oa-row>
+              <view class="form-item">
+                <label>加班原因 <text class="required">*</text></label>
+                <oa-input
+                  v-model="overtimeForm.reason"
+                  type="textarea"
+                  :rows="4"
+                  placeholder="请输入加班原因"
+                />
+              </view>
+              <view class="form-actions">
+                <oa-button type="default" @click="resetForm">重置</oa-button>
+                <oa-button type="primary" @click="submitOvertime">提交申请</oa-button>
+              </view>
+            </oa-form>
+          </oa-card>
+
+          <!-- 历史记录 -->
+          <oa-card v-else title="我的考勤记录">
+            <view v-if="myRecords.length" class="record-list">
+              <view
+                v-for="item in myRecords"
+                :key="item.id"
+                class="record-item"
+              >
+                <view class="record-info">
+                  <text class="record-title">{{ item.type }}</text>
+                  <text class="record-date">{{ item.date }}</text>
+                </view>
+                <oa-badge :status="statusMap[item.status]" :text="item.statusText" />
               </view>
             </view>
-            <view class="form-field">
-              <text class="field-label">加班时长（小时） <text class="required">*</text></text>
-              <input 
-                v-model="form.duration" 
-                class="field-input" 
-                type="digit" 
-                placeholder="请输入小时数"
-              />
-            </view>
-            <view class="form-field">
-              <text class="field-label">加班原因 <text class="required">*</text></text>
-              <textarea 
-                v-model="form.reason" 
-                class="field-textarea" 
-                placeholder="请输入加班原因"
-              />
-            </view>
-            <view class="form-actions">
-              <Button variant="ghost" @click="resetForm">重置</Button>
-              <Button variant="primary" @click="submitOvertime">提交申请</Button>
-            </view>
-          </view>
-        </view>
-
-        <!-- 记录/审批详情 -->
-        <view v-if="selectedRecord" class="card detail-card">
-          <view class="card-header">
-            <view class="card-header-title">
-              <Icon :name="selectedRecord.type === 'LEAVE' ? 'event-busy' : 'more-time'" :size="20" />
-              <text class="card-title">{{ selectedRecord.type === 'LEAVE' ? '请假详情' : '加班详情' }}</text>
-            </view>
-            <Button variant="ghost" icon="close" @click="clearSelection">关闭</Button>
-          </view>
-          <view class="detail-body">
-            <view class="detail-row">
-              <text class="detail-label">申请人</text>
-              <text class="detail-value">{{ selectedRecord.employeeName }}</text>
-            </view>
-            <view class="detail-row">
-              <text class="detail-label">部门</text>
-              <text class="detail-value">{{ selectedRecord.department }}</text>
-            </view>
-            <view v-if="selectedRecord.type === 'LEAVE'" class="detail-row">
-              <text class="detail-label">请假类型</text>
-              <text class="detail-value">{{ selectedRecord.leaveType }}</text>
-            </view>
-            <view class="detail-row">
-              <text class="detail-label">{{ selectedRecord.type === 'LEAVE' ? '请假时间' : '加班时间' }}</text>
-              <text class="detail-value">{{ selectedRecord.timeRange }}</text>
-            </view>
-            <view class="detail-row">
-              <text class="detail-label">{{ selectedRecord.type === 'LEAVE' ? '天数' : '时长' }}</text>
-              <text class="detail-value">{{ selectedRecord.duration }}{{ selectedRecord.type === 'LEAVE' ? '天' : '小时' }}</text>
-            </view>
-            <view class="detail-row">
-              <text class="detail-label">原因</text>
-              <text class="detail-value">{{ selectedRecord.reason }}</text>
-            </view>
-            <view class="detail-row">
-              <text class="detail-label">状态</text>
-              <Badge :variant="statusVariant(selectedRecord.status)">{{ statusText(selectedRecord.status) }}</Badge>
-            </view>
-            <view v-if="selectedRecord.approver" class="detail-row">
-              <text class="detail-label">审批人</text>
-              <text class="detail-value">{{ selectedRecord.approver }}</text>
-            </view>
-            <view v-if="selectedRecord.approveTime" class="detail-row">
-              <text class="detail-label">审批时间</text>
-              <text class="detail-value">{{ selectedRecord.approveTime }}</text>
-            </view>
-
-            <!-- 审批操作 - 仅审批角色可见 -->
-            <view v-if="canApprove && selectedRecord.status === 'PENDING'" class="detail-actions">
-              <Button variant="ghost" @click="rejectRecord">驳回</Button>
-              <Button variant="primary" @click="approveRecord">通过</Button>
-            </view>
-          </view>
-        </view>
-
-        <!-- 空状态 -->
-        <view v-if="!activeTab && !selectedRecord" class="card empty-card">
-          <Empty text="请选择左侧功能开始" />
-        </view>
-      </view>
+            <empty v-else text="暂无记录" />
+          </oa-card>
+        </oa-col>
+      </oa-row>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Icon, Button, Badge, Empty } from '../../components/ui'
+import { Icon, Empty } from '../../components/ui'
+import { 
+  OaButton, OaInput, OaForm, OaCard, 
+  OaSelect, OaDatePicker, OaRow, OaCol, OaBadge 
+} from '../../components/ui-kit'
 import { useUserStore } from '../../stores'
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.userInfo?.role || 'employee')
-const userName = computed(() => userStore.userInfo?.displayName || '')
-
-// 权限判断
-const canApprove = computed(() => ['project_manager', 'ceo'].includes(userRole.value))
+const isCEO = computed(() => userRole.value === 'ceo')
 
 // 标签页状态
-const activeTab = ref<'leave' | 'overtime' | null>('leave')
-const selectedRecord = ref<any>(null)
+const activeTab = ref('leave')
+const selectedItem = ref<any>(null)
 
 // 表单数据
-const leaveTypes = ['年假', '事假', '病假', '婚假', '产假']
-const form = ref({
-  leaveType: '',
+const leaveForm = ref({
+  type: '',
+  days: '',
   startDate: '',
   endDate: '',
-  overtimeDate: '',
-  startTime: '',
-  endTime: '',
-  duration: '',
   reason: ''
 })
 
-// Mock 数据 - 我的记录
+const overtimeForm = ref({
+  date: '',
+  hours: '',
+  reason: ''
+})
+
+// 选项数据
+const leaveTypes = [
+  { label: '年假', value: 'annual' },
+  { label: '事假', value: 'personal' },
+  { label: '病假', value: 'sick' },
+  { label: '婚假', value: 'marriage' },
+  { label: '产假', value: 'maternity' }
+]
+
+// Mock 数据
+const pendingList = ref([
+  { id: 1, applicant: '张晓宁', type: '请假', date: '2024-04-01 至 2024-04-03', duration: '3天', reason: '回家探亲', urgency: 'normal' },
+  { id: 2, applicant: '赵铁柱', type: '加班', date: '2024-03-30', duration: '4小时', reason: '项目赶进度', urgency: 'high' }
+])
+
 const myRecords = ref([
-  { id: 1, type: 'LEAVE', leaveType: '年假', employeeName: userName.value, department: '综合管理部', timeRange: '2024-03-20 至 2024-03-22', duration: 3, reason: '回家探亲', status: 'APPROVED', approver: '王建国', approveTime: '2024-03-18 10:30', createTime: '2024-03-15' },
-  { id: 2, type: 'OVERTIME', employeeName: userName.value, department: '综合管理部', timeRange: '2024-03-10 18:00-21:00', duration: 3, reason: '项目赶进度', status: 'PENDING', createTime: '2024-03-10' }
+  { id: 1, type: '请假', date: '2024-03-15', status: 'approved', statusText: '已通过' },
+  { id: 2, type: '加班', date: '2024-03-10', status: 'pending', statusText: '审批中' }
 ])
 
-// Mock 数据 - 待审批列表
-const todoList = ref([
-  { id: 3, type: 'LEAVE', leaveType: '病假', employeeName: '张晓宁', department: '综合管理部', timeRange: '2024-03-25 至 2024-03-26', duration: 2, reason: '身体不适', status: 'PENDING', createTime: '2024-03-24' },
-  { id: 4, type: 'OVERTIME', employeeName: '赵铁柱', department: '施工一部', timeRange: '2024-03-20 19:00-22:00', duration: 3, reason: '赶工期', status: 'PENDING', createTime: '2024-03-20' }
-])
+const attendanceStats = ref({
+  total: 156,
+  approved: 128,
+  pending: 18,
+  rejected: 10,
+  completionRate: '82%'
+})
 
-// 统计
-const myLeaveCount = computed(() => myRecords.value.filter(r => r.type === 'LEAVE').length)
-const myOvertimeCount = computed(() => myRecords.value.filter(r => r.type === 'OVERTIME').length)
-const todoCount = computed(() => todoList.value.length)
+// 计算属性
+const myLeaveCount = computed(() => myRecords.value.filter(r => r.type === '请假').length)
+const myOvertimeCount = computed(() => myRecords.value.filter(r => r.type === '加班').length)
+const totalPending = computed(() => pendingList.value.length)
 
-// 状态显示
-const statusVariant = (status: string): 'default' | 'success' | 'warning' | 'danger' | 'info' => {
-  const map: Record<string, 'default' | 'success' | 'warning' | 'danger' | 'info'> = { 
-    PENDING: 'warning', APPROVED: 'success', REJECTED: 'danger' 
-  }
-  return map[status] || 'default'
-}
-const statusText = (status: string) => {
-  const map: Record<string, string> = { PENDING: '审批中', APPROVED: '已通过', REJECTED: '已驳回' }
-  return map[status] || status
+const statusMap: Record<string, any> = {
+  approved: 'success',
+  pending: 'warning',
+  rejected: 'error'
 }
 
 // 方法
-const switchTab = (tab: 'leave' | 'overtime') => {
+const switchTab = (tab: string) => {
   activeTab.value = tab
-  selectedRecord.value = null
+  selectedItem.value = null
 }
 
-const selectRecord = (record: any) => {
-  selectedRecord.value = record
-  activeTab.value = null
-}
-
-const clearSelection = () => {
-  selectedRecord.value = null
-  activeTab.value = 'leave'
+const selectItem = (item: any) => {
+  selectedItem.value = item
 }
 
 const resetForm = () => {
-  form.value = { leaveType: '', startDate: '', endDate: '', overtimeDate: '', startTime: '', endTime: '', duration: '', reason: '' }
+  if (activeTab.value === 'leave') {
+    leaveForm.value = { type: '', days: '', startDate: '', endDate: '', reason: '' }
+  } else {
+    overtimeForm.value = { date: '', hours: '', reason: '' }
+  }
 }
 
-// Picker 事件处理
-const onLeaveTypeChange = (e: any) => form.value.leaveType = leaveTypes[e.detail.value]
-const onStartDateChange = (e: any) => form.value.startDate = e.detail.value
-const onEndDateChange = (e: any) => form.value.endDate = e.detail.value
-const onOvertimeDateChange = (e: any) => form.value.overtimeDate = e.detail.value
-const onStartTimeChange = (e: any) => form.value.startTime = e.detail.value
-const onEndTimeChange = (e: any) => form.value.endTime = e.detail.value
-
-// 提交
 const submitLeave = () => {
-  if (!form.value.leaveType || !form.value.startDate || !form.value.endDate || !form.value.duration || !form.value.reason) {
-    uni.showToast({ title: '请填写完整信息', icon: 'none' })
-    return
-  }
   uni.showToast({ title: '提交成功', icon: 'success' })
-  resetForm()
 }
 
 const submitOvertime = () => {
-  if (!form.value.overtimeDate || !form.value.startTime || !form.value.endTime || !form.value.duration || !form.value.reason) {
-    uni.showToast({ title: '请填写完整信息', icon: 'none' })
-    return
-  }
   uni.showToast({ title: '提交成功', icon: 'success' })
-  resetForm()
 }
 
-// 审批
-const approveRecord = () => {
-  uni.showToast({ title: '审批通过', icon: 'success' })
-  selectedRecord.value.status = 'APPROVED'
+const approveItem = () => {
+  uni.showToast({ title: '已通过', icon: 'success' })
+  selectedItem.value = null
 }
 
-const rejectRecord = () => {
+const rejectItem = () => {
   uni.showToast({ title: '已驳回', icon: 'none' })
-  selectedRecord.value.status = 'REJECTED'
+  selectedItem.value = null
 }
 </script>
 
 <style lang="scss" scoped>
 .attendance-page {
-  display: flex;
-  flex-direction: column;
+  min-height: 100vh;
+  background: var(--oa-bg);
+  padding: 16px;
 }
 
 .hero {
   background: linear-gradient(135deg, #003466 0%, #324963 100%);
   color: #fff;
   padding: 24px;
-  margin: 16px 16px 0;
-  border-radius: var(--radius-lg);
-}
-
-.hero-main {
   margin-bottom: 16px;
+  border-radius: var(--oa-border-radius-lg);
 }
 
 .hero-title-row {
@@ -441,7 +411,6 @@ const rejectRecord = () => {
 }
 
 .hero-title {
-  font-family: var(--font-display);
   font-size: 24px;
   font-weight: 700;
 }
@@ -453,7 +422,8 @@ const rejectRecord = () => {
 
 .hero-stats {
   display: flex;
-  gap: 24px;
+  gap: 32px;
+  margin-top: 16px;
 }
 
 .hero-stat {
@@ -461,7 +431,6 @@ const rejectRecord = () => {
 }
 
 .stat-num {
-  font-family: var(--font-display);
   font-size: 28px;
   font-weight: 700;
 }
@@ -472,225 +441,107 @@ const rejectRecord = () => {
 }
 
 .attendance-container {
-  display: grid;
-  grid-template-columns: 320px 1fr;
-  gap: 16px;
-  padding: 16px;
-}
-
-.sidebar {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-height: calc(100vh - 200px);
-  overflow-y: auto;
-}
-
-.section {
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 16px;
-  &:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
+  :deep(.oa-card) {
+    margin-bottom: 0;
   }
 }
 
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 12px;
-}
+.menu-list {
+  .menu-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px;
+    cursor: pointer;
+    border-radius: var(--oa-border-radius-md);
+    transition: all 0.2s;
 
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.action-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.action-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover {
-    background: var(--bg-secondary);
-  }
-  &.active {
-    background: var(--primary-color);
-    color: #fff;
+    &:hover, &.active {
+      background: var(--oa-primary-light);
+      color: var(--oa-primary);
+    }
   }
 }
 
-.record-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
+.form-item {
+  margin-bottom: 24px;
 
-.record-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover {
-    background: var(--bg-secondary);
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    color: var(--oa-text-secondary);
+
+    .required {
+      color: var(--oa-error);
+    }
   }
-  &.active {
-    background: var(--primary-light);
-  }
-}
-
-.record-main {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.record-title {
-  font-weight: 500;
-  font-size: 14px;
-}
-
-.record-meta {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.main-content {
-  min-height: 600px;
-}
-
-.form-card, .detail-card, .empty-card {
-  height: 100%;
-}
-
-.card-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.card-header-title {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.card-title {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.form-body {
-  padding: 24px;
-}
-
-.form-field {
-  margin-bottom: 20px;
-}
-
-.form-row {
-  display: flex;
-  gap: 16px;
-  .form-field.half {
-    flex: 1;
-  }
-}
-
-.field-label {
-  display: block;
-  font-size: 14px;
-  font-weight: 500;
-  margin-bottom: 8px;
-  .required {
-    color: var(--danger-color);
-  }
-}
-
-.field-picker {
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-}
-
-.picker-display {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  font-size: 14px;
-}
-
-.field-input {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  font-size: 14px;
-}
-
-.field-textarea {
-  width: 100%;
-  min-height: 100px;
-  padding: 12px 16px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-secondary);
-  font-size: 14px;
 }
 
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
-  margin-top: 24px;
+  margin-top: 32px;
   padding-top: 24px;
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--oa-border-split);
 }
 
-.detail-body {
-  padding: 24px;
-}
+.approval-list {
+  .approval-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    border-bottom: 1px solid var(--oa-border-split);
+    cursor: pointer;
+    transition: all 0.2s;
 
-.detail-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border-color);
-  &:last-child {
-    border-bottom: none;
+    &:hover, &.active {
+      background: var(--oa-bg);
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .approval-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .approval-title {
+    font-weight: 500;
+    font-size: 14px;
+  }
+
+  .approval-meta {
+    font-size: 12px;
+    color: var(--oa-text-tertiary);
   }
 }
 
-.detail-label {
-  font-size: 14px;
-  color: var(--text-secondary);
-}
+.detail-content {
+  .detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--oa-border-split);
 
-.detail-value {
-  font-size: 14px;
-  font-weight: 500;
-  max-width: 60%;
-  text-align: right;
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .label {
+      color: var(--oa-text-secondary);
+    }
+
+    .value {
+      font-weight: 500;
+    }
+  }
 }
 
 .detail-actions {
@@ -698,7 +549,55 @@ const rejectRecord = () => {
   justify-content: flex-end;
   gap: 12px;
   margin-top: 24px;
-  padding-top: 24px;
-  border-top: 1px solid var(--border-color);
+}
+
+.stats-grid {
+  .stat-card {
+    text-align: center;
+    padding: 24px;
+    background: var(--oa-bg);
+    border-radius: var(--oa-border-radius-md);
+
+    .stat-value {
+      font-size: 32px;
+      font-weight: 700;
+      color: var(--oa-primary);
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--oa-text-secondary);
+      margin-top: 8px;
+    }
+  }
+}
+
+.record-list {
+  .record-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--oa-border-split);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  .record-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .record-title {
+    font-weight: 500;
+  }
+
+  .record-date {
+    font-size: 12px;
+    color: var(--oa-text-tertiary);
+  }
 }
 </style>

@@ -75,18 +75,22 @@ export function getVisibleSystems(role: string) {
 export const getPendingItems = (role: string) => {
   const roleItems: Record<string, any[]> = {
     project_manager: [
-      { title: '请假申请初审', category: '考勤', owner: '项目经理', deadline: '今天 18:00', priority: '高' },
-      { title: '施工阶段审批', category: '项目', owner: '项目经理', deadline: '今天 17:30', priority: '中' }
+      { title: '请假申请初审', category: '考勤', owner: '项目经理', deadline: '今天 18:00', priority: '高', path: '/pages/attendance/index' },
+      { title: '施工阶段审批', category: '项目', owner: '项目经理', deadline: '今天 17:30', priority: '中', path: '/pages/projects/index' }
     ],
     ceo: [
-      { title: '请假申请终审', category: '考勤', owner: 'CEO', deadline: '今天 18:00', priority: '高' },
-      { title: '施工阶段确认', category: '项目', owner: 'CEO', deadline: '明天 10:00', priority: '中' }
+      { title: '请假申请终审', category: '考勤', owner: 'CEO', deadline: '今天 18:00', priority: '高', path: '/pages/attendance/index' },
+      { title: '施工阶段确认', category: '项目', owner: 'CEO', deadline: '明天 10:00', priority: '中', path: '/pages/projects/index' }
     ],
     finance: [
-      { title: '薪资异议复核', category: '薪酬', owner: '财务', deadline: '明天 10:00', priority: '中' }
+      { title: '薪资异议复核', category: '薪酬', owner: '财务', deadline: '明天 10:00', priority: '中', path: '/pages/payroll/index' }
     ],
-    employee: [],
-    worker: []
+    employee: [
+      { title: '补交请假申请单', category: '考勤', owner: '个人', deadline: '今天 18:00', priority: '高', path: '/pages/attendance/index' }
+    ],
+    worker: [
+      { title: '确认工时记录', category: '考勤', owner: '个人', deadline: '今天 18:00', priority: '中', path: '/pages/attendance/index' }
+    ]
   }
   
   return roleItems[role] || []

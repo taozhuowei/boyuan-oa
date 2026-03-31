@@ -1,162 +1,419 @@
 <template>
-  <view class="page login-page">
+  <view class="login-page">
     <view class="login-container">
-      <view class="login-brand">
-        <text class="brand-title">众维 OA</text>
-        <text class="brand-subtitle">工程企业智慧办公平台</text>
+      <!-- Logo -->
+      <view class="logo-section">
+        <view class="logo">
+          <Icon name="domain" :size="48" color="#1890ff" />
+        </view>
+        <text class="logo-title">企业 OA 系统</text>
+        <text class="logo-subtitle">统一办公管理平台</text>
       </view>
 
-      <view class="login-form card">
-        <view class="form-header">
-          <text class="form-title">账号登录</text>
+      <!-- 登录表单 -->
+      <oa-card class="login-card">
+        <view class="login-tabs">
+          <view 
+            class="tab-item" 
+            :class="{ active: loginType === 'password' }"
+            @click="loginType = 'password'"
+          >
+            密码登录
+          </view>
+          <view 
+            class="tab-item" 
+            :class="{ active: loginType === 'sms' }"
+            @click="loginType = 'sms'"
+          >
+            验证码登录
+          </view>
         </view>
 
-        <view class="form-body">
-          <view class="input-group">
-            <Icon name="person" :size="18" />
-            <input
-              v-model="form.username"
-              type="text"
-              placeholder="请输入账号"
-              class="input"
+        <oa-form :model="loginForm">
+          <view class="form-item">
+            <oa-input
+              v-model="loginForm.username"
+              placeholder="请输入用户名/手机号"
+              :prefix="'person-outline'"
             />
           </view>
 
-          <view class="input-group">
-            <Icon name="settings" :size="18" />
-            <input
-              v-model="form.password"
+          <view v-if="loginType === 'password'" class="form-item">
+            <oa-input
+              v-model="loginForm.password"
               type="password"
               placeholder="请输入密码"
-              class="input"
+              :prefix="'lock-outline'"
             />
           </view>
 
-          <button class="btn-primary" @click="handleLogin">
-            <text>进入工作台</text>
-            <Icon name="arrow-forward" :size="16" />
-          </button>
+          <view v-else class="form-item">
+            <oa-row :gutter="8">
+              <oa-col :span="16">
+                <oa-input
+                  v-model="loginForm.code"
+                  placeholder="请输入验证码"
+                  :prefix="'verified-outline'"
+                />
+              </oa-col>
+              <oa-col :span="8">
+                <oa-button 
+                  block 
+                  :disabled="countdown > 0"
+                  @click="sendCode"
+                >
+                  {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+                </oa-button>
+              </oa-col>
+            </oa-row>
+          </view>
+
+          <view class="form-options">
+            <oa-checkbox v-model="rememberMe">记住我</oa-checkbox>
+            <oa-button type="link" size="small">忘记密码?</oa-button>
+          </view>
+
+          <oa-button 
+            type="primary" 
+            block 
+            size="large"
+            :loading="loading"
+            @click="handleLogin"
+          >
+            登录
+          </oa-button>
+        </oa-form>
+
+        <view class="divider">
+          <text>其他登录方式</text>
         </view>
-      </view>
+
+        <view class="social-login">
+          <view class="social-btn wechat" @click="wechatLogin">
+            <Icon name="wechat" :size="24" />
+            <text>微信登录</text>
+          </view>
+          <view class="social-btn dingtalk" @click="dingtalkLogin">
+            <Icon name="dingding" :size="24" />
+            <text>钉钉登录</text>
+          </view>
+        </view>
+      </oa-card>
+
+      <!-- 版权信息 -->
+      <text class="copyright">© 2024 企业OA系统 版权所有</text>
     </view>
+
+    <!-- 背景装饰 -->
+    <view class="bg-decoration left"></view>
+    <view class="bg-decoration right"></view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { reactive } from 'vue'
+import { ref } from 'vue'
 import { Icon } from '../../components/ui'
+import { OaCard, OaForm, OaInput, OaButton, OaCheckbox, OaRow, OaCol } from '../../components/ui-kit'
 import { useUserStore } from '../../stores'
-import { loginWithAccount } from '../../utils/access'
 
 const userStore = useUserStore()
-const form = reactive({ username: '', password: '' })
+
+const loginType = ref('password')
+const loading = ref(false)
+const rememberMe = ref(false)
+const countdown = ref(0)
+
+const loginForm = ref({
+  username: '',
+  password: '',
+  code: ''
+})
+
+const sendCode = () => {
+  if (!loginForm.value.username) {
+    uni.showToast({ title: '请输入手机号', icon: 'none' })
+    return
+  }
+  
+  countdown.value = 60
+  const timer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(timer)
+    }
+  }, 1000)
+  
+  uni.showToast({ title: '验证码已发送', icon: 'success' })
+}
 
 const handleLogin = async () => {
-  try {
-    const result = await loginWithAccount(form)
-    userStore.setSession(result.token, result.user)
-    uni.switchTab({ url: '/pages/index/index' })
-  } catch (error) {
-    uni.showToast({ title: error instanceof Error ? error.message : '登录失败', icon: 'none' })
+  if (!loginForm.value.username) {
+    uni.showToast({ title: '请输入用户名', icon: 'none' })
+    return
   }
+
+  if (loginType.value === 'password' && !loginForm.value.password) {
+    uni.showToast({ title: '请输入密码', icon: 'none' })
+    return
+  }
+
+  if (loginType.value === 'sms' && !loginForm.value.code) {
+    uni.showToast({ title: '请输入验证码', icon: 'none' })
+    return
+  }
+
+  loading.value = true
+  
+  try {
+    // Mock 登录
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    userStore.setSession(
+      'mock_token_' + Date.now(),
+      {
+        username: loginForm.value.username,
+        displayName: loginForm.value.username,
+        role: '', // 角色选择页面再确定
+        roleName: '',
+        department: '未分配部门',
+        employeeType: '普通员工',
+        status: '在线'
+      }
+    )
+    
+    uni.showToast({ title: '登录成功', icon: 'success' })
+    
+    // 跳转到角色选择页面
+    setTimeout(() => {
+      uni.redirectTo({ url: '/pages/role/index' })
+    }, 500)
+  } finally {
+    loading.value = false
+  }
+}
+
+const wechatLogin = () => {
+  // #ifdef MP-WEIXIN
+  uni.login({
+    provider: 'weixin',
+    success: (res) => {
+      console.log('微信登录', res)
+      uni.showToast({ title: '微信登录成功', icon: 'success' })
+    }
+  })
+  // #endif
+  // #ifndef MP-WEIXIN
+  uni.showToast({ title: '请在微信小程序中使用', icon: 'none' })
+  // #endif
+}
+
+const dingtalkLogin = () => {
+  uni.showToast({ title: '钉钉登录开发中', icon: 'none' })
 }
 </script>
 
 <style lang="scss" scoped>
 .login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f0f2f5 0%, #e6e9f0 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  padding: 20px;
+  position: relative;
+  overflow: hidden;
 }
 
 .login-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 420px;
+  padding: 24px;
+  position: relative;
+  z-index: 1;
 }
 
-.login-brand {
+.logo-section {
   text-align: center;
   margin-bottom: 32px;
+
+  .logo {
+    width: 80px;
+    height: 80px;
+    background: #fff;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  }
+
+  .logo-title {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--oa-text);
+    display: block;
+    margin-bottom: 8px;
+  }
+
+  .logo-subtitle {
+    font-size: 14px;
+    color: var(--oa-text-secondary);
+  }
 }
 
-.brand-title {
-  font-family: var(--font-display);
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--primary);
-  display: block;
+.login-card {
+  :deep(.oa-card-body) {
+    padding: 32px;
+  }
 }
 
-.brand-subtitle {
-  font-size: 14px;
-  color: var(--on-surface-variant);
-  margin-top: 8px;
-  display: block;
+.login-tabs {
+  display: flex;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--oa-border);
+
+  .tab-item {
+    flex: 1;
+    text-align: center;
+    padding: 12px 0;
+    font-size: 14px;
+    color: var(--oa-text-secondary);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s;
+
+    &.active {
+      color: var(--oa-primary);
+      font-weight: 500;
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: -1px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 2px;
+        background: var(--oa-primary);
+      }
+    }
+  }
 }
 
-.login-form {
-  padding: 28px;
+.form-item {
+  margin-bottom: 20px;
 }
 
-.form-header {
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 24px;
 }
 
-.form-title {
-  font-family: var(--font-display);
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--on-surface);
+.divider {
+  position: relative;
+  text-align: center;
+  margin: 24px 0;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: var(--oa-border);
+  }
+
+  text {
+    position: relative;
+    background: #fff;
+    padding: 0 16px;
+    font-size: 12px;
+    color: var(--oa-text-secondary);
+  }
 }
 
-.form-body {
+.social-login {
   display: flex;
-  flex-direction: column;
   gap: 16px;
+
+  .social-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border-radius: var(--oa-border-radius-md);
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+
+    &.wechat {
+      background: #f6ffed;
+      color: #52c41a;
+      border: 1px solid #b7eb8f;
+
+      &:hover {
+        background: #d9f7be;
+      }
+    }
+
+    &.dingtalk {
+      background: #e6f7ff;
+      color: #1890ff;
+      border: 1px solid #91d5ff;
+
+      &:hover {
+        background: #bae7ff;
+      }
+    }
+  }
 }
 
-.input-group {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: var(--surface-low);
-  border-radius: var(--radius-md);
-  color: var(--on-surface-variant);
+.copyright {
+  display: block;
+  text-align: center;
+  margin-top: 32px;
+  font-size: 12px;
+  color: var(--oa-text-tertiary);
 }
 
-.input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 15px;
-  color: var(--on-surface);
+.bg-decoration {
+  position: absolute;
+  width: 600px;
+  height: 600px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(24, 144, 255, 0.08) 0%, rgba(24, 144, 255, 0.02) 100%);
+
+  &.left {
+    top: -200px;
+    left: -200px;
+  }
+
+  &.right {
+    bottom: -200px;
+    right: -200px;
+    background: linear-gradient(135deg, rgba(0, 52, 102, 0.06) 0%, rgba(0, 52, 102, 0.02) 100%);
+  }
 }
 
-.input::placeholder {
-  color: var(--outline);
-}
+// 响应式
+@media (max-width: 480px) {
+  .login-container {
+    padding: 16px;
+  }
 
-.btn-primary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 48px;
-  margin-top: 8px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
-  color: var(--on-primary);
-  border-radius: var(--radius-md);
-  font-size: 15px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  transition: opacity 0.2s ease;
-}
+  .login-card {
+    :deep(.oa-card-body) {
+      padding: 24px;
+    }
+  }
 
-.btn-primary:active {
-  opacity: 0.9;
+  .social-login {
+    flex-direction: column;
+  }
 }
 </style>
