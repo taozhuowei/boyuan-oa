@@ -3,50 +3,47 @@ export default {}
 </script>
 
 <style lang="scss">
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@400;600;700;800&display=swap');
+
 :root,
 page {
-  --oa-font-display: 'Avenir Next', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  --oa-font-body: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-display: 'Manrope', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-body: 'Inter', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 
-  --oa-bg: #f6efe7;
-  --oa-bg-alt: #efe5db;
-  --oa-surface: rgba(255, 251, 247, 0.9);
-  --oa-surface-strong: rgba(255, 248, 240, 0.96);
-  --oa-surface-soft: rgba(253, 248, 243, 0.96);
-  --oa-border: rgba(134, 110, 91, 0.12);
-  --oa-border-strong: rgba(122, 99, 82, 0.16);
+  --surface: #f9f9fe;
+  --surface-low: #f3f3f9;
+  --surface-lowest: #ffffff;
+  --surface-high: #e8e8ed;
+  --surface-highest: #e2e2e7;
 
-  --oa-text-primary: #2e231d;
-  --oa-text-secondary: #5d4d44;
-  --oa-text-muted: #7f7268;
-  --oa-text-inverse: #fff9f3;
+  --primary: #003466;
+  --primary-container: #1a4b84;
+  --on-primary: #ffffff;
+  --on-surface: #1a1c20;
+  --on-surface-variant: #424750;
+  --outline: #737781;
 
-  --oa-accent: #a45b38;
-  --oa-accent-strong: #7d3d23;
-  --oa-accent-deep: #6e3019;
-  --oa-accent-soft: rgba(190, 118, 82, 0.12);
-  --oa-success-soft: rgba(96, 139, 104, 0.14);
-  --oa-warning-soft: rgba(196, 152, 83, 0.16);
-  --oa-danger-soft: rgba(185, 93, 83, 0.16);
+  --secondary: #115cb9;
+  --secondary-container: #659dfe;
 
-  --oa-gradient-page: linear-gradient(180deg, #f8f2eb 0%, #efe3d7 48%, #f8f2eb 100%);
-  --oa-gradient-hero: linear-gradient(135deg, #7d3d23 0%, #a45b38 38%, #c7885f 100%);
-  --oa-gradient-action: linear-gradient(135deg, #8d4727 0%, #b76b44 100%);
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --success: #2e7d32;
+  --warning: #ed6c02;
 
-  --oa-radius-xl: 28px;
-  --oa-radius-lg: 22px;
-  --oa-radius-md: 16px;
-  --oa-radius-sm: 12px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
 
-  --oa-shadow-panel: 0 18px 46px rgba(73, 47, 32, 0.08);
-  --oa-shadow-accent: 0 14px 26px rgba(125, 61, 35, 0.18);
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
 }
 
 page {
-  font-family: var(--oa-font-body);
+  font-family: var(--font-body);
   font-size: 14px;
-  color: var(--oa-text-primary);
-  background: var(--oa-gradient-page);
+  color: var(--on-surface);
+  background: var(--surface-low);
 }
 
 *,
@@ -60,34 +57,55 @@ text,
 button,
 input,
 textarea {
-  font-family: var(--oa-font-body);
+  font-family: var(--font-body);
 }
 
 button {
   margin: 0;
   border: none;
   background: transparent;
+  cursor: pointer;
 }
 
-.oa-page {
-  background:
-    radial-gradient(circle at top left, rgba(255, 248, 238, 0.9) 0, rgba(255, 248, 238, 0) 32%),
-    radial-gradient(circle at top right, rgba(190, 118, 82, 0.08) 0, rgba(190, 118, 82, 0) 28%),
-    var(--oa-gradient-page);
+input,
+textarea {
+  outline: none;
 }
 
-.oa-panel {
-  border-radius: var(--oa-radius-xl);
-  background: var(--oa-surface);
-  border: 1px solid var(--oa-border);
-  box-shadow: var(--oa-shadow-panel);
-  padding: clamp(18px, 2vw, 24px);
-  backdrop-filter: blur(16px);
+.page {
+  min-height: 100vh;
+  background: var(--surface-low);
 }
 
-.oa-surface-hero {
-  border-radius: var(--oa-radius-xl);
-  background: var(--oa-gradient-hero);
-  box-shadow: var(--oa-shadow-accent);
+/* 卡片基础 */
+.card {
+  background: var(--surface-lowest);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
 }
+
+/* Hero 区域 */
+.hero {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-container) 100%);
+  color: var(--on-primary);
+}
+
+/* 标题 */
+.headline {
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+
+/* 工具类 */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.gap-4 { gap: 16px; }
+.p-4 { padding: 16px; }
+.p-5 { padding: 20px; }
+.text-sm { font-size: 13px; }
+.text-muted { color: var(--on-surface-variant); }
 </style>

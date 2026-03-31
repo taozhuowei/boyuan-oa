@@ -1,44 +1,33 @@
+<!-- 通讯录导入页面：CSV 数据预览校验与批量导入 -->
 <template>
-  <view class="directory-page oa-page">
-    <view class="directory-hero oa-surface-hero">
-      <view class="hero-copy">
-        <text class="hero-kicker">通讯录导入</text>
-        <text class="hero-title">先做预览校验，再决定导入范围，让财务和行政能稳住名册更新节奏</text>
-        <text class="hero-subtitle">
-          支持粘贴 CSV 风格数据：姓名,手机号,部门,岗位,邮箱。预览阶段会先校验手机号格式和重复记录。
-        </text>
-      </view>
-
-      <view class="hero-metrics">
-        <view class="hero-metric">
-          <text class="metric-label">预览总数</text>
-          <text class="metric-value">{{ previewResult?.totalCount ?? 0 }}</text>
-          <text class="metric-note">先看质量，再决定实际导入</text>
+  <view class="page oa-page">
+    <view class="header-card">
+      <view class="header-left">
+        <view class="header-icon-wrap">
+          <text class="header-icon">◈</text>
         </view>
-        <view class="hero-metric">
-          <text class="metric-label">可导入</text>
-          <text class="metric-value">{{ previewResult?.validCount ?? 0 }}</text>
-          <text class="metric-note">仅有效记录可加入勾选名单</text>
+        <view>
+          <text class="header-title">通讯录导入</text>
+          <text class="header-sub">预览校验后再导入 · 已选 {{ selectedIndices.length }} 条</text>
         </view>
       </view>
+      <button class="btn-ghost" @click="goBack">← 返回</button>
     </view>
 
-    <view class="directory-shell">
-      <view class="oa-panel input-panel">
-        <view class="section-head">
-          <view>
-            <text class="section-title">导入原始数据</text>
-            <text class="section-note">
-              {{ canApply ? '当前账号可执行导入' : '当前账号仅演示预览流程，正式导入需财务账号' }}
-            </text>
-          </view>
-          <button class="ghost-button" @click="goBack">返回工作台</button>
+    <view class="shell">
+      <view class="panel input-panel">
+        <view class="panel-head">
+          <text class="panel-title">导入数据</text>
+          <text class="panel-hint">{{ canApply ? '当前账号可执行导入' : '仅演示预览，正式导入需财务账号' }}</text>
         </view>
 
         <view class="tips-card">
-          <text class="tips-title">示例格式</text>
-          <text class="tips-text">张三,13800138001,综合管理部,行政专员,zhangsan@oa.com</text>
-          <text class="tips-text">李四,13800138002,施工一部,班组长,lisi@oa.com</text>
+          <view class="tips-head">
+            <text class="label-dot blue" />
+            <text class="tips-title">示例格式</text>
+          </view>
+          <text class="tips-line">张三,13800138001,综合管理部,行政专员,zhangsan@oa.com</text>
+          <text class="tips-line">李四,13800138002,施工一部,班组长,lisi@oa.com</text>
         </view>
 
         <textarea
@@ -48,32 +37,30 @@
         />
 
         <view class="action-row">
-          <button class="ghost-button" @click="fillExample">填充示例</button>
-          <button class="primary-button" @click="handlePreview">生成预览</button>
+          <button class="btn-ghost" @click="fillExample">填充示例</button>
+          <button class="btn-primary" @click="handlePreview">生成预览</button>
         </view>
       </view>
 
       <view class="detail-column">
-        <view class="oa-panel result-panel">
-          <view class="section-head">
-            <view>
-              <text class="section-title">预览结果</text>
-              <text class="section-note">点击有效记录可加入或移出导入名单</text>
-            </view>
+        <view class="panel result-panel">
+          <view class="panel-head">
+            <text class="panel-title">预览结果</text>
+            <text class="panel-hint">点击有效记录可加入或移出导入名单</text>
           </view>
 
           <view v-if="previewResult" class="summary-grid">
-            <view class="summary-card">
+            <view class="summary-card success">
+              <text class="summary-num">{{ previewResult.validCount }}</text>
               <text class="summary-label">有效</text>
-              <text class="summary-value">{{ previewResult.validCount }}</text>
             </view>
-            <view class="summary-card">
+            <view class="summary-card warning">
+              <text class="summary-num">{{ previewResult.duplicateCount }}</text>
               <text class="summary-label">重复</text>
-              <text class="summary-value">{{ previewResult.duplicateCount }}</text>
             </view>
-            <view class="summary-card">
+            <view class="summary-card danger">
+              <text class="summary-num">{{ previewResult.invalidCount }}</text>
               <text class="summary-label">无效</text>
-              <text class="summary-value">{{ previewResult.invalidCount }}</text>
             </view>
           </view>
 
@@ -88,32 +75,33 @@
               ]"
               @click="toggleSelection(item.rowIndex, item.status)"
             >
-              <view>
+              <view class="preview-main">
                 <text class="preview-name">{{ item.name || `第 ${item.rowIndex + 1} 行` }}</text>
                 <text class="preview-meta">{{ item.department || '未分配部门' }} · {{ item.phone || '缺少手机号' }}</text>
               </view>
               <view class="preview-side">
                 <text class="preview-tag">{{ item.status }}</text>
-                <text class="preview-message">{{ item.message }}</text>
+                <text class="preview-msg">{{ item.message }}</text>
               </view>
             </view>
           </view>
-          <view v-else class="empty-block">预览结果会显示在这里。</view>
+          <view v-else class="empty">
+            <text class="empty-icon">◈</text>
+            <text class="empty-text">预览结果会显示在这里</text>
+          </view>
         </view>
 
-        <view class="oa-panel apply-panel">
-          <view class="section-head">
-            <view>
-              <text class="section-title">导入动作</text>
-              <text class="section-note">已选 {{ selectedIndices.length }} 条有效记录</text>
-            </view>
+        <view class="panel apply-panel">
+          <view class="panel-head">
+            <text class="panel-title">导入动作</text>
+            <text class="panel-hint">已选 {{ selectedIndices.length }} 条有效记录</text>
           </view>
 
           <view class="apply-card">
             <text class="apply-text">
               {{ canApply ? '确认后将把选中记录提交到后端导入接口。' : '当前账号无法正式导入，可先完成预览与勾选。' }}
             </text>
-            <button class="primary-button full" :disabled="!selectedIndices.length" @click="handleApply">
+            <button class="btn-primary full" :disabled="!selectedIndices.length" @click="handleApply">
               提交导入
             </button>
           </view>
@@ -152,11 +140,7 @@ function showToast(title: string, icon: 'success' | 'none' = 'none') {
   if (typeof uni === 'undefined') {
     return
   }
-
-  uni.showToast({
-    title,
-    icon
-  })
+  uni.showToast({ title, icon })
 }
 
 function parseRecords(): DirectoryImportRecord[] {
@@ -168,14 +152,7 @@ function parseRecords(): DirectoryImportRecord[] {
       const [name = '', phone = '', department = '', position = '', email = ''] = line
         .split(',')
         .map((item) => item.trim())
-
-      return {
-        name,
-        phone,
-        department,
-        position,
-        email
-      }
+      return { name, phone, department, position, email }
     })
 }
 
@@ -185,12 +162,10 @@ function fillExample() {
 
 async function handlePreview() {
   const records = parseRecords()
-
   if (!records.length) {
     showToast('请先粘贴导入内容')
     return
   }
-
   try {
     const result = await previewDirectoryImport(records, userStore.token)
     previewResult.value = result
@@ -206,12 +181,10 @@ function toggleSelection(index: number, status: string) {
   if (status !== 'VALID') {
     return
   }
-
   if (selectedIndices.value.includes(index)) {
     selectedIndices.value = selectedIndices.value.filter((item) => item !== index)
     return
   }
-
   selectedIndices.value = [...selectedIndices.value, index]
 }
 
@@ -220,12 +193,10 @@ async function handleApply() {
     showToast('请先选择有效记录')
     return
   }
-
   if (!canApply.value) {
     showToast('当前账号没有导入权限')
     return
   }
-
   try {
     const message = await applyDirectoryImport(selectedIndices.value, userStore.token)
     showToast(message, 'success')
@@ -238,195 +209,232 @@ function goBack() {
   if (typeof uni === 'undefined') {
     return
   }
-
   uni.navigateBack()
 }
 </script>
 
 <style lang="scss" scoped>
-.directory-page {
+.page {
   min-height: 100vh;
-  padding: clamp(18px, 2vw, 28px);
+  padding: clamp(16px, 2.4vw, 28px);
 }
 
-.directory-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.7fr);
-  gap: 20px;
+.header-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 18px;
-  padding: clamp(22px, 3vw, 30px);
+  padding: clamp(16px, 2.2vw, 24px);
+  border-radius: var(--oa-radius-xl);
+  background: var(--oa-surface);
+  border: 1px solid var(--oa-border);
+  box-shadow: var(--oa-shadow-panel);
 }
 
-.hero-copy,
-.hero-metrics,
-.detail-column,
-.preview-list,
-.summary-grid {
-  display: grid;
+.header-left {
+  display: flex;
+  align-items: center;
   gap: 14px;
 }
 
-.hero-kicker,
-.metric-label {
-  font-size: 12px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: rgba(255, 247, 234, 0.74);
+.header-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--oa-accent-soft);
 }
 
-.hero-title {
-  display: block;
-  max-width: 18ch;
-  font-family: var(--oa-font-display);
-  font-size: clamp(28px, 3vw, 40px);
-  line-height: 1.08;
-  color: var(--oa-text-inverse);
+.header-icon {
+  font-size: 20px;
+  color: var(--oa-accent);
 }
 
-.hero-subtitle,
-.metric-note,
-.section-note,
-.tips-text,
-.preview-meta,
-.preview-message,
-.apply-text {
+.header-title {
   display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--oa-text-primary);
+}
+
+.header-sub {
+  display: block;
+  margin-top: 4px;
   font-size: 13px;
-  line-height: 1.8;
-  color: rgba(255, 250, 243, 0.86);
+  color: var(--oa-text-muted);
 }
 
-.hero-metric {
-  padding: 18px;
-  border-radius: var(--oa-radius-lg);
-  background: rgba(255, 248, 240, 0.12);
-  border: 1px solid rgba(255, 243, 229, 0.18);
+.btn-ghost {
+  min-height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: rgba(125, 61, 35, 0.06);
+  color: var(--oa-text-secondary);
+  font-size: 13px;
 }
 
-.metric-value {
-  display: block;
-  margin: 10px 0 8px;
-  font-family: var(--oa-font-display);
-  font-size: 34px;
+.btn-primary {
+  min-height: 38px;
+  padding: 0 18px;
+  border-radius: 999px;
+  background: var(--oa-gradient-action);
   color: var(--oa-text-inverse);
+  font-size: 13px;
+  box-shadow: var(--oa-shadow-accent);
 }
 
-.directory-shell {
+.btn-primary[disabled] {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.btn-primary.full {
+  width: 100%;
+}
+
+.shell {
   display: grid;
   grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
   gap: 18px;
 }
 
-.input-panel,
-.result-panel,
-.apply-panel {
-  display: grid;
-  gap: 16px;
+.panel {
+  border-radius: var(--oa-radius-xl);
+  background: var(--oa-surface);
+  border: 1px solid var(--oa-border);
+  box-shadow: var(--oa-shadow-panel);
+  padding: clamp(16px, 2vw, 22px);
 }
 
-.section-head,
-.action-row,
-.preview-card {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
+.panel-head {
+  margin-bottom: 14px;
 }
 
-.section-title,
-.tips-title,
-.preview-name {
-  font-family: var(--oa-font-display);
-  color: var(--oa-text-primary);
-}
-
-.section-title {
-  font-size: 18px;
-}
-
-.tips-card,
-.summary-card,
-.preview-card,
-.apply-card {
-  padding: 16px;
-  border-radius: var(--oa-radius-lg);
-  border: 1px solid var(--oa-border-strong);
-  background: rgba(255, 248, 243, 0.82);
-}
-
-.tips-title {
-  font-size: 14px;
-  margin-bottom: 8px;
-}
-
-.tips-text {
-  color: var(--oa-text-secondary);
-}
-
-.raw-textarea {
-  width: 100%;
-  min-height: 220px;
-  padding: 16px;
-  border-radius: var(--oa-radius-lg);
-  border: 1px solid var(--oa-border-strong);
-  background: rgba(255, 250, 246, 0.82);
-  color: var(--oa-text-primary);
-  font-size: 14px;
-}
-
-.ghost-button,
-.primary-button {
-  min-height: 42px;
-  padding: 0 18px;
-  border-radius: 999px;
-  font-size: 14px;
-}
-
-.ghost-button {
-  background: rgba(255, 247, 240, 0.72);
-  border: 1px solid rgba(151, 167, 186, 0.24);
-  color: var(--oa-text-primary);
-}
-
-.primary-button {
-  background: var(--oa-gradient-action);
-  color: var(--oa-text-inverse);
-  box-shadow: var(--oa-shadow-accent);
-}
-
-.primary-button[disabled] {
-  opacity: 0.45;
-  box-shadow: none;
-}
-
-.primary-button.full {
-  width: 100%;
-}
-
-.summary-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.summary-label {
+.panel-title {
   display: block;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--oa-text-primary);
+}
+
+.panel-hint {
+  display: block;
+  margin-top: 4px;
   font-size: 12px;
   color: var(--oa-text-muted);
 }
 
-.summary-value {
-  display: block;
-  margin-top: 10px;
-  font-family: var(--oa-font-display);
-  font-size: 28px;
+.detail-column {
+  display: grid;
+  gap: 18px;
+}
+
+.tips-card {
+  padding: 14px;
+  border-radius: var(--oa-radius-md);
+  background: var(--oa-surface-soft);
+  border: 1px solid var(--oa-border);
+}
+
+.tips-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.tips-title {
+  font-size: 13px;
+  font-weight: 600;
   color: var(--oa-text-primary);
 }
 
+.tips-line {
+  display: block;
+  font-size: 12px;
+  color: var(--oa-text-muted);
+  line-height: 1.8;
+}
+
+.raw-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 14px;
+  border-radius: var(--oa-radius-md);
+  border: 1px solid var(--oa-border);
+  background: var(--oa-surface-soft);
+  color: var(--oa-text-primary);
+  font-size: 13px;
+}
+
+.action-row {
+  display: flex;
+  gap: 10px;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.summary-card {
+  padding: 14px;
+  border-radius: var(--oa-radius-md);
+  background: var(--oa-surface-soft);
+  border: 1px solid var(--oa-border);
+  text-align: center;
+}
+
+.summary-num {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.summary-label {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--oa-text-muted);
+}
+
+.summary-card.success .summary-num {
+  color: #4b6c52;
+}
+
+.summary-card.warning .summary-num {
+  color: #8d642c;
+}
+
+.summary-card.danger .summary-num {
+  color: #954740;
+}
+
+.preview-list {
+  display: grid;
+  gap: 10px;
+}
+
 .preview-card {
+  display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--oa-radius-md);
+  background: var(--oa-surface-soft);
+  border: 1px solid var(--oa-border);
 }
 
 .preview-card.selected {
   background: var(--oa-accent-soft);
   border-color: rgba(164, 91, 56, 0.28);
+  box-shadow: 0 8px 18px rgba(121, 58, 27, 0.08);
 }
 
 .preview-card.disabled {
@@ -435,73 +443,115 @@ function goBack() {
 
 .preview-name {
   display: block;
-  font-size: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--oa-text-primary);
+}
+
+.preview-meta {
+  display: block;
+  margin-top: 3px;
+  font-size: 12px;
+  color: var(--oa-text-muted);
 }
 
 .preview-side {
   display: grid;
   justify-items: end;
-  gap: 8px;
+  gap: 4px;
 }
 
 .preview-tag {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 11px;
   background: rgba(93, 77, 68, 0.08);
   color: var(--oa-text-secondary);
 }
 
 .status-valid .preview-tag {
-  background: rgba(96, 139, 104, 0.14);
+  background: var(--oa-success-soft);
   color: #4b6c52;
 }
 
 .status-duplicate .preview-tag {
-  background: rgba(196, 152, 83, 0.16);
+  background: var(--oa-warning-soft);
   color: #8d642c;
 }
 
 .status-invalid .preview-tag {
-  background: rgba(185, 93, 83, 0.16);
+  background: var(--oa-danger-soft);
   color: #954740;
 }
 
+.preview-msg {
+  font-size: 11px;
+  color: var(--oa-text-muted);
+}
+
+.apply-card {
+  padding: 14px;
+  border-radius: var(--oa-radius-md);
+  background: var(--oa-surface-soft);
+  border: 1px solid var(--oa-border);
+}
+
 .apply-text {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 13px;
   color: var(--oa-text-secondary);
 }
 
-.empty-block {
-  padding: 18px;
-  border-radius: var(--oa-radius-lg);
-  background: rgba(255, 250, 246, 0.76);
-  border: 1px dashed rgba(162, 177, 196, 0.36);
-  color: var(--oa-text-secondary);
-  line-height: 1.7;
+.label-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--oa-accent);
+}
+
+.label-dot.blue {
+  background: #4a6fa5;
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  padding: 32px 18px;
+  border-radius: var(--oa-radius-md);
+  background: var(--oa-surface-soft);
+  border: 1px dashed var(--oa-border-strong);
+}
+
+.empty-icon {
+  font-size: 28px;
+  color: var(--oa-text-muted);
+}
+
+.empty-text {
+  font-size: 13px;
+  color: var(--oa-text-muted);
 }
 
 @media (max-width: 1100px) {
-  .directory-hero,
-  .directory-shell,
+  .shell,
   .summary-grid {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 760px) {
-  .directory-page {
-    padding: 16px;
+  .page {
+    padding: 14px;
   }
 
-  .hero-title {
-    max-width: none;
+  .header-card {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
-  .section-head,
-  .action-row,
   .preview-card {
     flex-direction: column;
     align-items: flex-start;
@@ -509,6 +559,7 @@ function goBack() {
 
   .preview-side {
     justify-items: start;
+    width: 100%;
   }
 }
 </style>

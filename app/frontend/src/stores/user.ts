@@ -125,7 +125,7 @@ function removeStorage(key: string): void {
 export const useUserStore = defineStore('user', () => {
   // 从本地存储恢复会话状态 - 使用函数调用而不是模块级别的值
   const storedToken = getStorage('oa-token')
-  const storedUser = getStorage('oa-user') as SessionUser | null
+  const storedUser = getStorage('oa-user') as unknown as SessionUser | null
 
   // 状态 (State)
   const token = ref(storedToken)
