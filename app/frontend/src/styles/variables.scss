@@ -1,0 +1,88 @@
+/**
+ * 全局 SCSS 变量
+ * 统一双端视觉风格
+ */
+
+// 主色调
+$oa-primary: #003466;
+$oa-primary-light: #e6f0f7;
+$oa-primary-dark: #002244;
+
+// 功能色
+$oa-success: #52c41a;
+$oa-warning: #faad14;
+$oa-error: #f5222d;
+$oa-info: #1890ff;
+
+// 文字色
+$oa-text-primary: rgba(0, 0, 0, 0.85);
+$oa-text-secondary: rgba(0, 0, 0, 0.65);
+$oa-text-tertiary: rgba(0, 0, 0, 0.45);
+$oa-text-disabled: rgba(0, 0, 0, 0.25);
+
+// 背景色
+$oa-bg: #f5f5f5;
+$oa-bg-white: #ffffff;
+$oa-bg-gray: #fafafa;
+
+// 边框色
+$oa-border: #d9d9d9;
+$oa-border-split: #f0f0f0;
+$oa-border-strong: #bfbfbf;
+
+// 圆角
+$oa-radius-sm: 4px;
+$oa-radius-md: 8px;
+$oa-radius-lg: 12px;
+$oa-radius-xl: 16px;
+
+// 间距
+$oa-spacing-xs: 4px;
+$oa-spacing-sm: 8px;
+$oa-spacing-md: 16px;
+$oa-spacing-lg: 24px;
+$oa-spacing-xl: 32px;
+
+// 字体
+$oa-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+$oa-font-family-display: 'DIN Alternate', 'DIN', 'Arial', sans-serif;
+
+// 字体大小
+$oa-font-size-xs: 12px;
+$oa-font-size-sm: 13px;
+$oa-font-size-base: 14px;
+$oa-font-size-lg: 16px;
+$oa-font-size-xl: 20px;
+$oa-font-size-xxl: 24px;
+
+// 阴影
+$oa-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+$oa-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+$oa-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+
+// 导出 CSS 变量
+:root {
+  --oa-primary: #{$oa-primary};
+  --oa-primary-light: #{$oa-primary-light};
+  --oa-primary-dark: #{$oa-primary-dark};
+  --oa-success: #{$oa-success};
+  --oa-warning: #{$oa-warning};
+  --oa-error: #{$oa-error};
+  --oa-info: #{$oa-info};
+  --oa-text-primary: #{$oa-text-primary};
+  --oa-text-secondary: #{$oa-text-secondary};
+  --oa-text-tertiary: #{$oa-text-tertiary};
+  --oa-text-disabled: #{$oa-text-disabled};
+  --oa-bg: #{$oa-bg};
+  --oa-bg-white: #{$oa-bg-white};
+  --oa-bg-gray: #{$oa-bg-gray};
+  --oa-border: #{$oa-border};
+  --oa-border-split: #{$oa-border-split};
+  --oa-border-strong: #{$oa-border-strong};
+  --oa-radius-sm: #{$oa-radius-sm};
+  --oa-radius-md: #{$oa-radius-md};
+  --oa-radius-lg: #{$oa-radius-lg};
+  --oa-radius-xl: #{$oa-radius-xl};
+  --oa-font-family: #{$oa-font-family};
+  --oa-font-family-display: #{$oa-font-family-display};
+}

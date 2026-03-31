@@ -1,7 +1,7 @@
 <template>
   <!-- H5 使用 Ant Design Vue -->
   <!-- #ifdef H5 -->
-  <a-badge 
+  <a-badge
     :count="props.count"
     :dot="props.dot"
     :status="adaptedStatus"
@@ -19,7 +19,7 @@
   <!-- #ifdef MP-WEIXIN || APP-PLUS -->
   <view class="oa-badge-wrapper">
     <slot></slot>
-    <view 
+    <view
       v-if="shouldShowBadge"
       class="oa-badge"
       :class="[badgeClass, { dot: props.dot }]"
@@ -32,8 +32,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import type { BadgeProps } from '../../types'
+import { useAntBadgeAdapter, useVantBadgeAdapter } from '../../adapters/badge'
 
 const props = withDefaults(defineProps<BadgeProps>(), {
   count: 0,
@@ -46,53 +46,9 @@ const props = withDefaults(defineProps<BadgeProps>(), {
   offset: undefined
 })
 
-// Ant Design status 映射
-const adaptedStatus = computed(() => {
-  const statusMap: Record<string, any> = {
-    success: 'success',
-    error: 'error',
-    warning: 'warning',
-    processing: 'processing',
-    default: 'default'
-  }
-  return props.status ? (statusMap[props.status] || props.status) : undefined
-})
-
-// Vant 自定义 badge 实现
-const shouldShowBadge = computed(() => {
-  if (props.dot) return true
-  if (props.status) return true
-  if (props.text) return true
-  return props.count > 0 || props.showZero
-})
-
-const displayText = computed(() => {
-  if (props.text) return props.text
-  if (props.dot) return ''
-  if (props.count > props.overflowCount) return `${props.overflowCount}+`
-  return String(props.count)
-})
-
-const badgeClass = computed(() => {
-  if (props.status) return `status-${props.status}`
-  if (props.color) return 'custom-color'
-  return 'default'
-})
-
-const badgeStyle = computed(() => {
-  const style: Record<string, string> = {}
-  
-  if (props.color && !props.status) {
-    style.backgroundColor = props.color
-  }
-  
-  if (props.offset) {
-    style.right = `${props.offset[0]}px`
-    style.top = `${props.offset[1]}px`
-  }
-  
-  return style
-})
+// 使用适配器
+const { adaptedStatus } = useAntBadgeAdapter(props)
+const { shouldShowBadge, displayText, badgeClass, badgeStyle } = useVantBadgeAdapter(props)
 </script>
 
 <style lang="scss" scoped>

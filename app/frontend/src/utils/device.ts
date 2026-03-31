@@ -1,5 +1,5 @@
 /**
- * 设备尺寸检测组合式函数
+ * 设备尺寸检测工具函数
  * 用途：响应式布局中判断当前设备类型（手机/平板/PC）
  */
 import { ref, onMounted, onUnmounted } from 'vue'
@@ -10,6 +10,10 @@ const BREAKPOINTS = {
   tablet: 1120
 }
 
+/**
+ * 检测设备尺寸的组合式函数
+ * @returns 设备尺寸相关状态和检测方法
+ */
 export function useDevice() {
   const width = ref(typeof window !== 'undefined' ? window.innerWidth : 375)
 

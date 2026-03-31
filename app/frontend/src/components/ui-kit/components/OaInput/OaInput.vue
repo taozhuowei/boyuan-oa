@@ -24,7 +24,7 @@
     </template>
   </a-input>
   <!-- #endif -->
-  
+
   <!-- 小程序端使用 Vant -->
   <!-- #ifdef MP-WEIXIN || APP-PLUS -->
   <van-field
@@ -65,6 +65,7 @@
 <script setup lang="ts">
 import { computed, useSlots } from 'vue'
 import type { InputProps } from '../../types'
+import { useVantInputAdapter, useInputEventAdapter } from '../../adapters/input'
 
 const props = defineProps<InputProps>()
 const emit = defineEmits<{
@@ -83,33 +84,14 @@ const modelValue = computed({
   set: (val) => emit('update:modelValue', val)
 })
 
-// Vant 类型映射
-const fieldType = computed(() => {
-  const typeMap: Record<string, string> = {
-    'text': 'text',
-    'password': 'password',
-    'number': 'number',
-    'tel': 'tel',
-    'email': 'text',
-    'textarea': 'textarea'
-  }
-  return typeMap[props.type ?? 'text'] || 'text'
-})
-
-// H5 事件处理
-const handleFocus = (e: FocusEvent) => emit('focus', e)
-const handleBlur = (e: FocusEvent) => emit('blur', e)
-const handleChange = (e: any) => emit('change', e.target?.value)
-
-// 小程序事件处理
-const handleInput = (e: any) => {
-  emit('update:modelValue', e.detail)
-}
-const handleTextareaInput = (e: any) => {
-  emit('update:modelValue', e.target.value)
-}
-const handleClear = () => {
-  emit('update:modelValue', '')
-  emit('clear')
-}
+// 使用适配器
+const { fieldType } = useVantInputAdapter(props)
+const {
+  handleFocus,
+  handleBlur,
+  handleChange,
+  handleInput,
+  handleTextareaInput,
+  handleClear
+} = useInputEventAdapter(emit)
 </script>

@@ -52,7 +52,7 @@
                 <oa-badge :status="item.urgency === 'high' ? 'error' : 'warning'" />
               </view>
             </view>
-            <empty v-else text="暂无待审批事项" />
+            <oa-empty v-else description="暂无待审批事项" />
           </oa-card>
         </oa-col>
 
@@ -272,7 +272,7 @@
                 <oa-badge :status="statusMap[item.status]" :text="item.statusText" />
               </view>
             </view>
-            <empty v-else text="暂无记录" />
+            <oa-empty v-else description="暂无记录" />
           </oa-card>
         </oa-col>
       </oa-row>
@@ -282,10 +282,10 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { Icon, Empty } from '../../components/ui'
-import { 
-  OaButton, OaInput, OaForm, OaCard, 
-  OaSelect, OaDatePicker, OaRow, OaCol, OaBadge 
+import { Icon } from '../../components/ui'
+import {
+  OaButton, OaInput, OaForm, OaCard,
+  OaSelect, OaDatePicker, OaRow, OaCol, OaBadge, OaEmpty
 } from '../../components/ui-kit'
 import { useUserStore } from '../../stores'
 

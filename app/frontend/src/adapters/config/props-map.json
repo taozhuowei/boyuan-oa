@@ -1,0 +1,96 @@
+{
+  "Button": {
+    "h5": {
+      "type": { "primary": "primary", "default": "default", "danger": "danger", "link": "link", "text": "text" },
+      "size": { "large": "large", "middle": "middle", "small": "small" },
+      "disabled": "disabled",
+      "loading": "loading",
+      "block": "block",
+      "htmlType": "htmlType"
+    },
+    "mp": {
+      "type": { "primary": "primary", "default": "default", "danger": "danger", "link": "default", "text": "default" },
+      "size": { "large": "large", "middle": "normal", "small": "small" },
+      "disabled": "disabled",
+      "loading": "loading",
+      "block": "block",
+      "htmlType": "nativeType"
+    }
+  },
+  "Input": {
+    "h5": {
+      "modelValue": "value",
+      "type": "type",
+      "placeholder": "placeholder",
+      "disabled": "disabled",
+      "readonly": "readOnly",
+      "clearable": "allowClear",
+      "maxlength": "maxLength",
+      "showWordLimit": "showCount"
+    },
+    "mp": {
+      "modelValue": "modelValue",
+      "type": "type",
+      "placeholder": "placeholder",
+      "disabled": "disabled",
+      "readonly": "readonly",
+      "clearable": "clearable",
+      "maxlength": "maxlength",
+      "showWordLimit": "showWordLimit"
+    }
+  },
+  "Card": {
+    "h5": {
+      "title": "title",
+      "bordered": "bordered",
+      "hoverable": "hoverable"
+    },
+    "mp": {
+      "title": "title",
+      "bordered": "border",
+      "hoverable": null
+    }
+  },
+  "Select": {
+    "h5": {
+      "modelValue": "value",
+      "options": "options",
+      "placeholder": "placeholder",
+      "disabled": "disabled"
+    },
+    "mp": {
+      "modelValue": "modelValue",
+      "options": "columns",
+      "placeholder": "placeholder",
+      "disabled": "disabled"
+    }
+  },
+  "DatePicker": {
+    "h5": {
+      "modelValue": "value",
+      "placeholder": "placeholder",
+      "disabled": "disabled"
+    },
+    "mp": {
+      "modelValue": "modelValue",
+      "placeholder": "placeholder",
+      "disabled": "disabled"
+    }
+  },
+  "Modal": {
+    "h5": {
+      "modelValue": "open",
+      "title": "title",
+      "width": "width",
+      "closable": "closable",
+      "maskClosable": "maskClosable"
+    },
+    "mp": {
+      "modelValue": "show",
+      "title": "title",
+      "width": null,
+      "closable": null,
+      "maskClosable": "closeOnClickOverlay"
+    }
+  }
+}

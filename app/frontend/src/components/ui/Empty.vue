@@ -1,15 +1,21 @@
 <!--
   Empty 空状态组件
-  用途：列表为空时的统一提示
+  用途：基于 OaEmpty 的业务封装
+  注意：此组件是 OaEmpty 的包装，提供默认的图标样式
 -->
 <template>
-  <view class="empty">
-    <Icon name="info" :size="40" color="var(--oa-text-muted)" />
-    <text class="empty-text">{{ text }}</text>
-  </view>
+  <oa-empty :description="text">
+    <template #image>
+      <view class="empty-icon-wrapper">
+        <Icon name="info" :size="40" color="var(--oa-text-muted)" />
+      </view>
+    </template>
+    <slot />
+  </oa-empty>
 </template>
 
 <script setup lang="ts">
+import { OaEmpty } from '../ui-kit'
 import Icon from './Icon.vue'
 
 interface Props {
@@ -23,17 +29,10 @@ withDefaults(defineProps<Props>(), {
 </script>
 
 <style scoped>
-.empty {
+.empty-icon-wrapper {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  padding: 32px 16px;
-}
-
-.empty-text {
-  font-size: 13px;
-  color: var(--oa-text-muted);
+  padding: 16px;
 }
 </style>

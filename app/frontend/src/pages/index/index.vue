@@ -45,7 +45,7 @@
                   :text="item.priority" 
                 />
               </view>
-              <empty v-if="!pendingItems.length" text="暂无待办事项" />
+              <oa-empty v-if="!pendingItems.length" description="暂无待办事项" />
             </view>
           </oa-card>
 
@@ -148,10 +148,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Icon, Empty } from '../../components/ui'
-import { 
-  OaCard, OaRow, OaCol, OaBadge, 
-  OaButton 
+import { Icon } from '../../components/ui'
+import {
+  OaCard, OaRow, OaCol, OaBadge,
+  OaButton, OaEmpty
 } from '../../components/ui-kit'
 import { systemEntries, getPendingItems, noticeItems } from './workbench-data'
 import { useUserStore } from '../../stores'

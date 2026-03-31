@@ -194,9 +194,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Icon } from '../../components/ui'
-import { 
-  OaCard, OaRow, OaCol, OaBadge, 
-  OaButton, OaInput 
+import {
+  OaCard, OaRow, OaCol, OaBadge,
+  OaButton, OaInput, OaEmpty
 } from '../../components/ui-kit'
 import { useUserStore } from '../../stores'
 

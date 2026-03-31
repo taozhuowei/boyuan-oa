@@ -1,26 +1,35 @@
 <!--
   Button 按钮组件
-  用途：统一的操作按钮，支持多种样式变体
+  用途：基于 OaButton 的样式定制按钮，保持与 OaButton API 兼容
+  注意：此组件是 OaButton 的业务封装，提供统一的业务样式
 -->
 <template>
-  <button
-    class="btn"
-    :class="[`btn-${variant}`, { 'btn-block': block, 'btn-loading': loading }]"
-    :disabled="disabled || loading"
-    @click="$emit('click', $event)"
+  <oa-button
+    :type="adaptedType"
+    :size="adaptedSize"
+    :disabled="disabled"
+    :loading="loading"
+    :block="block"
+    :html-type="htmlType"
+    @click="handleClick"
   >
-    <Icon v-if="loading" name="schedule" :size="16" class="btn-icon-spin" />
-    <Icon v-else-if="icon" :name="icon" :size="16" />
-    <text v-if="$slots.default" class="btn-text"><slot /></text>
-  </button>
+    <template #icon v-if="icon">
+      <Icon :name="icon" :size="16" />
+    </template>
+    <slot />
+  </oa-button>
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
+import { OaButton } from '../ui-kit'
 import Icon from './Icon.vue'
 
 interface Props {
   /** 按钮变体 */
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger'
+  /** 尺寸 */
+  size?: 'small' | 'middle' | 'large'
   /** 是否块级显示 */
   block?: boolean
   /** 是否禁用 */
@@ -29,78 +38,48 @@ interface Props {
   loading?: boolean
   /** 左侧图标名称 */
   icon?: string
+  /** HTML 类型 */
+  htmlType?: 'button' | 'submit' | 'reset'
 }
 
-withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<Props>(), {
   variant: 'primary',
+  size: 'middle',
   block: false,
   disabled: false,
-  loading: false
+  loading: false,
+  htmlType: 'button'
 })
 
-defineEmits<{
+const emit = defineEmits<{
   click: [event: MouseEvent]
 }>()
+
+// 将 variant 映射到 OaButton 的 type
+const adaptedType = computed(() => {
+  const map: Record<string, any> = {
+    primary: 'primary',
+    secondary: 'default',
+    ghost: 'ghost',
+    danger: 'danger'
+  }
+  return map[props.variant] || 'default'
+})
+
+const adaptedSize = computed(() => props.size)
+
+const handleClick = (e: MouseEvent) => {
+  emit('click', e)
+}
 </script>
 
-<style scoped>
-.btn {
+<style lang="scss" scoped>
+:deep(.oa-button),
+:deep(.ant-btn) {
+  border-radius: 999px !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 44px;
-  padding: 0 18px;
-  border-radius: 999px;
-  font-size: 14px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: transform 0.15s ease, opacity 0.15s ease;
-}
-
-.btn:active:not(:disabled) {
-  transform: scale(0.98);
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-block {
-  display: flex;
-  width: 100%;
-}
-
-.btn-primary {
-  background: var(--oa-gradient-action);
-  color: var(--oa-text-inverse);
-  box-shadow: var(--oa-shadow-accent);
-}
-
-.btn-secondary {
-  background: var(--oa-surface-soft);
-  color: var(--oa-text-primary);
-  border: 1px solid var(--oa-border-strong);
-}
-
-.btn-ghost {
-  background: transparent;
-  color: var(--oa-text-secondary);
-}
-
-.btn-danger {
-  background: rgba(185, 93, 83, 0.12);
-  color: #9b4239;
-}
-
-.btn-icon-spin {
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 </style>

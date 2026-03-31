@@ -1,10 +1,10 @@
 /**
  * 统一组件库 (OA UI Kit)
- * 
+ *
  * 跨端组件封装层：
  * - H5 端使用 Ant Design Vue
  * - 小程序端使用 Vant
- * 
+ *
  * 通过 uni-app 条件编译实现自动切换
  */
 
@@ -45,6 +45,12 @@ export { default as OaCol } from './components/OaGrid/OaCol.vue'
 // 反馈组件
 export { default as OaModal } from './components/OaModal/OaModal.vue'
 export { default as OaBadge } from './components/OaBadge/OaBadge.vue'
+export { default as OaEmpty } from './components/OaEmpty/OaEmpty.vue'
+
+// 平台适配器（供高级自定义使用）
+export * from './adapters/button'
+export * from './adapters/input'
+export * from './adapters/badge'
 
 // 样式文件（需在 App.vue 中导入）
 // import '@/components/ui-kit/styles/variables.scss'
