@@ -265,3 +265,9 @@ GET    /retention/policies
 POST   /retention/policies
 GET    /retention/reminders
 ```
+
+## 11. 页面布局设计
+
+各页面的角色视图布局、组件组合方式、动态数据绑定和权限差异等详细设计见：
+
+→ [COMPONENT_LAYOUT.md](./COMPONENT_LAYOUT.md)
