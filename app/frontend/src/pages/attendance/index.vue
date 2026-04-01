@@ -364,23 +364,24 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import type { Component } from 'vue'
 import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
 
 // 异步获取组件
-const Row = ref(null)
-const Col = ref(null)
-const Card = ref(null)
-const Button = ref(null)
-const Badge = ref(null)
-const Empty = ref(null)
-const Form = ref(null)
-const Input = ref(null)
-const Select = ref(null)
-const DatePicker = ref(null)
-const Timeline = ref(null)
-const TimelineItem = ref(null)
-const StatCard = ref(null)
+const Row = ref<Component | null>(null)
+const Col = ref<Component | null>(null)
+const Card = ref<Component | null>(null)
+const Button = ref<Component | null>(null)
+const Badge = ref<Component | null>(null)
+const Empty = ref<Component | null>(null)
+const Form = ref<Component | null>(null)
+const Input = ref<Component | null>(null)
+const Select = ref<Component | null>(null)
+const DatePicker = ref<Component | null>(null)
+const Timeline = ref<Component | null>(null)
+const TimelineItem = ref<Component | null>(null)
+const StatCard = ref<Component | null>(null)
 
 onMounted(async () => {
   Row.value = await getComponent('Row')

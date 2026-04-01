@@ -216,20 +216,21 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import type { Component } from 'vue'
 import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
 
 // 异步获取组件
-const Icon = ref(null)
-const Card = ref(null)
-const Row = ref(null)
-const Col = ref(null)
-const Badge = ref(null)
-const Button = ref(null)
-const Input = ref(null)
-const Select = ref(null)
-const DatePicker = ref(null)
-const Modal = ref(null)
+const Icon = ref<Component | null>(null)
+const Card = ref<Component | null>(null)
+const Row = ref<Component | null>(null)
+const Col = ref<Component | null>(null)
+const Badge = ref<Component | null>(null)
+const Button = ref<Component | null>(null)
+const Input = ref<Component | null>(null)
+const Select = ref<Component | null>(null)
+const DatePicker = ref<Component | null>(null)
+const Modal = ref<Component | null>(null)
 
 onMounted(async () => {
   Icon.value = await getComponent('Icon')

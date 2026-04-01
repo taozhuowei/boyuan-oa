@@ -158,22 +158,23 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import type { Component } from 'vue'
 import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
 import { roleNameMap } from '../../utils/access'
 
 // 异步获取组件
-const UserInfo = ref(null)
-const UserAvatar = ref(null)
-const Permission = ref(null)
-const StatCard = ref(null)
-const ModuleCard = ref(null)
-const Card = ref(null)
-const Row = ref(null)
-const Col = ref(null)
-const Button = ref(null)
-const Badge = ref(null)
-const Empty = ref(null)
+const UserInfo = ref<Component | null>(null)
+const UserAvatar = ref<Component | null>(null)
+const Permission = ref<Component | null>(null)
+const StatCard = ref<Component | null>(null)
+const ModuleCard = ref<Component | null>(null)
+const Card = ref<Component | null>(null)
+const Row = ref<Component | null>(null)
+const Col = ref<Component | null>(null)
+const Button = ref<Component | null>(null)
+const Badge = ref<Component | null>(null)
+const Empty = ref<Component | null>(null)
 
 onMounted(async () => {
   UserInfo.value = await getComponent('UserInfo')
