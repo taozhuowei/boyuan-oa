@@ -33,10 +33,9 @@
 │   ├── frontend/               # 前端 (uni-app + Vue 3)
 │   │   └── src/
 │   │       ├── adapters/       # 平台适配层（JSON配置 + 组件映射）
-│   │       ├── components/     # 业务组件
+│   │       ├── components/     # 自定义组件
 │   │       │   ├── cross-platform/   # 双端对齐组件
-│   │       │   ├── customized/       # 定制化组件
-│   │       │   └── business/         # 纯业务组件
+│   │       │   └── customized/       # 定制化组件
 │   │       ├── pages/          # 页面
 │   │       ├── styles/         # 统一样式
 │   │       ├── stores/         # Pinia 状态管理
@@ -50,9 +49,6 @@
 │           └── mapper/         # MyBatis 映射
 │
 ├── documentation/              # 项目文档
-│   ├── ai/                     # AI 助手文档
-│   │   ├── AGENTS.md           # AI 开发指南
-│   │   └── TODO.md             # AI 任务追踪
 │   ├── biz/                    # 业务文档
 │   │   └── PROJECT.md          # 项目介绍
 │   ├── dev/                    # 开发文档
@@ -64,7 +60,7 @@
 │
 └── test/                       # 测试相关
     ├── reports/                # 测试报告
-    └── e2e/                    # E2E 测试
+    └── integration/            # 集成测试
 ```
 
 ## 技术栈
@@ -137,7 +133,6 @@ mvn test                  # 单元测试
 | 技术架构 | `documentation/dev/ARCHITECTURE.md` | 架构设计、接口规范 |
 | 测试设计 | `documentation/dev/TEST_DESIGN.md` | 测试策略、用例 |
 | **开发进度** | `documentation/dev/TODO.md` | **前后端进度管理** |
-| AI 指南 | `documentation/ai/AGENTS.md` | AI 开发规范 |
 
 ## 前端组件开发原则
 
@@ -146,9 +141,8 @@ mvn test                  # 单元测试
 | 目录 | 用途 | 示例 |
 |------|------|------|
 | `adapters/` | 平台适配 | 读取 JSON 配置返回对应平台组件 |
-| `components/cross-platform/` | 双端对齐 | Card, Timeline |
-| `components/customized/` | 定制扩展 | StatCard, ModuleCard |
-| `components/business/` | 业务逻辑 | （暂无，需要时创建） |
+| `components/cross-platform/` | 双端对齐 | Timeline |
+| `components/customized/` | 定制扩展 | StatCard, ModuleCard, UserInfo, UserAvatar, Permission |
 
 ### 核心原则
 

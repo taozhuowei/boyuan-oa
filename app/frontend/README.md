@@ -42,20 +42,18 @@ src/
 │   ├── resolver.ts          # 配置解析器
 │   └── index.ts             # 统一导出
 │
-├── components/              # 自定义组件（跨平台封装）
-│   ├── Card/                # 卡片组件
-│   ├── Timeline/            # 时间轴组件
-│   ├── Table/               # 表格组件
-│   ├── StatCard/            # 统计卡片
-│   └── ModuleCard/          # 模块入口卡片
-│
-├── composables/             # 组合式函数
-│   └── useComponent.ts      # 组件获取组合式函数
+├── components/              # 自定义组件
+│   ├── cross-platform/      # 双端对齐组件
+│   │   └── Timeline/        # 时间轴组件
+│   └── customized/          # 定制化组件
+│       ├── StatCard.vue     # 统计卡片
+│       ├── ModuleCard.vue   # 模块入口卡片
+│       ├── UserInfo.vue     # 用户信息
+│       ├── UserAvatar.vue   # 用户头像
+│       └── Permission.vue   # 权限控制
 │
 ├── styles/                  # 统一样式
-│   ├── variables.scss       # SCSS 变量
-│   ├── antd-override.scss   # Ant Design 样式覆盖
-│   └── vant-override.scss   # Vant 样式覆盖
+│   └── variables.scss       # SCSS 变量
 │
 ├── pages/                   # 页面
 │   ├── index/               # 工作台首页
