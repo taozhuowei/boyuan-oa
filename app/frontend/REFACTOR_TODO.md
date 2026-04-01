@@ -84,6 +84,6 @@
 - Web 构建成功
 - 无构建错误
 
-### Git 提交
-- d57865a: 页面迁移
-- 待提交: 类型修复和 App.vue 更新
+### Git 提交记录
+- `d57865a`: refactor(frontend): migrate remaining pages to adapter architecture
+- `485c60f`: fix(frontend): fix TypeScript types and App.vue imports
