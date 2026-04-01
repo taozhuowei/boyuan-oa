@@ -6,49 +6,51 @@
         <text class="role-subtitle">请选择要登录的角色以进入相应的工作台</text>
       </view>
 
-      <oa-row :gutter="24">
-        <oa-col :span="12">
-          <view 
+      <component :is="Row" v-if="Row" :gutter="24">
+        <component :is="Col" v-if="Col" :span="12">
+          <view
             class="role-card"
             :class="{ active: selectedRole === 'employee' }"
             @click="selectRole('employee')"
           >
             <view class="role-icon employee">
-              <Icon name="badge" :size="32" />
+              <component :is="Icon" v-if="Icon" name="badge" :size="32" />
             </view>
             <view class="role-info">
               <text class="role-name">普通员工</text>
               <text class="role-desc">查看个人薪资、提交考勤申请、参与项目</text>
             </view>
             <view v-if="selectedRole === 'employee'" class="role-check">
-              <Icon name="check-circle" :size="24" />
+              <component :is="Icon" v-if="Icon" name="check-circle" :size="24" />
             </view>
           </view>
-        </oa-col>
+        </component>
 
-        <oa-col :span="12">
-          <view 
+        <component :is="Col" v-if="Col" :span="12">
+          <view
             class="role-card"
             :class="{ active: selectedRole === 'ceo' }"
             @click="selectRole('ceo')"
           >
             <view class="role-icon ceo">
-              <Icon name="business-center" :size="32" />
+              <component :is="Icon" v-if="Icon" name="business-center" :size="32" />
             </view>
             <view class="role-info">
               <text class="role-name">CEO / 管理员</text>
               <text class="role-desc">管理员工、审批考勤、查看全公司数据</text>
             </view>
             <view v-if="selectedRole === 'ceo'" class="role-check">
-              <Icon name="check-circle" :size="24" />
+              <component :is="Icon" v-if="Icon" name="check-circle" :size="24" />
             </view>
           </view>
-        </oa-col>
-      </oa-row>
+        </component>
+      </component>
 
       <view class="role-actions">
-        <oa-button 
-          type="primary" 
+        <component
+          :is="Button"
+          v-if="Button"
+          type="primary"
           size="large"
           block
           :disabled="!selectedRole"
@@ -56,23 +58,32 @@
           @click="confirmRole"
         >
           进入系统
-        </oa-button>
-        <oa-button 
-          type="link" 
-          @click="goBack"
-        >
+        </component>
+        <component :is="Button" v-if="Button" type="link" @click="goBack">
           返回登录
-        </oa-button>
+        </component>
       </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Icon } from '../../components/ui'
-import { OaRow, OaCol, OaButton } from '../../components/ui-kit'
+import { ref, onMounted } from 'vue'
+import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
+
+// 异步获取组件
+const Icon = ref(null)
+const Row = ref(null)
+const Col = ref(null)
+const Button = ref(null)
+
+onMounted(async () => {
+  Icon.value = await getComponent('Icon')
+  Row.value = await getComponent('Row')
+  Col.value = await getComponent('Col')
+  Button.value = await getComponent('Button')
+})
 
 const userStore = useUserStore()
 
@@ -85,19 +96,19 @@ const selectRole = (role: string) => {
 
 const confirmRole = async () => {
   if (!selectedRole.value) return
-  
+
   loading.value = true
-  
+
   try {
     // 更新用户角色
     userStore.setUserInfo({
       ...userStore.userInfo,
       role: selectedRole.value
     })
-    
+
     // 模拟加载
     await new Promise(resolve => setTimeout(resolve, 500))
-    
+
     // 跳转到首页
     uni.switchTab({ url: '/pages/index/index' })
   } finally {
@@ -146,7 +157,7 @@ const goBack = () => {
 
 .role-card {
   background: #fff;
-  border-radius: var(--oa-border-radius-lg);
+  border-radius: var(--oa-radius-lg);
   padding: 32px;
   display: flex;
   align-items: flex-start;
@@ -217,7 +228,7 @@ const goBack = () => {
   margin-top: 48px;
   text-align: center;
 
-  .oa-button {
+  :deep(.oa-button) {
     margin-bottom: 16px;
   }
 }

@@ -4,7 +4,7 @@
     <view class="hero">
       <view class="hero-main">
         <view class="hero-title-row">
-          <Icon name="groups" :size="28" />
+          <component :is="Icon" v-if="Icon" name="groups" :size="28" />
           <text class="hero-title">员工</text>
         </view>
         <text class="hero-subtitle">
@@ -27,22 +27,27 @@
       <!-- 工具栏 -->
       <view class="toolbar">
         <view class="toolbar-left">
-          <oa-button 
-            v-if="isCEO" 
-            type="primary" 
+          <component
+            :is="Button"
+            v-if="Button && (isCEO || isFinance)"
+            type="primary"
             @click="showAddModal = true"
           >
-            <Icon name="person-add" :size="14" />
+            <component :is="Icon" v-if="Icon" name="person-add" :size="14" />
             添加员工
-          </oa-button>
-          <oa-select
+          </component>
+          <component
+            :is="Select"
+            v-if="Select"
             v-model="filterDept"
             :options="departmentOptions"
             placeholder="全部部门"
             style="width: 140px"
           />
         </view>
-        <oa-input
+        <component
+          :is="Input"
+          v-if="Input"
           v-model="searchKeyword"
           placeholder="搜索姓名或工号"
           :prefix="'search'"
@@ -51,7 +56,7 @@
       </view>
 
       <!-- 员工列表 -->
-      <oa-card>
+      <component :is="Card" v-if="Card">
         <view class="employee-table">
           <view class="table-header">
             <text class="cell" style="width: 60px">头像</text>
@@ -61,11 +66,11 @@
             <text class="cell" style="flex: 1">职位</text>
             <text class="cell" style="flex: 1">入职日期</text>
             <text class="cell" style="flex: 1">状态</text>
-            <text v-if="isCEO" class="cell" style="width: 120px">操作</text>
+            <text v-if="isCEO || isFinance" class="cell" style="width: 120px">操作</text>
           </view>
-          <view 
-            v-for="emp in filteredEmployees" 
-            :key="emp.id" 
+          <view
+            v-for="emp in filteredEmployees"
+            :key="emp.id"
             class="table-row"
           >
             <view class="cell" style="width: 60px">
@@ -77,35 +82,44 @@
             <text class="cell" style="flex: 1">{{ emp.position }}</text>
             <text class="cell" style="flex: 1">{{ emp.joinDate }}</text>
             <text class="cell" style="flex: 1">
-              <oa-badge :status="emp.status === '在职' ? 'success' : 'default'" :text="emp.status" />
+              <component
+                :is="Badge"
+                v-if="Badge"
+                :status="emp.status === '在职' ? 'success' : 'default'"
+                :text="emp.status"
+              />
             </text>
-            <view v-if="isCEO" class="cell" style="width: 120px">
-              <oa-button 
-                type="link" 
+            <view v-if="isCEO || isFinance" class="cell" style="width: 120px">
+              <component
+                :is="Button"
+                v-if="Button"
+                type="link"
                 size="small"
                 @click="editEmployee(emp)"
               >
                 编辑
-              </oa-button>
-              <oa-button 
-                type="link" 
+              </component>
+              <component
+                :is="Button"
+                v-if="Button && isCEO"
+                type="link"
                 size="small"
                 @click="deleteEmployee(emp)"
               >
                 删除
-              </oa-button>
+              </component>
             </view>
           </view>
         </view>
-      </oa-card>
+      </component>
 
-      <!-- 部门统计（仅CEO可见） -->
-      <oa-row v-if="isCEO" :gutter="16" class="mt-16">
-        <oa-col :span="12">
-          <oa-card title="部门人员分布">
+      <!-- 部门统计（仅CEO/财务可见） -->
+      <component :is="Row" v-if="Row && (isCEO || isFinance)" :gutter="16" class="mt-16">
+        <component :is="Col" v-if="Col" :span="12">
+          <component :is="Card" v-if="Card" title="部门人员分布">
             <view class="dept-stats">
-              <view 
-                v-for="dept in deptStats" 
+              <view
+                v-for="dept in deptStats"
                 :key="dept.name"
                 class="dept-item"
               >
@@ -114,101 +128,127 @@
                   <text class="dept-count">{{ dept.count }}人</text>
                 </view>
                 <view class="dept-bar">
-                  <view 
-                    class="dept-fill" 
+                  <view
+                    class="dept-fill"
                     :style="{ width: dept.percentage + '%' }"
                   />
                 </view>
               </view>
             </view>
-          </oa-card>
-        </oa-col>
-        <oa-col :span="12">
-          <oa-card title="快速操作">
+          </component>
+        </component>
+        <component :is="Col" v-if="Col" :span="12">
+          <component :is="Card" v-if="Card" title="快速操作">
             <view class="quick-actions">
-              <oa-button block @click="exportEmployees">
-                <Icon name="download" :size="14" />
+              <component :is="Button" v-if="Button" block @click="exportEmployees">
+                <component :is="Icon" v-if="Icon" name="download" :size="14" />
                 导出员工名单
-              </oa-button>
-              <oa-button block @click="importEmployees">
-                <Icon name="upload" :size="14" />
+              </component>
+              <component :is="Button" v-if="Button" block @click="importEmployees">
+                <component :is="Icon" v-if="Icon" name="upload" :size="14" />
                 批量导入
-              </oa-button>
-              <oa-button block @click="viewOrgChart">
-                <Icon name="account-tree" :size="14" />
+              </component>
+              <component :is="Button" v-if="Button" block @click="viewOrgChart">
+                <component :is="Icon" v-if="Icon" name="account-tree" :size="14" />
                 组织架构图
-              </oa-button>
+              </component>
             </view>
-          </oa-card>
-        </oa-col>
-      </oa-row>
+          </component>
+        </component>
+      </component>
     </view>
 
     <!-- 添加/编辑员工弹窗 -->
-    <oa-modal
+    <component
+      :is="Modal"
+      v-if="Modal"
       v-model="showAddModal"
       :title="editingEmployee ? '编辑员工' : '添加员工'"
       width="600px"
     >
-      <oa-form :model="employeeForm">
-        <oa-row :gutter="16">
-          <oa-col :span="12">
+      <view class="form-content">
+        <component :is="Row" v-if="Row" :gutter="16">
+          <component :is="Col" v-if="Col" :span="12">
             <view class="form-item">
               <label>姓名 <text class="required">*</text></label>
-              <oa-input v-model="employeeForm.name" placeholder="请输入姓名" />
+              <component :is="Input" v-if="Input" v-model="employeeForm.name" placeholder="请输入姓名" />
             </view>
-          </oa-col>
-          <oa-col :span="12">
+          </component>
+          <component :is="Col" v-if="Col" :span="12">
             <view class="form-item">
               <label>工号 <text class="required">*</text></label>
-              <oa-input v-model="employeeForm.employeeNo" placeholder="请输入工号" />
+              <component :is="Input" v-if="Input" v-model="employeeForm.employeeNo" placeholder="请输入工号" />
             </view>
-          </oa-col>
-        </oa-row>
-        <oa-row :gutter="16">
-          <oa-col :span="12">
+          </component>
+        </component>
+        <component :is="Row" v-if="Row" :gutter="16">
+          <component :is="Col" v-if="Col" :span="12">
             <view class="form-item">
               <label>部门 <text class="required">*</text></label>
-              <oa-select
+              <component
+                :is="Select"
+                v-if="Select"
                 v-model="employeeForm.department"
                 :options="departmentOptions"
                 placeholder="请选择部门"
               />
             </view>
-          </oa-col>
-          <oa-col :span="12">
+          </component>
+          <component :is="Col" v-if="Col" :span="12">
             <view class="form-item">
               <label>职位 <text class="required">*</text></label>
-              <oa-input v-model="employeeForm.position" placeholder="请输入职位" />
+              <component :is="Input" v-if="Input" v-model="employeeForm.position" placeholder="请输入职位" />
             </view>
-          </oa-col>
-        </oa-row>
+          </component>
+        </component>
         <view class="form-item">
           <label>入职日期 <text class="required">*</text></label>
-          <oa-date-picker v-model="employeeForm.joinDate" />
+          <component :is="DatePicker" v-if="DatePicker" v-model="employeeForm.joinDate" />
         </view>
-      </oa-form>
+      </view>
       <template #footer>
-        <oa-button @click="showAddModal = false">取消</oa-button>
-        <oa-button type="primary" @click="saveEmployee">保存</oa-button>
+        <component :is="Button" v-if="Button" @click="showAddModal = false">取消</component>
+        <component :is="Button" v-if="Button" type="primary" @click="saveEmployee">保存</component>
       </template>
-    </oa-modal>
+    </component>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Icon } from '../../components/ui'
-import { 
-  OaCard, OaRow, OaCol, OaBadge, 
-  OaButton, OaInput, OaSelect, 
-  OaDatePicker, OaModal, OaForm 
-} from '../../components/ui-kit'
+import { ref, computed, onMounted } from 'vue'
+import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
+
+// 异步获取组件
+const Icon = ref(null)
+const Card = ref(null)
+const Row = ref(null)
+const Col = ref(null)
+const Badge = ref(null)
+const Button = ref(null)
+const Input = ref(null)
+const Select = ref(null)
+const DatePicker = ref(null)
+const Modal = ref(null)
+
+onMounted(async () => {
+  Icon.value = await getComponent('Icon')
+  Card.value = await getComponent('Card')
+  Row.value = await getComponent('Row')
+  Col.value = await getComponent('Col')
+  Badge.value = await getComponent('Badge')
+  Button.value = await getComponent('Button')
+  Input.value = await getComponent('Input')
+  Select.value = await getComponent('Select')
+  DatePicker.value = await getComponent('DatePicker')
+  Modal.value = await getComponent('Modal')
+})
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.userInfo?.role || 'employee')
 const isCEO = computed(() => userRole.value === 'ceo')
+const isFinance = computed(() => userRole.value === 'finance')
+const isPM = computed(() => userRole.value === 'project_manager')
 
 // 状态
 const filterDept = ref('')
@@ -256,18 +296,18 @@ const deptStats = ref([
 
 const filteredEmployees = computed(() => {
   let result = employees.value
-  
+
   if (filterDept.value) {
     result = result.filter(e => e.department === filterDept.value)
   }
-  
+
   if (searchKeyword.value) {
-    result = result.filter(e => 
+    result = result.filter(e =>
       e.name.includes(searchKeyword.value) ||
       e.employeeNo.includes(searchKeyword.value)
     )
   }
-  
+
   return result
 })
 
@@ -295,12 +335,12 @@ const deleteEmployee = (emp: any) => {
 }
 
 const saveEmployee = () => {
-  if (!employeeForm.value.name || !employeeForm.value.employeeNo || 
+  if (!employeeForm.value.name || !employeeForm.value.employeeNo ||
       !employeeForm.value.department || !employeeForm.value.position) {
     uni.showToast({ title: '请填写必填项', icon: 'none' })
     return
   }
-  
+
   if (editingEmployee.value) {
     const index = employees.value.findIndex(e => e.id === editingEmployee.value.id)
     if (index > -1) {
@@ -317,7 +357,7 @@ const saveEmployee = () => {
     stats.value.newThisMonth++
     uni.showToast({ title: '添加成功', icon: 'success' })
   }
-  
+
   showAddModal.value = false
   editingEmployee.value = null
   employeeForm.value = { name: '', employeeNo: '', department: '', position: '', joinDate: '' }
@@ -348,7 +388,7 @@ const viewOrgChart = () => {
   color: #fff;
   padding: 24px;
   margin-bottom: 16px;
-  border-radius: var(--oa-border-radius-lg);
+  border-radius: var(--oa-radius-lg);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -407,7 +447,7 @@ const viewOrgChart = () => {
     display: flex;
     padding: 12px 16px;
     background: var(--oa-bg);
-    border-radius: var(--oa-border-radius-md) var(--oa-border-radius-md) 0 0;
+    border-radius: var(--oa-radius-md) var(--oa-radius-md) 0 0;
     font-weight: 500;
     font-size: 14px;
     color: var(--oa-text-secondary);
@@ -492,6 +532,10 @@ const viewOrgChart = () => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.form-content {
+  padding: 16px 0;
 }
 
 .form-item {

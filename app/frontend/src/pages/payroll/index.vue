@@ -4,7 +4,7 @@
     <view class="hero">
       <view class="hero-main">
         <view class="hero-title-row">
-          <Icon name="payments" :size="28" />
+          <component :is="Icon" v-if="Icon" name="payments" :size="28" />
           <text class="hero-title">薪资</text>
         </view>
         <text class="hero-subtitle">
@@ -19,13 +19,18 @@
 
     <!-- 普通员工视图 -->
     <view v-if="!isCEO" class="payroll-container">
-      <oa-row :gutter="16">
+      <component :is="Row" v-if="Row" :gutter="16">
         <!-- 左侧：工资卡 -->
-        <oa-col :span="8">
+        <component :is="Col" v-if="Col" :span="8">
           <view class="salary-card">
             <view class="card-header">
               <text class="card-title">{{ salaryData.month }}月薪资</text>
-              <oa-badge :status="salaryData.status === '已发放' ? 'success' : 'warning'" :text="salaryData.status" />
+              <component
+                :is="Badge"
+                v-if="Badge"
+                :status="salaryData.status === '已发放' ? 'success' : 'warning'"
+                :text="salaryData.status"
+              />
             </view>
             <view class="card-body">
               <text class="salary-amount">¥{{ salaryData.netPay.toLocaleString() }}</text>
@@ -35,11 +40,11 @@
               <text>发放日期: {{ salaryData.payDate || '待定' }}</text>
             </view>
           </view>
-        </oa-col>
+        </component>
 
         <!-- 右侧：薪资明细 -->
-        <oa-col :span="16">
-          <oa-card title="薪资明细">
+        <component :is="Col" v-if="Col" :span="16">
+          <component :is="Card" v-if="Card" title="薪资明细">
             <view class="salary-detail">
               <view class="detail-section">
                 <text class="section-title">应发项目</text>
@@ -82,13 +87,33 @@
                 <text class="total-value">¥{{ salaryData.netPay.toLocaleString() }}</text>
               </view>
             </view>
-          </oa-card>
-        </oa-col>
-      </oa-row>
+          </component>
+        </component>
+      </component>
 
-      <oa-row :gutter="16" class="mt-16">
-        <oa-col :span="24">
-          <oa-card title="历史薪资记录">
+      <!-- 审批流程 Timeline -->
+      <component :is="Row" v-if="Row" :gutter="16" class="mt-16">
+        <component :is="Col" v-if="Col" :span="24">
+          <component :is="Card" v-if="Card" title="审批流程">
+            <component :is="Timeline" v-if="Timeline">
+              <component
+                :is="TimelineItem"
+                v-if="TimelineItem"
+                v-for="(item, index) in approvalFlow"
+                :key="index"
+                :title="item.title"
+                :description="item.description"
+                :time="item.time"
+                :status="item.status"
+              />
+            </component>
+          </component>
+        </component>
+      </component>
+
+      <component :is="Row" v-if="Row" :gutter="16" class="mt-16">
+        <component :is="Col" v-if="Col" :span="24">
+          <component :is="Card" v-if="Card" title="历史薪资记录">
             <view class="history-list">
               <view v-for="item in salaryHistory" :key="item.id" class="history-item">
                 <view class="history-info">
@@ -98,58 +123,76 @@
                 <text class="history-amount">¥{{ item.amount.toLocaleString() }}</text>
               </view>
             </view>
-          </oa-card>
-        </oa-col>
-      </oa-row>
+          </component>
+        </component>
+      </component>
     </view>
 
-    <!-- CEO 管理视图 -->
+    <!-- CEO/财务 管理视图 -->
     <view v-else class="payroll-container">
-      <oa-row :gutter="16">
-        <oa-col :span="6">
-          <view class="stat-card primary">
-            <text class="stat-value">¥{{ ceoStats.totalPayroll.toLocaleString() }}</text>
-            <text class="stat-label">本月总支出</text>
-          </view>
-        </oa-col>
-        <oa-col :span="6">
-          <view class="stat-card">
-            <text class="stat-value">{{ ceoStats.employeeCount }}</text>
-            <text class="stat-label">发薪人数</text>
-          </view>
-        </oa-col>
-        <oa-col :span="6">
-          <view class="stat-card">
-            <text class="stat-value">¥{{ ceoStats.avgSalary.toLocaleString() }}</text>
-            <text class="stat-label">平均薪资</text>
-          </view>
-        </oa-col>
-        <oa-col :span="6">
-          <view class="stat-card">
-            <text class="stat-value">{{ ceoStats.pendingCount }}</text>
-            <text class="stat-label">待发放</text>
-          </view>
-        </oa-col>
-      </oa-row>
+      <component :is="Row" v-if="Row" :gutter="16">
+        <component :is="Col" v-if="Col" :span="6">
+          <component
+            :is="StatCard"
+            v-if="StatCard"
+            title="本月总支出"
+            :value="formatAmount(ceoStats.totalPayroll)"
+            icon="💰"
+            theme="primary"
+          />
+        </component>
+        <component :is="Col" v-if="Col" :span="6">
+          <component
+            :is="StatCard"
+            v-if="StatCard"
+            title="发薪人数"
+            :value="ceoStats.employeeCount"
+            icon="👥"
+            theme="success"
+          />
+        </component>
+        <component :is="Col" v-if="Col" :span="6">
+          <component
+            :is="StatCard"
+            v-if="StatCard"
+            title="平均薪资"
+            :value="formatAmount(ceoStats.avgSalary)"
+            icon="📊"
+            theme="purple"
+          />
+        </component>
+        <component :is="Col" v-if="Col" :span="6">
+          <component
+            :is="StatCard"
+            v-if="StatCard"
+            title="待发放"
+            :value="ceoStats.pendingCount"
+            icon="⏳"
+            theme="warning"
+          />
+        </component>
+      </component>
 
-      <oa-row :gutter="16" class="mt-16">
-        <oa-col :span="24">
-          <oa-card title="员工薪资管理">
+      <component :is="Row" v-if="Row" :gutter="16" class="mt-16">
+        <component :is="Col" v-if="Col" :span="24">
+          <component :is="Card" v-if="Card" title="员工薪资管理">
             <template #extra>
               <view class="toolbar">
-                <oa-input
+                <component
+                  :is="Input"
+                  v-if="Input"
                   v-model="searchKeyword"
                   placeholder="搜索员工姓名"
                   :prefix="'search'"
                   style="width: 200px"
                 />
-                <oa-button type="primary" @click="exportPayroll">
-                  <Icon name="download" :size="14" />
+                <component :is="Button" v-if="Button" type="primary" @click="exportPayroll">
+                  <component :is="Icon" v-if="Icon" name="download" :size="14" />
                   导出工资表
-                </oa-button>
+                </component>
               </view>
             </template>
-            
+
             <view class="payroll-table">
               <view class="table-header">
                 <text class="cell">姓名</text>
@@ -169,40 +212,75 @@
                 <text class="cell negative">¥{{ item.deduction.toLocaleString() }}</text>
                 <text class="cell highlight">¥{{ item.net.toLocaleString() }}</text>
                 <text class="cell">
-                  <oa-badge :status="item.status === 'paid' ? 'success' : 'warning'" />
+                  <component
+                    :is="Badge"
+                    v-if="Badge"
+                    :status="item.status === 'paid' ? 'success' : 'warning'"
+                  />
                 </text>
                 <text class="cell">
-                  <oa-button 
-                    v-if="item.status === 'pending'" 
-                    type="primary" 
+                  <component
+                    :is="Button"
+                    v-if="Button && item.status === 'pending'"
+                    type="primary"
                     size="small"
                     @click="confirmPay(item)"
                   >
                     确认发放
-                  </oa-button>
+                  </component>
                   <text v-else class="text-muted">已发放</text>
                 </text>
               </view>
             </view>
-          </oa-card>
-        </oa-col>
-      </oa-row>
+          </component>
+        </component>
+      </component>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Icon } from '../../components/ui'
-import {
-  OaCard, OaRow, OaCol, OaBadge,
-  OaButton, OaInput, OaEmpty
-} from '../../components/ui-kit'
+import { ref, computed, onMounted } from 'vue'
+import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
+
+// 异步获取组件
+const Icon = ref(null)
+const Card = ref(null)
+const Row = ref(null)
+const Col = ref(null)
+const Badge = ref(null)
+const Button = ref(null)
+const Input = ref(null)
+const StatCard = ref(null)
+const Timeline = ref(null)
+const TimelineItem = ref(null)
+
+onMounted(async () => {
+  Icon.value = await getComponent('Icon')
+  Card.value = await getComponent('Card')
+  Row.value = await getComponent('Row')
+  Col.value = await getComponent('Col')
+  Badge.value = await getComponent('Badge')
+  Button.value = await getComponent('Button')
+  Input.value = await getComponent('Input')
+  StatCard.value = await getComponent('StatCard')
+  Timeline.value = await getComponent('Timeline')
+  TimelineItem.value = await getComponent('TimelineItem')
+})
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.userInfo?.role || 'employee')
 const isCEO = computed(() => userRole.value === 'ceo')
+const isFinance = computed(() => userRole.value === 'finance')
+
+// 审批流程数据
+const approvalFlow = ref([
+  { title: '薪资计算完成', description: '系统自动计算', time: '2024-04-01 09:00', status: 'success' as const },
+  { title: '部门审核', description: '人事部审核通过', time: '2024-04-02 14:30', status: 'success' as const },
+  { title: '财务审核', description: '财务部复核中', time: '2024-04-03 10:00', status: 'processing' as const },
+  { title: '薪资发放', description: '等待发放', time: '预计 2024-04-05', status: 'pending' as const }
+])
 
 // Mock 数据 - 员工视图
 const salaryData = ref({
@@ -225,7 +303,7 @@ const salaryHistory = ref([
   { id: 3, month: '2023-12', amount: 17200, status: 'paid', statusText: '已发放' }
 ])
 
-// CEO 统计数据
+// CEO/财务 统计数据
 const ceoStats = ref({
   totalPayroll: 486000,
   employeeCount: 28,
@@ -244,10 +322,14 @@ const searchKeyword = ref('')
 
 const filteredPayrollList = computed(() => {
   if (!searchKeyword.value) return payrollList.value
-  return payrollList.value.filter(item => 
+  return payrollList.value.filter(item =>
     item.name.includes(searchKeyword.value)
   )
 })
+
+const formatAmount = (val: number) => {
+  return '¥' + val.toLocaleString()
+}
 
 const exportPayroll = () => {
   uni.showToast({ title: '导出成功', icon: 'success' })
@@ -271,7 +353,7 @@ const confirmPay = (item: any) => {
   color: #fff;
   padding: 24px;
   margin-bottom: 16px;
-  border-radius: var(--oa-border-radius-lg);
+  border-radius: var(--oa-radius-lg);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -312,7 +394,7 @@ const confirmPay = (item: any) => {
 
 .salary-card {
   background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-  border-radius: var(--oa-border-radius-lg);
+  border-radius: var(--oa-radius-lg);
   color: #fff;
   padding: 24px;
   height: 100%;
@@ -453,31 +535,6 @@ const confirmPay = (item: any) => {
   }
 }
 
-.stat-card {
-  background: #fff;
-  padding: 24px;
-  border-radius: var(--oa-border-radius-lg);
-  text-align: center;
-
-  &.primary {
-    background: linear-gradient(135deg, #1890ff 0%, #096dd9 100%);
-    color: #fff;
-  }
-
-  .stat-value {
-    font-size: 24px;
-    font-weight: 700;
-    display: block;
-  }
-
-  .stat-label {
-    font-size: 12px;
-    color: var(--oa-text-secondary);
-    margin-top: 8px;
-    display: block;
-  }
-}
-
 .toolbar {
   display: flex;
   gap: 12px;
@@ -489,7 +546,7 @@ const confirmPay = (item: any) => {
     grid-template-columns: repeat(8, 1fr);
     padding: 12px 16px;
     background: var(--oa-bg);
-    border-radius: var(--oa-border-radius-md) var(--oa-border-radius-md) 0 0;
+    border-radius: var(--oa-radius-md) var(--oa-radius-md) 0 0;
     font-weight: 500;
     font-size: 14px;
     color: var(--oa-text-secondary);

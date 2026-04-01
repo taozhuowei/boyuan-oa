@@ -4,24 +4,24 @@
       <!-- Logo -->
       <view class="logo-section">
         <view class="logo">
-          <Icon name="domain" :size="48" color="#1890ff" />
+          <component :is="Icon" v-if="Icon" name="domain" :size="48" color="#1890ff" />
         </view>
         <text class="logo-title">企业 OA 系统</text>
         <text class="logo-subtitle">统一办公管理平台</text>
       </view>
 
       <!-- 登录表单 -->
-      <oa-card class="login-card">
+      <component :is="Card" v-if="Card" class="login-card">
         <view class="login-tabs">
-          <view 
-            class="tab-item" 
+          <view
+            class="tab-item"
             :class="{ active: loginType === 'password' }"
             @click="loginType = 'password'"
           >
             密码登录
           </view>
-          <view 
-            class="tab-item" 
+          <view
+            class="tab-item"
             :class="{ active: loginType === 'sms' }"
             @click="loginType = 'sms'"
           >
@@ -29,9 +29,11 @@
           </view>
         </view>
 
-        <oa-form :model="loginForm">
+        <view class="form-content">
           <view class="form-item">
-            <oa-input
+            <component
+              :is="Input"
+              v-if="Input"
               v-model="loginForm.username"
               placeholder="请输入用户名/手机号"
               :prefix="'person-outline'"
@@ -39,7 +41,9 @@
           </view>
 
           <view v-if="loginType === 'password'" class="form-item">
-            <oa-input
+            <component
+              :is="Input"
+              v-if="Input"
               v-model="loginForm.password"
               type="password"
               placeholder="请输入密码"
@@ -48,41 +52,47 @@
           </view>
 
           <view v-else class="form-item">
-            <oa-row :gutter="8">
-              <oa-col :span="16">
-                <oa-input
+            <component :is="Row" v-if="Row" :gutter="8">
+              <component :is="Col" v-if="Col" :span="16">
+                <component
+                  :is="Input"
+                  v-if="Input"
                   v-model="loginForm.code"
                   placeholder="请输入验证码"
                   :prefix="'verified-outline'"
                 />
-              </oa-col>
-              <oa-col :span="8">
-                <oa-button 
-                  block 
+              </component>
+              <component :is="Col" v-if="Col" :span="8">
+                <component
+                  :is="Button"
+                  v-if="Button"
+                  block
                   :disabled="countdown > 0"
                   @click="sendCode"
                 >
                   {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
-                </oa-button>
-              </oa-col>
-            </oa-row>
+                </component>
+              </component>
+            </component>
           </view>
 
           <view class="form-options">
-            <oa-checkbox v-model="rememberMe">记住我</oa-checkbox>
-            <oa-button type="link" size="small">忘记密码?</oa-button>
+            <component :is="Checkbox" v-if="Checkbox" v-model="rememberMe">记住我</component>
+            <component :is="Button" v-if="Button" type="link" size="small">忘记密码?</component>
           </view>
 
-          <oa-button 
-            type="primary" 
-            block 
+          <component
+            :is="Button"
+            v-if="Button"
+            type="primary"
+            block
             size="large"
             :loading="loading"
             @click="handleLogin"
           >
             登录
-          </oa-button>
-        </oa-form>
+          </component>
+        </view>
 
         <view class="divider">
           <text>其他登录方式</text>
@@ -90,15 +100,15 @@
 
         <view class="social-login">
           <view class="social-btn wechat" @click="wechatLogin">
-            <Icon name="wechat" :size="24" />
+            <component :is="Icon" v-if="Icon" name="wechat" :size="24" />
             <text>微信登录</text>
           </view>
           <view class="social-btn dingtalk" @click="dingtalkLogin">
-            <Icon name="dingding" :size="24" />
+            <component :is="Icon" v-if="Icon" name="dingding" :size="24" />
             <text>钉钉登录</text>
           </view>
         </view>
-      </oa-card>
+      </component>
 
       <!-- 版权信息 -->
       <text class="copyright">© 2024 企业OA系统 版权所有</text>
@@ -111,10 +121,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Icon } from '../../components/ui'
-import { OaCard, OaForm, OaInput, OaButton, OaCheckbox, OaRow, OaCol } from '../../components/ui-kit'
+import { ref, onMounted } from 'vue'
+import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
+
+// 异步获取组件
+const Icon = ref(null)
+const Card = ref(null)
+const Input = ref(null)
+const Button = ref(null)
+const Checkbox = ref(null)
+const Row = ref(null)
+const Col = ref(null)
+
+onMounted(async () => {
+  Icon.value = await getComponent('Icon')
+  Card.value = await getComponent('Card')
+  Input.value = await getComponent('Input')
+  Button.value = await getComponent('Button')
+  Checkbox.value = await getComponent('Checkbox')
+  Row.value = await getComponent('Row')
+  Col.value = await getComponent('Col')
+})
 
 const userStore = useUserStore()
 
@@ -134,7 +162,7 @@ const sendCode = () => {
     uni.showToast({ title: '请输入手机号', icon: 'none' })
     return
   }
-  
+
   countdown.value = 60
   const timer = setInterval(() => {
     countdown.value--
@@ -142,7 +170,7 @@ const sendCode = () => {
       clearInterval(timer)
     }
   }, 1000)
-  
+
   uni.showToast({ title: '验证码已发送', icon: 'success' })
 }
 
@@ -163,11 +191,11 @@ const handleLogin = async () => {
   }
 
   loading.value = true
-  
+
   try {
     // Mock 登录
     await new Promise(resolve => setTimeout(resolve, 1000))
-    
+
     userStore.setSession(
       'mock_token_' + Date.now(),
       {
@@ -180,9 +208,9 @@ const handleLogin = async () => {
         status: '在线'
       }
     )
-    
+
     uni.showToast({ title: '登录成功', icon: 'success' })
-    
+
     // 跳转到角色选择页面
     setTimeout(() => {
       uni.redirectTo({ url: '/pages/role/index' })
@@ -300,6 +328,10 @@ const dingtalkLogin = () => {
   }
 }
 
+.form-content {
+  padding: 0;
+}
+
 .form-item {
   margin-bottom: 20px;
 }
@@ -346,7 +378,7 @@ const dingtalkLogin = () => {
     justify-content: center;
     gap: 8px;
     padding: 12px;
-    border-radius: var(--oa-border-radius-md);
+    border-radius: var(--oa-radius-md);
     cursor: pointer;
     transition: all 0.2s;
     font-size: 14px;

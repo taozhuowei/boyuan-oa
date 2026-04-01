@@ -4,7 +4,7 @@
     <view class="hero">
       <view class="hero-main">
         <view class="hero-title-row">
-          <Icon name="folder-open" :size="28" />
+          <component :is="Icon" v-if="Icon" name="folder-open" :size="28" />
           <text class="hero-title">项目</text>
         </view>
         <text class="hero-subtitle">
@@ -27,22 +27,27 @@
       <!-- 工具栏 -->
       <view class="toolbar">
         <view class="toolbar-left">
-          <oa-button 
-            v-if="isCEO" 
-            type="primary" 
+          <component
+            :is="Button"
+            v-if="Button && isCEO"
+            type="primary"
             @click="showCreateModal = true"
           >
-            <Icon name="add" :size="14" />
+            <component :is="Icon" v-if="Icon" name="add" :size="14" />
             新建项目
-          </oa-button>
-          <oa-select
+          </component>
+          <component
+            :is="Select"
+            v-if="Select"
             v-model="filterStatus"
             :options="statusOptions"
             placeholder="全部状态"
             style="width: 120px"
           />
         </view>
-        <oa-input
+        <component
+          :is="Input"
+          v-if="Input"
           v-model="searchKeyword"
           placeholder="搜索项目名称"
           :prefix="'search'"
@@ -51,32 +56,34 @@
       </view>
 
       <!-- 项目列表 -->
-      <oa-row :gutter="16">
-        <oa-col 
-          v-for="project in filteredProjects" 
+      <component :is="Row" v-if="Row" :gutter="16">
+        <component
+          :is="Col"
+          v-if="Col"
+          v-for="project in filteredProjects"
           :key="project.id"
           :span="isCEO ? 8 : 6"
         >
-          <oa-card class="project-card" hoverable @click="viewProject(project)">
+          <component :is="Card" v-if="Card" class="project-card" hoverable @click="viewProject(project)">
             <view class="project-header">
               <text class="project-name">{{ project.name }}</text>
-              <oa-badge :status="getStatusType(project.status)" :text="project.status" />
+              <component :is="Badge" v-if="Badge" :status="getStatusType(project.status)" :text="project.status" />
             </view>
             <text class="project-desc">{{ project.description }}</text>
             <view class="project-meta">
               <view class="meta-item">
-                <Icon name="person" :size="14" />
+                <component :is="Icon" v-if="Icon" name="person" :size="14" />
                 <text>{{ project.manager }}</text>
               </view>
               <view class="meta-item">
-                <Icon name="calendar-today" :size="14" />
+                <component :is="Icon" v-if="Icon" name="calendar-today" :size="14" />
                 <text>{{ project.deadline }}</text>
               </view>
             </view>
             <view class="project-progress">
               <view class="progress-bar">
-                <view 
-                  class="progress-fill" 
+                <view
+                  class="progress-fill"
                   :style="{ width: project.progress + '%' }"
                   :class="getProgressClass(project.progress)"
                 />
@@ -84,8 +91,8 @@
               <text class="progress-text">{{ project.progress }}%</text>
             </view>
             <view class="project-members">
-              <view 
-                v-for="member in project.members.slice(0, 3)" 
+              <view
+                v-for="member in project.members.slice(0, 3)"
                 :key="member"
                 class="member-avatar"
               >
@@ -95,76 +102,130 @@
                 +{{ project.members.length - 3 }}
               </view>
             </view>
-          </oa-card>
-        </oa-col>
-      </oa-row>
+          </component>
+        </component>
+      </component>
+
+      <!-- 施工日志 Timeline -->
+      <view v-if="selectedProject" class="log-section">
+        <component :is="Row" v-if="Row" :gutter="16" class="mt-16">
+          <component :is="Col" v-if="Col" :span="24">
+            <component :is="Card" v-if="Card" :title="`${selectedProject.name} - 施工日志`">
+              <component :is="Timeline" v-if="Timeline">
+                <component
+                  :is="TimelineItem"
+                  v-if="TimelineItem"
+                  v-for="(log, index) in constructionLogs"
+                  :key="index"
+                  :title="log.title"
+                  :description="log.description"
+                  :time="log.time"
+                  :status="log.status"
+                />
+              </component>
+            </component>
+          </component>
+        </component>
+      </view>
     </view>
 
     <!-- 创建项目弹窗 -->
-    <oa-modal
+    <component
+      :is="Modal"
+      v-if="Modal"
       v-model="showCreateModal"
       title="新建项目"
       width="600px"
     >
-      <oa-form :model="newProject">
+      <view class="form-content">
         <view class="form-item">
           <label>项目名称 <text class="required">*</text></label>
-          <oa-input v-model="newProject.name" placeholder="请输入项目名称" />
+          <component :is="Input" v-if="Input" v-model="newProject.name" placeholder="请输入项目名称" />
         </view>
         <view class="form-item">
           <label>项目描述</label>
-          <oa-input 
-            v-model="newProject.description" 
-            type="textarea" 
+          <component
+            :is="Input"
+            v-if="Input"
+            v-model="newProject.description"
+            type="textarea"
             :rows="3"
             placeholder="请输入项目描述"
           />
         </view>
-        <oa-row :gutter="16">
-          <oa-col :span="12">
+        <component :is="Row" v-if="Row" :gutter="16">
+          <component :is="Col" v-if="Col" :span="12">
             <view class="form-item">
               <label>项目经理 <text class="required">*</text></label>
-              <oa-select
+              <component
+                :is="Select"
+                v-if="Select"
                 v-model="newProject.manager"
                 :options="employeeOptions"
                 placeholder="请选择"
               />
             </view>
-          </oa-col>
-          <oa-col :span="12">
+          </component>
+          <component :is="Col" v-if="Col" :span="12">
             <view class="form-item">
               <label>截止日期 <text class="required">*</text></label>
-              <oa-date-picker v-model="newProject.deadline" />
+              <component :is="DatePicker" v-if="DatePicker" v-model="newProject.deadline" />
             </view>
-          </oa-col>
-        </oa-row>
-      </oa-form>
+          </component>
+        </component>
+      </view>
       <template #footer>
-        <oa-button @click="showCreateModal = false">取消</oa-button>
-        <oa-button type="primary" @click="createProject">创建</oa-button>
+        <component :is="Button" v-if="Button" @click="showCreateModal = false">取消</component>
+        <component :is="Button" v-if="Button" type="primary" @click="createProject">创建</component>
       </template>
-    </oa-modal>
+    </component>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Icon } from '../../components/ui'
-import { 
-  OaCard, OaRow, OaCol, OaBadge, 
-  OaButton, OaInput, OaSelect, 
-  OaDatePicker, OaModal, OaForm 
-} from '../../components/ui-kit'
+import { ref, computed, onMounted } from 'vue'
+import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
+
+// 异步获取组件
+const Icon = ref(null)
+const Card = ref(null)
+const Row = ref(null)
+const Col = ref(null)
+const Badge = ref(null)
+const Button = ref(null)
+const Input = ref(null)
+const Select = ref(null)
+const DatePicker = ref(null)
+const Modal = ref(null)
+const Timeline = ref(null)
+const TimelineItem = ref(null)
+
+onMounted(async () => {
+  Icon.value = await getComponent('Icon')
+  Card.value = await getComponent('Card')
+  Row.value = await getComponent('Row')
+  Col.value = await getComponent('Col')
+  Badge.value = await getComponent('Badge')
+  Button.value = await getComponent('Button')
+  Input.value = await getComponent('Input')
+  Select.value = await getComponent('Select')
+  DatePicker.value = await getComponent('DatePicker')
+  Modal.value = await getComponent('Modal')
+  Timeline.value = await getComponent('Timeline')
+  TimelineItem.value = await getComponent('TimelineItem')
+})
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.userInfo?.role || 'employee')
 const isCEO = computed(() => userRole.value === 'ceo')
+const isPM = computed(() => userRole.value === 'project_manager')
 
 // 状态
 const filterStatus = ref('')
 const searchKeyword = ref('')
 const showCreateModal = ref(false)
+const selectedProject = ref<any>(null)
 
 const newProject = ref({
   name: '',
@@ -186,6 +247,14 @@ const employeeOptions = [
   { label: '赵铁柱', value: '赵铁柱' },
   { label: '王小花', value: '王小花' }
 ]
+
+// 施工日志数据
+const constructionLogs = ref([
+  { title: '项目启动', description: '完成项目立项，组建项目团队', time: '2024-03-01 09:00', status: 'success' as const },
+  { title: '基础施工', description: '完成地基开挖和基础浇筑', time: '2024-03-15 18:00', status: 'success' as const },
+  { title: '主体建设', description: '主体结构施工中，进度 60%', time: '2024-04-01 12:00', status: 'processing' as const },
+  { title: '装修验收', description: '等待施工完成', time: '预计 2024-05-15', status: 'pending' as const }
+])
 
 // Mock 数据
 const stats = ref({
@@ -238,17 +307,17 @@ const projects = ref([
 
 const filteredProjects = computed(() => {
   let result = projects.value
-  
+
   if (filterStatus.value) {
     result = result.filter(p => p.status === filterStatus.value)
   }
-  
+
   if (searchKeyword.value) {
-    result = result.filter(p => 
+    result = result.filter(p =>
       p.name.toLowerCase().includes(searchKeyword.value.toLowerCase())
     )
   }
-  
+
   return result
 })
 
@@ -268,6 +337,7 @@ const getProgressClass = (progress: number) => {
 }
 
 const viewProject = (project: any) => {
+  selectedProject.value = project
   uni.showToast({ title: `查看项目: ${project.name}`, icon: 'none' })
 }
 
@@ -276,7 +346,7 @@ const createProject = () => {
     uni.showToast({ title: '请填写必填项', icon: 'none' })
     return
   }
-  
+
   projects.value.unshift({
     id: Date.now(),
     name: newProject.value.name,
@@ -287,7 +357,7 @@ const createProject = () => {
     progress: 0,
     members: [newProject.value.manager]
   })
-  
+
   showCreateModal.value = false
   newProject.value = { name: '', description: '', manager: '', deadline: '' }
   stats.value.active++
@@ -307,7 +377,7 @@ const createProject = () => {
   color: #fff;
   padding: 24px;
   margin-bottom: 16px;
-  border-radius: var(--oa-border-radius-lg);
+  border-radius: var(--oa-radius-lg);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -484,6 +554,18 @@ const createProject = () => {
       border: 2px solid #fff;
     }
   }
+}
+
+.log-section {
+  margin-top: 16px;
+}
+
+.mt-16 {
+  margin-top: 16px;
+}
+
+.form-content {
+  padding: 16px 0;
 }
 
 .form-item {
