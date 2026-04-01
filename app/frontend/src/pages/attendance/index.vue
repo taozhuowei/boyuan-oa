@@ -4,23 +4,22 @@
     <view class="hero">
       <view class="hero-main">
         <view class="hero-title-row">
-          <Icon name="schedule" :size="28" />
           <text class="hero-title">考勤</text>
         </view>
         <text class="hero-subtitle">
-          {{ isCEO ? '考勤数据总览与审批管理' : '请假、加班申请与审批' }}
+          {{ isCEO || isPM ? '考勤数据总览与审批管理' : '请假、加班申请与审批' }}
         </text>
       </view>
       <view class="hero-stats">
-        <view v-if="!isCEO" class="hero-stat">
+        <view v-if="!isCEO && !isPM" class="hero-stat">
           <text class="stat-num">{{ myLeaveCount }}</text>
           <text class="stat-label">请假记录</text>
         </view>
-        <view v-if="!isCEO" class="hero-stat">
+        <view v-if="!isCEO && !isPM" class="hero-stat">
           <text class="stat-num">{{ myOvertimeCount }}</text>
           <text class="stat-label">加班记录</text>
         </view>
-        <view v-if="isCEO" class="hero-stat">
+        <view v-if="isCEO || isPM" class="hero-stat">
           <text class="stat-num">{{ totalPending }}</text>
           <text class="stat-label">待审批</text>
         </view>
@@ -31,12 +30,12 @@
       </view>
     </view>
 
-    <!-- CEO 总览视图 -->
-    <view v-if="isCEO" class="attendance-container">
-      <oa-row :gutter="16">
+    <!-- CEO/项目经理 审批视图 -->
+    <view v-if="isCEO || isPM" class="attendance-container">
+      <component :is="Row" v-if="Row" :gutter="16">
         <!-- 左侧：待审批列表 -->
-        <oa-col :span="8">
-          <oa-card title="待审批事项" :bordered="true">
+        <component :is="Col" v-if="Col" :span="8">
+          <component :is="Card" v-if="Card" title="待审批事项" :bordered="true">
             <view v-if="pendingList.length" class="approval-list">
               <view
                 v-for="item in pendingList"
@@ -49,16 +48,20 @@
                   <text class="approval-title">{{ item.applicant }} - {{ item.type }}</text>
                   <text class="approval-meta">{{ item.date }} · {{ item.duration }}</text>
                 </view>
-                <oa-badge :status="item.urgency === 'high' ? 'error' : 'warning'" />
+                <component
+                  :is="Badge"
+                  v-if="Badge"
+                  :status="item.urgency === 'high' ? 'error' : 'warning'"
+                />
               </view>
             </view>
-            <oa-empty v-else description="暂无待审批事项" />
-          </oa-card>
-        </oa-col>
+            <component :is="Empty" v-else-if="Empty" description="暂无待审批事项" />
+          </component>
+        </component>
 
         <!-- 右侧：审批详情/统计 -->
-        <oa-col :span="16">
-          <oa-card v-if="selectedItem" title="审批详情">
+        <component :is="Col" v-if="Col" :span="16">
+          <component :is="Card" v-if="Card && selectedItem" title="审批详情">
             <view class="detail-content">
               <view class="detail-row">
                 <text class="label">申请人</text>
@@ -80,130 +83,177 @@
                 <text class="label">原因</text>
                 <text class="value">{{ selectedItem.reason }}</text>
               </view>
+
+              <!-- 审批流程时间轴 -->
+              <view class="detail-row">
+                <text class="label">审批进度</text>
+              </view>
+              <component :is="Timeline" v-if="Timeline">
+                <component
+                  :is="TimelineItem"
+                  v-if="TimelineItem"
+                  title="提交申请"
+                  :time="selectedItem.submitTime"
+                  status="success"
+                />
+                <component
+                  :is="TimelineItem"
+                  v-if="TimelineItem"
+                  title="项目经理审批"
+                  :time="selectedItem.pmApproveTime"
+                  :status="selectedItem.pmApproved ? 'success' : 'processing'"
+                />
+                <component
+                  :is="TimelineItem"
+                  v-if="TimelineItem && isCEO"
+                  title="CEO审批"
+                  :status="'pending'"
+                />
+              </component>
+
               <view class="detail-actions">
-                <oa-button type="default" @click="rejectItem">驳回</oa-button>
-                <oa-button type="primary" @click="approveItem">通过</oa-button>
+                <component :is="Button" v-if="Button" type="default" @click="rejectItem">驳回</component>
+                <component :is="Button" v-if="Button" type="primary" @click="approveItem">通过</component>
               </view>
             </view>
-          </oa-card>
+          </component>
 
-          <oa-card v-else title="本月考勤统计">
-            <oa-row :gutter="16" class="stats-grid">
-              <oa-col :span="6">
-                <view class="stat-card">
-                  <text class="stat-value">{{ attendanceStats.total }}</text>
-                  <text class="stat-label">总申请</text>
-                </view>
-              </oa-col>
-              <oa-col :span="6">
-                <view class="stat-card">
-                  <text class="stat-value">{{ attendanceStats.approved }}</text>
-                  <text class="stat-label">已批准</text>
-                </view>
-              </oa-col>
-              <oa-col :span="6">
-                <view class="stat-card">
-                  <text class="stat-value">{{ attendanceStats.pending }}</text>
-                  <text class="stat-label">待审批</text>
-                </view>
-              </oa-col>
-              <oa-col :span="6">
-                <view class="stat-card">
-                  <text class="stat-value">{{ attendanceStats.rejected }}</text>
-                  <text class="stat-label">已驳回</text>
-                </view>
-              </oa-col>
-            </oa-row>
-          </oa-card>
-        </oa-col>
-      </oa-row>
+          <component :is="Card" v-else-if="Card" title="本月考勤统计">
+            <component :is="Row" v-if="Row" :gutter="16" class="stats-grid">
+              <component :is="Col" v-if="Col" :span="6">
+                <component
+                  :is="StatCard"
+                  v-if="StatCard"
+                  title="总申请"
+                  :value="attendanceStats.total"
+                  theme="primary"
+                />
+              </component>
+              <component :is="Col" v-if="Col" :span="6">
+                <component
+                  :is="StatCard"
+                  v-if="StatCard"
+                  title="已批准"
+                  :value="attendanceStats.approved"
+                  theme="success"
+                />
+              </component>
+              <component :is="Col" v-if="Col" :span="6">
+                <component
+                  :is="StatCard"
+                  v-if="StatCard"
+                  title="待审批"
+                  :value="attendanceStats.pending"
+                  theme="warning"
+                />
+              </component>
+              <component :is="Col" v-if="Col" :span="6">
+                <component
+                  :is="StatCard"
+                  v-if="StatCard"
+                  title="已驳回"
+                  :value="attendanceStats.rejected"
+                  theme="error"
+                />
+              </component>
+            </component>
+          </component>
+        </component>
+      </component>
     </view>
 
-    <!-- 普通员工申请视图 -->
+    <!-- 员工/劳工 申请视图 -->
     <view v-else class="attendance-container">
-      <oa-row :gutter="16">
+      <component :is="Row" v-if="Row" :gutter="16">
         <!-- 左侧：功能菜单 -->
-        <oa-col :span="6">
-          <oa-card :bordered="true">
+        <component :is="Col" v-if="Col" :span="6">
+          <component :is="Card" v-if="Card" :bordered="true">
             <view class="menu-list">
-              <view 
-                class="menu-item" 
+              <view
+                class="menu-item"
                 :class="{ active: activeTab === 'leave' }"
                 @click="switchTab('leave')"
               >
-                <Icon name="event-busy" :size="18" />
                 <text>请假申请</text>
               </view>
-              <view 
-                class="menu-item" 
+              <view
+                class="menu-item"
                 :class="{ active: activeTab === 'overtime' }"
                 @click="switchTab('overtime')"
               >
-                <Icon name="more-time" :size="18" />
                 <text>加班申请</text>
               </view>
-              <view 
-                class="menu-item" 
+              <view
+                class="menu-item"
                 :class="{ active: activeTab === 'history' }"
                 @click="switchTab('history')"
               >
-                <Icon name="receipt" :size="18" />
                 <text>我的记录</text>
               </view>
             </view>
-          </oa-card>
-        </oa-col>
+          </component>
+        </component>
 
         <!-- 右侧：表单/列表 -->
-        <oa-col :span="18">
+        <component :is="Col" v-if="Col" :span="18">
           <!-- 请假表单 -->
-          <oa-card v-if="activeTab === 'leave'" title="请假申请">
-            <oa-form :model="leaveForm">
-              <oa-row :gutter="16">
-                <oa-col :span="12">
+          <component :is="Card" v-if="Card && activeTab === 'leave'" title="请假申请">
+            <component :is="Form" v-if="Form" :model="leaveForm">
+              <component :is="Row" v-if="Row" :gutter="16">
+                <component :is="Col" v-if="Col" :span="12">
                   <view class="form-item">
                     <label>请假类型 <text class="required">*</text></label>
-                    <oa-select
+                    <component
+                      :is="Select"
+                      v-if="Select"
                       v-model="leaveForm.type"
                       :options="leaveTypes"
                       placeholder="请选择请假类型"
                     />
                   </view>
-                </oa-col>
-                <oa-col :span="12">
+                </component>
+                <component :is="Col" v-if="Col" :span="12">
                   <view class="form-item">
                     <label>请假天数 <text class="required">*</text></label>
-                    <oa-input
+                    <component
+                      :is="Input"
+                      v-if="Input"
                       v-model="leaveForm.days"
                       type="number"
                       placeholder="请输入天数"
                     />
                   </view>
-                </oa-col>
-              </oa-row>
-              <oa-row :gutter="16">
-                <oa-col :span="12">
+                </component>
+              </component>
+              <component :is="Row" v-if="Row" :gutter="16">
+                <component :is="Col" v-if="Col" :span="12">
                   <view class="form-item">
                     <label>开始日期 <text class="required">*</text></label>
-                    <oa-date-picker
+                    <component
+                      :is="DatePicker"
+                      v-if="DatePicker"
                       v-model="leaveForm.startDate"
                       placeholder="请选择开始日期"
                     />
                   </view>
-                </oa-col>
-                <oa-col :span="12">
+                </component>
+                <component :is="Col" v-if="Col" :span="12">
                   <view class="form-item">
                     <label>结束日期 <text class="required">*</text></label>
-                    <oa-date-picker
+                    <component
+                      :is="DatePicker"
+                      v-if="DatePicker"
                       v-model="leaveForm.endDate"
                       placeholder="请选择结束日期"
                     />
                   </view>
-                </oa-col>
-              </oa-row>
+                </component>
+              </component>
               <view class="form-item">
                 <label>请假原因 <text class="required">*</text></label>
-                <oa-input
+                <component
+                  :is="Input"
+                  v-if="Input"
                   v-model="leaveForm.reason"
                   type="textarea"
                   :rows="4"
@@ -211,39 +261,45 @@
                 />
               </view>
               <view class="form-actions">
-                <oa-button type="default" @click="resetForm">重置</oa-button>
-                <oa-button type="primary" @click="submitLeave">提交申请</oa-button>
+                <component :is="Button" v-if="Button" type="default" @click="resetForm">重置</component>
+                <component :is="Button" v-if="Button" type="primary" @click="submitLeave">提交申请</component>
               </view>
-            </oa-form>
-          </oa-card>
+            </component>
+          </component>
 
           <!-- 加班表单 -->
-          <oa-card v-else-if="activeTab === 'overtime'" title="加班申请">
-            <oa-form :model="overtimeForm">
-              <oa-row :gutter="16">
-                <oa-col :span="12">
+          <component :is="Card" v-else-if="Card && activeTab === 'overtime'" title="加班申请">
+            <component :is="Form" v-if="Form" :model="overtimeForm">
+              <component :is="Row" v-if="Row" :gutter="16">
+                <component :is="Col" v-if="Col" :span="12">
                   <view class="form-item">
                     <label>加班日期 <text class="required">*</text></label>
-                    <oa-date-picker
+                    <component
+                      :is="DatePicker"
+                      v-if="DatePicker"
                       v-model="overtimeForm.date"
                       placeholder="请选择加班日期"
                     />
                   </view>
-                </oa-col>
-                <oa-col :span="12">
+                </component>
+                <component :is="Col" v-if="Col" :span="12">
                   <view class="form-item">
                     <label>加班时长(小时) <text class="required">*</text></label>
-                    <oa-input
+                    <component
+                      :is="Input"
+                      v-if="Input"
                       v-model="overtimeForm.hours"
                       type="number"
                       placeholder="请输入小时数"
                     />
                   </view>
-                </oa-col>
-              </oa-row>
+                </component>
+              </component>
               <view class="form-item">
                 <label>加班原因 <text class="required">*</text></label>
-                <oa-input
+                <component
+                  :is="Input"
+                  v-if="Input"
                   v-model="overtimeForm.reason"
                   type="textarea"
                   :rows="4"
@@ -251,14 +307,14 @@
                 />
               </view>
               <view class="form-actions">
-                <oa-button type="default" @click="resetForm">重置</oa-button>
-                <oa-button type="primary" @click="submitOvertime">提交申请</oa-button>
+                <component :is="Button" v-if="Button" type="default" @click="resetForm">重置</component>
+                <component :is="Button" v-if="Button" type="primary" @click="submitOvertime">提交申请</component>
               </view>
-            </oa-form>
-          </oa-card>
+            </component>
+          </component>
 
           <!-- 历史记录 -->
-          <oa-card v-else title="我的考勤记录">
+          <component :is="Card" v-else-if="Card" title="我的考勤记录">
             <view v-if="myRecords.length" class="record-list">
               <view
                 v-for="item in myRecords"
@@ -268,30 +324,85 @@
                 <view class="record-info">
                   <text class="record-title">{{ item.type }}</text>
                   <text class="record-date">{{ item.date }}</text>
+                  <!-- 审批进度时间轴 -->
+                  <component :is="Timeline" v-if="Timeline && item.showTimeline" class="record-timeline">
+                    <component
+                      :is="TimelineItem"
+                      v-if="TimelineItem"
+                      title="提交申请"
+                      status="success"
+                    />
+                    <component
+                      :is="TimelineItem"
+                      v-if="TimelineItem"
+                      title="项目经理审批"
+                      :status="item.pmApproved ? 'success' : 'processing'"
+                    />
+                    <component
+                      :is="TimelineItem"
+                      v-if="TimelineItem"
+                      title="CEO审批"
+                      :status="item.ceoApproved ? 'success' : 'pending'"
+                    />
+                  </component>
                 </view>
-                <oa-badge :status="statusMap[item.status]" :text="item.statusText" />
+                <component
+                  :is="Badge"
+                  v-if="Badge"
+                  :status="statusMap[item.status]"
+                  :text="item.statusText"
+                />
               </view>
             </view>
-            <oa-empty v-else description="暂无记录" />
-          </oa-card>
-        </oa-col>
-      </oa-row>
+            <component :is="Empty" v-else-if="Empty" description="暂无记录" />
+          </component>
+        </component>
+      </component>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Icon } from '../../components/ui'
-import {
-  OaButton, OaInput, OaForm, OaCard,
-  OaSelect, OaDatePicker, OaRow, OaCol, OaBadge, OaEmpty
-} from '../../components/ui-kit'
+import { ref, computed, onMounted } from 'vue'
+import { getComponent } from '../../adapters'
 import { useUserStore } from '../../stores'
 
+// 异步获取组件
+const Row = ref(null)
+const Col = ref(null)
+const Card = ref(null)
+const Button = ref(null)
+const Badge = ref(null)
+const Empty = ref(null)
+const Form = ref(null)
+const Input = ref(null)
+const Select = ref(null)
+const DatePicker = ref(null)
+const Timeline = ref(null)
+const TimelineItem = ref(null)
+const StatCard = ref(null)
+
+onMounted(async () => {
+  Row.value = await getComponent('Row')
+  Col.value = await getComponent('Col')
+  Card.value = await getComponent('Card')
+  Button.value = await getComponent('Button')
+  Badge.value = await getComponent('Badge')
+  Empty.value = await getComponent('Empty')
+  Form.value = await getComponent('Form')
+  Input.value = await getComponent('Input')
+  Select.value = await getComponent('Select')
+  DatePicker.value = await getComponent('DatePicker')
+  Timeline.value = await getComponent('Timeline')
+  TimelineItem.value = await getComponent('TimelineItem')
+  StatCard.value = await getComponent('StatCard')
+})
+
 const userStore = useUserStore()
+
 const userRole = computed(() => userStore.userInfo?.role || 'employee')
 const isCEO = computed(() => userRole.value === 'ceo')
+const isPM = computed(() => userRole.value === 'project_manager')
 
 // 标签页状态
 const activeTab = ref('leave')
@@ -323,13 +434,13 @@ const leaveTypes = [
 
 // Mock 数据
 const pendingList = ref([
-  { id: 1, applicant: '张晓宁', type: '请假', date: '2024-04-01 至 2024-04-03', duration: '3天', reason: '回家探亲', urgency: 'normal' },
-  { id: 2, applicant: '赵铁柱', type: '加班', date: '2024-03-30', duration: '4小时', reason: '项目赶进度', urgency: 'high' }
+  { id: 1, applicant: '张晓宁', type: '请假', date: '2024-04-01 至 2024-04-03', duration: '3天', reason: '回家探亲', urgency: 'normal', submitTime: '2024-03-28 09:00', pmApproved: true },
+  { id: 2, applicant: '赵铁柱', type: '加班', date: '2024-03-30', duration: '4小时', reason: '项目赶进度', urgency: 'high', submitTime: '2024-03-29 18:00', pmApproved: false }
 ])
 
 const myRecords = ref([
-  { id: 1, type: '请假', date: '2024-03-15', status: 'approved', statusText: '已通过' },
-  { id: 2, type: '加班', date: '2024-03-10', status: 'pending', statusText: '审批中' }
+  { id: 1, type: '请假', date: '2024-03-15', status: 'approved', statusText: '已通过', pmApproved: true, ceoApproved: true, showTimeline: false },
+  { id: 2, type: '加班', date: '2024-03-10', status: 'pending', statusText: '审批中', pmApproved: true, ceoApproved: false, showTimeline: true }
 ])
 
 const attendanceStats = ref({
@@ -345,7 +456,7 @@ const myLeaveCount = computed(() => myRecords.value.filter(r => r.type === '请�
 const myOvertimeCount = computed(() => myRecords.value.filter(r => r.type === '加班').length)
 const totalPending = computed(() => pendingList.value.length)
 
-const statusMap: Record<string, any> = {
+const statusMap: Record<string, string> = {
   approved: 'success',
   pending: 'warning',
   rejected: 'error'
@@ -400,7 +511,7 @@ const rejectItem = () => {
   color: #fff;
   padding: 24px;
   margin-bottom: 16px;
-  border-radius: var(--oa-border-radius-lg);
+  border-radius: var(--oa-radius-lg);
 }
 
 .hero-title-row {
@@ -453,7 +564,7 @@ const rejectItem = () => {
     gap: 12px;
     padding: 16px;
     cursor: pointer;
-    border-radius: var(--oa-border-radius-md);
+    border-radius: var(--oa-radius-md);
     transition: all 0.2s;
 
     &:hover, &.active {
@@ -556,7 +667,7 @@ const rejectItem = () => {
     text-align: center;
     padding: 24px;
     background: var(--oa-bg);
-    border-radius: var(--oa-border-radius-md);
+    border-radius: var(--oa-radius-md);
 
     .stat-value {
       font-size: 32px;
@@ -598,6 +709,10 @@ const rejectItem = () => {
   .record-date {
     font-size: 12px;
     color: var(--oa-text-tertiary);
+  }
+
+  .record-timeline {
+    margin-top: 8px;
   }
 }
 </style>

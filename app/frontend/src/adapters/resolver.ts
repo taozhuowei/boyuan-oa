@@ -8,10 +8,10 @@ import componentsConfig from './config/components.json'
 import propsMapConfig from './config/props-map.json'
 
 // 平台类型
-type Platform = 'h5' | 'mp'
+export type Platform = 'h5' | 'mp'
 
 // 组件配置项
-interface ComponentConfig {
+export interface ComponentConfig {
   source: string
   name: string
 }
