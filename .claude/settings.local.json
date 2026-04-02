@@ -1,5 +1,10 @@
 {
   "spinnerTipsEnabled": false,
   "prefersReducedMotion": true,
-  "outputStyle": "Explanatory"
+  "outputStyle": "Explanatory",
+  "permissions": {
+    "allow": [
+      "Bash(kimi -p '你是一个前端工程师，正在维护一个 uni-app + Vue 3 + TypeScript 项目。:*)"
+    ]
+  }
 }
