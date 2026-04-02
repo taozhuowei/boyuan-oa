@@ -12,7 +12,7 @@
 
 ---
 
-## 2. 当前项目状态（2026-04-02）
+## 2. 当前项目状态（2026-04-03）
 
 ### 总体进度
 
@@ -71,6 +71,14 @@
 
 三条线独立，不互相推导。`employeeType`（OFFICE/LABOR）由 `position.employeeCategory` 自动同步，不参与权限计算。
 
+### 4.2.1 Permission 表（全量 RBAC）
+
+`permission` 表存储所有权限码（`code`/`name`/`category`/`isEnabled`），Admin 初始化时预置当前设计中的全部权限码，运营期 Admin 可增删/启用/禁用权限，角色的 `permissionCodes` 是此表的子集引用。
+
+`roleCode` 是语义稳定的字符串键（`ceo`/`project_manager`/`finance`/`employee`/`worker`），写在 JWT、审批流 `skipCondition`、数据范围静态映射中，代码中永远不变。
+
+---
+
 ### 4.3 岗位（Position）与角色（Role）的区别
 
 | | Role（角色） | Position（岗位） |
@@ -93,10 +101,29 @@
 
 ### 4.5 薪资结算：窗口期模型（取代4项硬阻断）
 
-- 默认 **7 天窗口期**（CEO 可提前关闭）
-- 只有 2 项强制前置检查：① 无未处理的异议/更正 ② 无未完成的薪资计算任务
+- 默认 **7 天窗口期**（CEO **不可**提前关闭，仅自动到期锁定）
+- 窗口期字段直接存储于 `PayrollCycle`（`window_days/window_status/window_start_date/window_end_date`），**无独立 `payroll_window_period` 表**
+- 只有 2 项强制前置检查：① 无 `PENDING_REVIEW` 状态的 `PayrollSlip`（未处理异议）② 无 `CALCULATING` 状态的 `PayrollCycle`（并发计算任务）
 - 窗口期内员工可提交异议；窗口关闭后数据锁定，不再接受异议
 - 未响应加班通知、未完成工伤审核等—→窗口期关闭时按规则自动处理，不阻塞结算
+
+### 4.5.1 工资条结构变更
+
+- 移除 `PayrollSlip.grossPay`（应发合计不单独存储，由引擎计算）和 `PayrollSlip.items JSON`
+- 工资条明细以 `PayrollSlipItem` 行存储（关联 `PayrollItemDef`）
+- 财务可通过 `PayrollItemDef` 配置自定义费目（`ALLOWANCE` 补贴 / `DEDUCTION` 扣减），按需挂载到当期工资条
+
+### 4.5.2 新参考表（JSON 字段替代）
+
+| 表 | 替代 | 说明 |
+|----|------|------|
+| `LeaveTypeDef` | `Position.leaveDeductRates JSON` | 假种扣款比例（`deductRate`），Admin 可配 |
+| `SocialInsuranceItem` | `Position.socialInsuranceRates JSON` | 险种分项（名称/比例/模式），Admin 可增删 |
+| `FormTypeDef` | `FormRecord.formType` 硬编码 | 表单类型定义，Admin 可新增类型无需改代码 |
+| `PayrollItemDef` | `PayrollSlip.items JSON` | 自定义费目（补贴/扣减），Finance/CEO 配置 |
+| `PayrollSlipItem` | `PayrollSlip.items JSON` | 工资条明细行，替代 JSON 聚合字段 |
+
+---
 
 ### 4.6 加班通知：三路径模型
 
@@ -108,20 +135,31 @@
 
 三条路径均写入 `overtime_notification` + `overtime_response` 表。
 
+### 4.6.1 ApprovalFlowNode 两个新字段
+
+- `approvalMode ENUM(SEQUENTIAL, ANY_OF)`：`ANY_OF` 用于多 PM 场景，任一 PM 审批即可推进，其余人的待办自动标记 `SUPERSEDED`
+- `skipCondition JSON`：如 `{"type":"SUBMITTER_ROLE_MATCH","roleCode":"project_manager"}`，工伤补偿 PM 代录时跳过节点1
+
+### 4.6.2 多 PM：通过 ProjectMember.role 实现
+
+`Project` 表移除 `pmId` 单字段，改为 `ProjectMember.role ENUM(PM, MEMBER)`，一个项目可有多个 PM。
+
+---
+
 ### 4.7 签名流程（顺序不可颠倒）
 
 ```
-1. 阅读工资确认协议（如已配置）— 协议版本号与员工 lastAgreementVersion 比对，有新版本必须重读
+1. 阅读工资确认协议（如已配置）— 员工须滚动至底部（scroll-to-bottom）才能点击签名按钮
+   协议版本变更时，员工下次签署前必须重读，否则后端拒绝签署请求
 2. 首次：Canvas 手写签名 → 上传 → 绑定员工ID → 设置独立 PIN
-3. 后续：展示签名预览 + 意图声明 → 输入 PIN → 生成 PayrollConfirmation + 存证 PDF
+3. 后续：展示签名预览 + 意图声明（"我已阅读并同意以上协议内容，本次签名代表本人真实意愿"）→ 输入 PIN → 生成 PayrollConfirmation + 存证 PDF
 ```
-
-协议版本变更时，员工下次签署前必须重读，否则后端拒绝签署请求。
 
 ### 4.8 施工日志：模板 + 里程碑 + 汇总报告
 
-- **工作项模板**：项目级，PM/CEO 维护，员工提交日志时从模板选择工作项（可自由填数量）
-- **项目里程碑**：PM 创建抽象节点，每日工人提交日志时选择当前进度状态（ON_TRACK/AT_RISK/DELAYED）
+- **工作项模板**：项目级，PM/CEO 维护，员工提交日志时从模板选择工作项（可自由填数量）；支持 `/derive` 派生现有模板
+- **项目里程碑**：PM 拖动进度条标记完成，系统记录 `actualCompletionDate`（**无** `plannedDate`/`targetDate`）
+- **施工日志聚合**：前端负责聚合（按工作项分组、汇总数量），后端存储 PM 最终提交结果（`aggregatedItems JSON`）
 - **汇总报告**：PM 在所有日志审批完成后触发生成，选择可视化组件（折线图/里程碑时间轴/工作量表），填写 PM 备注，提交后通知 CEO，归档
 - **CEO 仪表盘**：实时展示工作量折线图（可下钻到具体日期）、里程碑进度、工作项汇总
 
@@ -198,22 +236,29 @@ Excel 模板必须字段：`employeeNo`、`name`、`positionCode`、`departmentN
 
 - **禁止创建独立 `User` 实体**，员工即用户
 - **禁止将 employeeType 参与权限计算**，employeeType 只是薪资/假期的分类标签，从岗位 employeeCategory 自动同步
-- **禁止将薪资结算前置检查扩展超过 2 项**（窗口期内的异议和未完成计算任务），其他状态不阻塞结算
+- **禁止将薪资结算前置检查扩展超过 2 项**（无 PENDING_REVIEW 异议单 + 无 CALCULATING 计算任务），其他状态不阻塞结算
+- **禁止创建独立 `payroll_window_period` 表**，窗口期字段存在 `payroll_cycle` 中
+- **禁止实现 PayrollEngine.closeWindow()（提前关闭窗口期）**，窗口期只能自动到期锁定
+- **禁止将 `ProjectMilestone` 中恢复 `plannedDate`/`targetDate` 字段**，只记录实际完成日期
+- **禁止在 `Project` 表中恢复 `pmId` 字段**，多 PM 通过 `ProjectMember.role=PM` 实现
 - **禁止文件存二进制到数据库**，一律走 FS + AttachmentMeta
 - **禁止页面硬编码 AntD/Vant 组件**，必须走适配层 `components.json`
 - **禁止在 `access.ts` 或 `forms.ts` 中创建私有 request 函数**，全部走 `http.ts`
+- **禁止将 leaveDeductRates / socialInsuranceRates 作为 JSON 存在 Position 中**，分别用 `LeaveTypeDef` / `SocialInsuranceItem` 参考表
 
 ---
 
 ## 10. 下一个可执行任务
 
+文档设计阶段已全部完成（含21项设计决策落地），可开始 **Phase 0（工程基础）**。
+
 按 `dev/TODO.md Phase 0` 顺序执行：
 
 ```
-后端：写 schema.sql（30张表DDL）
-后端：写 data.sql（5个测试账号）
+后端：写 schema.sql（35张表DDL，含新参考表和合并窗口期字段）
+后端：写 data.sql（5个测试账号 + 角色/部门/岗位/LeaveTypeDef/SocialInsuranceItem 种子数据）
 后端：补全 EmployeeMapper / ProjectMapper / DepartmentMapper
-后端：ApprovalFlowNode 实体加 skipCondition 字段
+后端：ApprovalFlowNode 实体加 skipCondition + approvalMode 字段
 前端：access.ts 和 forms.ts 迁移到 http.ts
 前端：getComponentSync 补充条件编译实现
 ```

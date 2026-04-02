@@ -271,6 +271,32 @@ public interface StorageService {
 
 ---
 
+## 6.1 短信通知抽象（SmsService）
+
+**P3 功能**，当前提供 no-op 默认实现，接口预留供后续接入短信服务商：
+
+```java
+// SmsService.java（接口）
+public interface SmsService {
+    void send(String phone, String templateCode, Map<String, String> params);
+}
+
+// NoOpSmsService.java（当前唯一实现，P3 前始终使用此实现）
+// 所有调用均静默忽略，不抛异常，不记录日志
+@Primary
+@Component
+public class NoOpSmsService implements SmsService {
+    @Override
+    public void send(String phone, String templateCode, Map<String, String> params) {
+        // no-op: SMS not yet configured
+    }
+}
+```
+
+**触发时机（P3 实现时生效）**：`CleanupScheduler` 检测到 `cleanup_task.status = FAILED` 且连续超过配置天数未处理时，调用 `SmsService.send()` 通知管理员。触发阈值通过 `sys_config` 表配置。
+
+---
+
 ## 7. 审批引擎实现
 
 `ApprovalEngine` 是审批流推进的唯一入口，任何 Service 需要触发审批动作时注入此 Engine，禁止直接操作 `approval_record` 表：
@@ -280,6 +306,17 @@ ApprovalEngine.submit(formId)      → 创建 FormRecord，推进到第一个节
 ApprovalEngine.approve(formId, comment) → 当前节点通过，推进到下一节点或结束
 ApprovalEngine.reject(formId, comment)  → 驳回，状态回到 REJECTED
 ```
+
+### 7.0 审批模式（approvalMode）
+
+`ApprovalFlowNode.approvalMode` 控制多审批人场景的推进规则：
+
+| 模式 | 说明 | 适用场景 |
+|------|------|---------|
+| `SEQUENTIAL` | 所有指定审批人依次审批，全部通过后推进 | 默认，单一角色审批 |
+| `ANY_OF` | 指定角色范围内任意一人审批通过即推进 | 多 PM 项目，任一 PM 审批施工日志即可 |
+
+`ANY_OF` 实现：节点推进时查询所有符合条件的审批人，任一人调用 `approve()` 即将节点标记为 `APPROVED` 并推进；其余人的待办自动关闭（标记 `SUPERSEDED`）。
 
 ### 7.1 skipCondition 处理
 
@@ -308,11 +345,16 @@ if (node.getSkipCondition() != null) {
 
 ### 8.1 窗口期状态机
 
+窗口期字段直接存储于 `PayrollCycle` 中（无独立 `PayrollWindowPeriod` 表）：
+
 ```
-OPEN（可提交异议）→ 手动关闭（CEO）或到期自动关闭 → CLOSED（锁定）
+PayrollCycle.windowStatus:
+  OPEN（可提交异议）→ 到期自动关闭 → CLOSED（锁定）
 ```
 
-`PayrollWindowScheduler` 每天 00:30 扫描 `pay_window_period` 表，到期的窗口期自动关闭并触发未响应项的自动处理规则（具体规则见 `WORKFLOW_CONFIG §3`）。
+**窗口期不可提前关闭**，只能通过 `PayrollWindowScheduler` 到期自动关闭。到期时触发未响应项的自动处理规则（具体规则见 `WORKFLOW_CONFIG §2.2.2`）。
+
+`PayrollWindowScheduler` 每天 00:30 扫描 `pay_cycle` 表中 `windowStatus = OPEN` 且 `windowEndDate <= NOW()` 的记录，执行锁定并触发兜底规则。
 
 ### 8.2 多版本管理
 
@@ -320,13 +362,24 @@ OPEN（可提交异议）→ 手动关闭（CEO）或到期自动关闭 → CLOS
 
 ### 8.3 两项强制前置检查
 
-结算前 `PayrollEngine.settle()` 必须通过：
+结算前 `PayrollEngine.settle()` 必须通过，且**不可豁免**：
 
 ```java
 // 1. 无未处理的异议单（status = PENDING_REVIEW 的 pay_slip）
 // 2. 无未完成的薪资计算任务（status = CALCULATING 的 pay_cycle）
-// 两项以外的状态不阻塞结算
+// 两项以外的状态不阻塞结算（工伤跨月、施工日志未归档、加班审批跨月均不阻塞）
 ```
+
+### 8.4 可配置费目（PayrollItemDef）
+
+工资条中除固定算法项（加班、请假、社保等）外，支持财务/CEO 通过 `PayrollItemDef` 表配置额外费目：
+
+| 类型 | 说明 | 示例 |
+|------|------|------|
+| `ALLOWANCE` | 补贴/奖金，加入应发 | 餐补、驻场补贴 |
+| `DEDUCTION` | 扣减项，减少实发 | 公司罚款、设备损坏赔偿 |
+
+财务在结算时按需将自定义金额挂载到当期 `PayrollSlip`（生成 `PayrollSlipItem` 行），平台引擎汇总计算实发工资。
 
 ---
 

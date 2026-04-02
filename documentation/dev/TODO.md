@@ -40,8 +40,18 @@
 
 ### 后端任务
 
-- [ ] `[P0]` 补全 `schema.sql`：新增 `employee`、`department`、`project`、`project_member`、`form_record`、`approval_record`、`approval_flow_def`、`approval_flow_node`、`position`（岗位）、`position_level`（等级）、`work_item_template`（施工日志模板）、`work_item_template_item`（模板工作项）、`project_milestone`（项目里程碑）、`project_progress_log`（每日进度确认）、`construction_log_summary`（汇总报告）、`overtime_notification`（加班通知）、`overtime_response`（员工响应）、`payroll_window_period`（窗口期状态）、`salary_confirmation_agreement`（工资确认协议）、`salary_grade`、`payroll_cycle`、`payroll_slip`、`payroll_item`、`payroll_adjustment`、`payroll_confirmation`、`employee_signature`、`injury_claim`（工伤理赔记录，独立于 form_record）、`operation_log`（审批操作日志，永久保留）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
-  > 检查: `app/backend/src/main/resources/db/schema.sql` — 搜索每个表名，确认30张业务表 CREATE TABLE 语句全部存在
+- [ ] `[P0]` 补全 `schema.sql`：新增以下业务表（共 35 张）
+  - 员工 & 权限：`employee`、`permission`（权限码表）
+  - 组织：`department`、`position`（岗位）、`position_level`（等级）
+  - 项目：`project`、`project_member`（含 `role ENUM(PM,MEMBER)`）、`project_milestone`（含 `actual_completion_date`，无 `planned_date`）、`project_progress_log`
+  - 审批：`form_type_def`（表单类型定义）、`form_record`（含 `form_type VARCHAR FK form_type_def`）、`approval_record`、`approval_flow_def`、`approval_flow_node`（含 `skip_condition JSON`、`approval_mode ENUM`）
+  - 施工：`work_item_template`、`work_item_template_item`、`construction_log_summary`
+  - 考勤：`overtime_notification`、`overtime_response`
+  - 薪资：`leave_type_def`（假种扣款比例）、`social_insurance_item`（险种分项）、`payroll_item_def`（自定义费目）、`payroll_cycle`（含窗口期字段 `window_days/window_status/window_start_date/window_end_date`，**无独立 payroll_window_period 表**）、`payroll_slip`（无 `items JSON`，净发工资字段）、`payroll_slip_item`（工资条明细行）、`salary_grade`、`payroll_adjustment`、`payroll_confirmation`
+  - 签名：`employee_signature`、`salary_confirmation_agreement`
+  - 工伤：`injury_claim`（理赔记录，独立于 form_record）
+  - 运维：`operation_log`（永久保留）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
+  > 检查: `app/backend/src/main/resources/db/schema.sql` — 搜索每个表名，确认所有 CREATE TABLE 语句存在；**特别确认不存在 `payroll_window_period` 表**
 
 - [ ] `[P0]` 补全 `data.sql`：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
   > 检查: `app/backend/src/main/resources/db/data.sql` — 搜索 employee.demo / worker.demo / pm.demo / ceo.demo / finance.demo，确认5条 INSERT 记录均存在
@@ -381,8 +391,8 @@
 - [ ] `[P1]` 施工日志 CEO 追溯驳回接口（`POST /construction-logs/{id}/recall`，状态变为 RECALLED）
   > 检查: WorkLogController.java — 搜索 `/recall` 路由，确认调用后 DB 中对应记录 status 变为 RECALLED，写入 operation_log
 
-- [ ] `[P1]` 施工日志申报周期配置接口（`GET/POST /config/construction-log-cycle`，PM 修改须 CEO 审批）
-  > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `construction-log-cycle` 路由；PM 调用 POST 时状态为 PENDING_CEO_APPROVAL；CEO 调用 POST 时直接生效
+- [ ] `[P1]` 施工日志申报周期配置接口（`GET /projects/{id}/config`、`PATCH /projects/{id}/config`，CEO 直接修改 `logReportCycleDays`，无需审批）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/ProjectController.java` — 搜索 `/config` 路由；PATCH 方法仅接受 CEO 角色，写入 `project.log_report_cycle_days` 后立即生效
 
 - [ ] `[P1]` 工伤补偿申请接口（`POST /forms/injury`，不含 `injuryType` 和 `compensationAmount`）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `/forms/injury` POST，确认 requestBody 不含金额字段；可含 proxyEmployeeId 字段
@@ -440,9 +450,8 @@
 ### 检查点（全部通过才进入 Phase 7）
 
 - [ ] 结算周期结束后窗口期自动开启（默认7天），财务可查看各员工数据完整状态
-- [ ] 窗口期关闭后（自动或 CEO 提前关闭），数据锁定，财务可发起结算
-- [ ] 财务执行正式结算，**2 项**强制检查（窗口期已关闭 + 所有员工薪资档案已配置）可查看通过状态
-- [ ] 预结算例外申请可发起并经 CEO 审批，豁免记录写入审计日志
+- [ ] 窗口期到期后**自动**锁定（不可提前关闭），数据锁定，财务可发起结算
+- [ ] 财务执行正式结算，**2 项**强制检查（无 PENDING_REVIEW 异议单 + 无 CALCULATING 计算任务）通过后方可结算
 - [ ] 财务执行正式结算，周期锁定，员工端工资条状态变为"待确认"
 - [ ] 员工完成电子签名绑定（手写 + PIN 码），可确认工资条（签名前展示工资确认协议，如已配置）
 - [ ] 工资条确认后生成存证 PDF，包含签名、意图声明、时间戳水印
@@ -455,17 +464,17 @@
 - [ ] `[P0]` 将 `OaDataService` 薪资内存逻辑迁移到真实 Service + Mapper
   > 检查: OaDataService.java — 确认薪资相关方法已删除；`PayrollSlip` / `PayrollCycle` 实体通过真实 Mapper 写入 DB
 
-- [ ] `[P0]` 窗口期模型：`PayrollWindowPeriodService` 含 openWindow() / closeWindow() / getStatus()，关联周期结束自动触发
-  > 检查: `app/backend/src/main/java/com/oa/backend/service/PayrollWindowPeriodService.java` — 确认文件存在；openWindow() 写入 payroll_window_period 记录；closeWindow() 锁定记录并触发算薪准备；getStatus() 返回每个员工的 attendance / overtime / injury 三项状态
+- [ ] `[P0]` 窗口期模型（字段内嵌于 `PayrollCycle`）：`PayrollEngine` 含 openWindow() / getWindowStatus()；`PayrollWindowScheduler` 到期自动锁定（**无** closeWindow() 提前关闭方法）
+  > 检查: `app/backend/src/main/java/com/oa/backend/engine/PayrollEngine.java` — 确认含 openWindow() / getWindowStatus()；**确认不存在** closeWindow() 方法；`app/backend/src/main/java/com/oa/backend/scheduler/PayrollWindowScheduler.java` — 确认扫描 `payroll_cycle` 表中 `window_status = OPEN` 且 `window_end_date <= NOW()` 的记录执行自动锁定
 
-- [ ] `[P0]` 结算检查（2强制项 + 算薪引擎）：窗口期已关闭、所有员工档案已配置；未审批数据按规则自动处理（未录入考勤按缺勤扣款、未归档加班不计入）
-  > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 确认 PayrollService.java preSettle() 方法仅检查2强制项；算薪引擎读取岗位/等级/个人覆盖配置计算 PayrollSlip + PayrollItem；社保按 position.socialInsuranceMode 分支计算
+- [ ] `[P0]` 结算前置检查（**仅 2 项强制**，无例外申请）：① 无 `PENDING_REVIEW` 状态 PayrollSlip；② 无 `CALCULATING` 状态 PayrollCycle；通过后执行算薪引擎
+  > 检查: `app/backend/src/main/java/com/oa/backend/engine/PayrollEngine.java` — 确认 settle() 方法只检查上述 2 项；算薪引擎读取岗位/等级/个人覆盖/LeaveTypeDef/SocialInsuranceItem/PayrollItemDef 计算 PayrollSlip + PayrollSlipItem
 
 - [ ] `[P0]` 正式结算、锁定周期、工资条发布
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/PayrollController.java` — 搜索 `/cycles/{id}/settle` POST，确认执行后 `payroll_cycle.locked = true`，生成 payroll_slip 记录
 
-- [ ] `[P1]` 预结算例外申请（finance 提交例外原因 → CEO 审批 → 校验项 2/3 标记 EXCEPTED，写入 operation_log）
-  > 检查: PayrollController.java — 搜索 `/cycles/{id}/pre-settle/exception` 或类似路由；PayrollService — 搜索 EXCEPTED 状态标记逻辑；operation_log 写入确认
+- [ ] `[P1]` 自定义费目 CRUD（`GET/POST/PUT/DELETE /payroll/item-defs`，finance/CEO 权限，含 `itemType ENUM(ALLOWANCE,DEDUCTION)`）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/PayrollController.java` — 搜索 `/item-defs` 路由；entity PayrollItemDef 含 name / itemType / description 字段
 
 - [ ] `[P1]` 薪资档位 CRUD（`SalaryGrade`：档位编码、名称、月基本工资，sysadmin 初始化时批量配置）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `/salary-grades` 路由，确认 GET/POST/PUT/DELETE 均存在，entity SalaryGrade 含 gradeCode / gradeName / baseSalary 字段
@@ -508,11 +517,11 @@
 - [ ] `[P1]` 薪资页接入真实接口（`GET /payroll/cycles`、`GET /payroll/slips`）
   > 检查: `app/frontend/src/pages/payroll/index.vue` — 确认 onMounted 调用真实接口，无 hardcoded mock 数据
 
-- [ ] `[P1]` 窗口期管理 Tab（财务视图）：展示各员工数据状态，支持提醒员工；CEO 可提前关闭窗口期
-  > 检查: `app/frontend/src/pages/payroll/index.vue` — 确认窗口期 Tab 存在，调用 `GET /payroll/window-period/status?cycleId={id}`；"提前关闭"按钮调用 `POST /payroll/window-period/{id}/close`（仅 CEO 可见）
+- [ ] `[P1]` 窗口期管理 Tab（财务视图）：展示窗口期剩余时间和各员工数据状态，支持提醒员工；**无提前关闭按钮**（窗口期仅自动到期关闭）
+  > 检查: `app/frontend/src/pages/payroll/index.vue` — 确认窗口期 Tab 存在，调用 `GET /payroll/cycles/{id}` 读取 windowStatus / windowEndDate；**确认不存在"提前关闭"按钮**
 
-- [ ] `[P1]` 预结算发起页：展示 **2 项**强制检查清单 + 未处理数据汇总（仅供参考，不阻塞）；支持提交例外申请（CEO 审批豁免）
-  > 检查: pages/payroll/ 预结算相关页面 — 确认展示2个强制检查项状态；有"提交例外申请"入口，调用例外申请接口
+- [ ] `[P1]` 预结算发起页：展示 **2 项**强制检查清单（无 PENDING_REVIEW 异议 + 无 CALCULATING 任务）；两项全通过后"发起结算"按钮激活
+  > 检查: pages/payroll/ 预结算相关页面 — 确认只展示2个强制检查项状态，无"提交例外申请"入口
 
 - [ ] `[P1]` 工资确认协议管理入口（CEO 视图）：上传/查看当前协议版本
   > 检查: pages/payroll/ 或系统配置页 — 搜索 `POST /salary-confirmation-agreement` 上传调用；协议预览使用 PDF 预览或文本组件
@@ -717,12 +726,37 @@
 - [ ] `[P3]` 实现 `EsignSignatureProvider`（`SignatureProvider` 接口的第三方实现，替换 `LocalSignatureProvider`）
   > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 确认 EsignSignatureProvider.java 实现 SignatureProvider 接口；配置开关（如 `signature.provider=esign`）可切换实现
 
+### 短信通知（NoOpSmsService 激活）
+
+- [ ] `[P3]` 实现真实 SmsService（对接短信服务商 API，替换 `NoOpSmsService`）
+  > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 确认新实现类实现 SmsService 接口；`@Primary` 注解从 NoOpSmsService 移除并加到新实现；发送后写入 `sms_send_log`
+
+- [ ] `[P3]` 清理失败连续 N 天未处理时触发短信提醒（N 通过 `sys_config` 配置，默认 3 天）
+  > 检查: `app/backend/src/main/java/com/oa/backend/scheduler/CleanupScheduler.java` — 搜索短信触发逻辑，确认条件判断 `FAILED 天数 >= smsThreshold` 时调用 SmsService.send()
+
+### 短周期结算（日结/周结）
+
+- [ ] `[P3]` 扩展 `PayrollCycle.settlementType` 支持 `DAILY` / `WEEKLY`（当前仅 `MONTHLY`）
+  > 检查: `app/backend/src/main/java/com/oa/backend/entity/PayrollCycle.java` — 确认 settlementType ENUM 含 DAILY / WEEKLY；PayrollEngine 针对短周期走"直接推送，无窗口期"分支
+
+- [ ] `[P3]` 前端结算周期选择器支持日结/周结选项
+  > 检查: pages/payroll/ 结算配置页 — 确认周期类型下拉含 DAILY / WEEKLY 选项；选择短周期时隐藏窗口期配置区域
+
+### Excel 员工导入字段映射（admin 配置）
+
+- [ ] `[P3]` Excel 导入字段映射配置接口（`GET/PUT /employees/import/field-mapping`，finance/CEO 可修改列名映射）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/EmployeeController.java` — 搜索 `/import/field-mapping` 路由；映射配置存储在 `sys_config` 或独立 `excel_field_mapping` 表
+
+- [ ] `[P3]` 前端 Excel 导入字段映射配置页（finance/CEO 可见，支持自定义列名到系统字段的映射关系）
+  > 检查: `app/frontend/src/pages/employees/` — 确认有字段映射配置页，调用 GET/PUT /employees/import/field-mapping；以表格形式展示"Excel列名"→"系统字段"映射
+
 ---
 
 ## 变更记录
 
 | 日期        | 内容                                                                                                                                           |
 |-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2026-04-03 | 应用21项设计决策：schema 表清单新增 leave_type_def / social_insurance_item / form_type_def / permission / payroll_item_def / payroll_slip_item，移除 payroll_window_period（窗口期字段合并进 payroll_cycle）；Phase 6 窗口期去掉提前关闭、预结算强制检查简化为2项（无例外申请）、新增 PayrollItemDef CRUD；Phase 5 施工日志周期改为 CEO 直接修改；P3 新增 SMS通知、日结/周结、Excel字段映射；里程碑去 targetDate 改 actualCompletionDate；多 PM 审批改 ANY_OF 模式 |
 | 2026-04-02 | 大规模补充新模块任务：schema 扩展至30张表；Phase 2 加岗位/等级/组织架构接口及前端页面；Phase 4 新增加班通知制三条路径（PM通知/CEO直通/自补例外）；Phase 5 施工日志重设计（工作项模板、里程碑进度、汇总报告、Dashboard折线图）；Phase 6 引入窗口期模型（取代4项阻塞检查）、工资确认协议管理；同步更新 UI_DESIGN.md、ROLE_CONFIG.md、CLIENT_FLOW_CONFIRMATION.md |
 | 2026-04-02 | 补充预结算例外申请任务（Phase 6），为全部任务添加逐项检查点（文件路径 + 验证内容）；社保并入工资模式明确为五险一金合计补贴 + 灵活就业说明 |
 | 2026-04-02 | 更新多项业务规格：施工日志独立系统+workItems快捷录入+CEO追溯驳回；工伤表单去掉金额字段，finance事后录入理赔；薪资档位批量配置；社保模式可配置；数据保留全部默认1年；操作日志永久保留；预结算校验降为4项 |
