@@ -20,7 +20,6 @@ documentation/
 │
 ├── presets/                          ← 预置业务方案
 │   └── construction/                ← 建筑工程版（众维当前配置）
-│       ├── BUSINESS.md              ← 业务需求设计
 │       ├── ROLE_CONFIG.md           ← 角色与权限配置
 │       ├── WORKFLOW_CONFIG.md       ← 工作流与业务规则
 │       └── UI_DESIGN.md             ← 业务模块页面设计
@@ -53,10 +52,9 @@ documentation/
 
 | 文档 | 职责 | 目标读者 |
 |------|------|---------|
-| [BUSINESS.md](./presets/construction/BUSINESS.md) | 企业背景、启用模块、业务场景说明、用户故事 | 产品经理、开发者（背景了解） |
-| [ROLE_CONFIG.md](./presets/construction/ROLE_CONFIG.md) | 5 个角色定义、权限矩阵、数据范围、工作台视图分配 | 产品经理、后端开发者（种子数据） |
-| [WORKFLOW_CONFIG.md](./presets/construction/WORKFLOW_CONFIG.md) | 各业务类型审批流、薪资计算规则、数据保留策略、表单字段配置 | 产品经理、后端开发者（种子数据） |
-| [UI_DESIGN.md](./presets/construction/UI_DESIGN.md) | 工作台（各角色）、考勤、薪资、项目管理、员工管理、角色管理、数据管理页面布局 | 前端开发者、UI 设计师 |
+| [ROLE_CONFIG.md](./presets/construction/ROLE_CONFIG.md) | 5 个角色定义、功能权限矩阵（按模块）、数据范围、权限边界特殊说明 | 产品经理、后端开发者（权限引擎配置参考） |
+| [WORKFLOW_CONFIG.md](./presets/construction/WORKFLOW_CONFIG.md) | 各业务类型审批流与状态机、薪资计算公式、预结算校验规则、数据保留策略、表单字段定义 | 产品经理、后端开发者（种子数据参考） |
+| [UI_DESIGN.md](./presets/construction/UI_DESIGN.md) | 工作台（各角色视图）、考勤、薪资、项目管理、员工管理、角色管理、数据管理页面布局 | 前端开发者、UI 设计师 |
 
 ---
 
