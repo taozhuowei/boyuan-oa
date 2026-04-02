@@ -14,14 +14,14 @@
             @click="selectRole('employee')"
           >
             <view class="role-icon employee">
-              <component :is="Icon" v-if="Icon" name="badge" :size="32" />
+              <view class="icon-placeholder"></view>
             </view>
             <view class="role-info">
               <text class="role-name">普通员工</text>
               <text class="role-desc">查看个人薪资、提交考勤申请、参与项目</text>
             </view>
             <view v-if="selectedRole === 'employee'" class="role-check">
-              <component :is="Icon" v-if="Icon" name="check-circle" :size="24" />
+              <view class="icon-placeholder"></view>
             </view>
           </view>
         </component>
@@ -33,14 +33,14 @@
             @click="selectRole('ceo')"
           >
             <view class="role-icon ceo">
-              <component :is="Icon" v-if="Icon" name="business-center" :size="32" />
+              <view class="icon-placeholder"></view>
             </view>
             <view class="role-info">
               <text class="role-name">CEO / 管理员</text>
               <text class="role-desc">管理员工、审批考勤、查看全公司数据</text>
             </view>
             <view v-if="selectedRole === 'ceo'" class="role-check">
-              <component :is="Icon" v-if="Icon" name="check-circle" :size="24" />
+              <view class="icon-placeholder"></view>
             </view>
           </view>
         </component>
@@ -68,23 +68,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import type { Component } from 'vue'
-import { getComponent } from '../../adapters'
+import { ref } from 'vue'
+import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 
-// 异步获取组件
-const Icon = ref<Component | null>(null)
-const Row = ref<Component | null>(null)
-const Col = ref<Component | null>(null)
-const Button = ref<Component | null>(null)
-
-onMounted(async () => {
-  Icon.value = await getComponent('Icon')
-  Row.value = await getComponent('Row')
-  Col.value = await getComponent('Col')
-  Button.value = await getComponent('Button')
-})
+const { Row, Col, Button } = useComponent(['Row', 'Col', 'Button'])
 
 const userStore = useUserStore()
 
@@ -145,7 +133,7 @@ const goBack = () => {
   .role-title {
     font-size: 28px;
     font-weight: 700;
-    color: var(--oa-text);
+    color: var(--oa-text-primary);
     display: block;
     margin-bottom: 12px;
   }
@@ -206,7 +194,7 @@ const goBack = () => {
   .role-name {
     font-size: 18px;
     font-weight: 600;
-    color: var(--oa-text);
+    color: var(--oa-text-primary);
     display: block;
     margin-bottom: 8px;
   }
