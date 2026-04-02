@@ -40,8 +40,8 @@
 
 ### 后端任务
 
-- [ ] `[P0]` 补全 `schema.sql`：新增 `employee`、`department`、`project`、`project_member`、`form_record`、`approval_record`、`approval_flow_def`、`approval_flow_node`、`salary_grade`、`payroll_cycle`、`payroll_slip`、`payroll_item`、`payroll_adjustment`、`payroll_confirmation`、`employee_signature`、`injury_claim`（工伤理赔记录，独立于 form_record）、`operation_log`（审批操作日志，永久保留）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
-  > 检查: `app/backend/src/main/resources/db/schema.sql` — 搜索每个表名，确认21张业务表 CREATE TABLE 语句全部存在
+- [ ] `[P0]` 补全 `schema.sql`：新增 `employee`、`department`、`project`、`project_member`、`form_record`、`approval_record`、`approval_flow_def`、`approval_flow_node`、`position`（岗位）、`position_level`（等级）、`work_item_template`（施工日志模板）、`work_item_template_item`（模板工作项）、`project_milestone`（项目里程碑）、`project_progress_log`（每日进度确认）、`construction_log_summary`（汇总报告）、`overtime_notification`（加班通知）、`overtime_response`（员工响应）、`payroll_window_period`（窗口期状态）、`salary_confirmation_agreement`（工资确认协议）、`salary_grade`、`payroll_cycle`、`payroll_slip`、`payroll_item`、`payroll_adjustment`、`payroll_confirmation`、`employee_signature`、`injury_claim`（工伤理赔记录，独立于 form_record）、`operation_log`（审批操作日志，永久保留）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
+  > 检查: `app/backend/src/main/resources/db/schema.sql` — 搜索每个表名，确认30张业务表 CREATE TABLE 语句全部存在
 
 - [ ] `[P0]` 补全 `data.sql`：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
   > 检查: `app/backend/src/main/resources/db/data.sql` — 搜索 employee.demo / worker.demo / pm.demo / ceo.demo / finance.demo，确认5条 INSERT 记录均存在
@@ -138,8 +138,20 @@
 - [ ] `[P0]` 登录响应补充 `employeeType` 字段
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/AuthController.java` — 查看登录接口返回的 DTO/Map，确认含 `employeeType` 字段
 
-- [ ] `[P1]` 员工 CRUD 接口（`GET/POST/PUT/DELETE /employees`），含员工类型、部门、角色关联
-  > 检查: `app/backend/src/main/java/com/oa/backend/controller/EmployeeController.java` — 确认4个 HTTP 方法均存在，且 POST/PUT body 含 employeeType / departmentId / roleCode
+- [ ] `[P1]` 员工 CRUD 接口（`GET/POST/PUT/DELETE /employees`），body 含 `positionId`、`levelId`（可选）、`roleCode`、`directSupervisorId`（可选）、`departmentId`
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/EmployeeController.java` — 确认4个 HTTP 方法均存在，POST/PUT requestBody 含 positionId / levelId / directSupervisorId 字段
+
+- [ ] `[P1]` 岗位 CRUD 接口（`GET/POST/PUT/DELETE /positions`），含薪资配置、假期配置、社保配置
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/PositionController.java` — 确认4个 HTTP 方法存在；响应体含 salaryConfig / leaveConfig / socialInsuranceConfig JSON 结构
+
+- [ ] `[P1]` 等级 CRUD 接口（`GET/POST/PUT/DELETE /positions/{id}/levels`）
+  > 检查: PositionController.java — 搜索 `/levels` 路由，确认 GET 返回该岗位所有等级，POST/PUT/DELETE 操作单条等级
+
+- [ ] `[P1]` 个人薪资覆盖接口（`PATCH /employees/{id}/salary-override`，finance 提交，需 CEO 审批）
+  > 检查: EmployeeController.java — 搜索 `salary-override` 路由；ApprovlFlowService — 确认提交后生成待 CEO 审批的记录，批准后写入 employee 表
+
+- [ ] `[P1]` 组织架构接口（`GET /org/tree` 返回含 directSupervisorId 的员工树；`PATCH /org/supervisor/{employeeId}` 修改直系领导）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/OrgController.java` — 确认 GET /org/tree 返回树形 JSON（含子节点数组）；PATCH 接口更新 employee.direct_supervisor_id
 
 - [ ] `[P1]` 角色 CRUD 接口（`GET/POST/PUT/DELETE /roles`），含权限项配置
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/RoleController.java` — 确认4个 HTTP 方法存在；PUT 接口支持传递权限项列表
@@ -158,19 +170,25 @@
 
 ### 前端任务
 
-- [ ] `[P0]` 登录成功后将 `employeeType` 写入 `userStore`
-  > 检查: `app/frontend/src/stores/user.ts` — 搜索 `employeeType` 字段，确认从登录响应中写入
+- [ ] `[P0]` 登录成功后将 `employeeType`、`positionId` 写入 `userStore`
+  > 检查: `app/frontend/src/stores/user.ts` — 搜索 `employeeType` 和 `positionId` 字段，确认从登录响应中写入
 
-- [ ] `[P1]` 员工列表接入真实接口，支持部门/角色/类型/状态筛选、关键字搜索
+- [ ] `[P1]` 员工列表接入真实接口，支持岗位/角色/类型/状态筛选、关键字搜索
   > 检查: `app/frontend/src/pages/employees/index.vue` — 确认 onMounted 调用 `GET /employees`，筛选参数绑定到接口 query
 
-- [ ] `[P1]` 员工新增/编辑弹窗对接接口
-  > 检查: employees/index.vue 或弹窗组件 — 搜索 `POST /employees` 和 `PUT /employees` 调用
+- [ ] `[P1]` 员工新增/编辑弹窗对接接口（含岗位、等级、直系领导字段）
+  > 检查: employees/index.vue 或弹窗组件 — 搜索 `POST /employees` 和 `PUT /employees` 调用；弹窗包含 positionId / levelId / directSupervisorId 选择器
 
 - [ ] `[P1]` 角色管理页（列表、新增、编辑权限矩阵）对接接口
   > 检查: `app/frontend/src/pages/role/index.vue` — 确认调用 `GET/POST/PUT /roles`，权限矩阵可勾选
 
-- [ ] `[P2]` 员工详情页（独立页面，见 COMPONENT_LAYOUT §5）
+- [ ] `[P1]` 岗位管理页（`pages/positions/`，CEO/财务可见）— 岗位列表、新增/编辑（含5个 Tab）、等级管理子表
+  > 检查: `app/frontend/src/pages/positions/index.vue` — 确认文件存在，调用 `GET /positions`；编辑抽屉包含薪资/假期/社保/等级 Tab，各 Tab 对接对应子接口
+
+- [ ] `[P1]` 组织架构树页（`pages/org/`，CEO 可见）— 可视化员工汇报树，支持修改直系领导
+  > 检查: `app/frontend/src/pages/org/index.vue` — 确认文件存在，调用 `GET /org/tree`；点击节点可打开侧边栏并调用 `PATCH /org/supervisor/{employeeId}` 修改领导
+
+- [ ] `[P2]` 员工详情页（独立页面，见 UI_DESIGN.md §5）
   > 检查: `app/frontend/src/pages/employees/` — 确认有独立的 detail 或 `[id]` 页面文件，路由可跳转
 
 ---
@@ -184,6 +202,8 @@
 - [ ] 部门树可展示，支持新增部门节点
 - [ ] 项目列表可管理（新增/编辑/关闭）
 - [ ] 项目经理可查看本项目成员，CEO 可添加/移除任意项目成员
+- [ ] 岗位列表可管理（创建/编辑薪资配置、假期配置、社保配置，设置等级）
+- [ ] 组织架构树可查看，CEO 可修改任意员工的直系领导
 
 ### 后端任务
 
@@ -233,10 +253,12 @@
 ### 检查点（全部通过才进入 Phase 5）
 
 - [ ] 员工提交请假单，状态为 PENDING
-- [ ] 项目经理初审通过，状态变为 APPROVING
-- [ ] CEO 终审通过，状态变为 APPROVED，自动归档
+- [ ] 直系领导审批通过，状态变为 APPROVED，自动归档
 - [ ] 驳回后申请人可重新发起（新单据，历史保留）
-- [ ] 无项目经理时，节点1自动转交 CEO（兜底机制）
+- [ ] 无直系领导时，节点1自动转交 CEO（兜底机制）
+- [ ] 项目经理发起加班通知，员工收到后可确认/拒绝
+- [ ] CEO 发起的加班通知无需审批，直接归档
+- [ ] 员工发起自补加班申请（例外路径），经直系领导+CEO双审
 
 ### 后端任务
 
@@ -267,13 +289,31 @@
 - [ ] `[P1]` 考勤计量单位配置（`GET/POST /config/attendance-unit`，选项：小时/半天/天，影响请假和加班精度）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `attendance-unit` 路由，确认 GET 读取、POST 更新，取值限于 HOUR/HALF_DAY/DAY
 
-- [ ] `[P2]` 加班代录接口（`project_manager`/`ceo` 代他人提交，含 `proxyEmployee` 字段）
-  > 检查: AttendanceController.java `POST /attendance/overtime` — 确认 requestBody 含 `proxyEmployeeId` 字段，且权限校验限于 project_manager / ceo
+- [ ] `[P1]` 加班通知发起接口（`POST /overtime-notifications`，PM/CEO 调用，含 projectId / date / overtimeType / content / recipientIds）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/OvertimeNotificationController.java` — 确认 POST 方法存在；CEO 调用时直接写入 operation_log 且状态为 CONFIRMED（无需审批）；PM 调用时状态为 NOTIFIED
+
+- [ ] `[P1]` 加班通知响应接口（`POST /overtime-notifications/{id}/respond`，员工调用，含 accepted: boolean / reason）
+  > 检查: OvertimeNotificationController.java — 搜索 `/respond` 路由；拒绝时写入 `overtime_response.rejected = true`，触发直系领导审批任务
+
+- [ ] `[P1]` 自补加班申请接口（`POST /attendance/overtime-self-report`，含 date / overtimeType / reason / attachmentIds，走双审流程）
+  > 检查: AttendanceController.java — 搜索 `overtime-self-report`；写入 form_record 并启动两节点审批流（直系领导 → CEO）
+
+- [ ] `[P2]` 追溯请假接口（`POST /attendance/leave/retroactive`，任何时刻可补录，审批通过后扣款计入当月）
+  > 检查: AttendanceController.java — 搜索 `retroactive`；审批通过后 PayrollService 按审批完成月结算扣款，不修改历史周期
 
 ### 前端任务
 
-- [ ] `[P0]` 考勤页接入真实接口（提交请假/加班、获取历史记录）
+- [ ] `[P0]` 考勤页接入真实接口（提交请假、获取历史记录）
   > 检查: `app/frontend/src/pages/attendance/index.vue` — 确认 onMounted 调用 `GET /attendance/history`，提交按钮调用对应 POST 接口
+
+- [ ] `[P1]` 加班通知列表（员工/劳工视图）：展示收到的通知，支持确认/拒绝
+  > 检查: attendance/index.vue — 确认加班通知 Tab 存在，调用 `GET /overtime-notifications?recipientId={me}`；确认/拒绝按钮调用 `POST /overtime-notifications/{id}/respond`
+
+- [ ] `[P1]` 加班通知管理页（PM/CEO 视图）：发起通知、查看响应情况
+  > 检查: attendance/index.vue 或独立 pages/overtime/ — 搜索 `POST /overtime-notifications` 调用；通知详情页展示 overtime_response 列表（已确认/已拒绝/待处理）
+
+- [ ] `[P1]` 自补加班申请表单（含附件上传，调用 `POST /attendance/overtime-self-report`）
+  > 检查: attendance/index.vue — 确认自补加班 Tab 存在；提交时携带 attachmentIds 并展示审批流路径提示
 
 - [ ] `[P1]` 待办中心页（`pages/todo/`，聚合所有待我审批，按类型/状态/项目筛选）
   > 检查: `app/frontend/src/pages/todo/` — 确认目录存在，调用 `GET /forms/todo`，支持筛选条件传参
@@ -298,7 +338,11 @@
 
 ### 检查点（全部通过才进入 Phase 6）
 
-- [ ] 劳工可提交施工日志（含 workItems 动态列表），项目经理可审批，无 CEO 终审
+- [ ] 劳工可提交施工日志（含 workItems 动态列表，支持从模板填入），项目经理可审批，无 CEO 终审
+- [ ] PM/CEO 可管理工作项模板（增删改查，支持派生）
+- [ ] PM 可管理项目里程碑（新增/编辑/标记完成）并确认每日进度
+- [ ] 所有日志审批完成后，PM 可生成汇总报告（含可视化选项和 PM 总结），通知 CEO
+- [ ] CEO 可通过 Dashboard 查看进度折线图、里程碑时间轴，并钻取到单日日志
 - [ ] CEO 可对已归档施工日志发起追溯驳回，状态变为 RECALLED，劳工收到通知
 - [ ] 劳工发起工伤补偿 → 节点1: 同项目项目经理 → 节点2: CEO（表单无金额字段）
 - [ ] 项目经理代录工伤补偿 → 直接跳过节点1进入 CEO 终审
@@ -310,11 +354,35 @@
 - [ ] `[P0]` 系统启动时写入 INJURY、CONSTRUCTION_LOG 默认审批流配置（含 `skipCondition`）
   > 检查: `app/backend/src/main/resources/db/data.sql` — 搜索 `INSERT INTO approval_flow_def` 含 INJURY（2节点，skipCondition 字段有值）和 CONSTRUCTION_LOG（1节点）记录
 
+- [ ] `[P1]` 工作项模板 CRUD 接口（`GET/POST/PUT/DELETE /work-item-templates`，PM/CEO 权限，含 items JSON 数组）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/WorkItemTemplateController.java` — 确认4个 HTTP 方法存在；响应含 items 数组，每项有 name / defaultUnit
+
+- [ ] `[P1]` 模板派生接口（`POST /work-item-templates/{id}/derive`，复制模板并返回新 ID）
+  > 检查: WorkItemTemplateController.java — 搜索 `/derive` 路由，确认返回新模板 ID 且原模板不变
+
+- [ ] `[P1]` 里程碑 CRUD 接口（`GET/POST/PUT/DELETE /projects/{id}/milestones`）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/ProjectController.java` — 搜索 `/milestones` 路由，确认 CRUD 四个方法均存在
+
+- [ ] `[P1]` 每日进度确认接口（`POST /projects/{id}/progress`，PM 调用，含 milestoneId / progressStatus / note）
+  > 检查: ProjectController.java — 搜索 `/progress` 路由；DB 中写入 project_progress_log 记录
+
+- [ ] `[P1]` 汇总报告生成接口（`POST /projects/{id}/construction-summary`，PM 调用，含 vizComponents / pmNote；触发 CEO 通知）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `construction-summary` 路由；写入 construction_log_summary；调用 NotificationService 发送 CEO 通知
+
+- [ ] `[P1]` Dashboard 数据接口（`GET /projects/{id}/dashboard?startDate=&endDate=`，返回折线图数据 + 里程碑列表 + 工作项汇总）
+  > 检查: ProjectController.java — 搜索 `/dashboard` 路由；响应含 timeSeriesData / milestones / workItemSummary 三个字段
+
 - [ ] `[P1]` 施工日志提交接口（`POST /construction-logs`，含 `workItems` JSON 数组字段）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/WorkLogController.java` — 确认 POST 方法存在，requestBody 支持 workItems（List）字段
 
+- [ ] `[P1]` PM 批注接口（`PATCH /construction-logs/{id}/review`，审批时可附带 pmNote）
+  > 检查: WorkLogController.java — 搜索 `/review` 路由；审批通过时 pmNote 写入 DB 但不影响日志正文
+
 - [ ] `[P1]` 施工日志 CEO 追溯驳回接口（`POST /construction-logs/{id}/recall`，状态变为 RECALLED）
   > 检查: WorkLogController.java — 搜索 `/recall` 路由，确认调用后 DB 中对应记录 status 变为 RECALLED，写入 operation_log
+
+- [ ] `[P1]` 施工日志申报周期配置接口（`GET/POST /config/construction-log-cycle`，PM 修改须 CEO 审批）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `construction-log-cycle` 路由；PM 调用 POST 时状态为 PENDING_CEO_APPROVAL；CEO 调用 POST 时直接生效
 
 - [ ] `[P1]` 工伤补偿申请接口（`POST /forms/injury`，不含 `injuryType` 和 `compensationAmount`）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `/forms/injury` POST，确认 requestBody 不含金额字段；可含 proxyEmployeeId 字段
@@ -334,11 +402,25 @@
   > 检查: `app/frontend/src/components/cross-platform/FileUpload/index.vue` — 文件存在，接受 maxCount / accept props，触发 change 事件返回已上传附件列表
 
 - [ ] `[P1]` 施工日志填报页（`pages/construction-log/`，劳工专用）
-  - `workItems` 动态列表：每行 [目标名称 + 数量 + 单位]，支持增删行
-  - 补充说明文本框（可选）
-  - 系统提交后渲染表格 + 自动生成文字摘要
-  - 图片附件上传（多张）
-  > 检查: `app/frontend/src/pages/construction-log/index.vue` — 确认存在 workItems 数组和动态增删行逻辑；提交时 POST /construction-logs 携带 workItems JSON
+  - `workItems` 动态列表：每行 [工作内容 + 数量 + 单位]，支持增删行
+  - "从模板快速填入"弹窗：展示模板列表，选中后追加工作项行
+  - 补充说明文本框（可选）、图片附件上传（多张）
+  > 检查: `app/frontend/src/pages/construction-log/index.vue` — 确认存在 workItems 数组和动态增删行逻辑；"从模板填入"弹窗调用 `GET /work-item-templates`；提交时 POST /construction-logs 携带 workItems JSON
+
+- [ ] `[P1]` 工作项模板管理页（`pages/construction-log/templates/`，PM/CEO 可见）— CRUD + 派生
+  > 检查: `app/frontend/src/pages/construction-log/templates/index.vue` — 确认存在，调用 GET/POST/PUT/DELETE /work-item-templates；派生按钮调用 `/derive` 接口
+
+- [ ] `[P1]` 里程碑管理 + 今日进度确认（PM 视图，集成在项目管理页施工日志 Tab 中）
+  > 检查: `app/frontend/src/pages/projects/index.vue` 里程碑 Tab — 确认调用 GET/POST/PUT/DELETE /projects/{id}/milestones；今日进度确认表单调用 POST /projects/{id}/progress
+
+- [ ] `[P1]` 施工日志审批页（PM 视图，含 PM 批注输入）
+  > 检查: projects/index.vue 日志审批 Tab — 确认审批操作调用 `PATCH /construction-logs/{id}/review`（含 pmNote 字段）
+
+- [ ] `[P1]` 汇总报告生成入口（PM 视图，全部日志审批完成后显示）— 可视化组件选择 + PM 总结
+  > 检查: projects/index.vue — 搜索汇总报告生成逻辑；`POST /projects/{id}/construction-summary` 调用；vizComponents 多选传参
+
+- [ ] `[P1]` 施工日志 Dashboard（CEO/PM 视图）— 折线图 + 里程碑时间轴 + 工作项汇总表；折线图点击钻取到当日日志列表
+  > 检查: `app/frontend/src/pages/projects/dashboard.vue`（或同级页面）— 确认文件存在；`{LineChart}` 组件绑定 timeSeriesData；点击事件传 date 参数到日志列表查询
 
 - [ ] `[P1]` 工伤补偿申请页（`pages/injury/`，劳工专用，任何员工可代录入，见 COMPONENT_LAYOUT §1.6）
   > 检查: `app/frontend/src/pages/injury/index.vue` — 确认无金额字段；含 proxyEmployeeId 输入（代录时可见）；调用 POST /forms/injury
@@ -357,21 +439,27 @@
 
 ### 检查点（全部通过才进入 Phase 7）
 
-- [ ] 财务执行预结算，**4 项**校验（无施工日志项）可查看通过状态
+- [ ] 结算周期结束后窗口期自动开启（默认7天），财务可查看各员工数据完整状态
+- [ ] 窗口期关闭后（自动或 CEO 提前关闭），数据锁定，财务可发起结算
+- [ ] 财务执行正式结算，**2 项**强制检查（窗口期已关闭 + 所有员工薪资档案已配置）可查看通过状态
 - [ ] 预结算例外申请可发起并经 CEO 审批，豁免记录写入审计日志
 - [ ] 财务执行正式结算，周期锁定，员工端工资条状态变为"待确认"
-- [ ] 员工完成电子签名绑定（手写 + PIN 码），可确认工资条
+- [ ] 员工完成电子签名绑定（手写 + PIN 码），可确认工资条（签名前展示工资确认协议，如已配置）
 - [ ] 工资条确认后生成存证 PDF，包含签名、意图声明、时间戳水印
 - [ ] 财务可对已归档工伤记录录入理赔金额并关联薪资周期
 - [ ] 财务可发起更正，CEO 审批解锁后重新结算，历史版本保留
+- [ ] CEO 可上传/修改工资确认协议文件，员工下次签名时须重新阅读同意
 
 ### 后端任务
 
 - [ ] `[P0]` 将 `OaDataService` 薪资内存逻辑迁移到真实 Service + Mapper
   > 检查: OaDataService.java — 确认薪资相关方法已删除；`PayrollSlip` / `PayrollCycle` 实体通过真实 Mapper 写入 DB
 
-- [ ] `[P0]` 预结算校验（4项）+ 算薪引擎（按规则生成 `PayrollSlip` + `PayrollItem` 明细）
-  > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 确认 PayrollService.java 存在，含 preSettle() 方法，内部逐一检查考勤完整性/审批完整性/工伤完整性/档案完整性；算薪逻辑含加班补贴、请假扣款、社保计算
+- [ ] `[P0]` 窗口期模型：`PayrollWindowPeriodService` 含 openWindow() / closeWindow() / getStatus()，关联周期结束自动触发
+  > 检查: `app/backend/src/main/java/com/oa/backend/service/PayrollWindowPeriodService.java` — 确认文件存在；openWindow() 写入 payroll_window_period 记录；closeWindow() 锁定记录并触发算薪准备；getStatus() 返回每个员工的 attendance / overtime / injury 三项状态
+
+- [ ] `[P0]` 结算检查（2强制项 + 算薪引擎）：窗口期已关闭、所有员工档案已配置；未审批数据按规则自动处理（未录入考勤按缺勤扣款、未归档加班不计入）
+  > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 确认 PayrollService.java preSettle() 方法仅检查2强制项；算薪引擎读取岗位/等级/个人覆盖配置计算 PayrollSlip + PayrollItem；社保按 position.socialInsuranceMode 分支计算
 
 - [ ] `[P0]` 正式结算、锁定周期、工资条发布
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/PayrollController.java` — 搜索 `/cycles/{id}/settle` POST，确认执行后 `payroll_cycle.locked = true`，生成 payroll_slip 记录
@@ -382,8 +470,11 @@
 - [ ] `[P1]` 薪资档位 CRUD（`SalaryGrade`：档位编码、名称、月基本工资，sysadmin 初始化时批量配置）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `/salary-grades` 路由，确认 GET/POST/PUT/DELETE 均存在，entity SalaryGrade 含 gradeCode / gradeName / baseSalary 字段
 
-- [ ] `[P1]` 结算周期全量配置（起始日、结束日、发薪日、结算截止日、结算提醒前置天数）
-  > 检查: PayrollController.java — 搜索周期配置更新接口，requestBody 含 cycleType / startDay / endDay / payDay / settlementDeadline / reminderDaysBefore 字段
+- [ ] `[P1]` 结算周期全量配置（起始日、结束日、发薪日、窗口期天数、结算提醒前置天数）
+  > 检查: PayrollController.java — 搜索周期配置更新接口，requestBody 含 cycleType / startDay / endDay / payDay / windowPeriodDays / reminderDaysBefore 字段
+
+- [ ] `[P1]` 工资确认协议管理（`POST /salary-confirmation-agreement`，CEO 上传；`GET /salary-confirmation-agreement/current` 员工查看）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/SalaryConfirmationAgreementController.java` — 确认上传（接受 multipart/form-data）和获取当前版本接口均存在；salary_confirmation_agreement 表按版本记录历史
 
 - [ ] `[P1]` 社保模式配置（公司代缴 vs 并入工资，支持分项比例或总额百分比两种计算方式）
   > 检查: `app/backend/src/main/java/com/oa/backend/service/PayrollService.java` — 搜索 `COMPANY_PAID` / `MERGED_SALARY` 枚举或字符串常量，确认两种模式走不同计算分支
@@ -417,8 +508,14 @@
 - [ ] `[P1]` 薪资页接入真实接口（`GET /payroll/cycles`、`GET /payroll/slips`）
   > 检查: `app/frontend/src/pages/payroll/index.vue` — 确认 onMounted 调用真实接口，无 hardcoded mock 数据
 
-- [ ] `[P1]` 预结算发起页：展示 **4 项**校验清单，问题项可跳转处理；支持提交例外申请（CEO 审批豁免）
-  > 检查: pages/payroll/ 预结算相关页面 — 确认展示4个校验项状态；有"提交例外申请"入口，调用例外申请接口
+- [ ] `[P1]` 窗口期管理 Tab（财务视图）：展示各员工数据状态，支持提醒员工；CEO 可提前关闭窗口期
+  > 检查: `app/frontend/src/pages/payroll/index.vue` — 确认窗口期 Tab 存在，调用 `GET /payroll/window-period/status?cycleId={id}`；"提前关闭"按钮调用 `POST /payroll/window-period/{id}/close`（仅 CEO 可见）
+
+- [ ] `[P1]` 预结算发起页：展示 **2 项**强制检查清单 + 未处理数据汇总（仅供参考，不阻塞）；支持提交例外申请（CEO 审批豁免）
+  > 检查: pages/payroll/ 预结算相关页面 — 确认展示2个强制检查项状态；有"提交例外申请"入口，调用例外申请接口
+
+- [ ] `[P1]` 工资确认协议管理入口（CEO 视图）：上传/查看当前协议版本
+  > 检查: pages/payroll/ 或系统配置页 — 搜索 `POST /salary-confirmation-agreement` 上传调用；协议预览使用 PDF 预览或文本组件
 
 - [ ] `[P1]` 工资条详情页：工资项明细展示（社保按配置模式展示"扣款"或"补贴"）
   > 检查: pages/payroll/ 详情页 — 确认社保字段根据模式显示不同标签（公司代缴: "社保扣款（个人）"；并入工资: "五险一金补贴（合计）"）
@@ -626,6 +723,7 @@
 
 | 日期        | 内容                                                                                                                                           |
 |-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2026-04-02 | 大规模补充新模块任务：schema 扩展至30张表；Phase 2 加岗位/等级/组织架构接口及前端页面；Phase 4 新增加班通知制三条路径（PM通知/CEO直通/自补例外）；Phase 5 施工日志重设计（工作项模板、里程碑进度、汇总报告、Dashboard折线图）；Phase 6 引入窗口期模型（取代4项阻塞检查）、工资确认协议管理；同步更新 UI_DESIGN.md、ROLE_CONFIG.md、CLIENT_FLOW_CONFIRMATION.md |
 | 2026-04-02 | 补充预结算例外申请任务（Phase 6），为全部任务添加逐项检查点（文件路径 + 验证内容）；社保并入工资模式明确为五险一金合计补贴 + 灵活就业说明 |
 | 2026-04-02 | 更新多项业务规格：施工日志独立系统+workItems快捷录入+CEO追溯驳回；工伤表单去掉金额字段，finance事后录入理赔；薪资档位批量配置；社保模式可配置；数据保留全部默认1年；操作日志永久保留；预结算校验降为4项 |
 | 2026-04-02 | 全量重写为阶段化 0→1 开发路线图：Phase 0-9 + P3 低优先级区块，含里程碑总览、检查点、优先级标注 [P0-P3]；确认关键架构决策（skipCondition、数据保留10年起步、缓存延后、e签宝延后） |
