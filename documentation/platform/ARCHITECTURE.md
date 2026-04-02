@@ -42,16 +42,16 @@
 
 ## 2. 技术栈
 
-| 层 | 技术 | 版本 / 说明 |
-|---|---|---|
-| 前端框架 | uni-app + Vue 3 + Vite | 编译到小程序 + H5 |
-| 前端组件库（H5） | Ant Design Vue 4.x | PC/平板/手机浏览器 |
-| 前端组件库（MP） | Vant 4.9.x | 企业微信小程序 |
-| 后端框架 | Spring Boot 3 | Java 17 |
-| 安全 | Spring Security + JWT | Bearer Token |
-| ORM | MyBatis-Plus | 逻辑删除、自动填充 |
-| 数据库 | PostgreSQL | 主数据 + 索引 |
-| 文件存储 | 本地 FS / MinIO / OSS | 可配置，默认本地 FS |
+| 层               | 技术                    | 版本 / 说明          |
+|------------------|-------------------------|----------------------|
+| 前端框架          | uni-app + Vue 3 + Vite  | 编译到小程序 + H5    |
+| 前端组件库（H5）  | Ant Design Vue 4.x      | PC/平板/手机浏览器   |
+| 前端组件库（MP）  | Vant 4.9.x              | 企业微信小程序        |
+| 后端框架          | Spring Boot 3           | Java 17              |
+| 安全              | Spring Security + JWT   | Bearer Token         |
+| ORM               | MyBatis-Plus            | 逻辑删除、自动填充    |
+| 数据库            | PostgreSQL              | 主数据 + 索引        |
+| 文件存储          | 本地 FS / MinIO / OSS   | 可配置，默认本地 FS  |
 
 ---
 
@@ -80,15 +80,15 @@
 
 ## 4. 模块划分
 
-| 模块域 | 职责 | 核心类 |
-|---|---|---|
-| 身份与组织 | 认证、员工档案、部门、项目、角色 | `AuthController`, `EmployeeController`, `RoleController` |
-| 系统管理 | Sysadmin 初始化、公司配置、账号重置 | `SetupController`, `SystemController` |
-| 配置域 | 菜单路由、表单模板、审批流定义、薪资规则、数据保留策略 | `PageConfigController`, `ApprovalFlowController`, `RetentionController` |
-| 业务域 | 具体业务单据（请假、加班、工伤、施工日志）、审批记录 | `FormController`, `ApprovalService` |
-| 薪资域 | 工资周期、工资单、工资项、确认记录、更正单 | `PayrollController`, `PayrollEngine` |
-| 签名域 | 手写签名绑定、工资条签署、存证 PDF 生成 | `SignatureController`, `EvidenceService` |
-| 保留清理域 | 到期提醒、清理任务、备份导出 | `CleanupScheduler`, `BackupController` |
+| 模块域       | 职责                                                  | 核心类                                                                  |
+|-------------|-------------------------------------------------------|-------------------------------------------------------------------------|
+| 身份与组织   | 认证、员工档案、部门、项目、角色                          | `AuthController`, `EmployeeController`, `RoleController`                |
+| 系统管理     | Sysadmin 初始化、公司配置、账号重置                       | `SetupController`, `SystemController`                                   |
+| 配置域       | 菜单路由、表单模板、审批流定义、薪资规则、数据保留策略      | `PageConfigController`, `ApprovalFlowController`, `RetentionController` |
+| 业务域       | 具体业务单据（请假、加班、工伤、施工日志）、审批记录        | `FormController`, `ApprovalService`                                     |
+| 薪资域       | 工资周期、工资单、工资项、确认记录、更正单                  | `PayrollController`, `PayrollEngine`                                    |
+| 签名域       | 手写签名绑定、工资条签署、存证 PDF 生成                   | `SignatureController`, `EvidenceService`                                |
+| 保留清理域   | 到期提醒、清理任务、备份导出                              | `CleanupScheduler`, `BackupController`                                  |
 
 ---
 

@@ -88,11 +88,11 @@ const Button = await getComponent('Button')
 
 ### 2.5 已知问题与 TODO
 
-| 问题 | 描述 | 优先级 |
-|------|------|--------|
-| `Row` / `Col` | Vant 无此组件，MP 端需自定义实现 | 高 |
-| `Textarea` | components.json 中 H5 端来源有误，应为 `Textarea` 而非 `Input.TextArea` | 高 |
-| `getComponentSync` | 当前为空壳，需补充条件编译实现 | 中 |
+| 问题                  | 描述                                                            | 优先级 |
+|----------------------|----------------------------------------------------------------|--------|
+| `Row` / `Col`        | Vant 无此组件，MP 端需自定义实现                                   | 高     |
+| `Textarea`           | components.json 中 H5 端来源有误，应为 `Textarea` 而非 `Input.TextArea` | 高 |
+| `getComponentSync`   | 当前为空壳，需补充条件编译实现                                      | 中     |
 
 ---
 

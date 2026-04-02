@@ -6,12 +6,12 @@
 
 ## 1. 测试策略
 
-| 测试层级 | 目标 | 工具 | 执行时机 |
-|---|---|---|---|
-| 单元测试 | 验证单个函数/组件/类的正确性 | JUnit 5 (后端), Vitest (前端) | 每次提交前 |
-| 集成测试 | 验证 Controller + Service + DB 的接口契约 | Spring Boot Test + Testcontainers | 每日构建 |
-| 系统/E2E 测试 | 验证完整业务流程（按角色视角） | Playwright / agent-browser + API 脚本 | 阶段提测前 |
-| 回归测试 | 防止新改动破坏已有功能 | 自动化测试套件全量执行 | 每次发版前 |
+| 测试层级       | 目标                                  | 工具                                     | 执行时机    |
+|--------------|---------------------------------------|------------------------------------------|-----------|
+| 单元测试       | 验证单个函数/组件/类的正确性              | JUnit 5 (后端), Vitest (前端)             | 每次提交前  |
+| 集成测试       | 验证 Controller + Service + DB 的接口契约 | Spring Boot Test + Testcontainers      | 每日构建   |
+| 系统/E2E 测试  | 验证完整业务流程（按角色视角）             | Playwright / agent-browser + API 脚本   | 阶段提测前  |
+| 回归测试       | 防止新改动破坏已有功能                    | 自动化测试套件全量执行                      | 每次发版前  |
 
 ## 2. 单元测试
 
@@ -19,13 +19,13 @@
 
 **覆盖目标**：Service 层纯业务逻辑、工具类、DTO 校验
 
-| 模块 | 测试类 | 关键断言 |
-|---|---|---|
-| 认证 | `JwtTokenServiceTest` | Token 生成/解析、过期校验 |
-| 权限 | `AccessManagementServiceTest` | 角色映射、员工类型绑定 |
-| 表单 | `OaDataServiceFormTest` | 创建表单后状态为 PENDING、审批后状态变为 APPROVED |
-| 薪资 | `OaDataServicePayrollTest` | 预结算校验失败返回 false、正式结算后周期锁定 |
-| 审批 | `FormControllerTest` | 非审批角色调用 approve 返回 403、劳工角色调用 injury 返回 200 |
+| 模块  | 测试类                          | 关键断言                                                       |
+|------|--------------------------------|---------------------------------------------------------------|
+| 认证  | `JwtTokenServiceTest`          | Token 生成/解析、过期校验                                       |
+| 权限  | `AccessManagementServiceTest`  | 角色映射、员工类型绑定                                           |
+| 表单  | `OaDataServiceFormTest`        | 创建表单后状态为 PENDING、审批后状态变为 APPROVED                 |
+| 薪资  | `OaDataServicePayrollTest`     | 预结算校验失败返回 false、正式结算后周期锁定                       |
+| 审批  | `FormControllerTest`           | 非审批角色调用 approve 返回 403、劳工角色调用 injury 返回 200     |
 
 **示例**：审批状态流转
 ```java
@@ -47,12 +47,12 @@ void approveForm_shouldTransitionToApproved() {
 
 **覆盖目标**：组件渲染、状态变化、权限过滤、配置解析
 
-| 组件/模块 | 测试文件 | 关键断言 |
-|---|---|---|
-| 登录页 | `LoginPage.spec.ts` | 输入账号密码后调用 `/auth/login`、错误时显示提示 |
-| 工作台 | `WorkbenchPage.spec.ts` | 按角色渲染不同入口卡片、待办数字正确显示 |
-| 表单中心 | `FormsPage.spec.ts` | 拉取 `formType` 配置后渲染对应字段、提交后跳转历史 |
-| 权限过滤 | `permissionUtils.spec.ts` | OFFICE 角色过滤施工日志/工伤补偿、LABOR 角色显示 |
+| 组件/模块  | 测试文件                      | 关键断言                                               |
+|----------|------------------------------|-------------------------------------------------------|
+| 登录页    | `LoginPage.spec.ts`          | 输入账号密码后调用 `/auth/login`、错误时显示提示           |
+| 工作台    | `WorkbenchPage.spec.ts`      | 按角色渲染不同入口卡片、待办数字正确显示                    |
+| 表单中心  | `FormsPage.spec.ts`          | 拉取 `formType` 配置后渲染对应字段、提交后跳转历史          |
+| 权限过滤  | `permissionUtils.spec.ts`    | OFFICE 角色过滤施工日志/工伤补偿、LABOR 角色显示           |
 
 **示例**：权限过滤
 ```typescript
@@ -71,18 +71,18 @@ test('OFFICE should not see injury and log menus', () => {
 
 **覆盖目标**：HTTP 接口的认证、参数校验、权限控制、数据库状态变更
 
-| 接口 | 场景 | 期望 |
-|---|---|---|
-| `POST /auth/login` | 正确账号密码 | 200 + JWT Token |
-| `POST /auth/login` | 错误密码 | 401 |
-| `GET /forms/todo` | 项目经理访问 | 仅返回 PENDING 状态单据 |
-| `GET /forms/todo` | CEO 访问 | 仅返回 APPROVING 状态单据 |
-| `POST /forms/injury` | 劳工发起 | 201 + PENDING |
-| `POST /forms/injury` | 普通员工发起 | 403 |
-| `POST /payroll/cycles/{id}/settle` | 财务执行 | 200 + 周期锁定 |
-| `POST /payroll/cycles/{id}/settle` | CEO 执行 | 403 |
-| `GET /payroll/slips` | 员工访问 | 仅返回本人工资单 |
-| `GET /payroll/slips` | 财务访问 | 返回全部工资单 |
+| 接口                                  | 场景        | 期望               |
+|--------------------------------------|------------|-------------------|
+| `POST /auth/login`                    | 正确账号密码 | 200 + JWT Token    |
+| `POST /auth/login`                    | 错误密码    | 401               |
+| `GET /forms/todo`                     | 项目经理访问 | 仅返回 PENDING 状态单据  |
+| `GET /forms/todo`                     | CEO 访问   | 仅返回 APPROVING 状态单据 |
+| `POST /forms/injury`                  | 劳工发起    | 201 + PENDING     |
+| `POST /forms/injury`                  | 普通员工发起 | 403               |
+| `POST /payroll/cycles/{id}/settle`    | 财务执行    | 200 + 周期锁定     |
+| `POST /payroll/cycles/{id}/settle`    | CEO 执行   | 403               |
+| `GET /payroll/slips`                  | 员工访问    | 仅返回本人工资单    |
+| `GET /payroll/slips`                  | 财务访问    | 返回全部工资单      |
 
 **示例**：权限隔离
 ```java
@@ -170,12 +170,12 @@ void employeeCannotAccessFinanceEndpoints() throws Exception {
 
 ### 5.3 边界数据
 
-| 场景 | 输入 | 期望 |
-|---|---|---|
-| 请假天数为 0 | days = 0 | 校验失败，提示天数必须大于 0 |
-| 加班时长超过 24 小时 | hours = 25 | 校验失败 |
-| 工伤补偿金额为负 | compensation = -100 | 校验失败 |
-| 空附件上传 | 未选择文件直接提交 | 若字段非必填则通过，必填则失败 |
+| 场景              | 输入                  | 期望                            |
+|-----------------|----------------------|---------------------------------|
+| 请假天数为 0      | days = 0             | 校验失败，提示天数必须大于 0       |
+| 加班时长超过 24 小时 | hours = 25         | 校验失败                         |
+| 工伤补偿金额为负   | compensation = -100  | 校验失败                         |
+| 空附件上传        | 未选择文件直接提交      | 若字段非必填则通过，必填则失败      |
 
 ## 6. 测试环境与执行
 
@@ -196,12 +196,12 @@ cd backend && mvn test     # 后端单元+集成测试
 
 ### 7.1 缺陷分级
 
-| 级别 | 定义 | 示例 |
-|---|---|---|
-| P0-Critical | 阻塞主流程，系统不可用 | 登录失败、结算导致数据错误 |
-| P1-High | 核心功能异常，有 workaround | 审批通过后未归档、工资条显示错误 |
-| P2-Medium | 一般功能异常 | 筛选条件失效、页面样式错位 |
-| P3-Low | 轻微问题 | 文案错误、日志警告 |
+| 级别          | 定义                      | 示例                          |
+|-------------|--------------------------|-------------------------------|
+| P0-Critical  | 阻塞主流程，系统不可用       | 登录失败、结算导致数据错误         |
+| P1-High      | 核心功能异常，有 workaround | 审批通过后未归档、工资条显示错误    |
+| P2-Medium    | 一般功能异常               | 筛选条件失效、页面样式错位         |
+| P3-Low       | 轻微问题                   | 文案错误、日志警告               |
 
 ### 7.2 缺陷记录格式
 ```markdown
