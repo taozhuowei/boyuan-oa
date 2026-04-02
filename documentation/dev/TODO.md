@@ -40,7 +40,7 @@
 
 ### 后端任务
 
-- [ ] `[P0]` 补全 `schema.sql`：新增 `employee`、`department`、`project`、`project_member`、`form_record`、`approval_record`、`approval_flow_def`、`approval_flow_node`、`payroll_cycle`、`payroll_slip`、`payroll_item`、`payroll_adjustment`、`payroll_confirmation`、`employee_signature`、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
+- [ ] `[P0]` 补全 `schema.sql`：新增 `employee`、`department`、`project`、`project_member`、`form_record`、`approval_record`、`approval_flow_def`、`approval_flow_node`、`salary_grade`、`payroll_cycle`、`payroll_slip`、`payroll_item`、`payroll_adjustment`、`payroll_confirmation`、`employee_signature`、`injury_claim`（工伤理赔记录，独立于 form_record）、`operation_log`（审批操作日志，永久保留）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
 - [ ] `[P0]` 补全 `data.sql`：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
 - [ ] `[P1]` 补全 Mapper：`EmployeeMapper`（扩展现有）、`ProjectMapper`、`DepartmentMapper`
 - [ ] `[P1]` `ApprovalFlowNode` 实体新增 `skipCondition` JSON 字段（用于工伤补偿动态路由，见 WORKFLOW_CONFIG §1.3）
@@ -166,11 +166,13 @@
 
 - [ ] `[P0]` 可配置审批流引擎：`ApprovalFlowDef` CRUD + 执行引擎（按节点推进，支持 `skipCondition`）
 - [ ] `[P0]` 系统启动时写入 LEAVE、OVERTIME 默认两级审批流配置
+- [ ] `[P0]` 所有审批节点操作（提交、审批、驳回、归档、追溯驳回）写入 `operation_log`，永久保留（不受数据保留策略删除）
 - [ ] `[P1]` 将 `OaDataService` 表单/审批内存逻辑迁移到真实 Service + Mapper
 - [ ] `[P1]` 请假/加班提交接口（`POST /attendance/leave`、`POST /attendance/overtime`）
 - [ ] `[P1]` 待办列表接口（`GET /forms/todo`，按角色过滤 PENDING/APPROVING 单据）
 - [ ] `[P1]` 审批操作接口（`POST /forms/{id}/approve`、`POST /forms/{id}/reject`）
 - [ ] `[P1]` 历史记录接口（`GET /attendance/history`，本人或项目范围）
+- [ ] `[P1]` 考勤计量单位配置（`GET/POST /config/attendance-unit`，选项：小时/半天/天，影响请假和加班精度）
 - [ ] `[P2]` 加班代录接口（`project_manager`/`ceo` 代他人提交，含 `proxyEmployee` 字段）
 
 ### 前端任务
@@ -186,34 +188,37 @@
 
 ## Phase 5 — 施工专属功能
 
-**目标：** 劳工可提交施工日志和工伤补偿，工伤动态路由（skipCondition）正确生效。
+**目标：** 劳工可提交施工日志和工伤补偿，工伤动态路由（skipCondition）正确生效，施工日志作为独立系统运行。
 
 ### 检查点（全部通过才进入 Phase 6）
 
-- [ ] 劳工可提交施工日志，项目经理可审批，无 CEO 终审
-- [ ] 劳工发起工伤补偿 → 节点1: 同项目项目经理 → 节点2: CEO
+- [ ] 劳工可提交施工日志（含 workItems 动态列表），项目经理可审批，无 CEO 终审
+- [ ] CEO 可对已归档施工日志发起追溯驳回，状态变为 RECALLED，劳工收到通知
+- [ ] 劳工发起工伤补偿 → 节点1: 同项目项目经理 → 节点2: CEO（表单无金额字段）
 - [ ] 项目经理代录工伤补偿 → 直接跳过节点1进入 CEO 终审
 - [ ] 其他员工代录工伤补偿 → 路由同 finance 代录
-- [ ] 工伤批准后 `compensationAmount` 自动写入当月工资单 injury 字段
+- [ ] 工伤归档后生成待理赔记录，财务可在任意时间录入理赔金额并关联至指定薪资周期
 
 ### 后端任务
 
 - [ ] `[P0]` 系统启动时写入 INJURY、CONSTRUCTION_LOG 默认审批流配置（含 `skipCondition`）
-- [ ] `[P1]` 施工日志提交接口（`POST /construction-logs`，快照当前模板字段）
-- [ ] `[P1]` 施工日志模板 CRUD（全局模板 CEO 配置，项目级模板项目经理配置，支持继承+覆盖）
-- [ ] `[P1]` 工伤补偿申请接口（`POST /forms/injury`），含代录人字段
+- [ ] `[P1]` 施工日志提交接口（`POST /construction-logs`，含 `workItems` JSON 数组字段）
+- [ ] `[P1]` 施工日志 CEO 追溯驳回接口（`POST /construction-logs/{id}/recall`，状态变为 RECALLED）
+- [ ] `[P1]` 工伤补偿申请接口（`POST /forms/injury`，不含 `injuryType` 和 `compensationAmount`）
+- [ ] `[P1]` 工伤理赔录入接口（`POST /injury-claims`，finance 专用，关联 `formRecordId` + `payrollCycleId` + `amount`）
 - [ ] `[P1]` 附件上传接口（`POST /attachments/upload`）+ 本地文件系统存储（路径规范见 ARCHITECTURE §9.1）
 - [ ] `[P1]` 附件下载接口（`GET /attachments/{id}`，鉴权后返回文件流）
-- [ ] `[P2]` 工伤补偿批准后联动 PayrollSlip.injury 字段
 
 ### 前端任务
 
 - [ ] `[P0]` 新建 `components/cross-platform/FileUpload/` — 附件上传组件（封装 uni 上传 API，支持预览和删除）
-- [ ] `[P1]` 施工日志填报页（`pages/construction-log/`，劳工专用，见 COMPONENT_LAYOUT §4.3）
-  - 按项目模板动态渲染字段
+- [ ] `[P1]` 施工日志填报页（`pages/construction-log/`，劳工专用）
+  - `workItems` 动态列表：每行 [目标名称 + 数量 + 单位]，支持增删行
+  - 补充说明文本框（可选）
+  - 系统提交后渲染表格 + 自动生成文字摘要
   - 图片附件上传（多张）
-  - 提交后进入审批流
-- [ ] `[P1]` 工伤补偿申请页（`pages/injury/`，劳工专用，财务/项目经理可代录入，见 COMPONENT_LAYOUT §1.6）
+- [ ] `[P1]` 工伤补偿申请页（`pages/injury/`，劳工专用，任何员工可代录入，见 COMPONENT_LAYOUT §1.6）
+- [ ] `[P1]` 工伤理赔录入入口（finance 视图，归档后可见"录入理赔金额"按钮，选择关联薪资周期）
 - [ ] `[P2]` 新建 `components/cross-platform/Steps/` — 审批流步骤条（MP 端无 AntD Steps，需自实现）
 
 ---
@@ -224,19 +229,22 @@
 
 ### 检查点（全部通过才进入 Phase 7）
 
-- [ ] 财务执行预结算，5 项校验可查看通过状态
+- [ ] 财务执行预结算，**4 项**校验（无施工日志项）可查看通过状态
 - [ ] 财务执行正式结算，周期锁定，员工端工资条状态变为"待确认"
 - [ ] 员工完成电子签名绑定（手写 + PIN 码），可确认工资条
 - [ ] 工资条确认后生成存证 PDF，包含签名、意图声明、时间戳水印
+- [ ] 财务可对已归档工伤记录录入理赔金额并关联薪资周期
 - [ ] 财务可发起更正，CEO 审批解锁后重新结算，历史版本保留
 
 ### 后端任务
 
 - [ ] `[P0]` 将 `OaDataService` 薪资内存逻辑迁移到真实 Service + Mapper
-- [ ] `[P0]` 预结算校验 + 算薪引擎（按规则生成 `PayrollSlip` + `PayrollItem` 明细）
+- [ ] `[P0]` 预结算校验（4项）+ 算薪引擎（按规则生成 `PayrollSlip` + `PayrollItem` 明细）
 - [ ] `[P0]` 正式结算、锁定周期、工资条发布
-- [ ] `[P1]` 薪资规则配置 CRUD（基本工资系数、加班倍率、请假扣款公式、社保/公积金/个税参数）
-- [ ] `[P1]` 结算周期类型配置（月结/半月结）
+- [ ] `[P1]` 薪资档位 CRUD（`SalaryGrade`：档位编码、名称、月基本工资，sysadmin 初始化时批量配置）
+- [ ] `[P1]` 结算周期全量配置（起始日、结束日、发薪日、结算截止日、结算提醒前置天数）
+- [ ] `[P1]` 社保模式配置（公司代缴 vs 并入工资，支持分项比例或总额百分比两种计算方式）
+- [ ] `[P1]` 薪资规则配置 CRUD（加班倍率、请假扣款公式、公积金比例、个税参数）
 - [ ] `[P1]` 考勤管理：手工录入/批量导入（CSV）、异常标记、异常列表查询
 - [ ] `[P1]` 电子签名 Service（见 ARCHITECTURE §12）：
   - 签名加密存档 + `EmployeeSignature` 入库
@@ -252,8 +260,8 @@
 
 - [ ] `[P0]` 新建 `components/cross-platform/SignatureCanvas/` — 手写签名画板（双端兼容触控和鼠标，输出 base64）
 - [ ] `[P1]` 薪资页接入真实接口（`GET /payroll/cycles`、`GET /payroll/slips`）
-- [ ] `[P1]` 预结算发起页：展示 5 项校验清单，问题项可跳转处理
-- [ ] `[P1]` 工资条详情页：工资项明细展示
+- [ ] `[P1]` 预结算发起页：展示 **4 项**校验清单，问题项可跳转处理
+- [ ] `[P1]` 工资条详情页：工资项明细展示（社保按配置模式展示"扣款"或"补贴"）
 - [ ] `[P1]` 电子签名流程：
   - 首次签名引导：实名确认 → `SignatureCanvas` 手写 → 预览 → 绑定（`POST /signature/bind`）
   - 设置 PIN 码（`POST /signature/set-pin`，4-6 位数字）
@@ -293,27 +301,31 @@
 
 ## Phase 8 — 数据管理
 
-**目标：** 数据保留策略可配置，到期前 30 天提醒 CEO，清理/导出流程完整。
+**目标：** 数据保留策略生效（默认1年，全部类型统一），到期前30天提醒CEO，清理/导出流程完整。
 
 ### 检查点（全部通过才进入 Phase 9）
 
-- [ ] CEO 可配置各数据类型的保留期限
+- [ ] 所有数据类型默认保留期均为1年，sysadmin 初始化时写入
 - [ ] 模拟数据到期前 30 天，CEO 收到通知
-- [ ] CEO 可选择延期/导出后删除/忽略，操作后状态正确更新
+- [ ] CEO 可选择"导出后删除"或"忽略"（无延期选项，延期为后续收费功能）
 - [ ] 导出任务完成后可下载，链接 72 小时有效
+- [ ] 操作日志不受保留策略影响，写入 `operation_log` 后永久保存
 
 ### 后端任务
 
 - [ ] `[P1]` 将 `RetentionController`/`BackupController`/`CleanupController` 内存逻辑迁移到真实 Service
+- [ ] `[P1]` sysadmin 初始化时写入默认保留策略（所有类型默认 1 年）
 - [ ] `[P1]` 到期提醒定时任务（每日扫描，提前 30 天生成 `RetentionReminder`，写通知）
 - [ ] `[P1]` 异步导出任务：按周期/项目/类型分包 → 压缩 → 生成下载链接（72 小时有效）
 - [ ] `[P1]` 数据清理定时任务：先删物理文件 → 再删 DB 记录 → 失败进重试队列
-- [ ] `[P2]` 审计日志（AOP 拦截薪资结算、更正、清理、权限变更、签名绑定）
+- [ ] `[P1]` `operation_log` 写入 API（由审批引擎调用，不经 retention 策略删除）
+- [ ] `[P2]` AOP 拦截薪资结算、更正、权限变更、签名绑定 → 写入 `operation_log`
+- [ ] `[P3]` 延期接口预留（接口骨架，UI 隐藏，后续收费功能）
 
 ### 前端任务
 
-- [ ] `[P1]` 数据有效期配置页（CEO 可见，`GET/POST /retention/policies`）
-- [ ] `[P1]` 到期提醒列表（`GET /retention/reminders`），支持延期/触发备份操作
+- [ ] `[P1]` 数据有效期配置页（CEO 可见，展示各类型当前保留期）
+- [ ] `[P1]` 到期提醒列表（`GET /retention/reminders`），支持"导出后删除"和"忽略"两个操作
 - [ ] `[P2]` 导出任务列表，展示进度和下载链接
 
 ---
@@ -377,6 +389,7 @@
 
 | 日期        | 内容                                                                                                                                           |
 |-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2026-04-02 | 更新多项业务规格：施工日志独立系统+workItems快捷录入+CEO追溯驳回；工伤表单去掉金额字段，finance事后录入理赔；薪资档位批量配置；社保模式可配置；数据保留全部默认1年；操作日志永久保留；预结算校验降为4项 |
 | 2026-04-02 | 全量重写为阶段化 0→1 开发路线图：Phase 0-9 + P3 低优先级区块，含里程碑总览、检查点、优先级标注 [P0-P3]；确认关键架构决策（skipCondition、数据保留10年起步、缓存延后、e签宝延后） |
 | 2026-04-01 | 基于前端代码审计全量重写 TODO：按业务模块组织，补充前端工程基础缺口                                                                                   |
 | 2026-04-01 | 补充架构决策：可配置审批流、电子签名、设备类型协议、工作台混合加载、文件存储规范                                                                          |
