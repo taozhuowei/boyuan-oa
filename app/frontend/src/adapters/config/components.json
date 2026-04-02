@@ -90,5 +90,41 @@
   "Permission": {
     "h5": { "source": "@/components/customized/Permission", "name": "Permission" },
     "mp": { "source": "@/components/customized/Permission", "name": "Permission" }
+  },
+  "Upload": {
+    "h5": { "source": "ant-design-vue", "name": "Upload" },
+    "mp": { "source": "@/components/cross-platform/FileUpload", "name": "FileUpload" }
+  },
+  "Tabs": {
+    "h5": { "source": "ant-design-vue", "name": "Tabs" },
+    "mp": { "source": "vant", "name": "Tabs" }
+  },
+  "Tab": {
+    "h5": { "source": "ant-design-vue", "name": "TabPane" },
+    "mp": { "source": "vant", "name": "Tab" }
+  },
+  "Tag": {
+    "h5": { "source": "ant-design-vue", "name": "Tag" },
+    "mp": { "source": "vant", "name": "Tag" }
+  },
+  "Steps": {
+    "h5": { "source": "ant-design-vue", "name": "Steps" },
+    "mp": { "source": "@/components/cross-platform/Steps", "name": "Steps" }
+  },
+  "Step": {
+    "h5": { "source": "ant-design-vue", "name": "Step" },
+    "mp": { "source": "@/components/cross-platform/Steps", "name": "Step" }
+  },
+  "Popup": {
+    "h5": { "source": "ant-design-vue", "name": "Drawer" },
+    "mp": { "source": "vant", "name": "Popup" }
+  },
+  "Textarea": {
+    "h5": { "source": "ant-design-vue", "name": "Textarea" },
+    "mp": { "source": "vant", "name": "Field" }
+  },
+  "Canvas": {
+    "h5": { "source": "@/components/cross-platform/SignatureCanvas", "name": "SignatureCanvas" },
+    "mp": { "source": "@/components/cross-platform/SignatureCanvas", "name": "SignatureCanvas" }
   }
 }

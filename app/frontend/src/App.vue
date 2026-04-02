@@ -54,6 +54,31 @@ page {
   --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
 }
 
+/* 组件库变量覆盖 — 与 oa-token 保持一致 */
+/* #ifdef H5 */
+:root {
+  --ant-color-primary: #003466;
+  --ant-color-primary-hover: #1a4b84;
+  --ant-color-primary-active: #002244;
+  --ant-color-primary-border: #e6f0f7;
+  --ant-border-radius: 8px;
+  --ant-border-radius-lg: 12px;
+  --ant-border-radius-sm: 4px;
+  --ant-font-family: var(--font-body);
+}
+/* #endif */
+/* #ifdef MP-WEIXIN || APP-PLUS */
+page {
+  --van-primary-color: #003466;
+  --van-active-color: #1a4b84;
+  --van-border-radius-md: 8px;
+  --van-border-radius-lg: 12px;
+  --van-font-family: var(--font-body);
+  --van-button-primary-background: #003466;
+  --van-button-primary-border-color: #003466;
+}
+/* #endif */
+
 page {
   font-family: var(--font-body);
   font-size: 14px;
