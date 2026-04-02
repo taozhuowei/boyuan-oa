@@ -4,7 +4,6 @@
     <view class="hero">
       <view class="hero-main">
         <view class="hero-title-row">
-          <component :is="Icon" v-if="Icon" name="folder-open" :size="28" />
           <text class="hero-title">项目</text>
         </view>
         <text class="hero-subtitle">
@@ -33,7 +32,6 @@
             type="primary"
             @click="showCreateModal = true"
           >
-            <component :is="Icon" v-if="Icon" name="add" :size="14" />
             新建项目
           </component>
           <component
@@ -72,11 +70,9 @@
             <text class="project-desc">{{ project.description }}</text>
             <view class="project-meta">
               <view class="meta-item">
-                <component :is="Icon" v-if="Icon" name="person" :size="14" />
                 <text>{{ project.manager }}</text>
               </view>
               <view class="meta-item">
-                <component :is="Icon" v-if="Icon" name="calendar-today" :size="14" />
                 <text>{{ project.deadline }}</text>
               </view>
             </view>
@@ -183,39 +179,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import type { Component } from 'vue'
-import { getComponent } from '../../adapters'
+import { ref, computed } from 'vue'
+import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 
-// 异步获取组件
-const Icon = ref<Component | null>(null)
-const Card = ref<Component | null>(null)
-const Row = ref<Component | null>(null)
-const Col = ref<Component | null>(null)
-const Badge = ref<Component | null>(null)
-const Button = ref<Component | null>(null)
-const Input = ref<Component | null>(null)
-const Select = ref<Component | null>(null)
-const DatePicker = ref<Component | null>(null)
-const Modal = ref<Component | null>(null)
-const Timeline = ref<Component | null>(null)
-const TimelineItem = ref<Component | null>(null)
-
-onMounted(async () => {
-  Icon.value = await getComponent('Icon')
-  Card.value = await getComponent('Card')
-  Row.value = await getComponent('Row')
-  Col.value = await getComponent('Col')
-  Badge.value = await getComponent('Badge')
-  Button.value = await getComponent('Button')
-  Input.value = await getComponent('Input')
-  Select.value = await getComponent('Select')
-  DatePicker.value = await getComponent('DatePicker')
-  Modal.value = await getComponent('Modal')
-  Timeline.value = await getComponent('Timeline')
-  TimelineItem.value = await getComponent('TimelineItem')
-})
+const { Card, Row, Col, Badge, Button, Input, Select, DatePicker, Modal, Timeline, TimelineItem } = useComponent(['Card', 'Row', 'Col', 'Badge', 'Button', 'Input', 'Select', 'DatePicker', 'Modal', 'Timeline', 'TimelineItem'])
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.userInfo?.role || 'employee')

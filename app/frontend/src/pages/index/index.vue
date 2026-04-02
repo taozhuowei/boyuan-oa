@@ -157,38 +157,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import type { Component } from 'vue'
-import { getComponent } from '../../adapters'
+import { ref, computed } from 'vue'
+import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 import { roleNameMap } from '../../utils/access'
 
-// 异步获取组件
-const UserInfo = ref<Component | null>(null)
-const UserAvatar = ref<Component | null>(null)
-const Permission = ref<Component | null>(null)
-const StatCard = ref<Component | null>(null)
-const ModuleCard = ref<Component | null>(null)
-const Card = ref<Component | null>(null)
-const Row = ref<Component | null>(null)
-const Col = ref<Component | null>(null)
-const Button = ref<Component | null>(null)
-const Badge = ref<Component | null>(null)
-const Empty = ref<Component | null>(null)
-
-onMounted(async () => {
-  UserInfo.value = await getComponent('UserInfo')
-  UserAvatar.value = await getComponent('UserAvatar')
-  Permission.value = await getComponent('Permission')
-  StatCard.value = await getComponent('StatCard')
-  ModuleCard.value = await getComponent('ModuleCard')
-  Card.value = await getComponent('Card')
-  Row.value = await getComponent('Row')
-  Col.value = await getComponent('Col')
-  Button.value = await getComponent('Button')
-  Badge.value = await getComponent('Badge')
-  Empty.value = await getComponent('Empty')
-})
+const { UserInfo, UserAvatar, Permission, StatCard, ModuleCard, Card, Row, Col, Button, Badge, Empty } = useComponent([
+  'UserInfo', 'UserAvatar', 'Permission', 'StatCard', 'ModuleCard', 'Card', 'Row', 'Col', 'Button', 'Badge', 'Empty'
+])
 
 const userStore = useUserStore()
 

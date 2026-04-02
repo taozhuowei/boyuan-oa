@@ -4,7 +4,6 @@
     <view class="hero">
       <view class="hero-main">
         <view class="hero-title-row">
-          <component :is="Icon" v-if="Icon" name="payments" :size="28" />
           <text class="hero-title">薪资</text>
         </view>
         <text class="hero-subtitle">
@@ -187,7 +186,6 @@
                   style="width: 200px"
                 />
                 <component :is="Button" v-if="Button" type="primary" @click="exportPayroll">
-                  <component :is="Icon" v-if="Icon" name="download" :size="14" />
                   导出工资表
                 </component>
               </view>
@@ -240,35 +238,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import type { Component } from 'vue'
-import { getComponent } from '../../adapters'
+import { ref, computed } from 'vue'
+import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 
-// 异步获取组件
-const Icon = ref<Component | null>(null)
-const Card = ref<Component | null>(null)
-const Row = ref<Component | null>(null)
-const Col = ref<Component | null>(null)
-const Badge = ref<Component | null>(null)
-const Button = ref<Component | null>(null)
-const Input = ref<Component | null>(null)
-const StatCard = ref<Component | null>(null)
-const Timeline = ref<Component | null>(null)
-const TimelineItem = ref<Component | null>(null)
-
-onMounted(async () => {
-  Icon.value = await getComponent('Icon')
-  Card.value = await getComponent('Card')
-  Row.value = await getComponent('Row')
-  Col.value = await getComponent('Col')
-  Badge.value = await getComponent('Badge')
-  Button.value = await getComponent('Button')
-  Input.value = await getComponent('Input')
-  StatCard.value = await getComponent('StatCard')
-  Timeline.value = await getComponent('Timeline')
-  TimelineItem.value = await getComponent('TimelineItem')
-})
+const { Card, Row, Col, Badge, Button, Input, StatCard, Timeline, TimelineItem } = useComponent(['Card', 'Row', 'Col', 'Badge', 'Button', 'Input', 'StatCard', 'Timeline', 'TimelineItem'])
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.userInfo?.role || 'employee')

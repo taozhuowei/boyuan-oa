@@ -363,41 +363,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import type { Component } from 'vue'
-import { getComponent } from '../../adapters'
+import { ref, computed } from 'vue'
+import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 
-// 异步获取组件
-const Row = ref<Component | null>(null)
-const Col = ref<Component | null>(null)
-const Card = ref<Component | null>(null)
-const Button = ref<Component | null>(null)
-const Badge = ref<Component | null>(null)
-const Empty = ref<Component | null>(null)
-const Form = ref<Component | null>(null)
-const Input = ref<Component | null>(null)
-const Select = ref<Component | null>(null)
-const DatePicker = ref<Component | null>(null)
-const Timeline = ref<Component | null>(null)
-const TimelineItem = ref<Component | null>(null)
-const StatCard = ref<Component | null>(null)
-
-onMounted(async () => {
-  Row.value = await getComponent('Row')
-  Col.value = await getComponent('Col')
-  Card.value = await getComponent('Card')
-  Button.value = await getComponent('Button')
-  Badge.value = await getComponent('Badge')
-  Empty.value = await getComponent('Empty')
-  Form.value = await getComponent('Form')
-  Input.value = await getComponent('Input')
-  Select.value = await getComponent('Select')
-  DatePicker.value = await getComponent('DatePicker')
-  Timeline.value = await getComponent('Timeline')
-  TimelineItem.value = await getComponent('TimelineItem')
-  StatCard.value = await getComponent('StatCard')
-})
+const { Row, Col, Card, Button, Badge, Empty, Form, Input, Select, DatePicker, Timeline, TimelineItem, StatCard } = useComponent(['Row', 'Col', 'Card', 'Button', 'Badge', 'Empty', 'Form', 'Input', 'Select', 'DatePicker', 'Timeline', 'TimelineItem', 'StatCard'])
 
 const userStore = useUserStore()
 

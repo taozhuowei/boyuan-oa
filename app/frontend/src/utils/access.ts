@@ -30,7 +30,6 @@
  * 交互入口：被登录页、角色管理页、权限控制逻辑调用
  */
 
-import { userProfile } from '../pages/index/workbench-data'
 
 /**
  * 登录请求参数类型
@@ -215,11 +214,11 @@ export const defaultTestAccounts: TestAccount[] = [
   {
     username: 'ceo.demo',
     password: '123456',
-    displayName: userProfile.name,
+    displayName: '陶卓威',
     role: 'ceo',
     roleName: '首席经营者',
-    department: userProfile.department,
-    employeeType: userProfile.employeeType
+    department: '总经理办公室',
+    employeeType: '管理层'
   }
 ]
 

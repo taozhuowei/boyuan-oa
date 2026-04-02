@@ -4,7 +4,6 @@
     <view class="hero">
       <view class="hero-main">
         <view class="hero-title-row">
-          <component :is="Icon" v-if="Icon" name="groups" :size="28" />
           <text class="hero-title">员工</text>
         </view>
         <text class="hero-subtitle">
@@ -33,7 +32,6 @@
             type="primary"
             @click="showAddModal = true"
           >
-            <component :is="Icon" v-if="Icon" name="person-add" :size="14" />
             添加员工
           </component>
           <component
@@ -141,15 +139,12 @@
           <component :is="Card" v-if="Card" title="快速操作">
             <view class="quick-actions">
               <component :is="Button" v-if="Button" block @click="exportEmployees">
-                <component :is="Icon" v-if="Icon" name="download" :size="14" />
                 导出员工名单
               </component>
               <component :is="Button" v-if="Button" block @click="importEmployees">
-                <component :is="Icon" v-if="Icon" name="upload" :size="14" />
                 批量导入
               </component>
               <component :is="Button" v-if="Button" block @click="viewOrgChart">
-                <component :is="Icon" v-if="Icon" name="account-tree" :size="14" />
                 组织架构图
               </component>
             </view>
@@ -215,35 +210,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import type { Component } from 'vue'
-import { getComponent } from '../../adapters'
+import { ref, computed } from 'vue'
+import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 
-// 异步获取组件
-const Icon = ref<Component | null>(null)
-const Card = ref<Component | null>(null)
-const Row = ref<Component | null>(null)
-const Col = ref<Component | null>(null)
-const Badge = ref<Component | null>(null)
-const Button = ref<Component | null>(null)
-const Input = ref<Component | null>(null)
-const Select = ref<Component | null>(null)
-const DatePicker = ref<Component | null>(null)
-const Modal = ref<Component | null>(null)
-
-onMounted(async () => {
-  Icon.value = await getComponent('Icon')
-  Card.value = await getComponent('Card')
-  Row.value = await getComponent('Row')
-  Col.value = await getComponent('Col')
-  Badge.value = await getComponent('Badge')
-  Button.value = await getComponent('Button')
-  Input.value = await getComponent('Input')
-  Select.value = await getComponent('Select')
-  DatePicker.value = await getComponent('DatePicker')
-  Modal.value = await getComponent('Modal')
-})
+const { Card, Row, Col, Badge, Button, Input, Select, DatePicker, Modal } = useComponent(['Card', 'Row', 'Col', 'Badge', 'Button', 'Input', 'Select', 'DatePicker', 'Modal'])
 
 const userStore = useUserStore()
 const userRole = computed(() => userStore.userInfo?.role || 'employee')
