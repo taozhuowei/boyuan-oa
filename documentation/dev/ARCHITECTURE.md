@@ -1,4 +1,4 @@
-# 众维 OA — 技术架构文档
+# 博渊 — 技术架构文档
 
 ## 1. 系统架构
 
@@ -98,6 +98,26 @@ PREVIEW → PENDING_CONFIRM → CONFIRMED → ARCHIVED
 
 ## 5. 权限模型
 
+### 5.0 角色层次
+
+系统分为**系统管理层**和**业务用户层**两个独立层次，二者互不交叉：
+
+```
+┌─────────────────────────────────────────────────┐
+│  系统管理层                                       │
+│  SYSADMIN（实施/运维人员）                        │
+│  - 系统初始化、公司配置、账号引导                  │
+│  - 无任何业务数据访问权限                          │
+└──────────────────────┬──────────────────────────┘
+                       │ 创建第一个 CEO 账号
+┌──────────────────────▼──────────────────────────┐
+│  业务用户层                                       │
+│  CEO > FINANCE / PROJECT_MANAGER > EMPLOYEE / WORKER │
+└─────────────────────────────────────────────────┘
+```
+
+### 5.1 权限维度（业务用户层）
+
 权限由以下维度交集决定：
 1. **角色** — `EMPLOYEE | WORKER | FINANCE | PROJECT_MANAGER | CEO`
 2. **员工类型** — `OFFICE | LABOR`
@@ -105,7 +125,7 @@ PREVIEW → PENDING_CONFIRM → CONFIRMED → ARCHIVED
 4. **项目范围** — 是否为项目参与人员
 5. **数据所有权** — 是否本人创建
 
-### 权限矩阵（核心功能）
+### 5.2 权限矩阵（业务用户层）
 
 | 功能 | 员工 | 劳工 | 财务 | 项目经理 | CEO |
 |---|---|---|---|---|---|
@@ -201,7 +221,10 @@ POST   /payroll/slips/{id}/dispute         # 异议（仅本人）
 ```
 POST /auth/login  →  { token, user: { role, roleName, department, ... } }
                   →  userStore.setSession(token, user)
-                  →  uni.redirectTo('/pages/index/index')
+                  →  role === 'sysadmin'
+                       → uni.redirectTo('/pages/setup/index')   # 系统管理控制台
+                  →  role !== 'sysadmin'
+                       → uni.redirectTo('/pages/index/index')   # 工作台
                   →  页面按 userStore.userInfo.role 渲染对应视图
 ```
 
@@ -483,7 +506,71 @@ GET  /signature/status        # 查询当前用户签名绑定状态
 POST /payroll/slips/{id}/confirm  # 工资确认（含 PIN 校验）
 ```
 
-## 14. 企业微信接入（预留能力）
+## 14. 系统管理员（Sysadmin）架构
+
+### 14.1 角色定位
+
+`SYSADMIN` 是独立于业务用户体系之外的系统级管理账号，代表实施方或系统运维人员，负责系统初始化和基础配置。**不参与任何业务流程，无法访问任何业务数据。**
+
+| 维度 | SYSADMIN | CEO |
+|------|----------|-----|
+| 身份 | 系统实施/运维人员 | 企业业务负责人 |
+| 权限范围 | 系统配置、账号引导 | 全业务数据 + 终审 |
+| 业务数据访问 | ✗ | ✓ |
+| 员工档案管理 | ✗（仅可创建第一个 CEO 账号） | ✓ |
+| 工作台 | 系统管理控制台（`/pages/setup`） | 业务工作台（`/pages/index`） |
+
+### 14.2 职责清单
+
+**初始化阶段（首次部署，由系统初始化向导引导完成）：**
+
+1. 填写公司基本信息（公司名、Logo、行业类型）
+2. 创建第一个 CEO 账号（工号 + 初始密码）
+3. 确认默认角色权限模板（系统预置 5 个角色，可按需调整）
+4. 确认默认审批流配置（初审→终审两节点）
+5. 设置全局数据保留策略默认值
+
+**日常维护（按需使用，低频）：**
+
+- 重置任意用户密码
+- 查看系统操作日志
+- 触发全量数据导出/备份
+- 查看系统版本与配置信息
+
+### 14.3 初始化状态检查
+
+系统首次启动时，前端在登录后检查初始化完成度：
+
+```
+GET /setup/status
+→ { initialized: false, completedSteps: [], totalSteps: 5 }
+   → 引导进入初始化向导（强制，不可跳过）
+→ { initialized: true }
+   → 直接进入系统管理控制台
+```
+
+### 14.4 Sysadmin 接口
+
+```
+GET   /setup/status              # 系统初始化完成度检查
+POST  /setup/company             # 设置公司基本信息
+POST  /setup/init-ceo            # 创建首个 CEO 账号（只能调用一次）
+GET   /setup/default-roles       # 获取预置角色权限模板
+PUT   /setup/default-roles       # 调整预置角色权限
+GET   /setup/default-workflows   # 获取默认审批流配置
+PUT   /setup/default-workflows   # 调整默认审批流配置
+PUT   /setup/retention-defaults  # 设置数据保留策略默认值
+
+GET   /system/logs               # 系统操作日志
+POST  /system/backup             # 触发全量备份
+PUT   /system/reset-password     # 重置任意用户密码（仅 sysadmin）
+```
+
+---
+
+## 15. 企业微信接入（预留能力）
+
+
 
 企业微信相关能力通过独立服务模块（`WeworkService`）封装，待 `corpId` / `agentId` / `secret` 等信息就绪后替换实现，不影响现有业务逻辑。
 
