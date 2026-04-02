@@ -29,7 +29,8 @@ documentation/
 ├── platform/                         ← 博渊 OA 平台层（与具体企业无关）
 │   ├── PRODUCT.md                   ← 平台产品定位与能力边界
 │   ├── ARCHITECTURE.md              ← 技术架构、实体模型、API 规范
-│   ├── IMPLEMENTATION.md            ← 前端实现细节
+│   ├── FRONTEND_IMPL.md             ← 前端实现细节
+│   ├── BACKEND_IMPL.md              ← 后端实现细节
 │   └── UI_DESIGN.md                 ← 平台级 UI 规范（Shell/登录/通用组件）
 │
 ├── presets/                          ← 预置业务方案（按企业/行业分目录）
@@ -67,7 +68,8 @@ documentation/
 |------|---------|--------|
 | [PRODUCT.md](./platform/PRODUCT.md) | 平台定位、设计原则、标准能力清单、可配置边界、第二家企业接入指南 | 理解产品全貌 |
 | [ARCHITECTURE.md](./platform/ARCHITECTURE.md) | 技术选型、三层架构、权限/工作流/表单/薪资引擎设计、28 个实体字段表、API 规范（7.4–7.10）、文件存储决策、签名流程、Excel 导入 | 后端开发、理解数据模型、设计接口 |
-| [IMPLEMENTATION.md](./platform/IMPLEMENTATION.md) | 前端代码架构、双端适配层（`adapters/`）、`useComponent` composable、HTTP 层规范、CSS 变量体系 | 前端开发 |
+| [BACKEND_IMPL.md](./platform/BACKEND_IMPL.md) | 后端包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务、Sysadmin 初始化机制 | 后端开发 |
+| [FRONTEND_IMPL.md](./platform/FRONTEND_IMPL.md) | 前端代码架构、双端适配层（`adapters/`）、`useComponent` composable、HTTP 层规范、CSS 变量体系 | 前端开发 |
 | [UI_DESIGN.md](./platform/UI_DESIGN.md) | Web/MP Shell 结构、登录页、系统管理控制台、待办中心、个人中心、通用组件规范 | 平台级页面开发 |
 
 ---
@@ -104,6 +106,8 @@ documentation/
 | 变更类型 | 必须同步更新的文档 |
 |---------|----------------|
 | 架构/实体/API 变更 | `platform/ARCHITECTURE.md` |
+| 后端包结构/约定/引擎实现变更 | `platform/BACKEND_IMPL.md` |
+| 前端适配层/HTTP层/状态管理变更 | `platform/FRONTEND_IMPL.md` |
 | 审批流/薪资规则/数据保留变更 | `presets/construction/WORKFLOW_CONFIG.md` |
 | 权限/角色变更 | `presets/construction/ROLE_CONFIG.md` |
 | 新增/修改业务页面 | `presets/construction/UI_DESIGN.md` |

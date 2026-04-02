@@ -4,7 +4,7 @@
 >
 > **目标读者**：前端开发者、全栈开发者。
 >
-> **不包含内容**：具体业务页面的 UI 布局（见各 `UI_DESIGN.md`）；后端引擎实现（见 `ARCHITECTURE.md`）。
+> **不包含内容**：具体业务页面的 UI 布局（见各 `UI_DESIGN.md`）；后端代码结构和引擎实现（见 `BACKEND_IMPL.md` 和 `ARCHITECTURE.md`）。
 
 ---
 
