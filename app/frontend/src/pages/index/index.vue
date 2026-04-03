@@ -63,8 +63,10 @@
         </view>
       </view>
 
-      <!-- ③ 项目进度面板（CEO/PM/劳工可见；财务不负责项目管理，不显示） -->
-      <view v-if="role !== 'finance'" class="project-panel">
+      <!-- ③ 角色专属底部面板 -->
+
+      <!-- CEO / 项目经理 / 劳工：在建项目进度 -->
+      <view v-if="role === 'ceo' || role === 'project_manager' || role === 'worker'" class="project-panel">
         <view class="panel-head">
           <text class="panel-title">在建项目进度</text>
           <text class="panel-date">{{ todayStr }}</text>
@@ -90,6 +92,66 @@
             <text class="proj-date">截止 {{ proj.dueDate }}</text>
           </view>
           <view v-if="!projects.length" class="proj-empty">暂无在建项目</view>
+        </view>
+      </view>
+
+      <!-- 财务：本月薪资处理总览 -->
+      <view v-else-if="role === 'finance'" class="bottom-panel">
+        <view class="panel-head">
+          <text class="panel-title">本月薪资处理总览</text>
+          <text class="panel-date">{{ todayStr }}</text>
+        </view>
+        <view class="finance-stats">
+          <view class="fin-stat">
+            <text class="fin-val">{{ payrollSummary.staffCount }}</text>
+            <text class="fin-label">在职员工</text>
+          </view>
+          <view class="fin-stat fin-urgent">
+            <text class="fin-val">{{ payrollSummary.pendingCount }}</text>
+            <text class="fin-label">待结算项目</text>
+          </view>
+          <view class="fin-stat fin-urgent">
+            <text class="fin-val">{{ payrollSummary.disputeCount }}</text>
+            <text class="fin-label">薪资异议</text>
+          </view>
+          <view class="fin-stat">
+            <text class="fin-val">¥{{ payrollSummary.totalAmount }}</text>
+            <text class="fin-label">应发总额</text>
+          </view>
+        </view>
+        <view class="payroll-list">
+          <view class="payroll-list-head">
+            <text class="pr-col name">姓名</text>
+            <text class="pr-col dept">部门</text>
+            <text class="pr-col amount">应发金额</text>
+            <text class="pr-col status">状态</text>
+          </view>
+          <view v-for="item in payrollList" :key="item.id" class="payroll-row">
+            <text class="pr-col name">{{ item.name }}</text>
+            <text class="pr-col dept">{{ item.dept }}</text>
+            <text class="pr-col amount">¥{{ item.amount }}</text>
+            <view class="pr-col status">
+              <view class="status-chip" :class="'ps-' + item.status">{{ item.statusText }}</view>
+            </view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 普通员工：我的近期动态 -->
+      <view v-else class="bottom-panel">
+        <view class="panel-head">
+          <text class="panel-title">我的近期动态</text>
+          <text class="panel-date">{{ todayStr }}</text>
+        </view>
+        <view class="activity-list">
+          <view v-for="item in myActivities" :key="item.id" class="activity-row">
+            <text class="act-icon">{{ item.icon }}</text>
+            <view class="act-content">
+              <text class="act-text">{{ item.text }}</text>
+              <text class="act-time">{{ item.time }}</text>
+            </view>
+            <view class="status-chip" :class="'as-' + item.status">{{ item.statusText }}</view>
+          </view>
         </view>
       </view>
 
@@ -156,14 +218,16 @@ const kpiMap: Record<string, Array<{ key: string; icon: any; value: string; labe
     { key: 'members',   icon: markRaw(TeamOutlined),           value: '18 人',   label: '项目组成员',     urgent: false }
   ],
   employee: [
-    { key: 'slip',      icon: markRaw(DollarOutlined),         value: '待确认',  label: '本月工资条',     urgent: true  },
+    { key: 'slip',      icon: markRaw(DollarOutlined),        value: '待确认',  label: '本月工资条',     urgent: true  },
     { key: 'leave',     icon: markRaw(CalendarOutlined),      value: '12 天',   label: '剩余年假',       urgent: false },
-    { key: 'overtime',  icon: markRaw(ClockCircleOutlined),   value: '8 h',     label: '本月加班时长',   urgent: false }
+    { key: 'overtime',  icon: markRaw(ClockCircleOutlined),   value: '8 h',     label: '本月加班时长',   urgent: false },
+    { key: 'attend',    icon: markRaw(CheckCircleOutlined),   value: '96%',     label: '本月出勤率',     urgent: false }
   ],
   worker: [
-    { key: 'slip',      icon: markRaw(DollarOutlined),         value: '待确认',  label: '本月工资条',     urgent: true  },
-    { key: 'log',       icon: markRaw(BuildOutlined),          value: '今日待填', label: '施工日志',       urgent: true  },
-    { key: 'leave',     icon: markRaw(CalendarOutlined),      value: '5 天',    label: '剩余年假',       urgent: false }
+    { key: 'slip',      icon: markRaw(DollarOutlined),        value: '待确认',  label: '本月工资条',     urgent: true  },
+    { key: 'log',       icon: markRaw(BuildOutlined),         value: '今日待填', label: '施工日志',       urgent: true  },
+    { key: 'leave',     icon: markRaw(CalendarOutlined),      value: '5 天',    label: '剩余年假',       urgent: false },
+    { key: 'hours',     icon: markRaw(ClockCircleOutlined),   value: '168 h',   label: '本月工时',       urgent: false }
   ]
 }
 /* #endif */
@@ -209,6 +273,24 @@ const todoItems = computed(() => {
     { id: 1, title: '3月工资条待确认签字',       category: '薪资', priority: 'high', path: '/pages/payroll/index' }
   ]
 })
+
+// ── Finance: 本月薪资处理数据 mock ──────────────────────────────────────────
+const payrollSummary = ref({ staffCount: 28, totalAmount: '186,400', pendingCount: 3, disputeCount: 2 })
+const payrollList = ref([
+  { id: 1, name: '张晓宁', dept: '施工一部', amount: '8,500',  status: 'pending',  statusText: '待发放' },
+  { id: 2, name: '李建国', dept: '施工二部', amount: '9,200',  status: 'pending',  statusText: '待发放' },
+  { id: 3, name: '王芳',   dept: '行政部',   amount: '6,800',  status: 'dispute',  statusText: '有异议' },
+  { id: 4, name: '赵铁柱', dept: '施工一部', amount: '11,500', status: 'approved', statusText: '已发放' },
+  { id: 5, name: '陈海波', dept: '项目部',   amount: '12,000', status: 'approved', statusText: '已发放' }
+])
+
+// ── Employee: 我的近期动态 mock ─────────────────────────────────────────────
+const myActivities = ref([
+  { id: 1, icon: '💰', text: '3月工资条已生成，待确认签字',           time: '2026-04-01', status: 'pending',  statusText: '待处理' },
+  { id: 2, icon: '📅', text: '请假申请（3月20日，1天）已通过',         time: '2026-03-21', status: 'approved', statusText: '已完成' },
+  { id: 3, icon: '⏰', text: '加班申请（3月18日，3小时）审批中',       time: '2026-03-19', status: 'process',  statusText: '审批中' },
+  { id: 4, icon: '📢', text: '系统通知：4月绩效考核将于4月15日启动',   time: '2026-03-15', status: 'info',     statusText: '通知' }
+])
 
 // ── 项目进度（mock，后续对接 GET /projects?status=active） ───────────────
 const projects = ref([
@@ -559,5 +641,186 @@ function goTo(path: string) {
   text-align: center;
   font-size: 13px;
   color: var(--on-surface-variant);
+}
+
+// ── 通用底部面板（finance / employee 复用） ──────────────────────────────────
+.bottom-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-lowest);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+
+  .panel-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--surface-high);
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--on-surface);
+    }
+
+    .panel-date {
+      font-size: 12px;
+      color: var(--on-surface-variant);
+    }
+  }
+}
+
+// ── Finance: 薪资统计行 + 明细表 ─────────────────────────────────────────────
+.finance-stats {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--surface-high);
+
+  .fin-stat {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px;
+    border-right: 1px solid var(--surface-high);
+    gap: 4px;
+
+    &:last-child { border-right: none; }
+
+    .fin-val {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      font-family: var(--font-display);
+    }
+
+    .fin-label {
+      font-size: 12px;
+      color: var(--on-surface-variant);
+    }
+
+    &.fin-urgent {
+      .fin-val { color: var(--error); }
+    }
+  }
+}
+
+.payroll-list {
+  flex: 1;
+  overflow-y: auto;
+
+  .payroll-list-head {
+    display: flex;
+    align-items: center;
+    padding: 8px 20px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--surface-high);
+
+    .pr-col {
+      font-size: 12px;
+      color: var(--on-surface-variant);
+      font-weight: 600;
+    }
+  }
+
+  .payroll-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--surface);
+    transition: background 0.15s;
+
+    &:hover { background: var(--surface); }
+    &:last-child { border-bottom: none; }
+
+    .pr-col {
+      font-size: 13px;
+      color: var(--on-surface);
+    }
+  }
+
+  .pr-col {
+    &.name   { width: 80px; flex-shrink: 0; }
+    &.dept   { flex: 1; color: var(--on-surface-variant); }
+    &.amount { width: 100px; flex-shrink: 0; font-weight: 600; }
+    &.status { width: 80px; flex-shrink: 0; display: flex; justify-content: flex-end; }
+  }
+
+  .status-chip {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+
+    &.ps-pending  { background: #fff7e6; color: var(--warning); }
+    &.ps-dispute  { background: #fff1f0; color: var(--error);   }
+    &.ps-approved { background: #f0f9eb; color: var(--success); }
+  }
+}
+
+// ── Employee: 近期动态列表 ────────────────────────────────────────────────────
+.activity-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+
+  .activity-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--surface);
+    transition: background 0.15s;
+
+    &:hover { background: var(--surface); }
+    &:last-child { border-bottom: none; }
+
+    .act-icon {
+      font-size: 20px;
+      flex-shrink: 0;
+      width: 28px;
+      text-align: center;
+    }
+
+    .act-content {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+
+      .act-text {
+        font-size: 13px;
+        color: var(--on-surface);
+        font-weight: 500;
+      }
+
+      .act-time {
+        font-size: 12px;
+        color: var(--on-surface-variant);
+      }
+    }
+
+    .status-chip {
+      flex-shrink: 0;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-weight: 500;
+
+      &.as-pending  { background: #fff7e6; color: var(--warning); }
+      &.as-approved { background: #f0f9eb; color: var(--success); }
+      &.as-process  { background: rgba(0,52,102,0.08); color: var(--primary); }
+      &.as-info     { background: var(--surface-low); color: var(--on-surface-variant); }
+    }
+  }
 }
 </style>
