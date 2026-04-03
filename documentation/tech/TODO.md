@@ -14,8 +14,8 @@
 
 | Phase | 目标                     | 当前状态  | 验收标准                                      |
 |-------|--------------------------|---------|-----------------------------------------------|
-| **0F** | 前端基础：HTTP 层 + 组件注册              | 未开始   | 前端无控制台报错，可独立运行                        |
-| **1**  | 前端壳 + 设计确认（与 Phase 0B 并行）    | 未开始   | 5个 mock 账号能点遍所有页面，视觉设计已确认        |
+| **0F** | 前端基础：HTTP 层 + 组件注册              | 进行中   | 前端无控制台报错，可独立运行                        |
+| **1**  | 前端壳 + 设计确认（与 Phase 0B 并行）    | 进行中   | 5个 mock 账号能点遍所有页面，视觉设计已确认        |
 | **0B** | 后端基础：DB schema + 真实启动（与 Phase 1 并行） | 未开始 | mvn 无报错启动，35张表建好，无控制台报错     |
 | **2** | 身份认证 + 账号/角色管理    | 未开始   | 真实账号登录，CEO 可增删改员工和角色              |
 | **3** | 组织管理（部门/项目/成员）  | 未开始   | 项目、成员关系可管理，不依赖内存 mock             |
@@ -53,6 +53,9 @@
 - [x] `[P1]` `components.json` 补全注册：`Upload`、`Tabs`/`Tab`、`Tag`、`Steps`/`Step`、`Popup`、`Textarea`、`Canvas`
   > 检查: `app/frontend/src/adapters/config/components.json` — 搜索上述7个组件名，确认全部有 h5 / mp 来源注册
   > 注意：H5 端 `Textarea` 来源应为 `Textarea`，不是 `Input.TextArea`
+
+- [x] `[P1]` `components.json` 补注册 `InputNumber`（H5: ant-design-vue，MP: vant/Stepper）和 `Switch`（H5: ant-design-vue，MP: vant/Switch）
+  > 原来缺失导致系统配置页所有 InputNumber/Switch 控件不渲染（v-if 永远 false）
 
 - [x] `[P1]` 自定义 `Row` / `Col` 布局组件（MP 端 Vant 无此组件，需自实现）
   > 检查: `app/frontend/src/adapters/components/Row.vue` 和 `Col.vue` — 确认存在并在 `components.json` 注册；H5 端可直接映射 AntD Row/Col
@@ -100,6 +103,14 @@
 
 - [ ] `[P2]` 验证双端主色、圆角、字体、间距视觉一致性（H5 Chrome + 微信开发者工具模拟器）
   > 检查: 同时打开 H5 和微信开发者工具预览相同页面 — 目测主色、卡片圆角、按钮样式无明显差异
+
+- [x] `[P1]` 系统配置页（`pages/config/index.vue`）按文档重构：移除未实现功能入口，对齐 DESIGN.md 规范
+  > 已移除：打卡方式（Phase 1 不实现）、结算周期切换（仅月结）
+  > 数据保留改为只读说明（DESIGN.md §7.1：固定1年，延长为后续付费功能）
+  > 表单控件（InputNumber/Switch）已正确渲染并绑定默认值
+
+- [x] `[P1]` AppShell 导航路由修复：`goTo` 改用 `switchTab`（tabBar 页）/ `redirectTo`（其余页）
+  > `uni.navigateTo` 无法跳转 tabBar 页，且会不断堆栈；修复后工作台可正常回退
 
 - [ ] `[P2]` 各页面使用 mock 数据填充，确保表格、列表、表单均有内容可看
   > 检查: `app/frontend/src/pages/` 下各 index.vue — 搜索 mock 数据对象（如 const list = [] 或 ref([...])），确认有填充项
