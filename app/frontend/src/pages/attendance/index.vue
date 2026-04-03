@@ -124,8 +124,7 @@
               <view class="card-header">
                 <text class="card-title">审批详情</text>
                 <view class="header-actions">
-                  <component :is="Button" v-if="Button" size="small" @click="rejectItem">驳回</component>
-                  <component :is="Button" v-if="Button" type="primary" size="small" @click="approveItem">通过</component>
+                  <component :is="Button" v-if="Button" type="primary" size="small" @click="openApprovalModal">审批</component>
                 </view>
               </view>
               <view class="card-body scrollable">
@@ -391,6 +390,41 @@
       </view>
 
     </view>
+
+    <!-- 审批意见弹窗 -->
+    <component
+      :is="Modal"
+      v-if="Modal"
+      :open="approvalModalVisible"
+      title="填写审批意见"
+      :footer="null"
+      @cancel="closeApprovalModal"
+    >
+      <view class="approval-modal-body">
+        <view class="modal-form-item">
+          <label class="modal-label">驳回原因（可选）</label>
+          <component
+            :is="Textarea"
+            v-if="Textarea"
+            v-model:value="approvalComment"
+            :rows="4"
+            placeholder="请输入审批意见或驳回原因，通过时可留空"
+            :maxlength="500"
+          />
+          <textarea
+            v-else
+            v-model="approvalComment"
+            class="fallback-textarea"
+            rows="4"
+            placeholder="请输入审批意见或驳回原因，通过时可留空"
+          />
+        </view>
+        <view class="modal-actions">
+          <component :is="Button" v-if="Button" danger @click="confirmReject">驳回</component>
+          <component :is="Button" v-if="Button" type="primary" @click="confirmApprove">通过审批</component>
+        </view>
+      </view>
+    </component>
   </AppShell>
 </template>
 
@@ -400,7 +434,7 @@ import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 import AppShell from '../../layouts/AppShell.vue'
 
-const { Row, Col, Card, Button, Badge, Empty, Form, Input, Select, DatePicker, Timeline, TimelineItem, StatCard } = useComponent(['Row', 'Col', 'Card', 'Button', 'Badge', 'Empty', 'Form', 'Input', 'Select', 'DatePicker', 'Timeline', 'TimelineItem', 'StatCard'])
+const { Row, Col, Card, Button, Badge, Empty, Form, Input, Select, DatePicker, Timeline, TimelineItem, StatCard, Modal, Textarea } = useComponent(['Row', 'Col', 'Card', 'Button', 'Badge', 'Empty', 'Form', 'Input', 'Select', 'DatePicker', 'Timeline', 'TimelineItem', 'StatCard', 'Modal', 'Textarea'])
 
 const userStore = useUserStore()
 
@@ -413,6 +447,10 @@ const activeTab = ref('leave')
 const selectedItem = ref<any>(null)
 const filterStatus = ref('')
 const searchKeyword = ref('')
+
+// 审批弹窗状态
+const approvalModalVisible = ref(false)
+const approvalComment = ref('')
 
 // 表单数据
 const leaveForm = ref({
@@ -501,12 +539,26 @@ const submitOvertime = () => {
   uni.showToast({ title: '提交成功', icon: 'success' })
 }
 
-const approveItem = () => {
-  uni.showToast({ title: '已通过', icon: 'success' })
+const openApprovalModal = () => {
+  approvalComment.value = ''
+  approvalModalVisible.value = true
+}
+
+const closeApprovalModal = () => {
+  approvalModalVisible.value = false
+  approvalComment.value = ''
+}
+
+const confirmApprove = () => {
+  approvalModalVisible.value = false
+  approvalComment.value = ''
+  uni.showToast({ title: '审批已通过', icon: 'success' })
   selectedItem.value = null
 }
 
-const rejectItem = () => {
+const confirmReject = () => {
+  approvalModalVisible.value = false
+  approvalComment.value = ''
   uni.showToast({ title: '已驳回', icon: 'none' })
   selectedItem.value = null
 }
@@ -943,5 +995,42 @@ const rejectItem = () => {
   padding: 48px 0;
   color: var(--on-surface-variant);
   font-size: 13px;
+}
+
+// 审批弹窗内容
+.approval-modal-body {
+  padding: 4px 0 8px;
+
+  .modal-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--on-surface-variant);
+  }
+
+  .modal-form-item {
+    margin-bottom: 24px;
+  }
+
+  .fallback-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--surface-high);
+    border-radius: 6px;
+    font-size: 13px;
+    resize: vertical;
+    box-sizing: border-box;
+    outline: none;
+
+    &:focus {
+      border-color: var(--primary);
+    }
+  }
+
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+  }
 }
 </style>
