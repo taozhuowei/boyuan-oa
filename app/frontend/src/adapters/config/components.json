@@ -126,5 +126,13 @@
   "Canvas": {
     "h5": { "source": "@/components/cross-platform/SignatureCanvas", "name": "SignatureCanvas" },
     "mp": { "source": "@/components/cross-platform/SignatureCanvas", "name": "SignatureCanvas" }
+  },
+  "InputNumber": {
+    "h5": { "source": "ant-design-vue", "name": "InputNumber" },
+    "mp": { "source": "vant", "name": "Stepper" }
+  },
+  "Switch": {
+    "h5": { "source": "ant-design-vue", "name": "Switch" },
+    "mp": { "source": "vant", "name": "Switch" }
   }
 }

@@ -64,18 +64,6 @@
                   </view>
                 </view>
               </view>
-              <view class="config-item">
-                <label>打卡方式</label>
-                <view class="config-control">
-                  <component
-                    :is="Select"
-                    v-if="Select"
-                    v-model="config.checkInMethod"
-                    :options="checkInOptions"
-                    style="width: 200px"
-                  />
-                </view>
-              </view>
             </view>
           </view>
 
@@ -255,7 +243,6 @@ const { Card, Button, Tag, Tabs, Tab, Row, Col, Table, Select, Input, InputNumbe
 // 配置数据
 const config = ref({
   attendanceUnit: 'day',
-  checkInMethod: 'system',
   payDay: 15,
   windowDays: 7,
   emailNotification: true,
@@ -277,13 +264,6 @@ const config = ref({
 const settleCycleOptions = [
   { label: '月结（1日-末日）', value: 'monthly' },
   { label: '半月结（1-15日 / 16日-末日）', value: 'bimonthly' }
-]
-
-// 选项
-const checkInOptions = [
-  { label: '系统录入', value: 'system' },
-  { label: '人脸识别', value: 'face' },
-  { label: 'GPS定位', value: 'gps' }
 ]
 
 const periodOptions = [
