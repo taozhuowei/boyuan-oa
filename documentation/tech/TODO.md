@@ -60,8 +60,8 @@
 - [x] `[P1]` 自定义 `Row` / `Col` 布局组件（MP 端 Vant 无此组件，需自实现）
   > 检查: `app/frontend/src/adapters/components/Row.vue` 和 `Col.vue` — 确认存在并在 `components.json` 注册；H5 端可直接映射 AntD Row/Col
 
-- [ ] `[P2]` `getComponentSync` 补充条件编译实现（当前为空壳）
-  > 检查: `app/frontend/src/composables/useComponent.ts` — 查看 `getComponentSync` 函数体，确认有 `#ifdef H5` 和 `#ifdef MP-WEIXIN` 分支
+- [x] `[P2]` `getComponentSync` 补充条件编译实现（当前为空壳）
+  > 检查: `app/frontend/src/adapters/resolver.ts` — `_syncCache` 模块级缓存，`getComponent` 异步加载后写入，`getComponentSync` 通过 #ifdef 分支读取
 
 ---
 
@@ -177,7 +177,7 @@
 - [x] 使用错误密码登录返回 401，正确密码返回 token
 - [x] JWT payload 包含 `userId`、`roleCode`、`employeeType`
 - [x] CEO 可新增员工，设置角色，账号立即可登录
-- [ ] 财务不能为任何角色开启终审权限（见 DESIGN.md §4.3）
+- [x] 财务不能为任何角色开启终审权限（见 DESIGN.md §4.3）
 
 ### 前端任务
 
@@ -220,16 +220,16 @@
 - [x] `[P1]` 员工 CRUD 接口（`GET/POST/PUT/DELETE /employees`），body 含 `positionId`、`levelId`（可选）、`roleCode`、`directSupervisorId`（可选）、`departmentId`
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/EmployeeController.java` — 确认4个 HTTP 方法均存在，POST/PUT requestBody 含 positionId / levelId / directSupervisorId 字段
 
-- [ ] `[P1]` 岗位 CRUD 接口（`GET/POST/PUT/DELETE /positions`），含薪资配置、假期配置、社保配置
+- [x] `[P1]` 岗位 CRUD 接口（`GET/POST/PUT/DELETE /positions`），含薪资配置、假期配置、社保配置
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/PositionController.java` — 确认4个 HTTP 方法存在；响应体含 salaryConfig / leaveConfig / socialInsuranceConfig JSON 结构
 
-- [ ] `[P1]` 等级 CRUD 接口（`GET/POST/PUT/DELETE /positions/{id}/levels`）
+- [x] `[P1]` 等级 CRUD 接口（`GET/POST/PUT/DELETE /positions/{id}/levels`）
   > 检查: PositionController.java — 搜索 `/levels` 路由，确认 GET 返回该岗位所有等级，POST/PUT/DELETE 操作单条等级
 
 - [ ] `[P1]` 个人薪资覆盖接口（`PATCH /employees/{id}/salary-override`，finance 提交，需 CEO 审批）
   > 检查: EmployeeController.java — 搜索 `salary-override` 路由；ApprovlFlowService — 确认提交后生成待 CEO 审批的记录，批准后写入 employee 表
 
-- [ ] `[P1]` 组织架构接口（`GET /org/tree` 返回含 directSupervisorId 的员工树；`PATCH /org/supervisor/{employeeId}` 修改直系领导）
+- [x] `[P1]` 组织架构接口（`GET /org/tree` 返回含 directSupervisorId 的员工树；`PATCH /org/supervisor/{employeeId}` 修改直系领导）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/OrgController.java` — 确认 GET /org/tree 返回树形 JSON（含子节点数组）；PATCH 接口更新 employee.direct_supervisor_id
 
 - [x] `[P1]` 角色 CRUD 接口（`GET/POST/PUT/DELETE /roles`），含权限项配置
