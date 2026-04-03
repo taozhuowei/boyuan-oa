@@ -14,16 +14,17 @@
 
 ## 2. 当前项目状态（2026-04-03）
 
-### 总体进度
+### 总体进度（更新至 2026-04-03）
 
-**文档设计阶段基本完成，代码处于骨架状态，Phase 0 尚未开始。**
+**Phase 1 前端 Shell 完成，Phase 0 工程基础待开始。**
 
 | 层 | 状态 | 说明 |
 |----|------|------|
 | 文档 | ✅ 完整 | 所有设计文档已定稿，见下方文档地图 |
-| 前端 | 🟡 骨架 | 7 个页面 UI 框架已建，全是 mock 数据，HTTP 层已统一（`http.ts`），无真实接口调用 |
-| 后端 | 🟡 骨架 | 16 个 Controller 骨架，仅少数 Service 实现，`schema.sql` 只有 `sys_user`+`sys_role` 两张表，其余全内存 mock |
-| 数据库 | ❌ 未建 | 30 张业务表的 DDL 尚未写入 `schema.sql` |
+| 前端 UI | ✅ Phase 1 完成 | 7个业务页面全部重构，AppShell + 统一设计风格，全为 mock 数据 |
+| 前端接口 | 🟡 骨架 | HTTP 层已统一（`http.ts`），无真实接口调用 |
+| 后端 | 🟡 骨架 | 16 个 Controller 骨架，仅少数 Service 实现，schema.sql 只有 sys_user+sys_role |
+| 数据库 | ❌ 未建 | 30 张业务表的 DDL 尚未写入 schema.sql |
 
 ### 当前应做的事
 
@@ -46,6 +47,7 @@
 | `documentation/DESIGN.md` | 角色定义、功能权限矩阵、审批流配置、薪资规则、数据保留策略、组织架构预置（建筑工程版） | 实现权限判断逻辑、审批/薪资引擎、配置种子数据 |
 | `documentation/tech/TODO.md` | **唯一进度入口**，Phase 0–9 任务列表和检查点 | 开始工作前必读 |
 | `documentation/tech/TEST_DESIGN.md` | 测试策略、各层用例设计 | 写测试时参考 |
+| `documentation/context/COLLABORATION.md` | **AI 协作规范**，Claude/Kimi 分工、Brief 格式、代码规范速查、验收流程 | 所有 AI 必读 |
 
 ---
 
