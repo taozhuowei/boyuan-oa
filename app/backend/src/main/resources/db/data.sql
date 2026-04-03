@@ -32,7 +32,26 @@ INSERT INTO employee (
 (4, 'ceo.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '陈明远', '13800000004', 'chenmy@oa.demo', 'ceo', 'OFFICE', 4, 'ACTIVE', '2024-01-01'),
 (5, 'worker.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '赵铁柱', '13800000005', 'zhaotz@oa.demo', 'worker', 'LABOR', 5, 'ACTIVE', '2024-01-01');
 
+-- ============================================
+-- Phase 3: 项目种子数据
+-- ============================================
+
+-- 项目种子数据（2条）- 使用 MERGE INTO 避免重复
+MERGE INTO project (id, name, status, start_date, log_cycle_days)
+KEY (id) VALUES
+(1, '万达广场中央空调安装工程', 'ACTIVE', '2026-01-15', 1),
+(2, '科技园区通风改造项目', 'ACTIVE', '2026-02-01', 1);
+
+-- 项目成员（王建国 pm.demo = employee id 3 作为 PM）- 使用 MERGE INTO 避免重复
+MERGE INTO project_member (project_id, employee_id, role)
+KEY (project_id, employee_id) VALUES
+(1, 3, 'PM'),
+(1, 5, 'MEMBER'),
+(2, 3, 'PM');
+
 -- 重置各表的 IDENTITY 序列，避免手动插入 ID 后序列冲突
 ALTER TABLE employee ALTER COLUMN id RESTART WITH 100;
 ALTER TABLE department ALTER COLUMN id RESTART WITH 100;
 ALTER TABLE sys_role ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE project ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE project_member ALTER COLUMN id RESTART WITH 100;

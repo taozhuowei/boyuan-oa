@@ -20,10 +20,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OaDataService {
 
-    // 项目数据存储
-    private final Map<Long, ProjectData> projects = new ConcurrentHashMap<>();
-    private final AtomicLong projectSequence = new AtomicLong(0);
-
     // 表单数据存储
     private final Map<Long, FormData> forms = new ConcurrentHashMap<>();
     private final AtomicLong formSequence = new AtomicLong(0);
@@ -58,22 +54,9 @@ public class OaDataService {
 
     @PostConstruct
     void init() {
-        initProjects();
         initPayrollCycles();
         initRetentionPolicies();
         initNotifications();
-    }
-
-    private void initProjects() {
-        seedProject(1L, "P001", "绿地中心大厦装修项目", "高层商业楼宇内部装修工程", "项目一部", "王建国",
-            LocalDate.of(2024, 1, 1), LocalDate.of(2024, 12, 31), "ACTIVE",
-            Arrays.asList("王建国", "赵铁柱", "刘大力"), 65.5);
-        seedProject(2L, "P002", "科技园区基础设施改造", "园区道路、管网及绿化改造工程", "项目二部", "李华",
-            LocalDate.of(2024, 3, 1), LocalDate.of(2024, 10, 30), "ACTIVE",
-            Arrays.asList("李华", "王小燕"), 40.0);
-        seedProject(3L, "P003", "地铁站出口建设工程", "地铁站B出口土建及装饰工程", "项目三部", "张伟",
-            LocalDate.of(2023, 6, 1), LocalDate.of(2024, 6, 30), "COMPLETED",
-            Arrays.asList("张伟", "赵铁柱"), 100.0);
     }
 
     private void initPayrollCycles() {
@@ -104,25 +87,6 @@ public class OaDataService {
             false, null, "PAYROLL", "payroll/slip/1", "NORMAL");
         seedNotification(3L, "MESSAGE", "数据保留到期提醒", "部分表单数据将于30天后到期清理", "系统", LocalDateTime.now().minusHours(5),
             true, LocalDateTime.now().minusHours(4), "RETENTION", "retention/reminders", "HIGH");
-    }
-
-    // Project methods
-    private void seedProject(Long id, String projectNo, String name, String description, String department,
-                             String manager, LocalDate startDate, LocalDate endDate, String status,
-                             List<String> members, Double progress) {
-        projects.put(id, new ProjectData(id, projectNo, name, description, department, manager, startDate, endDate, status, members, progress));
-        projectSequence.set(Math.max(projectSequence.get(), id));
-    }
-
-    public List<ProjectResponse> listProjects() {
-        return projects.values().stream()
-            .map(this::toProjectResponse)
-            .collect(Collectors.toList());
-    }
-
-    private ProjectResponse toProjectResponse(ProjectData p) {
-        return new ProjectResponse(p.id, p.projectNo, p.name, p.description, p.department, p.manager,
-            p.startDate, p.endDate, p.status, p.members, p.progress);
     }
 
     // Form methods
@@ -532,19 +496,6 @@ public class OaDataService {
     }
 
     // Inner classes for data storage (mutable for updates)
-    private static class ProjectData {
-        Long id; String projectNo; String name; String description; String department;
-        String manager; LocalDate startDate; LocalDate endDate; String status;
-        List<String> members; Double progress;
-        ProjectData(Long id, String projectNo, String name, String description, String department,
-                    String manager, LocalDate startDate, LocalDate endDate, String status,
-                    List<String> members, Double progress) {
-            this.id = id; this.projectNo = projectNo; this.name = name; this.description = description;
-            this.department = department; this.manager = manager; this.startDate = startDate;
-            this.endDate = endDate; this.status = status; this.members = members; this.progress = progress;
-        }
-    }
-
     private static class FormData {
         Long id; String formNo; String formType; Long submitterId; String submitterName;
         String department; LocalDateTime submitTime; String status; String currentNode;

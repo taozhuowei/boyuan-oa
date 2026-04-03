@@ -2,13 +2,14 @@ package com.oa.backend.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 项目实体类，对应数据表 sys_project
+ * 项目实体类，对应数据表 project
  */
 @Data
-@TableName("sys_project")
+@TableName("project")
 public class Project {
 
     /** 项目主键 ID */
@@ -16,24 +17,34 @@ public class Project {
     private Long id;
 
     /** 项目名称 */
-    private String projectName;
+    private String name;
 
-    /** 所属部门 ID */
-    private Long departmentId;
+    /** 状态：ACTIVE | CLOSED */
+    private String status;
 
-    /** 项目负责人 */
-    private String leader;
+    /** 开始日期 */
+    @TableField("start_date")
+    private LocalDate startDate;
 
-    /** 状态 */
-    private Integer status;
+    /** 实际结束日期 */
+    @TableField("actual_end_date")
+    private LocalDate actualEndDate;
+
+    /** 日志周期天数 */
+    @TableField("log_cycle_days")
+    private Integer logCycleDays;
+
+    /** 日志报告周期天数 */
+    @TableField("log_report_cycle_days")
+    private Integer logReportCycleDays;
 
     /** 创建时间 */
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
+    @TableField("created_at")
+    private LocalDateTime createdAt;
 
     /** 更新时间 */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
+    @TableField("updated_at")
+    private LocalDateTime updatedAt;
 
     /** 逻辑删除标志 */
     @TableLogic
