@@ -133,8 +133,15 @@ DESIGNATED        → 提交人在提交时从可选列表中指定（用于多 
 APPROVED → ARCHIVED
 ```
 
+**节点动态跳过（skipCondition）：**
+`ApprovalFlowNode.skipCondition` 为 JSON 字段，引擎推进到该节点时求值，条件满足则将节点标记为 `SKIPPED` 并推进到下一节点。当前支持的条件类型：
+```json
+{ "type": "SUBMITTER_ROLE_MATCH", "roleCode": "project_manager" }
+```
+具体业务场景（哪些审批流使用了此功能）见 `DESIGN.md §5`。
+
 约束：
-- 当前版本不支持条件分支
+- 当前版本不支持条件分支（多路径）
 - 流程变更仅对新提交单据生效，不影响历史在途单据
 
 ### 5.3 表单引擎
@@ -151,24 +158,28 @@ GET /forms/config?formType={type}
 
 ### 5.4 薪资引擎
 
+> 窗口期时长、预结算强制检查条件、各岗位计算公式等业务规则见 `DESIGN.md §6`。本节只描述引擎技术实现。
+
+**算薪输入来源：**
 ```
-算薪输入：
-  员工档案（岗位/等级/个人覆盖）+ 考勤结果 + 请假扣款 + 加班补贴
-  + 工伤补偿 + 其他扣款 + PayrollItemDef 规则配置
-
-算薪流程（月结）：
-  周期结束 → 窗口期自动开启（默认 7 天）
-  → 员工数据确认阶段（考勤异议/补申报）
-  → 窗口期到期自动关闭（不可提前关闭）
-  → 2 项强制检查（无未处理异议 + 全员档案已配置）
-  → 正式结算（周期锁定）
-  → 工资单发布 → 员工阅读协议 → 签名确认
-  → 更正申请（CEO 审批解锁）→ 重算 → 新版本发布
-
-当前仅实现月结（MONTHLY）。周结/日结：直接推送工资单，无窗口期，员工有异议直接上报，P3 实现。
-
-多版本：每次更正生成新版本（version 递增），历史版本保留，不可篡改
+员工档案（Position/PositionLevel/个人覆盖）
++ 考勤记录（AttendanceRecord）
++ 已批准的请假/加班/工伤单据（FormRecord）
++ PayrollItemDef 自定义费目规则
 ```
+
+**月结状态机：**
+```
+CREATED → WINDOW_OPEN（窗口期开放员工确认数据）
+        → WINDOW_CLOSED（到期自动关闭，Scheduler 触发，无手动关闭接口）
+        → PRE_CHECK（引擎执行前置检查，检查条件见 DESIGN.md §6.2）
+        → LOCKED（正式结算，生成 PayrollSlip）
+        → CORRECTION（CEO 审批解锁）→ LOCKED（重算，version 递增）
+```
+
+**多版本设计：** 更正生成新版本（`payroll_slip.version++`），历史版本 `status=SUPERSEDED`，物理保留，不可篡改。
+
+**P3 短周期（日结/周结）：** 无窗口期，直接推送工资单；员工有异议直接上报，不走预结算流程。
 
 ---
 
