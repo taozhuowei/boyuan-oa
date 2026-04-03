@@ -33,13 +33,12 @@ documentation/
 │   ├── BACKEND_IMPL.md              ← 后端实现细节
 │   └── UI_DESIGN.md                 ← 平台级 UI 规范（Shell/登录/通用组件）
 │
+├── DESIGN.md                         ← 建筑工程版业务设计（角色/权限/审批流/薪资/数据保留/组织预置）
+│
 ├── presets/                          ← 预置业务方案（按企业/行业分目录）
 │   └── construction/                ← 众维建筑工程版（当前唯一客户）
-│       ├── ROLE_CONFIG.md           ← 角色与权限配置
-│       ├── WORKFLOW_CONFIG.md       ← 审批流、薪资规则、数据保留策略
 │       ├── UI_DESIGN.md             ← 所有业务页面布局
-│       ├── ORG_CONFIG.md            ← 部门、岗位、组织架构初始配置
-│       └── CLIENT_FLOW_CONFIRMATION.md ← 产品手册：每个模块的功能边界与默认配置
+│       └── preset.sql               ← 种子数据 SQL（角色/岗位/审批流模板等）
 │
 └── dev/                              ← 开发过程文档
     ├── TODO.md                      ← 唯一进度管理入口（Phase 0–9 任务列表）
@@ -82,11 +81,8 @@ documentation/
 
 | 文档 | 内容摘要 | 何时读 |
 |------|---------|--------|
-| [CLIENT_FLOW_CONFIRMATION.md](./presets/construction/CLIENT_FLOW_CONFIRMATION.md) | 产品手册：每个模块的功能点、默认配置值、支持/不支持边界 | 快速理解业务逻辑（优先于其他 presets 文档） |
-| [ROLE_CONFIG.md](./presets/construction/ROLE_CONFIG.md) | 5 个角色（CEO/PM/Finance/Employee/Worker）定义、功能权限矩阵、数据范围规则、特殊边界说明 | 实现权限判断逻辑、配置种子数据 |
-| [WORKFLOW_CONFIG.md](./presets/construction/WORKFLOW_CONFIG.md) | 各业务类型审批流节点、薪资计算公式、窗口期规则、数据保留策略、表单字段定义 | 实现审批引擎、薪资引擎 |
+| [DESIGN.md](./DESIGN.md) | 建筑工程版完整业务设计：5角色定义、功能权限矩阵、审批流配置（6类型）、薪资规则、数据保留策略、组织架构预置 | 实现权限逻辑、审批/薪资引擎，配置种子数据前必读 |
 | [UI_DESIGN.md](./presets/construction/UI_DESIGN.md) | 所有业务页面布局（考勤、薪资、项目管理含施工日志/里程碑/仪表盘、员工管理、岗位管理、组织架构） | 前端业务页面开发 |
-| [ORG_CONFIG.md](./presets/construction/ORG_CONFIG.md) | 部门结构、岗位定义、初始组织数据 | 配置种子数据、理解组织关系 |
 
 ---
 
@@ -108,10 +104,8 @@ documentation/
 | 架构/实体/API 变更 | `platform/ARCHITECTURE.md` |
 | 后端包结构/约定/引擎实现变更 | `platform/BACKEND_IMPL.md` |
 | 前端适配层/HTTP层/状态管理变更 | `platform/FRONTEND_IMPL.md` |
-| 审批流/薪资规则/数据保留变更 | `presets/construction/WORKFLOW_CONFIG.md` |
-| 权限/角色变更 | `presets/construction/ROLE_CONFIG.md` |
+| 审批流/薪资规则/数据保留/权限/角色/组织架构变更 | `documentation/DESIGN.md` |
 | 新增/修改业务页面 | `presets/construction/UI_DESIGN.md` |
-| 功能边界/默认配置变更 | `presets/construction/CLIENT_FLOW_CONFIRMATION.md` |
 | 平台能力新增 | `platform/PRODUCT.md` + `platform/ARCHITECTURE.md` |
 | 重要设计决策变更 | `context/CONTEXT.md`（更新"当前状态"和"禁止事项"节） |
 | 任务完成 | `dev/TODO.md`（打勾，立即提交） |

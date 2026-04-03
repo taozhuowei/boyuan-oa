@@ -59,7 +59,7 @@
 - [ ] `[P1]` 补全 Mapper：`EmployeeMapper`（扩展现有）、`ProjectMapper`、`DepartmentMapper`
   > 检查: `app/backend/src/main/java/com/oa/backend/mapper/` — 确认 ProjectMapper.java 和 DepartmentMapper.java 文件存在且有基础 CRUD 方法
 
-- [ ] `[P1]` `ApprovalFlowNode` 实体新增 `skipCondition` JSON 字段（用于工伤补偿动态路由，见 WORKFLOW_CONFIG §1.3）
+- [ ] `[P1]` `ApprovalFlowNode` 实体新增 `skipCondition` JSON 字段（用于工伤补偿动态路由，见 DESIGN.md §5.3）
   > 检查: `app/backend/src/main/java/com/oa/backend/entity/ApprovalFlowNode.java` — 搜索 `skipCondition` 字段声明
 
 ### 前端任务
@@ -142,7 +142,7 @@
 - [ ] 使用错误密码登录返回 401，正确密码返回 token
 - [ ] JWT payload 包含 `userId`、`roleCode`、`employeeType`
 - [ ] CEO 可新增员工，设置角色，账号立即可登录
-- [ ] 财务不能为任何角色开启终审权限（见 ROLE_CONFIG §4.3）
+- [ ] 财务不能为任何角色开启终审权限（见 DESIGN.md §4.3）
 
 ### 后端任务
 
@@ -182,6 +182,19 @@
 - [ ] `[P2]` 预留企业微信 OAuth 骨架（`/auth/wework`，当前返回 501）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/AuthController.java` — 搜索 `/auth/wework`，确认存在且返回 HTTP 501
 
+- [ ] `[P1]` 忘记密码流程接口（4步：发验证码→校验→重置→完成）
+  - `POST /auth/send-reset-code`：接收手机号，发送短信验证码（NoOpSmsService 阶段日志打印）
+  - `POST /auth/verify-reset-code`：校验验证码，返回临时 resetToken（TTL 10 min）
+  - `POST /auth/reset-password`：携带 resetToken + 新密码，bcrypt 哈希后写入 `sys_user`
+  > 检查: AuthController.java — 搜索 send-reset-code / verify-reset-code / reset-password 三个路由；verify-reset-code 返回 resetToken；reset-password 接受 resetToken，校验后更新密码
+
+- [ ] `[P1]` 修改手机号流程接口（3步弹窗：验身份→新号+验证码→确认）
+  - `POST /employees/me/phone/send-verify-code`：向当前绑定手机号发送验证码
+  - `POST /employees/me/phone/verify-identity`：校验验证码，返回 identityToken（TTL 5 min）
+  - `POST /employees/me/phone/send-new-code`：向新手机号发送验证码
+  - `PUT /employees/me/phone`：携带 identityToken + 新手机号 + 新验证码，更新 `sys_user.phone`
+  > 检查: EmployeeController.java — 搜索 `/me/phone` 相关路由，确认4个接口存在；verify-identity 返回 identityToken；最终 PUT 更新手机号前校验 identityToken 有效性
+
 ### 前端任务
 
 - [ ] `[P0]` 登录成功后将 `employeeType`、`positionId` 写入 `userStore`
@@ -201,6 +214,12 @@
 
 - [ ] `[P1]` 组织架构树页（`pages/org/`，CEO 可见）— 可视化员工汇报树，支持修改直系领导
   > 检查: `app/frontend/src/pages/org/index.vue` — 确认文件存在，调用 `GET /org/tree`；点击节点可打开侧边栏并调用 `PATCH /org/supervisor/{employeeId}` 修改领导
+
+- [ ] `[P1]` 忘记密码页（`pages/auth/forgot-password/`）— 4步流程：手机号+发验证码 → OTP 输入 → 新密码 → 成功跳转登录
+  > 检查: `app/frontend/src/pages/auth/forgot-password/` 或 `forgot_password.vue` — 确认文件存在，依次调用 /auth/send-reset-code → /auth/verify-reset-code → /auth/reset-password；成功后跳转登录页
+
+- [ ] `[P1]` 修改手机号弹窗（`components/` 或 Personal Center 页内联）— 3步：输入当前手机验证码 → 输入新手机+验证码 → 确认
+  > 检查: Personal Center 页或对应组件 — 搜索 `/me/phone` 调用；弹窗3步 Step 指示器；成功后手机号脱敏展示更新
 
 - [ ] `[P2]` 员工详情页（独立页面，见 UI_DESIGN.md §5）
   > 检查: `app/frontend/src/pages/employees/` — 确认有独立的 detail 或 `[id]` 页面文件，路由可跳转
@@ -572,8 +591,8 @@
 - [ ] `[P1]` 通知触发：审批节点变更、工资条发布、到期提醒 → 写入 `notification` 表
   > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 搜索 NotificationService 或 notification 写入调用，确认在审批 service 和 payroll settle 方法中均有调用
 
-- [ ] `[P1]` `GET /notifications`、`POST /notifications/{id}/read`
-  > 检查: `app/backend/src/main/java/com/oa/backend/controller/NotificationController.java` — 确认 GET 列表和 POST 已读两个方法存在
+- [ ] `[P1]` 通知接口完整实现（`GET /notifications`、`POST /notifications/{id}/read`、`POST /notifications/read-all`、`DELETE /notifications/read`）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/NotificationController.java` — 确认 GET 列表、单条已读、全部已读、清除已读4个方法存在
 
 ### 前端任务
 
@@ -620,8 +639,8 @@
 - [ ] `[P1]` 数据清理定时任务：先删物理文件 → 再删 DB 记录 → 失败进重试队列
   > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 搜索 CleanupService，确认先处理 AttachmentMeta 物理文件，再删 DB；有 cleanup_task 表记录重试状态
 
-- [ ] `[P1]` `operation_log` 写入 API（由审批引擎调用，不经 retention 策略删除）
-  > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 确认 OperationLogService.java 存在；retention_policy 表中 operation_log 类型的 retentionDays = -1（或标记为 PERMANENT）
+- [ ] `[P1]` `operation_log` 写入 API（由审批引擎调用，跟随全局保留策略默认 1 年，到期物理删除，无 @TableLogic）
+  > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 确认 OperationLogService.java 存在；retention_policy 表中 operation_log 类型的 retentionYears = 1（无 PERMANENT 标记）
 
 - [ ] `[P2]` AOP 拦截薪资结算、更正、权限变更、签名绑定 → 写入 `operation_log`
   > 检查: `app/backend/src/main/java/com/oa/backend/` — 搜索 `@Aspect` 类，确认切点覆盖 settle / correction / roleUpdate / signatureBind 方法
@@ -754,12 +773,26 @@
 - [ ] `[P3]` 前端 Excel 导入字段映射配置页（finance/CEO 可见，支持自定义列名到系统字段的映射关系）
   > 检查: `app/frontend/src/pages/employees/` — 确认有字段映射配置页，调用 GET/PUT /employees/import/field-mapping；以表格形式展示"Excel列名"→"系统字段"映射
 
+### 用户反馈（Feedback）
+
+> 实体设计见 ARCHITECTURE.md Feedback 节点，Admin 控制台"用户反馈" Tab 展示所有反馈。
+
+- [ ] `[P3]` 后端 Feedback CRUD（`POST /feedback` 所有角色可提交；`GET /feedback`、`PATCH /feedback/{id}/resolve` Sysadmin 专用）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/FeedbackController.java` — 确认 POST 接口无权限限制；GET/PATCH 接口校验 sysadmin 角色；feedback 表写入正确的 submitterId
+
+- [ ] `[P3]` 前端反馈提交弹窗（所有角色均可见）— 类型选择（功能建议/问题反馈/其他）+ 内容输入 + 可选联系方式
+  > 检查: `app/frontend/src/components/` — 搜索 Feedback 弹窗组件，调用 `POST /feedback`；Personal Center 页有入口
+
+- [ ] `[P3]` Admin 控制台"用户反馈" Tab — 反馈列表（类型/状态/时间排序），支持标记已解决
+  > 检查: Admin 控制台页面 — 搜索 `/feedback` 调用，列表展示 feedbackType / content / status；PATCH /feedback/{id}/resolve 可更新状态
+
 ---
 
 ## 变更记录
 
 | 日期        | 内容                                                                                                                                           |
 |-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2026-04-03 | Preset 文档合并：ROLE_CONFIG + ORG_CONFIG + WORKFLOW_CONFIG + CLIENT_FLOW_CONFIRMATION 合并为 documentation/DESIGN.md（732行），4个旧文件删除；PRODUCT.md 引用更新；Phase 2 新增忘记密码/修改手机号 API 任务（P1）；Phase 7 通知接口补全批量已读+清除已读；Phase 8 operation_log 任务说明去掉错误的 PERMANENT 标注改为跟随全局策略；P3 新增 Feedback 实体实现（后端/前端反馈弹窗/Admin列表） |
 | 2026-04-03 | 文档整体修订：platform/UI_DESIGN.md 全量重写（处理所有 [comment] 反馈，新增忘记密码/修改手机号流程，Admin 控制台重构为4 Tab 含集成配置/用户反馈，MP 壳去除 Tab 栏改头像导航）；所有文档"永久保留"统一改为跟随全局保留策略（默认1年）；operation_log 跟随全局策略；ApprovalRecord 同步；ARCHITECTURE.md retentionYears 去掉 -1 永久选项；BACKEND_IMPL.md 新增 Token 有效期明确说明/data.sql dev-prod 隔离方案/PayrollItemDef description 字段/9.1 清理失败操作人明确为 Sysadmin/10.1 step 注释；FRONTEND_IMPL.md 删除 §2.5（已知问题迁移至 TODO）；Phase 0 新增 Row/Col 自定义组件任务；CLIENT_FLOW_CONFIRMATION.md 删除已废弃例外申请章节 |
 | 2026-04-03 | 应用21项设计决策：schema 表清单新增 leave_type_def / social_insurance_item / form_type_def / permission / payroll_item_def / payroll_slip_item，移除 payroll_window_period（窗口期字段合并进 payroll_cycle）；Phase 6 窗口期去掉提前关闭、预结算强制检查简化为2项（无例外申请）、新增 PayrollItemDef CRUD；Phase 5 施工日志周期改为 CEO 直接修改；P3 新增 SMS通知、日结/周结、Excel字段映射；里程碑去 targetDate 改 actualCompletionDate；多 PM 审批改 ANY_OF 模式 |
 | 2026-04-02 | 大规模补充新模块任务：schema 扩展至30张表；Phase 2 加岗位/等级/组织架构接口及前端页面；Phase 4 新增加班通知制三条路径（PM通知/CEO直通/自补例外）；Phase 5 施工日志重设计（工作项模板、里程碑进度、汇总报告、Dashboard折线图）；Phase 6 引入窗口期模型（取代4项阻塞检查）、工资确认协议管理；同步更新 UI_DESIGN.md、ROLE_CONFIG.md、CLIENT_FLOW_CONFIRMATION.md |

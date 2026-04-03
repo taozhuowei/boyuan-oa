@@ -4,7 +4,7 @@
 >
 > **目标读者**：后端架构师、技术负责人。
 >
-> **不包含内容**：具体的代码实现细节（见 `BACKEND_IMPL.md`）；前端实现细节（见 `FRONTEND_IMPL.md`）；建筑工程版的业务数据模型（见 `presets/construction/`）。
+> **不包含内容**：具体的代码实现细节（见 `BACKEND_IMPL.md`）；前端实现细节（见 `FRONTEND_IMPL.md`）；业务规则与权限配置（见 `DESIGN.md`）；页面布局（见 `presets/construction/UI_DESIGN.md` 及 `platform/UI_DESIGN.md`）。
 
 ---
 
@@ -717,9 +717,36 @@ GET /forms/config?formType={type}
 
 | 字段          | 类型         | 说明                                      |
 |-------------|-------------|-------------------------------------------|
-| `configKey` | VARCHAR(100) PK | 配置键（如 `payroll.payDay`、`window.durationDays`、`sms.adminPhone`）|
+| `configKey` | VARCHAR(100) PK | 配置键（见下表）|
 | `configValue`| TEXT         | 配置值（字符串/JSON）                     |
 | `description`| VARCHAR(200) | 配置说明                                 |
+
+**常用 configKey 清单（含公司信息）：**
+
+| configKey | 说明 | 示例值 |
+|-----------|------|--------|
+| `company.name` | 公司全称 | `"众维建筑工程有限公司"` |
+| `company.logoPath` | 企业 Logo 相对路径（存 FS，同 StorageService 规范） | `"uploads/logo/company.png"` |
+| `payroll.payDay` | 发薪日（1–31） | `"25"` |
+| `payroll.settlementDeadline` | 结算截止日 | `"25"` |
+| `payroll.windowDays` | 数据确认窗口期天数 | `"7"` |
+| `attendance.minUnit` | 考勤最小计量单位（HOUR/HALF_DAY/DAY） | `"HALF_DAY"` |
+| `sms.adminPhone` | 短信告警接收号码（Sysadmin） | `"13800000000"` |
+
+---
+
+#### `Feedback` — 用户反馈
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `id` | UUID PK | 主键 |
+| `submitterId` | UUID FK → Employee | 提交人（可为 NULL，匿名提交时） |
+| `feedbackType` | ENUM(FEATURE_REQUEST, BUG, OTHER) | 反馈类型 |
+| `content` | TEXT | 反馈内容（最多 500 字） |
+| `contact` | VARCHAR(50) NULL | 联系方式（提交人自填） |
+| `status` | ENUM(PENDING, RESOLVED) DEFAULT PENDING | 处理状态 |
+| `resolvedAt` | TIMESTAMP NULL | Sysadmin 标记处理的时间 |
+| `createTime` | TIMESTAMP | 提交时间 |
 
 ---
 
@@ -764,10 +791,16 @@ POST /{resource}/import/apply        # 导入提交（两步操作第二步）
 
 ### 7.3 认证
 
-| 方法   | 路径              | 说明                                          |
-|--------|------------------|-----------------------------------------------|
-| POST   | `/auth/login`    | 工号或手机号+密码登录（返回 JWT + 员工信息）   |
-| POST   | `/auth/wework`   | 企业微信 OAuth（预留，返回 501）               |
+| 方法   | 路径                           | 说明                                                |
+|--------|-------------------------------|-----------------------------------------------------|
+| POST   | `/auth/login`                 | 工号或手机号+密码登录（返回 JWT + 员工信息）          |
+| POST   | `/auth/send-reset-code`       | 发送忘记密码验证码（限频 60s，body: `{ phone }`）     |
+| POST   | `/auth/verify-reset-code`     | 校验验证码（body: `{ phone, code }`，返回 resetToken）|
+| POST   | `/auth/reset-password`        | 用 resetToken 重置密码（body: `{ resetToken, newPassword }`）|
+| POST   | `/auth/wework`                | 企业微信 OAuth（预留，返回 501）                     |
+
+**忘记密码流程说明：**
+`resetToken` 有效期 5 分钟；`send-reset-code` 60 秒内只能发一次（后端限频）；重置成功后 `resetToken` 失效。
 
 ---
 
@@ -784,7 +817,12 @@ POST /{resource}/import/apply        # 导入提交（两步操作第二步）
 | GET    | `/employees/{id}`                   | 员工详情                           | self / pm(项目内) / finance / ceo |
 | PUT    | `/employees/{id}`                   | 更新档案                           | finance(基本) / ceo(全部) |
 | PATCH  | `/employees/{id}/status`            | 启用/禁用账号                      | finance / ceo |
-| PATCH  | `/employees/{id}/password/reset`    | 重置密码                           | ceo           |
+| PATCH  | `/employees/{id}/password/reset`    | 重置密码（管理员操作）              | ceo           |
+| PUT    | `/employees/me/password`            | 修改本人密码（需当前密码验证）       | self          |
+| POST   | `/employees/me/phone/send-verify-code` | 发送当前手机验证码（修改手机第1步）| self          |
+| POST   | `/employees/me/phone/verify-identity`  | 验证身份（返回 changeToken，5min有效）| self        |
+| POST   | `/employees/me/phone/send-new-code`    | 发送新手机验证码（body: `{ changeToken, newPhone }`）| self |
+| PUT    | `/employees/me/phone`               | 确认修改手机号（body: `{ changeToken, newPhone, code }`）| self |
 | PATCH  | `/employees/{id}/salary-override`   | 个人薪资覆盖（提交 CEO 审批）       | finance       |
 | POST   | `/employees/import/preview`         | Excel 导入预览（返回逐行校验结果）  | ceo / finance |
 | POST   | `/employees/import/apply`           | Excel 导入提交（批量建档建账）      | ceo / finance |
@@ -996,8 +1034,11 @@ POST /{resource}/import/apply        # 导入提交（两步操作第二步）
 | GET    | `/retention/policies`             | 数据保留策略                  |
 | PUT    | `/retention/policies/{type}`      | 修改保留策略（CEO）           |
 | GET    | `/notifications`                  | 通知列表                      |
-| POST   | `/notifications/{id}/read`        | 标记已读                      |
+| POST   | `/notifications/{id}/read`        | 标记单条已读                   |
+| POST   | `/notifications/read-all`         | 全部标为已读                   |
+| DELETE | `/notifications/read`             | 清除所有已读通知               |
 | GET    | `/workbench/summary`              | 工作台聚合摘要（按角色）       |
+| POST   | `/feedback`                       | 提交反馈（业务用户）           |
 
 ---
 
@@ -1007,13 +1048,20 @@ POST /{resource}/import/apply        # 导入提交（两步操作第二步）
 |--------|-------------------------------|-------------------------------|
 | GET    | `/setup/status`               | 初始化完成度检查              |
 | POST   | `/setup/company`              | 设置公司基本信息              |
-| POST   | `/setup/init-ceo`             | 创建首个 CEO 账号（一次性）   |
+| POST   | `/setup/init-accounts`        | 批量创建初始业务账号（含至少 1 个 CEO，一次性）|
 | PUT    | `/setup/default-roles`        | 调整预置角色权限              |
 | PUT    | `/setup/default-workflows`    | 调整默认审批流配置            |
 | PUT    | `/setup/retention-defaults`   | 设置数据保留默认值            |
 | GET    | `/system/logs`                | 系统操作日志                  |
 | POST   | `/system/backup`              | 触发全量备份                  |
 | PUT    | `/system/reset-password`      | 重置任意用户密码              |
+| GET    | `/system/feedback`            | 查看用户反馈列表（Sysadmin）  |
+| PATCH  | `/system/feedback/{id}/resolve` | 标记反馈为已处理            |
+| GET    | `/system/cleanup-tasks`       | 查看失败清理任务列表          |
+| POST   | `/system/cleanup-tasks/{id}/retry` | 重试失败清理任务          |
+| PATCH  | `/system/cleanup-tasks/{id}/resolve` | 标记清理任务已人工处理  |
+| POST   | `/system/integration/wework`  | 保存企业微信集成配置（P3）    |
+| POST   | `/system/integration/sms`     | 保存短信服务商配置（P3）      |
 
 ---
 

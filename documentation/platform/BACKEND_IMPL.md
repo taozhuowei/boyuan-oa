@@ -4,7 +4,7 @@
 >
 > **目标读者**：后端开发者、全栈开发者。
 >
-> **不包含内容**：实体字段定义和 API 规范（见 `ARCHITECTURE.md`）；业务审批流、薪资规则（见 `presets/construction/WORKFLOW_CONFIG.md`）。
+> **不包含内容**：实体字段定义和 API 规范（见 `ARCHITECTURE.md`）；业务审批流、薪资规则（见 `documentation/DESIGN.md`）。
 
 ---
 
@@ -381,7 +381,7 @@ PayrollCycle.windowStatus:
   OPEN（可提交异议）→ 到期自动关闭 → CLOSED（锁定）
 ```
 
-**窗口期不可提前关闭**，只能通过 `PayrollWindowScheduler` 到期自动关闭。到期时触发未响应项的自动处理规则（具体规则见 `WORKFLOW_CONFIG §2.2.2`）。
+**窗口期不可提前关闭**，只能通过 `PayrollWindowScheduler` 到期自动关闭。到期时触发未响应项的自动处理规则（具体规则见 `DESIGN.md §6.2`）。
 
 `PayrollWindowScheduler` 每天 00:30 扫描 `pay_cycle` 表中 `windowStatus = OPEN` 且 `windowEndDate <= NOW()` 的记录，执行锁定并触发兜底规则。
 

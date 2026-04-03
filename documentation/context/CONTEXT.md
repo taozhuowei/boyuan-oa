@@ -43,10 +43,8 @@
 | `documentation/platform/FRONTEND_IMPL.md` | 前端代码架构、双端适配层、组件注册机制、HTTP 层规范、CSS 变量体系 | 前端开发 |
 | `documentation/platform/PRODUCT.md` | 平台定位、功能边界、可配置项清单 | 理解产品全貌 |
 | `documentation/platform/UI_DESIGN.md` | Shell 结构、登录页、通用页面规范 | 平台级 UI |
-| `documentation/presets/construction/ROLE_CONFIG.md` | 5 个角色定义、功能权限矩阵、数据范围规则 | 实现权限判断逻辑 |
-| `documentation/presets/construction/WORKFLOW_CONFIG.md` | 审批流定义、薪资计算公式、窗口期规则、数据保留策略 | 实现审批/薪资引擎 |
+| `documentation/DESIGN.md` | 角色定义、功能权限矩阵、审批流配置、薪资规则、数据保留策略、组织架构预置（建筑工程版） | 实现权限判断逻辑、审批/薪资引擎、配置种子数据 |
 | `documentation/presets/construction/UI_DESIGN.md` | 所有业务页面布局：考勤、薪资、项目、员工、岗位、组织架构 | 前端页面开发 |
-| `documentation/presets/construction/CLIENT_FLOW_CONFIRMATION.md` | 产品手册：每个模块的功能点、默认配置、支持/不支持边界 | 快速理解业务逻辑 |
 | `documentation/dev/TODO.md` | **唯一进度入口**，Phase 0–9 任务列表和检查点 | 开始工作前必读 |
 | `documentation/dev/TEST_DESIGN.md` | 测试策略、各层用例设计 | 写测试时参考 |
 
