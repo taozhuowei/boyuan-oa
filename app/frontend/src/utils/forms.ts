@@ -1,6 +1,5 @@
+import { request } from './http'
 import type { SessionUser } from './access'
-
-const apiBaseUrl = 'http://localhost:8080/api'
 
 export interface FormConfig {
   formType: string
@@ -80,41 +79,6 @@ const laborExtraFormOptions: FormTypeOption[] = [
   { code: 'LOG', name: '施工日志', description: '沉淀现场进度、天气、问题与施工内容。', icon: 'assignment' }
 ]
 
-function getUniInstance() {
-  return typeof uni === 'undefined' ? null : uni
-}
-
-function request<T>(options: {
-  url: string
-  method?: 'GET' | 'POST'
-  data?: unknown
-  token?: string
-}): Promise<T> {
-  const uniInstance = getUniInstance()
-
-  if (!uniInstance) {
-    return Promise.reject(new Error('当前环境不可调用接口'))
-  }
-
-  return new Promise((resolve, reject) => {
-    uniInstance.request({
-      url: options.url,
-      method: options.method ?? 'GET',
-      data: options.data as string | Record<string, unknown> | ArrayBuffer | undefined,
-      header: options.token ? { Authorization: `Bearer ${options.token}` } : undefined,
-      success: (response) => {
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          resolve(response.data as T)
-          return
-        }
-
-        reject(new Error('表单接口请求失败'))
-      },
-      fail: () => reject(new Error('表单接口请求失败'))
-    })
-  })
-}
-
 function resolveSubmitPath(formType: string) {
   switch (formType) {
     case 'LEAVE':
@@ -143,76 +107,68 @@ export function getAvailableFormOptions(user: SessionUser | null): FormTypeOptio
   return isWorker ? [...officeFormOptions, ...laborExtraFormOptions] : officeFormOptions
 }
 
-export async function fetchFormConfig(formType: string, token?: string): Promise<FormConfig> {
+export async function fetchFormConfig(formType: string): Promise<FormConfig> {
   return request<FormConfig>({
-    url: `${apiBaseUrl}/forms/config?formType=${encodeURIComponent(formType)}`,
-    method: 'GET',
-    token
+    url: `/forms/config?formType=${encodeURIComponent(formType)}`,
+    method: 'GET'
   })
 }
 
-export async function fetchTodoForms(token?: string): Promise<FormRecord[]> {
+export async function fetchTodoForms(): Promise<FormRecord[]> {
   return request<FormRecord[]>({
-    url: `${apiBaseUrl}/forms/todo`,
-    method: 'GET',
-    token
+    url: '/forms/todo',
+    method: 'GET'
   })
 }
 
-export async function fetchFormHistory(token?: string): Promise<FormRecord[]> {
+export async function fetchFormHistory(): Promise<FormRecord[]> {
   return request<FormRecord[]>({
-    url: `${apiBaseUrl}/forms/history`,
-    method: 'GET',
-    token
+    url: '/forms/history',
+    method: 'GET'
   })
 }
 
-export async function fetchFormDetail(id: number, token?: string): Promise<FormRecord> {
+export async function fetchFormDetail(id: number): Promise<FormRecord> {
   return request<FormRecord>({
-    url: `${apiBaseUrl}/forms/${id}`,
-    method: 'GET',
-    token
+    url: `/forms/${id}`,
+    method: 'GET'
   })
 }
 
 export async function submitForm(
   formType: string,
   formData: Record<string, unknown>,
-  remark: string,
-  token?: string
+  remark: string
 ): Promise<FormRecord> {
   return request<FormRecord>({
-    url: `${apiBaseUrl}/forms/${resolveSubmitPath(formType)}`,
+    url: `/forms/${resolveSubmitPath(formType)}`,
     method: 'POST',
     data: {
       formType,
       formData,
       remark
-    },
-    token
+    }
   })
 }
 
-export async function approveFormRecord(id: number, comment: string, token?: string): Promise<FormRecord> {
+export async function approveFormRecord(id: number, comment: string): Promise<FormRecord> {
   return request<FormRecord>({
-    url: `${apiBaseUrl}/forms/${id}/approve`,
+    url: `/forms/${id}/approve`,
     method: 'POST',
     data: {
       action: 'APPROVE',
       comment
-    },
-    token
+    }
   })
 }
 
-export async function rejectFormRecord(id: number, comment: string, token?: string): Promise<FormRecord> {
+export async function rejectFormRecord(id: number, comment: string): Promise<FormRecord> {
   return request<FormRecord>({
-    url: `${apiBaseUrl}/forms/${id}/reject`,
+    url: `/forms/${id}/reject`,
     method: 'POST',
     data: {
       action: 'REJECT',
       comment
-    },
-    token
+    }
   })
 }

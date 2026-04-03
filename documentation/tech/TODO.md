@@ -41,20 +41,20 @@
 
 ### 前端任务
 
-- [ ] `[P0]` 迁移所有 HTTP 请求到 `utils/http.ts`：清理 `access.ts` 和 `forms.ts` 中的私有 `request()` 函数
+- [x] `[P0]` 迁移所有 HTTP 请求到 `utils/http.ts`：清理 `access.ts` 和 `forms.ts` 中的私有 `request()` 函数
   > 检查: `app/frontend/src/utils/access.ts` 和 `forms.ts` — 确认无独立 request/axios 函数；`http.ts` 包含唯一导出的 request 函数
 
-- [ ] `[P0]` `http.ts` 补全：自动携带 `X-Client-Type`、401 自动跳转登录、错误 toast 提示
+- [x] `[P0]` `http.ts` 补全：自动携带 `X-Client-Type`、401 自动跳转登录、错误 toast 提示
   > 检查: `app/frontend/src/utils/http.ts` — 搜索 `X-Client-Type`、`401`、`toast`（或 uni.showToast），三项均存在
 
-- [ ] `[P1]` `http.ts` 新增 loading 状态管理（同一接口请求中禁止重复提交）
+- [x] `[P1]` `http.ts` 新增 loading 状态管理（同一接口请求中禁止重复提交）
   > 检查: `app/frontend/src/utils/http.ts` — 搜索防重复提交标志（如 pendingMap / requesting Set），确认同 URL 并发请求被拦截
 
-- [ ] `[P1]` `components.json` 补全注册：`Upload`、`Tabs`/`Tab`、`Tag`、`Steps`/`Step`、`Popup`、`Textarea`、`Canvas`
+- [x] `[P1]` `components.json` 补全注册：`Upload`、`Tabs`/`Tab`、`Tag`、`Steps`/`Step`、`Popup`、`Textarea`、`Canvas`
   > 检查: `app/frontend/src/adapters/config/components.json` — 搜索上述7个组件名，确认全部有 h5 / mp 来源注册
   > 注意：H5 端 `Textarea` 来源应为 `Textarea`，不是 `Input.TextArea`
 
-- [ ] `[P1]` 自定义 `Row` / `Col` 布局组件（MP 端 Vant 无此组件，需自实现）
+- [x] `[P1]` 自定义 `Row` / `Col` 布局组件（MP 端 Vant 无此组件，需自实现）
   > 检查: `app/frontend/src/adapters/components/Row.vue` 和 `Col.vue` — 确认存在并在 `components.json` 注册；H5 端可直接映射 AntD Row/Col
 
 - [ ] `[P2]` `getComponentSync` 补充条件编译实现（当前为空壳）

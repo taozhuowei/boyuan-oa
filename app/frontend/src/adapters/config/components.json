@@ -53,11 +53,11 @@
   },
   "Row": {
     "h5": { "source": "ant-design-vue", "name": "Row" },
-    "mp": { "source": "vant", "name": "Row" }
+    "mp": { "source": "@/adapters/components/Row", "name": "Row" }
   },
   "Col": {
     "h5": { "source": "ant-design-vue", "name": "Col" },
-    "mp": { "source": "vant", "name": "Col" }
+    "mp": { "source": "@/adapters/components/Col", "name": "Col" }
   },
   "Table": {
     "h5": { "source": "ant-design-vue", "name": "Table" },

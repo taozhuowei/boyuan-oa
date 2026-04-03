@@ -1,3 +1,5 @@
+import { request } from './http'
+
 /**
  * 认证与权限工具模块
  *
@@ -135,12 +137,6 @@ export interface TestAccount {
 }
 
 /**
- * API基础地址
- * 用途：所有后端接口的URL前缀
- * 注意：生产环境应改为实际部署地址，支持通过环境变量配置
- */
-const apiBaseUrl = 'http://localhost:8080/api'
-
 /**
  * 角色本地存储键名
  * 用途：uni-app本地存储中保存角色数据的唯一标识
@@ -285,16 +281,6 @@ const defaultRoles: RoleItem[] = [
 ]
 
 /**
- * 获取uni-app实例
- * 职责：获取全局uni对象，兼容非uni环境（如Node测试环境、H5调试环境）
- * 返回值：uni实例或null（在非uni环境下返回null以避免报错）
- * 使用场景：所有需要调用uni API的地方都应先调用此函数检查环境
- */
-function getUniInstance() {
-  return typeof uni === 'undefined' ? null : uni
-}
-
-/**
  * 从本地存储获取角色列表
  * 职责：优先读取缓存，无缓存时返回默认角色并初始化存储
  * 设计意图：提供离线可用的角色数据，支持演示环境
@@ -305,19 +291,17 @@ function getUniInstance() {
  * 缓存策略：首次使用自动初始化，后续读取缓存，角色修改时更新缓存
  */
 function getStoredRoles(): RoleItem[] {
-  const uniInstance = getUniInstance()
-
-  if (!uniInstance) {
+  if (typeof uni === 'undefined') {
     return defaultRoles
   }
 
-  const cached = uniInstance.getStorageSync(roleStorageKey)
+  const cached = uni.getStorageSync(roleStorageKey)
 
   if (Array.isArray(cached) && cached.length > 0) {
     return cached as RoleItem[]
   }
 
-  uniInstance.setStorageSync(roleStorageKey, defaultRoles)
+  uni.setStorageSync(roleStorageKey, defaultRoles)
   return defaultRoles
 }
 
@@ -332,57 +316,9 @@ function getStoredRoles(): RoleItem[] {
  *   - 数据大小限制受uni-app存储限制（通常10MB）
  */
 function setStoredRoles(roles: RoleItem[]) {
-  const uniInstance = getUniInstance()
-
-  if (uniInstance) {
-    uniInstance.setStorageSync(roleStorageKey, roles)
+  if (typeof uni !== 'undefined') {
+    uni.setStorageSync(roleStorageKey, roles)
   }
-}
-
-/**
- * 通用API请求封装
- * 职责：统一处理uni.request调用，自动附加认证头，提供Promise化接口
- * 设计意图：封装请求逻辑，统一错误处理，支持JWT认证
- * 参数说明：
- *   @param options.url - 请求URL（相对路径或完整URL）
- *   @param options.method - HTTP方法（GET/POST/PUT，默认为GET）
- *   @param options.data - 请求体数据（对象格式，自动序列化）
- *   @param options.token - JWT令牌（存在时自动添加到Authorization头）
- * 返回值：Promise<T>，T为期望的响应数据类型
- * 错误处理：
- *   - 非uni环境：拒绝Promise，返回"当前环境不可调用接口"
- *   - HTTP状态码非2xx：拒绝Promise，返回"接口请求失败"
- *   - 网络错误：拒绝Promise，返回"接口请求失败"
- */
-function request<T>(options: {
-  url: string
-  method?: 'GET' | 'POST' | 'PUT'
-  data?: unknown
-  token?: string
-}): Promise<T> {
-  const uniInstance = getUniInstance()
-
-  if (!uniInstance) {
-    return Promise.reject(new Error('当前环境不可调用接口'))
-  }
-
-  return new Promise((resolve, reject) => {
-    uniInstance.request({
-      url: options.url,
-      method: options.method ?? 'GET',
-      data: options.data as string | Record<string, unknown> | ArrayBuffer | undefined,
-      header: options.token ? { Authorization: `Bearer ${options.token}` } : undefined,
-      success: (response) => {
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          resolve(response.data as T)
-          return
-        }
-
-        reject(new Error('接口请求失败'))
-      },
-      fail: () => reject(new Error('接口请求失败'))
-    })
-  })
 }
 
 /**
@@ -446,9 +382,10 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
       department?: string
       employeeType?: string
     }>({
-      url: `${apiBaseUrl}/auth/login`,
+      url: '/auth/login',
       method: 'POST',
-      data: payload
+      data: payload,
+      skipAuthRedirect: true
     })
 
     return {
@@ -489,13 +426,9 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
  * 返回值：Promise<RoleItem[]>，角色列表数组
  * 降级策略：后端不可用返回本地存储数据，本地无数据返回默认角色
  */
-export async function fetchRoles(token?: string): Promise<RoleItem[]> {
+export async function fetchRoles(): Promise<RoleItem[]> {
   try {
-    return await request<RoleItem[]>({
-      url: `${apiBaseUrl}/roles`,
-      method: 'GET',
-      token
-    })
+    return await request<RoleItem[]>({ url: '/roles', method: 'GET' })
   } catch {
     return getStoredRoles()
   }
@@ -522,7 +455,7 @@ export async function fetchRoles(token?: string): Promise<RoleItem[]> {
  *   @param token - 可选的JWT令牌
  * 返回值：Promise<RoleItem>，保存后的角色对象（包含生成的id）
  */
-export async function saveRole(payload: RolePayload, token?: string): Promise<RoleItem> {
+export async function saveRole(payload: RolePayload): Promise<RoleItem> {
   const normalized: RolePayload = {
     ...payload,
     roleCode: payload.roleCode.trim().toLowerCase(),
@@ -534,18 +467,16 @@ export async function saveRole(payload: RolePayload, token?: string): Promise<Ro
   try {
     if (normalized.id) {
       return await request<RoleItem>({
-        url: `${apiBaseUrl}/roles/${normalized.id}`,
+        url: `/roles/${normalized.id}`,
         method: 'PUT',
-        data: normalized,
-        token
+        data: normalized
       })
     }
 
     return await request<RoleItem>({
-      url: `${apiBaseUrl}/roles`,
+      url: '/roles',
       method: 'POST',
-      data: normalized,
-      token
+      data: normalized
     })
   } catch {
     const roles = getStoredRoles()
