@@ -16,7 +16,7 @@
 |-------|--------------------------|---------|-----------------------------------------------|
 | **0F** | 前端基础：HTTP 层 + 组件注册              | 已完成   | 前端无控制台报错，可独立运行                        |
 | **1**  | 前端壳 + 设计确认（与 Phase 0B 并行）    | 已完成   | 5个 mock 账号能点遍所有页面，视觉设计已确认        |
-| **0B** | 后端基础：DB schema + 真实启动（与 Phase 1 并行） | 进行中 | mvn 无报错启动，35张表建好，无控制台报错     |
+| **0B** | 后端基础：DB schema + 真实启动（与 Phase 1 并行） | 已完成 | mvn 无报错启动，35张表建好，无控制台报错     |
 | **2** | 身份认证 + 账号/角色管理    | 未开始   | 真实账号登录，CEO 可增删改员工和角色              |
 | **3** | 组织管理（部门/项目/成员）  | 未开始   | 项目、成员关系可管理，不依赖内存 mock             |
 | **4** | 考勤申请 + 审批流引擎       | 未开始   | 请假单从提交跑到归档，状态流转完整                |
@@ -128,14 +128,14 @@
 
 ### 检查点（全部通过才进入 Phase 2）
 
-- [ ] `mvn spring-boot:run` 无报错启动，H2 控制台可访问
-- [ ] 业务表 schema 全部建好（35 张，不存在 `payroll_window_period` 表）
-- [ ] 5 个测试账号可通过 `POST /auth/login` 登录并返回 JWT
-- [ ] `GET /setup/status` 可访问（sysadmin 初始化向导入口）
+- [x] `mvn spring-boot:run` 无报错启动，H2 控制台可访问
+- [x] 业务表 schema 全部建好（35 张，不存在 `payroll_window_period` 表）
+- [x] 5 个测试账号可通过 `POST /auth/login` 登录并返回 JWT
+- [x] `GET /setup/status` 可访问（sysadmin 初始化向导入口）
 
 ### 后端任务
 
-- [ ] `[P0]` 补全 `schema.sql`：新增以下业务表（共 35 张）
+- [x] `[P0]` 补全 `schema.sql`：新增以下业务表（共 35 张）
   - 员工 & 权限：`employee`、`permission`（权限码表）
   - 组织：`department`、`position`（岗位）、`position_level`（等级）
   - 项目：`project`、`project_member`（含 `role ENUM(PM,MEMBER)`）、`project_milestone`（含 `actual_completion_date`，无 `planned_date`）、`project_progress_log`
@@ -148,22 +148,22 @@
   - 运维：`operation_log`（跟随全局保留策略，无 @TableLogic）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
   > 检查: `app/backend/src/main/resources/db/schema.sql` — 搜索每个表名，确认所有 CREATE TABLE 语句存在；**特别确认不存在 `payroll_window_period` 表**
 
-- [ ] `[P0]` 补全 `data.sql`（dev profile 专用，仅 H2 加载，**不进生产**）：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
+- [x] `[P0]` 补全 `data.sql`（dev profile 专用，仅 H2 加载，**不进生产**）：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
   > 检查: `app/backend/src/main/resources/db/data.sql` — 搜索 employee.demo / worker.demo / pm.demo / ceo.demo / finance.demo，确认5条 INSERT 记录均存在
 
-- [ ] `[P0]` 创建 `preset-construction.sql`：建筑工程版生产初始化种子数据（角色 code 定义、岗位/等级预置、审批流模板节点、假种定义、社保险种、保留策略默认值），由 Sysadmin 初始化向导加载
+- [x] `[P0]` 创建 `preset-construction.sql`：建筑工程版生产初始化种子数据（角色 code 定义、岗位/等级预置、审批流模板节点、假种定义、社保险种、保留策略默认值），由 Sysadmin 初始化向导加载
   > 检查: `app/backend/src/main/resources/db/preset-construction.sql` — 搜索 INSERT INTO sys_role / INSERT INTO approval_flow_def / INSERT INTO sys_retention_policy，确认主要业务类型均有预置记录；内容依据见 `documentation/DESIGN.md`
 
-- [ ] `[P1]` 补全 Mapper：`EmployeeMapper`（扩展现有）、`ProjectMapper`、`DepartmentMapper`
+- [x] `[P1]` 补全 Mapper：`EmployeeMapper`（扩展现有）、`ProjectMapper`、`DepartmentMapper`
   > 检查: `app/backend/src/main/java/com/oa/backend/mapper/` — 确认 ProjectMapper.java 和 DepartmentMapper.java 文件存在且有基础 CRUD 方法
 
-- [ ] `[P1]` `ApprovalFlowNode` 实体新增 `skipCondition` JSON 字段（用于工伤补偿动态路由，见 DESIGN.md §5.3）
+- [x] `[P1]` `ApprovalFlowNode` 实体新增 `skipCondition` JSON 字段（用于工伤补偿动态路由，见 DESIGN.md §5.3）
   > 检查: `app/backend/src/main/java/com/oa/backend/entity/ApprovalFlowNode.java` — 搜索 `skipCondition` 字段声明
 
-- [ ] `[P1]` `GET /setup/status` 接口可用（初始化向导入口）
+- [x] `[P1]` `GET /setup/status` 接口可用（初始化向导入口）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `/setup/status` 路由或 SetupController 文件
 
-- [ ] `[P1]` `POST /auth/login` 可使用 `data.sql` 中 5 个测试账号登录，返回 JWT + 用户信息
+- [x] `[P1]` `POST /auth/login` 可使用 `data.sql` 中 5 个测试账号登录，返回 JWT + 用户信息
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/AuthController.java` — 确认 `/auth/login` 方法存在；用 Postman/curl 以 ceo.demo 账号验证返回 200 + token
 
 ---
