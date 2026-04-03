@@ -1,28 +1,25 @@
 <template>
-  <view class="page projects-page">
-    <!-- Hero 区域 -->
-    <view class="hero">
-      <view class="hero-main">
-        <view class="hero-title-row">
-          <text class="hero-title">项目</text>
-        </view>
-        <text class="hero-subtitle">
-          {{ isCEO ? '全公司项目总览与资源调配' : '我的项目与任务管理' }}
-        </text>
-      </view>
-      <view class="hero-stats">
-        <view class="hero-stat">
-          <text class="stat-num">{{ stats.active }}</text>
-          <text class="stat-label">进行中</text>
-        </view>
-        <view class="hero-stat">
-          <text class="stat-num">{{ stats.completed }}</text>
-          <text class="stat-label">已完成</text>
-        </view>
-      </view>
-    </view>
+  <AppShell title="项目管理">
+    <view class="page-content">
 
-    <view class="projects-container">
+      <!-- 页面头部 -->
+      <view class="page-header">
+        <view class="header-left">
+          <text class="page-title">项目管理</text>
+          <text class="page-desc">{{ isCEO ? '全公司项目总览与资源调配' : '我的项目与任务管理' }}</text>
+        </view>
+        <view class="header-stats">
+          <view class="stat-item">
+            <text class="stat-value">{{ stats.active }}</text>
+            <text class="stat-label">在建项目</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-value">{{ stats.completed }}</text>
+            <text class="stat-label">已完成</text>
+          </view>
+        </view>
+      </view>
+
       <!-- 工具栏 -->
       <view class="toolbar">
         <view class="toolbar-left">
@@ -43,70 +40,94 @@
             style="width: 120px"
           />
         </view>
-        <component
-          :is="Input"
-          v-if="Input"
-          v-model="searchKeyword"
-          placeholder="搜索项目名称"
-          :prefix="'search'"
-          style="width: 240px"
-        />
+        <view class="toolbar-right">
+          <component
+            :is="Input"
+            v-if="Input"
+            v-model="searchKeyword"
+            placeholder="搜索项目名称"
+            :prefix="'search'"
+            style="width: 240px"
+          />
+        </view>
       </view>
 
-      <!-- 项目列表 -->
-      <component :is="Row" v-if="Row" :gutter="16">
-        <component
-          :is="Col"
-          v-if="Col"
-          v-for="project in filteredProjects"
-          :key="project.id"
-          :span="isCEO ? 8 : 6"
-        >
-          <component :is="Card" v-if="Card" class="project-card" hoverable @click="viewProject(project)">
-            <view class="project-header">
-              <text class="project-name">{{ project.name }}</text>
-              <component :is="Badge" v-if="Badge" :status="getStatusType(project.status)" :text="project.status" />
-            </view>
-            <text class="project-desc">{{ project.description }}</text>
-            <view class="project-meta">
-              <view class="meta-item">
-                <text>{{ project.manager }}</text>
-              </view>
-              <view class="meta-item">
-                <text>{{ project.deadline }}</text>
-              </view>
-            </view>
-            <view class="project-progress">
-              <view class="progress-bar">
-                <view
-                  class="progress-fill"
-                  :style="{ width: project.progress + '%' }"
-                  :class="getProgressClass(project.progress)"
-                />
-              </view>
-              <text class="progress-text">{{ project.progress }}%</text>
-            </view>
-            <view class="project-members">
+      <!-- 主内容区 -->
+      <view class="main-content">
+        <!-- 左栏：项目列表 -->
+        <view class="left-panel content-card">
+          <view class="card-header">
+            <text class="card-title">项目列表（{{ filteredProjects.length }}）</text>
+          </view>
+          <view class="card-body scrollable">
+            <view v-if="filteredProjects.length" class="project-list">
               <view
-                v-for="member in project.members.slice(0, 3)"
-                :key="member"
-                class="member-avatar"
+                v-for="project in filteredProjects"
+                :key="project.id"
+                class="project-item"
+                :class="{ active: selectedProject?.id === project.id }"
+                @click="selectProject(project)"
               >
-                {{ member.charAt(0) }}
-              </view>
-              <view v-if="project.members.length > 3" class="member-more">
-                +{{ project.members.length - 3 }}
+                <view class="project-header">
+                  <text class="project-name">{{ project.name }}</text>
+                  <view 
+                    class="status-tag"
+                    :class="getStatusClass(project.status)"
+                  >
+                    {{ project.status }}
+                  </view>
+                </view>
+                <text class="project-desc">{{ project.description }}</text>
+                <view class="project-meta">
+                  <text class="meta-item">👤 {{ project.manager }}</text>
+                  <text class="meta-item">📅 {{ project.deadline }}</text>
+                </view>
+                <view class="project-progress">
+                  <view class="progress-bar">
+                    <view
+                      class="progress-fill"
+                      :style="{ width: project.progress + '%' }"
+                      :class="getProgressClass(project.progress)"
+                    />
+                  </view>
+                  <text class="progress-text">{{ project.progress }}%</text>
+                </view>
+                <view class="project-members">
+                  <view
+                    v-for="member in project.members.slice(0, 3)"
+                    :key="member"
+                    class="member-avatar"
+                  >
+                    {{ member.charAt(0) }}
+                  </view>
+                  <view v-if="project.members.length > 3" class="member-more">
+                    +{{ project.members.length - 3 }}
+                  </view>
+                </view>
               </view>
             </view>
-          </component>
-        </component>
-      </component>
+            <view v-else class="empty-state">
+              <text>暂无项目</text>
+            </view>
+          </view>
+        </view>
 
-      <!-- 施工日志 Timeline -->
-      <view v-if="selectedProject" class="log-section">
-        <component :is="Row" v-if="Row" :gutter="16" class="mt-16">
-          <component :is="Col" v-if="Col" :span="24">
-            <component :is="Card" v-if="Card" :title="`${selectedProject.name} - 施工日志`">
+        <!-- 右栏：项目详情/施工日志 -->
+        <view class="right-panel content-card">
+          <template v-if="selectedProject">
+            <view class="card-header">
+              <text class="card-title">{{ selectedProject.name }} - 施工日志</text>
+              <component
+                :is="Button"
+                v-if="Button && (isCEO || isPM)"
+                type="primary"
+                size="small"
+                @click="showAddLog = true"
+              >
+                新建日志
+              </component>
+            </view>
+            <view class="card-body scrollable">
               <component :is="Timeline" v-if="Timeline">
                 <component
                   :is="TimelineItem"
@@ -119,10 +140,21 @@
                   :status="log.status"
                 />
               </component>
-            </component>
-          </component>
-        </component>
+            </view>
+          </template>
+          <template v-else>
+            <view class="card-header">
+              <text class="card-title">项目详情</text>
+            </view>
+            <view class="card-body">
+              <view class="empty-state">
+                <text>请选择一个项目查看详情</text>
+              </view>
+            </view>
+          </template>
+        </view>
       </view>
+
     </view>
 
     <!-- 创建项目弹窗 -->
@@ -149,39 +181,36 @@
             placeholder="请输入项目描述"
           />
         </view>
-        <component :is="Row" v-if="Row" :gutter="16">
-          <component :is="Col" v-if="Col" :span="12">
-            <view class="form-item">
-              <label>项目经理 <text class="required">*</text></label>
-              <component
-                :is="Select"
-                v-if="Select"
-                v-model="newProject.manager"
-                :options="employeeOptions"
-                placeholder="请选择"
-              />
-            </view>
-          </component>
-          <component :is="Col" v-if="Col" :span="12">
-            <view class="form-item">
-              <label>截止日期 <text class="required">*</text></label>
-              <component :is="DatePicker" v-if="DatePicker" v-model="newProject.deadline" />
-            </view>
-          </component>
-        </component>
+        <view class="form-row">
+          <view class="form-item half">
+            <label>项目经理 <text class="required">*</text></label>
+            <component
+              :is="Select"
+              v-if="Select"
+              v-model="newProject.manager"
+              :options="employeeOptions"
+              placeholder="请选择"
+            />
+          </view>
+          <view class="form-item half">
+            <label>截止日期 <text class="required">*</text></label>
+            <component :is="DatePicker" v-if="DatePicker" v-model="newProject.deadline" />
+          </view>
+        </view>
       </view>
       <template #footer>
         <component :is="Button" v-if="Button" @click="showCreateModal = false">取消</component>
         <component :is="Button" v-if="Button" type="primary" @click="createProject">创建</component>
       </template>
     </component>
-  </view>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
+import AppShell from '../../layouts/AppShell.vue'
 
 const { Card, Row, Col, Badge, Button, Input, Select, DatePicker, Modal, Timeline, TimelineItem } = useComponent(['Card', 'Row', 'Col', 'Badge', 'Button', 'Input', 'Select', 'DatePicker', 'Modal', 'Timeline', 'TimelineItem'])
 
@@ -195,6 +224,7 @@ const filterStatus = ref('')
 const searchKeyword = ref('')
 const showCreateModal = ref(false)
 const selectedProject = ref<any>(null)
+const showAddLog = ref(false)
 
 const newProject = ref({
   name: '',
@@ -290,9 +320,9 @@ const filteredProjects = computed(() => {
   return result
 })
 
-const getStatusType = (status: string) => {
-  const map: Record<string, any> = {
-    '进行中': 'processing',
+const getStatusClass = (status: string) => {
+  const map: Record<string, string> = {
+    '进行中': 'primary',
     '已完成': 'success',
     '已延期': 'error'
   }
@@ -301,13 +331,12 @@ const getStatusType = (status: string) => {
 
 const getProgressClass = (progress: number) => {
   if (progress >= 100) return 'success'
-  if (progress >= 60) return 'normal'
+  if (progress >= 60) return 'primary'
   return 'warning'
 }
 
-const viewProject = (project: any) => {
+const selectProject = (project: any) => {
   selectedProject.value = project
-  uni.showToast({ title: `查看项目: ${project.name}`, icon: 'none' })
 }
 
 const createProject = () => {
@@ -335,219 +364,315 @@ const createProject = () => {
 </script>
 
 <style lang="scss" scoped>
-.projects-page {
-  min-height: 100vh;
-  background: var(--oa-bg);
-  padding: 16px;
+.page-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.hero {
-  background: linear-gradient(135deg, #003466 0%, #324963 100%);
-  color: #fff;
-  padding: 24px;
-  margin-bottom: 16px;
-  border-radius: var(--oa-radius-lg);
+.page-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-}
+  align-items: flex-end;
 
-.hero-title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
+  .page-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--on-surface);
+    font-family: var(--font-display, 'Manrope');
+  }
 
-.hero-title {
-  font-size: 24px;
-  font-weight: 700;
-}
+  .page-desc {
+    font-size: 13px;
+    color: var(--on-surface-variant);
+    margin-top: 2px;
+    display: block;
+  }
 
-.hero-subtitle {
-  font-size: 14px;
-  opacity: 0.9;
-}
+  .header-stats {
+    display: flex;
+    gap: 24px;
 
-.hero-stats {
-  display: flex;
-  gap: 32px;
-}
+    .stat-item {
+      text-align: right;
 
-.hero-stat {
-  text-align: center;
-}
+      .stat-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--primary);
+        display: block;
+        font-family: var(--font-display, 'Manrope');
+      }
 
-.stat-num {
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.stat-label {
-  font-size: 12px;
-  opacity: 0.8;
+      .stat-label {
+        font-size: 12px;
+        color: var(--on-surface-variant);
+      }
+    }
+  }
 }
 
 .toolbar {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-}
-
-.toolbar-left {
-  display: flex;
   gap: 12px;
-}
 
-.project-card {
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
-
-  &:hover {
-    transform: translateY(-4px);
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
-  .project-header {
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+}
+
+.main-content {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+}
+
+.left-panel {
+  flex: 0 0 380px;
+  display: flex;
+  flex-direction: column;
+}
+
+.right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.content-card {
+  background: var(--surface-lowest);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  .card-header {
+    flex-shrink: 0;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 12px;
-  }
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--surface-high);
 
-  .project-name {
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .project-desc {
-    font-size: 13px;
-    color: var(--oa-text-secondary);
-    line-height: 1.5;
-    margin-bottom: 16px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .project-meta {
-    display: flex;
-    gap: 16px;
-    margin-bottom: 16px;
-
-    .meta-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--oa-text-secondary);
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--on-surface);
     }
   }
 
-  .project-progress {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
+  .card-body {
+    flex: 1;
+    min-height: 0;
 
-    .progress-bar {
-      flex: 1;
-      height: 6px;
-      background: var(--oa-border);
-      border-radius: 3px;
+    &.scrollable {
+      overflow-y: auto;
+      padding: 16px 20px;
+    }
+  }
+}
+
+// 状态标签
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+
+  &.success { background: #f0f9eb; color: #2e7d32; }
+  &.warning { background: #fff7e6; color: #ed6c02; }
+  &.error { background: #fff1f0; color: #ba1a1a; }
+  &.primary { background: rgba(0,52,102,0.08); color: var(--primary); }
+  &.default { background: var(--surface-low); color: var(--on-surface-variant); }
+}
+
+// 项目列表
+.project-list {
+  .project-item {
+    padding: 16px;
+    border-bottom: 1px solid var(--surface);
+    cursor: pointer;
+    transition: background 0.15s;
+    border-radius: var(--radius-md);
+
+    &:hover {
+      background: var(--surface-low);
+    }
+
+    &.active {
+      background: rgba(0,52,102,0.06);
+      border: 1px solid rgba(0,52,102,0.15);
+    }
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .project-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+
+      .project-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--on-surface);
+      }
+    }
+
+    .project-desc {
+      font-size: 12px;
+      color: var(--on-surface-variant);
+      line-height: 1.5;
+      margin-bottom: 12px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
       overflow: hidden;
     }
 
-    .progress-fill {
-      height: 100%;
-      border-radius: 3px;
-      transition: width 0.3s;
+    .project-meta {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 12px;
 
-      &.success {
-        background: var(--oa-success);
-      }
-
-      &.normal {
-        background: var(--oa-primary);
-      }
-
-      &.warning {
-        background: var(--oa-warning);
+      .meta-item {
+        font-size: 12px;
+        color: var(--on-surface-variant);
       }
     }
 
-    .progress-text {
-      font-size: 12px;
-      font-weight: 500;
-      color: var(--oa-text-secondary);
-      min-width: 36px;
-      text-align: right;
-    }
-  }
-
-  .project-members {
-    display: flex;
-    align-items: center;
-
-    .member-avatar {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--oa-primary-light);
-      color: var(--oa-primary);
+    .project-progress {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 12px;
-      font-weight: 500;
-      margin-left: -8px;
-      border: 2px solid #fff;
+      gap: 10px;
+      margin-bottom: 12px;
 
-      &:first-child {
-        margin-left: 0;
+      .progress-bar {
+        flex: 1;
+        height: 5px;
+        background: var(--surface-high);
+        border-radius: 3px;
+        overflow: hidden;
+      }
+
+      .progress-fill {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.3s;
+
+        &.success { background: var(--success); }
+        &.primary { background: var(--primary); }
+        &.warning { background: var(--warning); }
+      }
+
+      .progress-text {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--on-surface-variant);
+        min-width: 32px;
+        text-align: right;
       }
     }
 
-    .member-more {
-      width: 28px;
-      height: 28px;
-      border-radius: 50%;
-      background: var(--oa-bg);
-      color: var(--oa-text-secondary);
+    .project-members {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 11px;
-      margin-left: -8px;
-      border: 2px solid #fff;
+
+      .member-avatar {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--surface-low);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 500;
+        margin-left: -6px;
+        border: 2px solid var(--surface-lowest);
+
+        &:first-child {
+          margin-left: 0;
+        }
+      }
+
+      .member-more {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: var(--surface);
+        color: var(--on-surface-variant);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        margin-left: -6px;
+        border: 2px solid var(--surface-lowest);
+      }
     }
   }
 }
 
-.log-section {
-  margin-top: 16px;
+// 空状态
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 0;
+  color: var(--on-surface-variant);
+  font-size: 13px;
 }
 
-.mt-16 {
-  margin-top: 16px;
-}
-
+// 表单样式
 .form-content {
   padding: 16px 0;
 }
 
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
 .form-item {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+
+  &.half {
+    flex: 1;
+    min-width: 0;
+  }
 
   label {
     display: block;
     margin-bottom: 8px;
-    font-size: 14px;
-    color: var(--oa-text-secondary);
+    font-size: 13px;
+    color: var(--on-surface-variant);
 
     .required {
-      color: var(--oa-error);
+      color: var(--error);
     }
   }
 }

@@ -1,474 +1,599 @@
 <template>
-  <view class="page workspace">
-    <!-- 顶部用户信息区 -->
-    <view class="hero-bar">
-      <view class="hero-content">
-        <component :is="UserInfo" v-if="UserInfo">
-          <component :is="UserAvatar" v-if="UserAvatar" :name="activeUser.displayName" />
-          <view class="user-meta">
-            <text class="hero-greeting">欢迎，{{ activeUser.displayName }}</text>
-            <text class="hero-role">{{ activeUser.roleName }} · {{ activeUser.department }}</text>
+  <AppShell title="工作台">
+    <!--
+      工作台首页 (pages/index/index.vue)
+      布局：固定视口，不整页滚动，三行 Flex 列：
+        Row1 — 待办 + 通知 横向扁平条（flex-shrink: 0）
+        Row2 — 关键 KPI 卡片（flex-shrink: 0）
+        Row3 — 项目进度面板（flex: 1，内部滚动）
+    -->
+    <view class="workbench">
+
+      <!-- ① 横向信息条：待办 + 通知 -->
+      <view class="alert-row">
+
+        <!-- 待办条 -->
+        <view class="alert-strip todo-strip">
+          <view class="strip-head">
+            <!-- #ifdef H5 -->
+            <AuditOutlined class="strip-icon" />
+            <!-- #endif -->
+            <text class="strip-title">待办事项</text>
+            <view v-if="todoItems.length" class="count-chip">{{ todoItems.length }}</view>
           </view>
-        </component>
-        <view class="hero-actions">
-          <component
-            :is="Button"
-            v-if="Button"
-            type="default"
-            size="small"
-            @click="goToLogin"
-          >
-            退出登录
-          </component>
+          <view class="strip-scroll">
+            <view
+              v-for="item in todoItems"
+              :key="item.id"
+              class="strip-item"
+              @click="goTo(item.path)"
+            >
+              <view class="priority-tag" :class="'p-' + item.priority">{{ item.category }}</view>
+              <text class="item-title">{{ item.title }}</text>
+            </view>
+            <view v-if="!todoItems.length" class="strip-empty">暂无待办</view>
+          </view>
+          <view class="strip-link" @click="goTo('/pages/todo/index')">
+            <text>全部</text>
+            <!-- #ifdef H5 -->
+            <RightOutlined />
+            <!-- #endif -->
+          </view>
+        </view>
+
+        <!-- 通知条 -->
+        <view class="alert-strip notice-strip">
+          <view class="strip-head">
+            <!-- #ifdef H5 -->
+            <BellOutlined class="strip-icon" />
+            <!-- #endif -->
+            <text class="strip-title">系统通知</text>
+            <view class="unread-dot" />
+          </view>
+          <view class="strip-scroll">
+            <view
+              v-for="item in noticeItems"
+              :key="item.id"
+              class="strip-item notice-item"
+            >
+              <text class="item-title">{{ item.title }}</text>
+              <text class="item-time">{{ item.time }}</text>
+            </view>
+          </view>
+          <view class="strip-link">
+            <text style="color: var(--outline); cursor: default; font-size: 12px;">暂无通知中心</text>
+          </view>
+        </view>
+
+      </view>
+
+      <!-- ② 关键 KPI 行（角色定制，最需关注的数据） -->
+      <view class="kpi-row">
+        <view
+          v-for="kpi in keyKpis"
+          :key="kpi.key"
+          class="kpi-card"
+          :class="kpi.urgent ? 'kpi-urgent' : ''"
+        >
+          <view class="kpi-top">
+            <!-- #ifdef H5 -->
+            <component :is="kpi.icon" class="kpi-icon" />
+            <!-- #endif -->
+            <view v-if="kpi.urgent" class="urgent-dot" />
+          </view>
+          <text class="kpi-value">{{ kpi.value }}</text>
+          <text class="kpi-label">{{ kpi.label }}</text>
         </view>
       </view>
+
+      <!-- ③ 项目进度面板（剩余空间，内部滚动） -->
+      <view class="project-panel">
+        <view class="panel-head">
+          <text class="panel-title">在建项目进度</text>
+          <text class="panel-date">{{ todayStr }}</text>
+        </view>
+        <view class="project-list">
+          <view v-for="proj in projects" :key="proj.id" class="project-row">
+            <view class="proj-name-col">
+              <text class="proj-name">{{ proj.name }}</text>
+              <text class="proj-phase">{{ proj.phase }}</text>
+            </view>
+            <view class="prog-col">
+              <view class="prog-track">
+                <view
+                  class="prog-fill"
+                  :style="{ width: proj.progress + '%', backgroundColor: progressColor(proj.status) }"
+                />
+              </view>
+              <text class="prog-pct">{{ proj.progress }}%</text>
+            </view>
+            <view class="proj-status-col">
+              <view class="status-chip" :class="'s-' + proj.status">{{ proj.statusLabel }}</view>
+            </view>
+            <text class="proj-date">截止 {{ proj.dueDate }}</text>
+          </view>
+          <view v-if="!projects.length" class="proj-empty">暂无在建项目</view>
+        </view>
+      </view>
+
     </view>
-
-    <!-- 主内容区 -->
-    <view class="workspace-body">
-      <component :is="Row" v-if="Row" :gutter="16">
-        <!-- 左侧：待办 + 通知 -->
-        <component :is="Col" v-if="Col" :span="8">
-          <component :is="Card" v-if="Card" class="mb-16">
-            <template #title>
-              <view class="card-title-wrapper">
-                <text>待办事项</text>
-                <component :is="Badge" v-if="Badge" :count="pendingItems.length" />
-              </view>
-            </template>
-            <view class="todo-list">
-              <view
-                v-for="item in pendingItems"
-                :key="item.title"
-                class="todo-item"
-                @click="handleTodo(item)"
-              >
-                <view class="todo-main">
-                  <text class="todo-title">{{ item.title }}</text>
-                  <text class="todo-category">{{ item.category }}</text>
-                </view>
-                <component
-                  :is="Badge"
-                  v-if="Badge"
-                  :status="getPriorityStatus(item.priority)"
-                  :text="item.priority"
-                />
-              </view>
-              <component :is="Empty" v-if="Empty && !pendingItems.length" description="暂无待办事项" />
-            </view>
-          </component>
-
-          <component :is="Card" v-if="Card">
-            <template #title>
-              <view class="card-title-wrapper">
-                <text>系统通知</text>
-              </view>
-            </template>
-            <view class="notice-list">
-              <view
-                v-for="item in noticeItems"
-                :key="item.title"
-                class="notice-item"
-              >
-                <view class="notice-dot" />
-                <view class="notice-content">
-                  <text class="notice-title">{{ item.title }}</text>
-                  <text class="notice-time">{{ item.time }}</text>
-                </view>
-              </view>
-            </view>
-          </component>
-        </component>
-
-        <!-- 右侧：系统入口 + 快捷统计 -->
-        <component :is="Col" v-if="Col" :span="16">
-          <!-- 快捷统计 -->
-          <component :is="Permission" v-if="Permission" :roles="['ceo', 'finance', 'project_manager']">
-            <component :is="Row" v-if="Row" :gutter="16" class="mb-16">
-              <component :is="Col" v-if="Col" :span="6">
-                <component
-                  :is="StatCard"
-                  v-if="StatCard"
-                  title="员工总数"
-                  :value="dashboardStats.employees"
-                  icon="👥"
-                  theme="primary"
-                />
-              </component>
-              <component :is="Col" v-if="Col" :span="6">
-                <component
-                  :is="StatCard"
-                  v-if="StatCard"
-                  title="待审批"
-                  :value="dashboardStats.pendingApprovals"
-                  icon="📋"
-                  theme="warning"
-                />
-              </component>
-              <component :is="Col" v-if="Col" :span="6">
-                <component
-                  :is="StatCard"
-                  v-if="StatCard"
-                  title="进行中项目"
-                  :value="dashboardStats.activeProjects"
-                  icon="📁"
-                  theme="success"
-                />
-              </component>
-              <component :is="Col" v-if="Col" :span="6">
-                <component
-                  :is="StatCard"
-                  v-if="StatCard"
-                  title="本月支出"
-                  :value="dashboardStats.monthlyPayroll"
-                  icon="💰"
-                  theme="purple"
-                />
-              </component>
-            </component>
-          </component>
-
-          <!-- 系统入口 -->
-          <component :is="Card" v-if="Card">
-            <template #title>
-              <view class="card-title-wrapper">
-                <text>系统入口</text>
-              </view>
-            </template>
-            <view class="system-grid">
-              <component
-                :is="ModuleCard"
-                v-if="ModuleCard"
-                v-for="item in visibleSystems"
-                :key="item.key"
-                :title="item.title"
-                :description="item.description"
-                :icon="item.icon"
-                :icon-theme="item.iconTheme"
-                :path="item.path"
-                :badge="item.badge"
-              />
-            </view>
-          </component>
-        </component>
-      </component>
-    </view>
-  </view>
+  </AppShell>
 </template>
 
-<script setup lang="ts">
-import { ref, computed } from 'vue'
-import { useComponent } from '../../composables/useComponent'
+<script lang="ts" setup>
+/**
+ * @page 工作台首页 (pages/index/index.vue)
+ * @description 数据中心视图。不整页滚动，固定三行布局：
+ *   Row1 横向待办/通知条 → Row2 角色定制 KPI → Row3 项目进度（内部滚动）
+ * @dataFlow userStore.role → keyKpis / todoItems / projects
+ */
+import { computed, markRaw, ref } from 'vue'
 import { useUserStore } from '../../stores'
 import { roleNameMap } from '../../utils/access'
+import AppShell from '../../layouts/AppShell.vue'
 
-const { UserInfo, UserAvatar, Permission, StatCard, ModuleCard, Card, Row, Col, Button, Badge, Empty } = useComponent([
-  'UserInfo', 'UserAvatar', 'Permission', 'StatCard', 'ModuleCard', 'Card', 'Row', 'Col', 'Button', 'Badge', 'Empty'
-])
+/* #ifdef H5 */
+import {
+  AuditOutlined,
+  BellOutlined,
+  RightOutlined,
+  ClockCircleOutlined,
+  WarningOutlined,
+  CheckCircleOutlined,
+  CalendarOutlined,
+  DollarOutlined,
+  TeamOutlined,
+  BuildOutlined,
+  SolutionOutlined
+} from '@ant-design/icons-vue'
+/* #endif */
 
 const userStore = useUserStore()
+const role = computed(() => userStore.userInfo?.role ?? 'employee')
 
-const activeUser = computed(() => {
-  if (userStore.userInfo) {
-    return {
-      ...userStore.userInfo,
-      roleName: userStore.userInfo.roleName || roleNameMap[userStore.userInfo.role] || userStore.userInfo.role
-    }
-  }
-  return {
-    username: '',
-    displayName: '未登录',
-    role: 'employee',
-    roleName: '员工',
-    department: '未分配部门'
-  }
+// ── 今日字符串 ────────────────────────────────────────────────────────────
+const todayStr = computed(() => {
+  const d = new Date()
+  const days = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日 ${days[d.getDay()]}`
 })
 
-const isCEO = computed(() => activeUser.value.role === 'ceo')
-const isFinance = computed(() => activeUser.value.role === 'finance')
-const isPM = computed(() => activeUser.value.role === 'project_manager')
-const isWorker = computed(() => activeUser.value.role === 'worker')
-
-// 根据角色过滤可见系统
-const visibleSystems = computed(() => {
-  const allSystems = [
-    {
-      key: 'attendance',
-      title: '考勤管理',
-      description: '请假、加班申请与审批',
-      icon: '📅',
-      iconTheme: 'primary' as const,
-      path: '/pages/attendance/index',
-      roles: ['ceo', 'finance', 'project_manager', 'employee', 'worker'],
-      badge: 0
-    },
-    {
-      key: 'payroll',
-      title: '薪资档案',
-      description: '薪资查询与结算管理',
-      icon: '💰',
-      iconTheme: 'success' as const,
-      path: '/pages/payroll/index',
-      roles: ['ceo', 'finance', 'employee', 'worker'],
-      badge: 0
-    },
-    {
-      key: 'projects',
-      title: '施工日志',
-      description: '项目管理与日志填报',
-      icon: '🏗️',
-      iconTheme: 'purple' as const,
-      path: '/pages/projects/index',
-      roles: ['ceo', 'project_manager', 'worker'],
-      badge: 0
-    },
-    {
-      key: 'employees',
-      title: '员工管理',
-      description: '员工信息与权限管理',
-      icon: '👥',
-      iconTheme: 'orange' as const,
-      path: '/pages/employees/index',
-      roles: ['ceo', 'finance', 'project_manager'],
-      badge: 0
-    },
-    {
-      key: 'role',
-      title: '角色管理',
-      description: '角色与权限配置',
-      icon: '🔐',
-      iconTheme: 'error' as const,
-      path: '/pages/role/index',
-      roles: ['ceo', 'finance'],
-      badge: 0
-    },
-    {
-      key: 'todo',
-      title: '待办中心',
-      description: '待审批事项汇总',
-      icon: '📋',
-      iconTheme: 'warning' as const,
-      path: '/pages/todo/index',
-      roles: ['ceo', 'finance', 'project_manager', 'employee', 'worker'],
-      badge: 3
-    },
-    {
-      key: 'config',
-      title: '系统配置',
-      description: '全局参数配置',
-      icon: '⚙️',
-      iconTheme: 'error' as const,
-      path: '/pages/config/index',
-      roles: ['ceo'],
-      badge: 0
-    }
+// ── 关键 KPI（角色定制，最需行动的数据优先） ─────────────────────────────
+/* #ifdef H5 */
+const kpiMap: Record<string, Array<{ key: string; icon: any; value: string; label: string; urgent: boolean }>> = {
+  ceo: [
+    { key: 'pending',   icon: markRaw(AuditOutlined),         value: '5',       label: '待处理审批',     urgent: true  },
+    { key: 'abnormal',  icon: markRaw(CalendarOutlined),      value: '3 人',    label: '本周考勤异常',   urgent: true  },
+    { key: 'risk',      icon: markRaw(WarningOutlined),        value: '1 个',    label: '进度预警项目',   urgent: true  },
+    { key: 'payroll',   icon: markRaw(DollarOutlined),         value: '进行中',  label: '本月薪资窗口期', urgent: false }
+  ],
+  finance: [
+    { key: 'settle',    icon: markRaw(AuditOutlined),         value: '3 单',    label: '待结算薪资',     urgent: true  },
+    { key: 'dispute',   icon: markRaw(WarningOutlined),        value: '2 件',    label: '薪资异议待处理', urgent: true  },
+    { key: 'window',    icon: markRaw(ClockCircleOutlined),   value: '第3天',   label: '窗口期进度',     urgent: false },
+    { key: 'staff',     icon: markRaw(TeamOutlined),           value: '28',      label: '在职员工总数',   urgent: false }
+  ],
+  project_manager: [
+    { key: 'pending',   icon: markRaw(AuditOutlined),         value: '4 项',    label: '待我审批',       urgent: true  },
+    { key: 'risk',      icon: markRaw(WarningOutlined),        value: '1 个',    label: '进度预警项目',   urgent: true  },
+    { key: 'log',       icon: markRaw(BuildOutlined),          value: '7 份',    label: '待审施工日志',   urgent: false },
+    { key: 'members',   icon: markRaw(TeamOutlined),           value: '18 人',   label: '项目组成员',     urgent: false }
+  ],
+  employee: [
+    { key: 'slip',      icon: markRaw(DollarOutlined),         value: '待确认',  label: '本月工资条',     urgent: true  },
+    { key: 'leave',     icon: markRaw(CalendarOutlined),      value: '12 天',   label: '剩余年假',       urgent: false },
+    { key: 'overtime',  icon: markRaw(ClockCircleOutlined),   value: '8 h',     label: '本月加班时长',   urgent: false }
+  ],
+  worker: [
+    { key: 'slip',      icon: markRaw(DollarOutlined),         value: '待确认',  label: '本月工资条',     urgent: true  },
+    { key: 'log',       icon: markRaw(BuildOutlined),          value: '今日待填', label: '施工日志',       urgent: true  },
+    { key: 'leave',     icon: markRaw(CalendarOutlined),      value: '5 天',    label: '剩余年假',       urgent: false }
   ]
+}
+/* #endif */
 
-  return allSystems.filter(item => item.roles.includes(activeUser.value.role))
+const keyKpis = computed(() => {
+  /* #ifdef H5 */
+  return kpiMap[role.value] ?? kpiMap.employee
+  /* #endif */
+  /* #ifndef H5 */
+  return []
+  /* #endif */
 })
 
-// 待办事项（根据角色动态生成）
-const pendingItems = computed(() => {
-  const items = []
-
-  if (isCEO.value || isFinance.value) {
-    items.push(
-      { title: '薪资审批', category: '财务', priority: '高', path: '/pages/payroll/index' },
-      { title: '请假审批', category: '考勤', priority: '中', path: '/pages/attendance/index' }
-    )
+// ── 待办事项（按角色 mock） ──────────────────────────────────────────────
+const todoItems = computed(() => {
+  const r = role.value
+  if (['ceo', 'finance'].includes(r)) {
+    return [
+      { id: 1, title: '项目二部施工日志待审核', category: '项目', priority: 'high', path: '/pages/projects/index' },
+      { id: 2, title: '全员 3月工资条待发放',   category: '薪资', priority: 'mid',  path: '/pages/payroll/index'  },
+      { id: 3, title: '李小龙请假申请（3天）',   category: '考勤', priority: 'low',  path: '/pages/attendance/index' }
+    ]
   }
-
-  if (isPM.value) {
-    items.push(
-      { title: '请假审批', category: '考勤', priority: '中', path: '/pages/attendance/index' },
-      { title: '日志审核', category: '项目', priority: '低', path: '/pages/projects/index' }
-    )
+  if (r === 'project_manager') {
+    return [
+      { id: 1, title: '三号楼施工日志待审核',   category: '项目', priority: 'high', path: '/pages/projects/index'   },
+      { id: 2, title: '王建国请假申请（1天）',   category: '考勤', priority: 'low',  path: '/pages/attendance/index' }
+    ]
   }
-
-  if (isWorker.value) {
-    items.push(
-      { title: '今日施工日志', category: '项目', priority: '高', path: '/pages/projects/index' }
-    )
+  if (r === 'worker') {
+    return [
+      { id: 1, title: '今日施工日志未提交',      category: '日志', priority: 'high', path: '/pages/projects/index' }
+    ]
   }
-
-  return items
+  return [
+    { id: 1, title: '3月工资条待确认签字',       category: '薪资', priority: 'high', path: '/pages/payroll/index' }
+  ]
 })
 
-// 系统通知
+// ── 系统通知（mock） ─────────────────────────────────────────────────────
 const noticeItems = ref([
-  { title: '系统升级通知：本周六凌晨进行系统维护', time: '2小时前' },
-  { title: '五一假期安排：5月1日至5月5日放假', time: '1天前' }
+  { id: 1, title: '系统维护：本周六凌晨 02:00 例行维护，请提前保存工作', time: '2小时前' },
+  { id: 2, title: 'OA 2.4.0 已上线：新增批量导入、工伤记录导出功能', time: '1天前' },
+  { id: 3, title: '五一假期安排：5月1日—5日放假，5月6日正常上班', time: '3天前' }
 ])
 
-// 快捷统计（仅CEO可见全部）
-const dashboardStats = ref({
-  employees: 28,
-  pendingApprovals: 5,
-  activeProjects: 8,
-  monthlyPayroll: '48.6万'
-})
+// ── 项目进度（mock，后续对接 GET /projects?status=active） ───────────────
+const projects = ref([
+  { id: 1, name: '碧桂园一期住宅楼',   phase: '主体结构阶段', progress: 68, status: 'normal',  statusLabel: '正常',   dueDate: '2025-09-30' },
+  { id: 2, name: '工业园区厂房改造',   phase: '装修施工阶段', progress: 82, status: 'normal',  statusLabel: '正常',   dueDate: '2025-07-15' },
+  { id: 3, name: '东区商业综合体',     phase: '地基基础阶段', progress: 23, status: 'warning', statusLabel: '预警',   dueDate: '2026-03-01' },
+  { id: 4, name: '学校教学楼扩建',     phase: '设计审批阶段', progress: 10, status: 'delayed', statusLabel: '延期',   dueDate: '2025-06-01' },
+  { id: 5, name: '政府办公楼翻新',     phase: '竣工验收阶段', progress: 95, status: 'normal',  statusLabel: '即将完工', dueDate: '2025-05-20' }
+])
 
-const getPriorityStatus = (priority: string) => {
+function progressColor(status: string): string {
   const map: Record<string, string> = {
-    '高': 'error',
-    '中': 'warning',
-    '低': 'success'
+    normal: '#2e7d32',
+    warning: '#ed6c02',
+    delayed: '#ba1a1a'
   }
-  return map[priority] || 'default'
+  return map[status] ?? '#003466'
 }
 
-const handleTodo = (item: any) => {
-  if (item.path) {
-    uni.navigateTo({ url: item.path })
-  }
-}
-
-const goToLogin = () => {
-  userStore.logout()
-  uni.navigateTo({ url: '/pages/login/index' })
+function goTo(path: string) {
+  uni.navigateTo({ url: path })
 }
 </script>
 
 <style lang="scss" scoped>
-.workspace {
-  min-height: 100vh;
-  background: var(--oa-bg);
-}
-
-.hero-bar {
-  background: linear-gradient(135deg, #003466 0%, #324963 100%);
-  color: #fff;
-  padding: 20px 24px;
-  margin: 16px 16px 0;
-  border-radius: var(--oa-radius-lg);
-}
-
-.hero-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.user-meta {
+// ── 工作台容器：填满 shell-main，固定视口不产生外层滚动 ─────────────────
+.workbench {
+  height: 100%;
+  overflow: hidden;       // 阻止内容撑出 shell-main
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-left: 12px;
+  gap: 16px;
+  padding: 24px;          // shell-main 已去除 padding，在此补回
+  box-sizing: border-box; // 使 height:100% 包含 padding
 }
 
-.hero-greeting {
-  font-family: var(--oa-font-family-display);
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.hero-role {
-  font-size: 13px;
-  opacity: 0.9;
-}
-
-.hero-actions {
+// ── ROW 1: 横向信息条 ────────────────────────────────────────────────────
+.alert-row {
+  flex-shrink: 0;
   display: flex;
-  gap: 8px;
+  gap: 16px;
+  height: 88px;
 }
 
-.workspace-body {
-  padding: 16px;
-}
-
-.card-title-wrapper {
+.alert-strip {
+  flex: 1;
+  background: var(--surface-lowest);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius-md);
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  font-size: 14px;
-}
+  gap: 12px;
+  padding: 0 16px;
+  overflow: hidden;
 
-.todo-list {
-  .todo-item {
+  .strip-head {
+    flex-shrink: 0;
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 12px;
-    border-radius: var(--oa-radius-md);
-    margin-bottom: 8px;
-    background: var(--oa-bg);
-    cursor: pointer;
-    transition: all 0.2s;
+    gap: 6px;
+    padding-right: 12px;
+    border-right: 1px solid var(--surface-high);
 
-    &:hover {
-      background: var(--oa-primary-light);
+    .strip-icon {
+      font-size: 16px;
+      color: var(--primary);
     }
 
-    &:last-child {
-      margin-bottom: 0;
+    .strip-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--on-surface);
+      white-space: nowrap;
+    }
+
+    .count-chip {
+      min-width: 18px;
+      height: 18px;
+      padding: 0 5px;
+      background: var(--error);
+      border-radius: 9px;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .unread-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--error);
     }
   }
 
-  .todo-main {
+  .strip-scroll {
+    flex: 1;
+    min-width: 0;         // 关键：flex 子项默认 min-width=auto，不加这个 overflow-x 不生效
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar { display: none; }
+  }
+
+  .strip-item {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--surface-high);
+    cursor: pointer;
+    transition: border-color 0.15s;
+
+    &:hover { border-color: var(--primary); }
+
+    .priority-tag {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 1px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+
+      &.p-high { background: #fff1f0; color: var(--error); }
+      &.p-mid  { background: #fff7e6; color: var(--warning); }
+      &.p-low  { background: #f6ffed; color: var(--success); }
+    }
+
+    .item-title {
+      font-size: 13px;
+      color: var(--on-surface);
+      white-space: nowrap;
+    }
+
+    &.notice-item {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+      height: auto;
+      padding: 8px 12px;
+    }
+
+    .item-time {
+      font-size: 11px;
+      color: var(--on-surface-variant);
+    }
+  }
+
+  .strip-empty {
+    font-size: 13px;
+    color: var(--on-surface-variant);
+  }
+
+  .strip-link {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--primary);
+    cursor: pointer;
+    padding-left: 12px;
+    border-left: 1px solid var(--surface-high);
+    white-space: nowrap;
+  }
+}
+
+// ── ROW 2: KPI 卡片行 ────────────────────────────────────────────────────
+.kpi-row {
+  flex-shrink: 0;
+  display: flex;
+  gap: 16px;
+}
+
+.kpi-card {
+  flex: 1;
+  background: var(--surface-lowest);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius-md);
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+
+  &.kpi-urgent {
+    border-left: 3px solid var(--error);
+
+    .kpi-icon { color: var(--error); }
+    .kpi-value { color: var(--error); }
+  }
+
+  .kpi-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .kpi-icon {
+    font-size: 18px;
+    color: var(--primary);
+  }
+
+  .urgent-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--error);
+  }
+
+  .kpi-value {
+    font-size: 26px;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.2;
+    font-family: var(--font-display);
+  }
+
+  .kpi-label {
+    font-size: 12px;
+    color: var(--on-surface-variant);
+  }
+}
+
+// ── ROW 3: 项目进度面板 ───────────────────────────────────────────────────
+.project-panel {
+  flex: 1;
+  min-height: 0;             // 关键：允许 flex 子项压缩到内容以下
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-lowest);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+
+  .panel-head {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--surface-high);
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--on-surface);
+    }
+
+    .panel-date {
+      font-size: 12px;
+      color: var(--on-surface-variant);
+    }
+  }
+
+  .project-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+}
+
+.project-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--surface);
+  transition: background 0.15s;
+
+  &:hover { background: var(--surface); }
+  &:last-child { border-bottom: none; }
+
+  .proj-name-col {
+    width: 200px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
-    gap: 4px;
-  }
+    gap: 2px;
 
-  .todo-title {
-    font-size: 14px;
-    font-weight: 500;
-  }
+    .proj-name {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--on-surface);
+    }
 
-  .todo-category {
-    font-size: 12px;
-    color: var(--oa-text-secondary);
-  }
-}
-
-.notice-list {
-  .notice-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--oa-border-split);
-
-    &:last-child {
-      border-bottom: none;
+    .proj-phase {
+      font-size: 12px;
+      color: var(--on-surface-variant);
     }
   }
 
-  .notice-dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: var(--oa-primary);
-    margin-top: 8px;
-    flex-shrink: 0;
-  }
-
-  .notice-content {
+  .prog-col {
     flex: 1;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
+    align-items: center;
+    gap: 10px;
+
+    .prog-track {
+      flex: 1;
+      height: 6px;
+      background: var(--surface-high);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .prog-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.6s ease;
+    }
+
+    .prog-pct {
+      width: 36px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--on-surface);
+      text-align: right;
+    }
   }
 
-  .notice-title {
-    font-size: 13px;
-    line-height: 1.5;
+  .proj-status-col {
+    width: 72px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
   }
 
-  .notice-time {
-    font-size: 11px;
-    color: var(--oa-text-tertiary);
+  .status-chip {
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+
+    &.s-normal  { background: #f0f9eb; color: var(--success); }
+    &.s-warning { background: #fff7e6; color: var(--warning); }
+    &.s-delayed { background: #fff1f0; color: var(--error);   }
+  }
+
+  .proj-date {
+    width: 120px;
+    flex-shrink: 0;
+    font-size: 12px;
+    color: var(--on-surface-variant);
+    text-align: right;
   }
 }
 
-.system-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.mb-16 {
-  margin-bottom: 16px;
+.proj-empty {
+  padding: 32px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--on-surface-variant);
 }
 </style>

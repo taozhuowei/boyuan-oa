@@ -1,28 +1,25 @@
 <template>
-  <view class="page employees-page">
-    <!-- Hero 区域 -->
-    <view class="hero">
-      <view class="hero-main">
-        <view class="hero-title-row">
-          <text class="hero-title">员工</text>
-        </view>
-        <text class="hero-subtitle">
-          {{ isCEO ? '公司人员管理与组织架构' : '通讯录与部门信息' }}
-        </text>
-      </view>
-      <view class="hero-stats">
-        <view class="hero-stat">
-          <text class="stat-num">{{ stats.total }}</text>
-          <text class="stat-label">总人数</text>
-        </view>
-        <view class="hero-stat">
-          <text class="stat-num">{{ stats.newThisMonth }}</text>
-          <text class="stat-label">本月入职</text>
-        </view>
-      </view>
-    </view>
+  <AppShell title="员工管理">
+    <view class="page-content">
 
-    <view class="employees-container">
+      <!-- 页面头部 -->
+      <view class="page-header">
+        <view class="header-left">
+          <text class="page-title">员工管理</text>
+          <text class="page-desc">{{ isCEO ? '公司人员管理与组织架构' : '通讯录与部门信息' }}</text>
+        </view>
+        <view class="header-stats">
+          <view class="stat-item">
+            <text class="stat-value">{{ stats.total }}</text>
+            <text class="stat-label">总人数</text>
+          </view>
+          <view class="stat-item">
+            <text class="stat-value">{{ stats.newThisMonth }}</text>
+            <text class="stat-label">本月入职</text>
+          </view>
+        </view>
+      </view>
+
       <!-- 工具栏 -->
       <view class="toolbar">
         <view class="toolbar-left">
@@ -35,6 +32,20 @@
             添加员工
           </component>
           <component
+            :is="Button"
+            v-if="Button && (isCEO || isFinance)"
+            @click="exportEmployees"
+          >
+            导出名单
+          </component>
+          <component
+            :is="Button"
+            v-if="Button && (isCEO || isFinance)"
+            @click="importEmployees"
+          >
+            批量导入
+          </component>
+          <component
             :is="Select"
             v-if="Select"
             v-model="filterDept"
@@ -43,51 +54,53 @@
             style="width: 140px"
           />
         </view>
-        <component
-          :is="Input"
-          v-if="Input"
-          v-model="searchKeyword"
-          placeholder="搜索姓名或工号"
-          :prefix="'search'"
-          style="width: 240px"
-        />
+        <view class="toolbar-right">
+          <component
+            :is="Input"
+            v-if="Input"
+            v-model="searchKeyword"
+            placeholder="搜索姓名或工号"
+            :prefix="'search'"
+            style="width: 240px"
+          />
+        </view>
       </view>
 
-      <!-- 员工列表 -->
-      <component :is="Card" v-if="Card">
-        <view class="employee-table">
-          <view class="table-header">
-            <text class="cell" style="width: 60px">头像</text>
-            <text class="cell" style="flex: 1">姓名</text>
-            <text class="cell" style="flex: 1">工号</text>
-            <text class="cell" style="flex: 1.5">部门</text>
-            <text class="cell" style="flex: 1">职位</text>
-            <text class="cell" style="flex: 1">入职日期</text>
-            <text class="cell" style="flex: 1">状态</text>
-            <text v-if="isCEO || isFinance" class="cell" style="width: 120px">操作</text>
+      <!-- 主内容区：员工列表 -->
+      <view class="content-card">
+        <view class="data-table">
+          <view class="table-head">
+            <view class="cell" style="width: 60px; justify-content: center">头像</view>
+            <view class="cell" style="flex: 1">姓名</view>
+            <view class="cell" style="flex: 1">工号</view>
+            <view class="cell" style="flex: 1.5">部门</view>
+            <view class="cell" style="flex: 1">职位</view>
+            <view class="cell" style="flex: 1">入职日期</view>
+            <view class="cell" style="flex: 0.8">状态</view>
+            <view v-if="isCEO || isFinance" class="cell" style="width: 100px; justify-content: center">操作</view>
           </view>
           <view
             v-for="emp in filteredEmployees"
             :key="emp.id"
             class="table-row"
           >
-            <view class="cell" style="width: 60px">
+            <view class="cell" style="width: 60px; justify-content: center">
               <view class="avatar">{{ emp.name.charAt(0) }}</view>
             </view>
-            <text class="cell" style="flex: 1">{{ emp.name }}</text>
-            <text class="cell" style="flex: 1">{{ emp.employeeNo }}</text>
-            <text class="cell" style="flex: 1.5">{{ emp.department }}</text>
-            <text class="cell" style="flex: 1">{{ emp.position }}</text>
-            <text class="cell" style="flex: 1">{{ emp.joinDate }}</text>
-            <text class="cell" style="flex: 1">
-              <component
-                :is="Badge"
-                v-if="Badge"
-                :status="emp.status === '在职' ? 'success' : 'default'"
-                :text="emp.status"
-              />
-            </text>
-            <view v-if="isCEO || isFinance" class="cell" style="width: 120px">
+            <view class="cell" style="flex: 1; font-weight: 500">{{ emp.name }}</view>
+            <view class="cell" style="flex: 1; color: var(--on-surface-variant)">{{ emp.employeeNo }}</view>
+            <view class="cell" style="flex: 1.5; color: var(--on-surface-variant)">{{ emp.department }}</view>
+            <view class="cell" style="flex: 1">{{ emp.position }}</view>
+            <view class="cell" style="flex: 1; color: var(--on-surface-variant)">{{ emp.joinDate }}</view>
+            <view class="cell" style="flex: 0.8">
+              <view 
+                class="status-tag"
+                :class="emp.status === '在职' ? 'success' : 'default'"
+              >
+                {{ emp.status }}
+              </view>
+            </view>
+            <view v-if="isCEO || isFinance" class="cell" style="width: 100px; justify-content: center">
               <component
                 :is="Button"
                 v-if="Button"
@@ -102,6 +115,7 @@
                 v-if="Button && isCEO"
                 type="link"
                 size="small"
+                danger
                 @click="deleteEmployee(emp)"
               >
                 删除
@@ -109,48 +123,35 @@
             </view>
           </view>
         </view>
-      </component>
+      </view>
 
-      <!-- 部门统计（仅CEO/财务可见） -->
-      <component :is="Row" v-if="Row && (isCEO || isFinance)" :gutter="16" class="mt-16">
-        <component :is="Col" v-if="Col" :span="12">
-          <component :is="Card" v-if="Card" title="部门人员分布">
-            <view class="dept-stats">
-              <view
-                v-for="dept in deptStats"
-                :key="dept.name"
-                class="dept-item"
-              >
-                <view class="dept-info">
-                  <text class="dept-name">{{ dept.name }}</text>
-                  <text class="dept-count">{{ dept.count }}人</text>
-                </view>
-                <view class="dept-bar">
-                  <view
-                    class="dept-fill"
-                    :style="{ width: dept.percentage + '%' }"
-                  />
-                </view>
+      <!-- 部门人员分布 -->
+      <view v-if="isCEO || isFinance" class="content-card dept-card">
+        <view class="card-header">
+          <text class="card-title">部门人员分布</text>
+        </view>
+        <view class="card-body">
+          <view class="dept-stats">
+            <view
+              v-for="dept in deptStats"
+              :key="dept.name"
+              class="dept-item"
+            >
+              <view class="dept-info">
+                <text class="dept-name">{{ dept.name }}</text>
+                <text class="dept-count">{{ dept.count }}人（{{ dept.percentage }}%）</text>
+              </view>
+              <view class="dept-bar">
+                <view
+                  class="dept-fill"
+                  :style="{ width: dept.percentage + '%' }"
+                />
               </view>
             </view>
-          </component>
-        </component>
-        <component :is="Col" v-if="Col" :span="12">
-          <component :is="Card" v-if="Card" title="快速操作">
-            <view class="quick-actions">
-              <component :is="Button" v-if="Button" block @click="exportEmployees">
-                导出员工名单
-              </component>
-              <component :is="Button" v-if="Button" block @click="importEmployees">
-                批量导入
-              </component>
-              <component :is="Button" v-if="Button" block @click="viewOrgChart">
-                组织架构图
-              </component>
-            </view>
-          </component>
-        </component>
-      </component>
+          </view>
+        </view>
+      </view>
+
     </view>
 
     <!-- 添加/编辑员工弹窗 -->
@@ -162,40 +163,32 @@
       width="600px"
     >
       <view class="form-content">
-        <component :is="Row" v-if="Row" :gutter="16">
-          <component :is="Col" v-if="Col" :span="12">
-            <view class="form-item">
-              <label>姓名 <text class="required">*</text></label>
-              <component :is="Input" v-if="Input" v-model="employeeForm.name" placeholder="请输入姓名" />
-            </view>
-          </component>
-          <component :is="Col" v-if="Col" :span="12">
-            <view class="form-item">
-              <label>工号 <text class="required">*</text></label>
-              <component :is="Input" v-if="Input" v-model="employeeForm.employeeNo" placeholder="请输入工号" />
-            </view>
-          </component>
-        </component>
-        <component :is="Row" v-if="Row" :gutter="16">
-          <component :is="Col" v-if="Col" :span="12">
-            <view class="form-item">
-              <label>部门 <text class="required">*</text></label>
-              <component
-                :is="Select"
-                v-if="Select"
-                v-model="employeeForm.department"
-                :options="departmentOptions"
-                placeholder="请选择部门"
-              />
-            </view>
-          </component>
-          <component :is="Col" v-if="Col" :span="12">
-            <view class="form-item">
-              <label>职位 <text class="required">*</text></label>
-              <component :is="Input" v-if="Input" v-model="employeeForm.position" placeholder="请输入职位" />
-            </view>
-          </component>
-        </component>
+        <view class="form-row">
+          <view class="form-item half">
+            <label>姓名 <text class="required">*</text></label>
+            <component :is="Input" v-if="Input" v-model="employeeForm.name" placeholder="请输入姓名" />
+          </view>
+          <view class="form-item half">
+            <label>工号 <text class="required">*</text></label>
+            <component :is="Input" v-if="Input" v-model="employeeForm.employeeNo" placeholder="请输入工号" />
+          </view>
+        </view>
+        <view class="form-row">
+          <view class="form-item half">
+            <label>部门 <text class="required">*</text></label>
+            <component
+              :is="Select"
+              v-if="Select"
+              v-model="employeeForm.department"
+              :options="departmentOptions.filter(d => d.value)"
+              placeholder="请选择部门"
+            />
+          </view>
+          <view class="form-item half">
+            <label>职位 <text class="required">*</text></label>
+            <component :is="Input" v-if="Input" v-model="employeeForm.position" placeholder="请输入职位" />
+          </view>
+        </view>
         <view class="form-item">
           <label>入职日期 <text class="required">*</text></label>
           <component :is="DatePicker" v-if="DatePicker" v-model="employeeForm.joinDate" />
@@ -206,13 +199,14 @@
         <component :is="Button" v-if="Button" type="primary" @click="saveEmployee">保存</component>
       </template>
     </component>
-  </view>
+  </AppShell>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
+import AppShell from '../../layouts/AppShell.vue'
 
 const { Card, Row, Col, Badge, Button, Input, Select, DatePicker, Modal } = useComponent(['Card', 'Row', 'Col', 'Badge', 'Button', 'Input', 'Select', 'DatePicker', 'Modal'])
 
@@ -342,190 +336,249 @@ const exportEmployees = () => {
 const importEmployees = () => {
   uni.showToast({ title: '导入功能开发中', icon: 'none' })
 }
-
-const viewOrgChart = () => {
-  uni.showToast({ title: '组织架构图开发中', icon: 'none' })
-}
 </script>
 
 <style lang="scss" scoped>
-.employees-page {
-  min-height: 100vh;
-  background: var(--oa-bg);
-  padding: 16px;
+.page-content {
+  height: 100%;
+  overflow-y: auto;
+  padding: 24px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.hero {
-  background: linear-gradient(135deg, #003466 0%, #324963 100%);
-  color: #fff;
-  padding: 24px;
-  margin-bottom: 16px;
-  border-radius: var(--oa-radius-lg);
+.page-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-}
+  align-items: flex-end;
 
-.hero-title-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 8px;
-}
+  .page-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--on-surface);
+    font-family: var(--font-display, 'Manrope');
+  }
 
-.hero-title {
-  font-size: 24px;
-  font-weight: 700;
-}
+  .page-desc {
+    font-size: 13px;
+    color: var(--on-surface-variant);
+    margin-top: 2px;
+    display: block;
+  }
 
-.hero-subtitle {
-  font-size: 14px;
-  opacity: 0.9;
-}
+  .header-stats {
+    display: flex;
+    gap: 24px;
 
-.hero-stats {
-  display: flex;
-  gap: 32px;
-}
+    .stat-item {
+      text-align: right;
 
-.hero-stat {
-  text-align: center;
-}
+      .stat-value {
+        font-size: 22px;
+        font-weight: 700;
+        color: var(--primary);
+        display: block;
+        font-family: var(--font-display, 'Manrope');
+      }
 
-.stat-num {
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.stat-label {
-  font-size: 12px;
-  opacity: 0.8;
+      .stat-label {
+        font-size: 12px;
+        color: var(--on-surface-variant);
+      }
+    }
+  }
 }
 
 .toolbar {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-}
-
-.toolbar-left {
-  display: flex;
   gap: 12px;
+
+  .toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 }
 
-.employee-table {
-  .table-header {
+.content-card {
+  flex: 1;
+  min-height: 0;
+  background: var(--surface-lowest);
+  border: 1px solid var(--surface-high);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  &.dept-card {
+    flex: 0 0 200px;
+  }
+
+  .card-header {
+    flex-shrink: 0;
     display: flex;
-    padding: 12px 16px;
-    background: var(--oa-bg);
-    border-radius: var(--oa-radius-md) var(--oa-radius-md) 0 0;
-    font-weight: 500;
-    font-size: 14px;
-    color: var(--oa-text-secondary);
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--surface-high);
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--on-surface);
+    }
+  }
+
+  .card-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding: 16px 20px;
+  }
+}
+
+// 自定义表格
+.data-table {
+  width: 100%;
+
+  .table-head {
+    display: flex;
+    padding: 10px 0;
+    background: var(--surface-low);
+    border-bottom: 1px solid var(--surface-high);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--on-surface-variant);
+    letter-spacing: 0.3px;
   }
 
   .table-row {
     display: flex;
     align-items: center;
-    padding: 16px;
-    border-bottom: 1px solid var(--oa-border-split);
+    padding: 12px 0;
+    border-bottom: 1px solid var(--surface);
+    transition: background 0.15s;
 
-    &:last-child {
-      border-bottom: none;
-    }
+    &:hover { background: var(--surface-low); }
+    &:last-child { border-bottom: none; }
 
-    &:hover {
-      background: var(--oa-bg);
-    }
-  }
-
-  .cell {
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-
-    .avatar {
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--oa-primary-light);
-      color: var(--oa-primary);
+    .cell {
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-size: 14px;
-      font-weight: 500;
+      font-size: 13px;
+      color: var(--on-surface);
+      padding: 0 8px;
+      box-sizing: border-box;
     }
   }
 }
 
-.dept-stats {
-  .dept-item {
-    margin-bottom: 20px;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
-  .dept-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 8px;
-  }
-
-  .dept-name {
-    font-size: 14px;
-  }
-
-  .dept-count {
-    font-size: 12px;
-    color: var(--oa-text-secondary);
-  }
-
-  .dept-bar {
-    height: 8px;
-    background: var(--oa-border);
-    border-radius: 4px;
-    overflow: hidden;
-  }
-
-  .dept-fill {
-    height: 100%;
-    background: var(--oa-primary);
-    border-radius: 4px;
-    transition: width 0.3s;
-  }
-}
-
-.quick-actions {
+// 头像
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0,52,102,0.08);
+  color: var(--primary);
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
 }
 
+// 状态标签
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+
+  &.success { background: #f0f9eb; color: #2e7d32; }
+  &.default { background: var(--surface-low); color: var(--on-surface-variant); }
+}
+
+// 部门统计
+.dept-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  .dept-item {
+    .dept-info {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 8px;
+
+      .dept-name {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--on-surface);
+      }
+
+      .dept-count {
+        font-size: 12px;
+        color: var(--on-surface-variant);
+      }
+    }
+
+    .dept-bar {
+      height: 6px;
+      background: var(--surface);
+      border-radius: 3px;
+      overflow: hidden;
+
+      .dept-fill {
+        height: 100%;
+        background: var(--primary);
+        border-radius: 3px;
+        transition: width 0.3s;
+      }
+    }
+  }
+}
+
+// 表单样式
 .form-content {
   padding: 16px 0;
 }
 
+.form-row {
+  display: flex;
+  gap: 16px;
+}
+
 .form-item {
-  margin-bottom: 20px;
+  margin-bottom: 16px;
+
+  &.half {
+    flex: 1;
+    min-width: 0;
+  }
 
   label {
     display: block;
     margin-bottom: 8px;
-    font-size: 14px;
-    color: var(--oa-text-secondary);
+    font-size: 13px;
+    color: var(--on-surface-variant);
 
     .required {
-      color: var(--oa-error);
+      color: var(--error);
     }
   }
-}
-
-.mt-16 {
-  margin-top: 16px;
 }
 </style>
