@@ -121,7 +121,7 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**", "/actuator/**", "/health", "/setup/status", "/h2-console/**").permitAll()
+                .requestMatchers("/auth/**", "/actuator/**", "/health", "/setup/status", "/h2-console/**", "/test/**").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

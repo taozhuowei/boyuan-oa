@@ -104,6 +104,17 @@ public class ResetCodeStore {
         tokenStore.entrySet().removeIf(entry -> entry.getValue().isExpired());
     }
 
+    /**
+     * 获取验证码（仅用于开发测试）
+     */
+    public String getCodeForTest(String phone) {
+        CodeEntry entry = codeStore.get(phone);
+        if (entry == null || entry.isExpired()) {
+            return null;
+        }
+        return entry.code();
+    }
+
     private record CodeEntry(String code, LocalDateTime expireAt) {
         boolean isExpired() {
             return LocalDateTime.now().isAfter(expireAt);

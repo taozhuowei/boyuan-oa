@@ -17,7 +17,7 @@
 | **0F** | 前端基础：HTTP 层 + 组件注册              | 已完成   | 前端无控制台报错，可独立运行                        |
 | **1**  | 前端壳 + 设计确认（与 Phase 0B 并行）    | 已完成   | 5个 mock 账号能点遍所有页面，视觉设计已确认        |
 | **0B** | 后端基础：DB schema + 真实启动（与 Phase 1 并行） | 已完成 | mvn 无报错启动，35张表建好，无控制台报错     |
-| **2** | 身份认证 + 账号/角色管理    | 未开始   | 真实账号登录，CEO 可增删改员工和角色              |
+| **2** | 身份认证 + 账号/角色管理    | ✅ 已完成 | 真实账号登录，CEO 可增删改员工和角色              |
 | **3** | 组织管理（部门/项目/成员）  | 未开始   | 项目、成员关系可管理，不依赖内存 mock             |
 | **4** | 考勤申请 + 审批流引擎       | 未开始   | 请假单从提交跑到归档，状态流转完整                |
 | **5** | 施工专属（日志 + 工伤补偿） | 未开始   | 劳工功能完整，工伤动态路由生效                    |
@@ -196,10 +196,10 @@
 - [x] `[P1]` 岗位管理页（`pages/positions/`，CEO/财务可见）— 岗位列表、新增/编辑（含5个 Tab）、等级管理子表
   > 检查: `app/frontend/src/pages/positions/index.vue` — 确认文件存在，调用 `GET /positions`；编辑抽屉包含薪资/假期/社保/等级 Tab，各 Tab 对接对应子接口
 
-- [ ] `[P1]` 组织架构树页（`pages/org/`，CEO 可见）— 可视化员工汇报树，支持修改直系领导
+- [x] `[P1]` 组织架构树页（`pages/org/`，CEO 可见）— 可视化员工汇报树，支持修改直系领导
   > 检查: `app/frontend/src/pages/org/index.vue` — 确认文件存在，调用 `GET /org/tree`；点击节点可打开侧边栏并调用 `PATCH /org/supervisor/{employeeId}` 修改领导
 
-- [ ] `[P1]` 忘记密码页（`pages/auth/forgot-password/`）— 4步流程：手机号+发验证码 → OTP 输入 → 新密码 → 成功跳转登录
+- [x] `[P1]` 忘记密码页（`pages/auth/forgot-password/`）— 4步流程：手机号+发验证码 → OTP 输入 → 新密码 → 成功跳转登录
   > 检查: `app/frontend/src/pages/auth/forgot-password/` 或 `forgot_password.vue` — 确认文件存在，依次调用 /auth/send-reset-code → /auth/verify-reset-code → /auth/reset-password；成功后跳转登录页
 
 - [ ] `[P1]` 修改手机号弹窗（`components/` 或 Personal Center 页内联）— 3步：输入当前手机验证码 → 输入新手机+验证码 → 确认
@@ -238,16 +238,16 @@
 - [x] `[P1]` 将 `OaDataService` 员工/账号内存逻辑迁移到真实 Service + Mapper
   > 检查: `app/backend/src/main/java/com/oa/backend/service/OaDataService.java` — 确认员工/账号相关方法已删除或调用真实 Mapper（无内存 Map/List 存储）
 
-- [ ] `[P2]` 密码重置接口（`POST /employees/{id}/reset-password`，CEO 专用）
+- [x] `[P2]` 密码重置接口（`POST /employees/{id}/reset-password`，CEO 专用）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/EmployeeController.java` — 搜索 `reset-password` 路由和 `@PreAuthorize("hasRole('CEO')")` 注解
 
-- [ ] `[P2]` 账号禁用/启用接口（`PATCH /employees/{id}/status`，CEO 专用）
+- [x] `[P2]` 账号禁用/启用接口（`PATCH /employees/{id}/status`，CEO 专用）
   > 检查: EmployeeController.java — 搜索 `/status` 路由，确认 PATCH 方法和 CEO 权限校验
 
 - [ ] `[P2]` 预留企业微信 OAuth 骨架（`/auth/wework`，当前返回 501）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/AuthController.java` — 搜索 `/auth/wework`，确认存在且返回 HTTP 501
 
-- [ ] `[P1]` 忘记密码流程接口（4步：发验证码→校验→重置→完成）
+- [x] `[P1]` 忘记密码流程接口（4步：发验证码→校验→重置→完成）
   - `POST /auth/send-reset-code`：接收手机号，发送短信验证码（NoOpSmsService 阶段日志打印）
   - `POST /auth/verify-reset-code`：校验验证码，返回临时 resetToken（TTL 10 min）
   - `POST /auth/reset-password`：携带 resetToken + 新密码，bcrypt 哈希后写入 `sys_user`
