@@ -31,3 +31,8 @@ INSERT INTO employee (
 (3, 'pm.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '王建国', '13800000003', 'wangjg@oa.demo', 'project_manager', 'OFFICE', 3, 'ACTIVE', '2024-01-01'),
 (4, 'ceo.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '陈明远', '13800000004', 'chenmy@oa.demo', 'ceo', 'OFFICE', 4, 'ACTIVE', '2024-01-01'),
 (5, 'worker.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '赵铁柱', '13800000005', 'zhaotz@oa.demo', 'worker', 'LABOR', 5, 'ACTIVE', '2024-01-01');
+
+-- 重置各表的 IDENTITY 序列，避免手动插入 ID 后序列冲突
+ALTER TABLE employee ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE department ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE sys_role ALTER COLUMN id RESTART WITH 100;
