@@ -242,65 +242,79 @@ const statusOptions = [
 ]
 
 const employeeOptions = [
-  { label: '张晓宁', value: '张晓宁' },
-  { label: '赵铁柱', value: '赵铁柱' },
-  { label: '王小花', value: '王小花' }
+  { label: '陈建国', value: '陈建国' },
+  { label: '刘伟',   value: '刘伟' },
+  { label: '张磊',   value: '张磊' },
+  { label: '孙鹏',   value: '孙鹏' },
+  { label: '王海峰', value: '王海峰' }
 ]
 
-// 施工日志数据
+// 施工日志数据（通风制冷工程场景）
 const constructionLogs = ref([
-  { title: '项目启动', description: '完成项目立项，组建项目团队', time: '2024-03-01 09:00', status: 'success' as const },
-  { title: '基础施工', description: '完成地基开挖和基础浇筑', time: '2024-03-15 18:00', status: 'success' as const },
-  { title: '主体建设', description: '主体结构施工中，进度 60%', time: '2024-04-01 12:00', status: 'processing' as const },
-  { title: '装修验收', description: '等待施工完成', time: '预计 2024-05-15', status: 'pending' as const }
+  { title: '设备进场验收', description: '冷水机组、冷却塔、水泵等主要设备进场，完成开箱验收', time: '2026-02-10 09:00', status: 'success' as const },
+  { title: '管道支架安装', description: '完成冷媒管道支吊架预埋及安装，共计 320 个点位', time: '2026-02-28 17:00', status: 'success' as const },
+  { title: '冷媒管道焊接', description: '主管道焊接完成，支管施工中，已完成约 70%', time: '2026-03-15 12:00', status: 'processing' as const },
+  { title: '设备单机调试', description: '等待管道施工完成后进行', time: '预计 2026-04-10', status: 'pending' as const },
+  { title: '系统联合调试', description: '等待单机调试通过后进行', time: '预计 2026-04-25', status: 'pending' as const }
 ])
 
-// Mock 数据
+// Mock 统计数据
 const stats = ref({
-  active: 5,
-  completed: 12
+  active: 4,
+  completed: 9
 })
 
+// Mock 项目数据（通风制冷工程场景）
 const projects = ref([
   {
     id: 1,
-    name: '企业官网改版',
-    description: '全面升级公司官网，提升品牌形象和用户体验',
+    name: '万达广场中央空调安装工程',
+    description: '地上6层商业综合体中央空调系统全套安装，含冷水机组、风机盘管及自控系统',
     status: '进行中',
-    manager: '张晓宁',
-    deadline: '2024-05-15',
-    progress: 65,
-    members: ['张晓宁', '赵铁柱', '王小花', '李明']
+    manager: '陈建国',
+    deadline: '2026-04-30',
+    progress: 62,
+    members: ['陈建国', '刘伟', '张磊', '王海峰', '赵军']
   },
   {
     id: 2,
-    name: 'OA系统开发',
-    description: '内部办公自动化系统，包含考勤、薪资、项目管理',
+    name: '冷链物流园冷库制冷系统工程',
+    description: '新建10000㎡冷藏库及2000㎡冷冻库制冷系统安装，含氨压缩机组及管道',
     status: '进行中',
-    manager: '赵铁柱',
-    deadline: '2024-06-30',
-    progress: 45,
-    members: ['赵铁柱', '张晓宁', '王强']
+    manager: '刘伟',
+    deadline: '2026-05-20',
+    progress: 38,
+    members: ['刘伟', '陈建国', '孙鹏', '李志强']
   },
   {
     id: 3,
-    name: '客户CRM系统',
-    description: '客户关系管理系统，提升销售效率',
+    name: '科技园区办公楼新风系统改造',
+    description: '既有5栋办公楼新风系统全面改造，新增热回收装置，提升室内空气质量',
     status: '已完成',
-    manager: '王小花',
-    deadline: '2024-03-20',
+    manager: '张磊',
+    deadline: '2026-01-15',
     progress: 100,
-    members: ['王小花', '李明']
+    members: ['张磊', '王海峰']
   },
   {
     id: 4,
-    name: '移动端App',
-    description: '公司移动办公App开发',
+    name: '汽车涂装车间通风排烟工程',
+    description: '喷漆房及烘干室通风换气、废气处理及消防排烟系统安装',
+    status: '进行中',
+    manager: '孙鹏',
+    deadline: '2026-06-10',
+    progress: 15,
+    members: ['孙鹏', '李志强', '赵军']
+  },
+  {
+    id: 5,
+    name: '医院手术室净化空调工程',
+    description: '12间手术室洁净空调及正压送风系统安装，含高效过滤末端及压差监控',
     status: '已延期',
-    manager: '李明',
-    deadline: '2024-04-30',
-    progress: 30,
-    members: ['李明', '张晓宁', '赵铁柱', '王强', '刘芳']
+    manager: '王海峰',
+    deadline: '2026-03-31',
+    progress: 55,
+    members: ['王海峰', '陈建国', '刘伟', '孙鹏', '李志强', '赵军']
   }
 ])
 
