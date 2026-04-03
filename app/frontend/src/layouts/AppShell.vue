@@ -157,9 +157,16 @@ onMounted(() => {
 })
 
 // ── 交互 ───────────────────────────────────────────────────────────────────
+// tabBar 页必须用 switchTab，其余页用 redirectTo（替换当前页，避免堆栈）
+const TAB_PAGES = ['/pages/index/index', '/pages/login/index']
+
 function goTo(path: string) {
   if (currentPath.value === path) return
-  uni.navigateTo({ url: path })
+  if (TAB_PAGES.includes(path)) {
+    uni.switchTab({ url: path })
+  } else {
+    uni.redirectTo({ url: path })
+  }
 }
 
 function handleLogout() {
