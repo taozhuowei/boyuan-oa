@@ -111,64 +111,20 @@
               <component :is="iconData" v-if="iconData" class="section-icon" />
               <text>数据保留</text>
             </view>
-            <view class="config-table">
-              <view class="table-head">
-                <text class="cell" style="flex: 1">记录类型</text>
-                <text class="cell" style="flex: 1">保留期限</text>
-                <text class="cell" style="flex: 1">到期处理</text>
-                <text class="cell" style="width: 80px; text-align: center">操作</text>
-              </view>
-              <view 
-                v-for="(item, index) in config.retentionRules" 
-                :key="index"
-                class="table-row"
-              >
-                <view class="cell" style="flex: 1">
-                  <component :is="Input" v-if="Input" v-model="item.type" size="small" style="width:120px" />
-                </view>
-                <view class="cell" style="flex: 1">
+            <view class="config-grid">
+              <view class="config-item">
+                <label>全局数据保留期限</label>
+                <view class="config-control">
                   <component
                     :is="Select"
                     v-if="Select"
-                    v-model="item.period"
+                    v-model="config.retentionPeriod"
                     :options="periodOptions"
-                    size="small"
-                    style="width: 120px"
+                    style="width: 160px"
                   />
-                </view>
-                <view class="cell" style="flex: 1">
-                  <component
-                    :is="Select"
-                    v-if="Select"
-                    v-model="item.action"
-                    :options="actionOptions"
-                    size="small"
-                    style="width: 140px"
-                  />
-                </view>
-                <view class="cell" style="width: 80px; text-align: center">
-                  <component
-                    :is="Button"
-                    v-if="Button"
-                    type="link"
-                    size="small"
-                    danger
-                    @click="removeRule(index)"
-                  >
-                    删除
-                  </component>
                 </view>
               </view>
             </view>
-            <component
-              :is="Button"
-              v-if="Button"
-              type="dashed"
-              class="add-rule-btn"
-              @click="addRule"
-            >
-              + 添加规则
-            </component>
           </view>
 
           <!-- 系统设置 -->
@@ -245,13 +201,7 @@ const config = ref({
   overtimeRateWeekday: 1.5,
   overtimeRateWeekend: 2,
   overtimeRateHoliday: 3,
-  retentionRules: [
-    { type: '请假记录', period: '1年', action: '提醒后删除' },
-    { type: '加班记录', period: '1年', action: '提醒后删除' },
-    { type: '工伤记录', period: '3年', action: '归档保留' },
-    { type: '薪资档案', period: '5年', action: '归档保留' },
-    { type: '施工日志', period: '3年', action: '提醒后删除' }
-  ]
+  retentionPeriod: '3年'
 })
 
 const periodOptions = [
@@ -263,11 +213,6 @@ const periodOptions = [
   { label: '永久', value: '永久' }
 ]
 
-const actionOptions = [
-  { label: '自动删除', value: '自动删除' },
-  { label: '提醒后删除', value: '提醒后删除' },
-  { label: '归档保留', value: '归档保留' }
-]
 
 const saveConfig = () => {
   uni.showToast({ title: '保存成功', icon: 'success' })
@@ -285,17 +230,6 @@ const resetConfig = () => {
   })
 }
 
-const addRule = () => {
-  config.value.retentionRules.push({
-    type: '新记录类型',
-    period: '1年',
-    action: '提醒后删除'
-  })
-}
-
-const removeRule = (index: number) => {
-  config.value.retentionRules.splice(index, 1)
-}
 </script>
 
 <style lang="scss" scoped>
@@ -456,45 +390,6 @@ const removeRule = (index: number) => {
       border-radius: var(--radius-sm);
     }
   }
-}
-
-// 配置表格
-.config-table {
-  width: 100%;
-  margin-bottom: 16px;
-
-  .table-head {
-    display: flex;
-    padding: 10px 0;
-    background: var(--surface-low);
-    border-bottom: 1px solid var(--surface-high);
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--on-surface-variant);
-    letter-spacing: 0.3px;
-  }
-
-  .table-row {
-    display: flex;
-    align-items: center;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--surface);
-    transition: background 0.15s;
-
-    &:hover { background: var(--surface-low); }
-    &:last-child { border-bottom: none; }
-
-    .cell {
-      font-size: 13px;
-      color: var(--on-surface);
-      display: flex;
-      align-items: center;
-    }
-  }
-}
-
-.add-rule-btn {
-  width: 100%;
 }
 
 // 配置列表
