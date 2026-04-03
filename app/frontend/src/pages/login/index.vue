@@ -1,51 +1,52 @@
 <template>
   <view class="login-page">
-    <!-- 背景装饰 -->
-    <view class="bg-deco bg-deco--tl"></view>
-    <view class="bg-deco bg-deco--br"></view>
-
     <view class="login-container">
-      <!-- Logo -->
-      <view class="logo-section">
-        <view class="logo-mark"></view>
-        <text class="logo-title">众维 OA 工作台</text>
-        <text class="logo-subtitle">建筑工程企业内部协同管理系统</text>
+      <!-- 企业名称区域 -->
+      <view class="company-section">
+        <text class="company-name">众维建筑工程有限公司</text>
+        <text class="company-subtitle">企业协同管理系统</text>
       </view>
 
       <!-- 登录卡片 -->
       <view class="login-card">
-        <text class="card-title">账号登录</text>
-
-        <!-- 用户名 -->
+        <!-- 工号/手机号输入 -->
         <view class="field">
-          <text class="field-label">账号</text>
+          <text class="field-label">工号 / 手机号</text>
           <input
             class="field-input"
-            v-model="form.username"
-            placeholder="请输入用户名"
+            v-model="form.identifier"
+            type="text"
+            placeholder="请输入工号或手机号"
             placeholder-class="field-placeholder"
             :disabled="loading"
           />
         </view>
 
-        <!-- 密码 -->
+        <!-- 登录密码输入 -->
         <view class="field">
-          <text class="field-label">密码</text>
-          <input
-            class="field-input"
-            v-model="form.password"
-            password
-            placeholder="请输入密码"
-            placeholder-class="field-placeholder"
-            :disabled="loading"
-            @confirm="handleLogin"
-          />
+          <text class="field-label">登录密码</text>
+          <view class="password-wrapper">
+            <input
+              class="field-input password-input"
+              v-model="form.password"
+              :password="!showPassword"
+              placeholder="请输入密码"
+              placeholder-class="field-placeholder"
+              :disabled="loading"
+              @confirm="handleLogin"
+            />
+            <text class="eye-btn" @click="showPassword = !showPassword">
+              {{ showPassword ? '🙈' : '👁' }}
+            </text>
+          </view>
         </view>
 
-        <!-- 错误提示 -->
+        <!-- 错误提示（仅 H5） -->
+        <!-- #ifdef H5 -->
         <view v-if="errorMsg" class="error-bar">
           <text class="error-text">{{ errorMsg }}</text>
         </view>
+        <!-- #endif -->
 
         <!-- 登录按钮 -->
         <view
@@ -56,61 +57,64 @@
           <text class="login-btn-text">{{ loading ? '登录中…' : '登 录' }}</text>
         </view>
 
-        <!-- 测试账号提示 -->
-        <view class="hint">
-          <text class="hint-text">演示账号：ceo.demo / 123456</text>
+        <!-- 忘记密码 -->
+        <view class="forgot-link" @click="handleForgotPassword">
+          <text>忘记密码？</text>
         </view>
       </view>
-
-      <text class="copyright">© 2024 众维建筑工程有限公司</text>
     </view>
+
+    <!-- Powered by -->
+    <text class="powered-by">Powered by 博渊</text>
   </view>
 </template>
 
 <script setup lang="ts">
-/**
- * 登录页 (pages/login/index.vue)
- *
- * 职责：账号密码登录，Mock 优先，后端可用时自动切换真实认证。
- * 登录成功 → 写入 userStore → 跳转角色选择页。
- *
- * 注意：本页不使用适配器层 (useComponent)，直接使用 uni-app 原生元素，
- * 保证登录表单立即可见，无异步加载延迟。
- */
 import { ref } from 'vue'
 import { useUserStore } from '../../stores'
 import { loginWithAccount } from '../../utils/access'
 
 const userStore = useUserStore()
-
-const form = ref({ username: '', password: '' })
+const form = ref({ identifier: '', password: '' })
 const loading = ref(false)
 const errorMsg = ref('')
+const showPassword = ref(false)
+
+// 显示错误：H5端行内+3秒自动消失，MP端showToast
+function showError(msg: string) {
+  // #ifdef H5
+  errorMsg.value = msg
+  setTimeout(() => { errorMsg.value = '' }, 3000)
+  // #endif
+  // #ifndef H5
+  uni.showToast({ icon: 'none', title: msg })
+  // #endif
+}
+
+const handleForgotPassword = () => {
+  uni.showToast({ icon: 'none', title: '功能开发中' })
+}
 
 const handleLogin = async () => {
-  errorMsg.value = ''
-
-  if (!form.value.username.trim()) {
-    errorMsg.value = '请输入账号'
-    return
-  }
-  if (!form.value.password.trim()) {
-    errorMsg.value = '请输入密码'
-    return
-  }
+  if (loading.value) return
+  if (!form.value.identifier.trim()) { showError('请输入工号或手机号'); return }
+  if (!form.value.password.trim()) { showError('请输入密码'); return }
 
   loading.value = true
   try {
     const result = await loginWithAccount({
-      username: form.value.username.trim(),
+      identifier: form.value.identifier.trim(),
       password: form.value.password.trim()
     })
-
     userStore.setSession(result.token, result.user)
-
-    uni.redirectTo({ url: '/pages/index/index' })
+    // sysadmin 跳初始化向导，其他跳工作台
+    if (result.user.role === 'sysadmin') {
+      uni.redirectTo({ url: '/pages/setup/index' })
+    } else {
+      uni.switchTab({ url: '/pages/index/index' })
+    }
   } catch (err) {
-    errorMsg.value = err instanceof Error ? err.message : '登录失败，请重试'
+    showError(err instanceof Error ? err.message : '登录失败，请重试')
   } finally {
     loading.value = false
   }
@@ -120,89 +124,45 @@ const handleLogin = async () => {
 <style lang="scss" scoped>
 .login-page {
   min-height: 100vh;
-  background: linear-gradient(160deg, var(--oa-primary) 0%, #1a4b84 45%, #f0f2f5 100%);
+  background: linear-gradient(160deg, #003466 0%, #1a4b84 45%, #f0f2f5 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
-  overflow: hidden;
-  padding: 24px;
-}
-
-/* 背景装饰圆 */
-.bg-deco {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-
-  &--tl {
-    width: 480px;
-    height: 480px;
-    top: -200px;
-    left: -180px;
-    background: rgba(255, 255, 255, 0.05);
-  }
-
-  &--br {
-    width: 360px;
-    height: 360px;
-    bottom: -120px;
-    right: -120px;
-    background: rgba(255, 255, 255, 0.04);
-  }
 }
 
 .login-container {
   width: 100%;
   max-width: 400px;
-  position: relative;
-  z-index: 1;
+  padding: 0 20px;
 }
 
-/* Logo 区域 */
-.logo-section {
+/* 企业名称区域 */
+.company-section {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
-.logo-mark {
-  width: 64px;
-  height: 64px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 2px solid rgba(255, 255, 255, 0.35);
-  border-radius: 18px;
-  margin: 0 auto 16px;
-}
-
-.logo-title {
+.company-name {
   display: block;
   font-size: 22px;
   font-weight: 700;
   color: #fff;
-  letter-spacing: 0.5px;
   margin-bottom: 6px;
 }
 
-.logo-subtitle {
+.company-subtitle {
   display: block;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.75);
 }
 
 /* 登录卡片 */
 .login-card {
   background: #fff;
-  border-radius: var(--oa-radius-xl, 16px);
+  border-radius: 16px;
   padding: 32px 28px 28px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-}
-
-.card-title {
-  display: block;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--oa-text-primary);
-  margin-bottom: 24px;
 }
 
 /* 表单字段 */
@@ -214,7 +174,7 @@ const handleLogin = async () => {
   display: block;
   font-size: 13px;
   font-weight: 500;
-  color: var(--oa-text-secondary);
+  color: #666;
   margin-bottom: 6px;
 }
 
@@ -222,85 +182,88 @@ const handleLogin = async () => {
   width: 100%;
   height: 44px;
   padding: 0 14px;
-  border: 1.5px solid var(--oa-border);
-  border-radius: var(--oa-radius-md);
+  border: 1.5px solid #d9d9d9;
+  border-radius: 8px;
   font-size: 14px;
-  color: var(--oa-text-primary);
-  background: #fff;
-  transition: border-color 0.2s;
   box-sizing: border-box;
-
-  &:focus {
-    border-color: var(--oa-primary);
-    outline: none;
-  }
 }
 
 .field-placeholder {
-  color: var(--oa-text-tertiary);
+  color: #999;
 }
 
-/* 错误提示 */
+/* 密码容器 */
+.password-wrapper {
+  position: relative;
+}
+
+.password-input {
+  padding-right: 44px;
+}
+
+.eye-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+/* 错误提示（H5专用） */
 .error-bar {
   background: #fff2f0;
   border: 1px solid #ffccc7;
-  border-radius: var(--oa-radius-sm);
+  border-radius: 6px;
   padding: 8px 12px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .error-text {
   font-size: 13px;
-  color: var(--oa-error);
+  color: #ff4d4f;
 }
 
 /* 登录按钮 */
 .login-btn {
   width: 100%;
   height: 46px;
-  background: var(--oa-primary);
-  border-radius: var(--oa-radius-md);
+  background: #003466;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
   margin-top: 8px;
-  transition: opacity 0.2s;
+  cursor: pointer;
+}
 
-  &--loading {
-    opacity: 0.7;
-    pointer-events: none;
-  }
-
-  &:active {
-    opacity: 0.85;
-  }
+.login-btn--loading {
+  opacity: 0.7;
+  pointer-events: none;
 }
 
 .login-btn-text {
+  color: #fff;
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
   letter-spacing: 2px;
 }
 
-/* 演示提示 */
-.hint {
+/* 忘记密码 */
+.forgot-link {
+  text-align: center;
   margin-top: 16px;
-  text-align: center;
+  font-size: 13px;
+  color: #003466;
+  cursor: pointer;
 }
 
-.hint-text {
-  font-size: 12px;
-  color: var(--oa-text-tertiary);
-}
-
-/* 版权 */
-.copyright {
-  display: block;
-  text-align: center;
-  margin-top: 20px;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+/* Powered by */
+.powered-by {
+  position: fixed;
+  bottom: 20px;
+  right: 24px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
 }
 </style>

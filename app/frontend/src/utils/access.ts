@@ -35,11 +35,11 @@ import { request } from './http'
 
 /**
  * 登录请求参数类型
- * @property username - 用户账号（工号或邮箱前缀）
+ * @property identifier - 用户账号（工号或手机号）
  * @property password - 登录密码（明文传输，后端加密存储）
  */
 export interface LoginPayload {
-  username: string
+  identifier: string
   password: string
 }
 
@@ -365,10 +365,10 @@ function createLocalSession(account: TestAccount): LoginResult {
  * 异常：参数错误或认证失败时抛出Error
  */
 export async function loginWithAccount(payload: LoginPayload): Promise<LoginResult> {
-  const username = payload.username.trim()
+  const identifier = payload.identifier.trim()
   const password = payload.password.trim()
 
-  if (!username || !password) {
+  if (!identifier || !password) {
     throw new Error('请输入账号和密码')
   }
 
@@ -402,7 +402,7 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
     }
   } catch {
     const matched = defaultTestAccounts.find(
-      (item) => item.username === username && item.password === password
+      (item) => item.username === identifier && item.password === password
     )
 
     if (!matched) {
