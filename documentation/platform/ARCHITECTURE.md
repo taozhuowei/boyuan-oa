@@ -114,11 +114,15 @@
 
 每种业务类型对应一个审批流定义（`ApprovalFlowDef`），由有序节点列表组成。
 
-**节点审批模式：**
+**节点审批人确定方式：**
 ```
-SEQUENTIAL  → 串行，一个节点由一个审批人处理（当前默认）
-ANY_OF      → 并行分发，多个审批人（如多个 PM）中任一通过即推进
+DIRECT_SUPERVISOR → 取提交人的直系领导（无领导时兜底 CEO）
+ROLE              → 取指定 roleCode（如 ceo、finance）
+DESIGNATED        → 提交人在提交时从可选列表中指定（用于多 PM 场景）
 ```
+
+**多 PM 场景（DESIGNATED 模式）：**
+提交含 PM 节点的表单时（施工日志、工伤补偿），提交人调用 `GET /projects/{id}/members?role=PM` 获取 PM 列表，在 body 中携带 `assignedReviewerId` 选择一位。审批引擎直接将节点指派给该员工，走标准单审批人路径，无并发问题。
 
 状态流转：
 ```
@@ -131,7 +135,6 @@ APPROVED → ARCHIVED
 
 约束：
 - 当前版本不支持条件分支
-- ANY_OF 节点下有任一审批人通过即推进，其余人员待办自动关闭
 - 流程变更仅对新提交单据生效，不影响历史在途单据
 
 ### 5.3 表单引擎
@@ -421,9 +424,9 @@ GET /forms/config?formType={type}
 | `flowId`         | UUID FK → ApprovalFlowDef                | 所属审批流                                |
 | `nodeOrder`      | INT                                       | 节点顺序（从1开始）                        |
 | `nodeName`       | VARCHAR(100)                              | 节点名称（如"直系领导初审"）               |
-| `approvalMode`   | ENUM(SEQUENTIAL, ANY_OF) DEFAULT SEQUENTIAL | 审批模式：串行/任一通过                 |
-| `approverType`   | ENUM(DIRECT_SUPERVISOR, ROLE, DESIGNATED) | 审批人确定方式：直系领导/角色/指定员工    |
-| `approverRef`    | VARCHAR(200) NULL                         | ROLE 时填 roleCode（ANY_OF 时可填多个，逗号分隔）；DESIGNATED 时填 employeeId |
+| `approvalMode`   | ENUM(SEQUENTIAL) DEFAULT SEQUENTIAL       | 审批模式（当前仅 SEQUENTIAL，多 PM 由提交人选择，见§5.3） |
+| `approverType`   | ENUM(DIRECT_SUPERVISOR, ROLE, DESIGNATED) | 审批人确定方式：直系领导/角色/提交时指定  |
+| `approverRef`    | VARCHAR(200) NULL                         | ROLE 时填 roleCode；DESIGNATED 时填 employeeId；其余为 NULL |
 | `skipCondition`  | JSON NULL                                 | 动态跳过条件（见§5.2），NULL 表示不跳过    |
 
 ---

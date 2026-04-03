@@ -135,14 +135,20 @@
 
 三条路径均写入 `overtime_notification` + `overtime_response` 表。
 
-### 4.6.1 ApprovalFlowNode 两个新字段
+### 4.6.1 ApprovalFlowNode 字段
 
-- `approvalMode ENUM(SEQUENTIAL, ANY_OF)`：`ANY_OF` 用于多 PM 场景，任一 PM 审批即可推进，其余人的待办自动标记 `SUPERSEDED`
+- `approvalMode ENUM(SEQUENTIAL)`：当前只有一种模式，`ANY_OF` 已取消（见下）
 - `skipCondition JSON`：如 `{"type":"SUBMITTER_ROLE_MATCH","roleCode":"project_manager"}`，工伤补偿 PM 代录时跳过节点1
 
-### 4.6.2 多 PM：通过 ProjectMember.role 实现
+### 4.6.2 多 PM：提交时选择一位（非广播）
 
 `Project` 表移除 `pmId` 单字段，改为 `ProjectMember.role ENUM(PM, MEMBER)`，一个项目可有多个 PM。
+
+**多 PM 审批路由：提交人从项目 PM 列表中选择一位**，审批引擎将节点直接指派给该 PM（`ApprovalRecord.approverId`），走标准 SEQUENTIAL 路径，无并发问题。
+
+- PM 列表来源：`GET /projects/{id}/members?role=PM`
+- 员工能查到自己所属项目的 PM：通过 `ProjectMember` 表，`employee_id = 当前用户 AND role = PM`
+- 提交 body 包含 `assignedReviewerId`（有 PM 节点的审批流时必填）
 
 ---
 

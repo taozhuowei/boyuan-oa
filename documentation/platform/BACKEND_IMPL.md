@@ -307,16 +307,19 @@ ApprovalEngine.approve(formId, comment) → 当前节点通过，推进到下一
 ApprovalEngine.reject(formId, comment)  → 驳回，状态回到 REJECTED
 ```
 
-### 7.0 审批模式（approvalMode）
+### 7.0 多 PM 场景：提交时指定审批人
 
-`ApprovalFlowNode.approvalMode` 控制多审批人场景的推进规则：
+多 PM 项目中，**由提交人在提交时从项目的 PM 列表中选择一位**，审批引擎将节点直接指派给该 PM（`ApprovalRecord.approverId`），走标准单审批人路径，无并发冲突。
 
-| 模式 | 说明 | 适用场景 |
-|------|------|---------|
-| `SEQUENTIAL` | 所有指定审批人依次审批，全部通过后推进 | 默认，单一角色审批 |
-| `ANY_OF` | 指定角色范围内任意一人审批通过即推进 | 多 PM 项目，任一 PM 审批施工日志即可 |
+提交接口 body 中的可选字段：
 
-`ANY_OF` 实现：节点推进时查询所有符合条件的审批人，任一人调用 `approve()` 即将节点标记为 `APPROVED` 并推进；其余人的待办自动关闭（标记 `SUPERSEDED`）。
+```json
+{ "assignedReviewerId": 123 }  // 当审批流有 PM 节点时必填
+```
+
+PM 列表查询：`GET /projects/{id}/members?role=PM`，返回该项目所有 PM 角色成员（`ProjectMember.role = PM`）。
+
+> `ApprovalFlowNode.approvalMode` 仅有 `SEQUENTIAL` 一种值，`ANY_OF` 模式已取消。
 
 ### 7.1 skipCondition 处理
 
