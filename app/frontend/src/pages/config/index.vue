@@ -46,8 +46,22 @@
               </view>
               <view class="config-item">
                 <label>加班倍率</label>
-                <view class="config-value">
-                  <text>工作日1.5倍，周末2倍，节假日3倍</text>
+                <view class="config-control overtime-rates">
+                  <view class="rate-item">
+                    <text class="rate-label">工作日</text>
+                    <component :is="InputNumber" v-if="InputNumber" v-model="config.overtimeRateWeekday" :min="1" :max="5" :step="0.5" style="width:80px" />
+                    <text class="unit">倍</text>
+                  </view>
+                  <view class="rate-item">
+                    <text class="rate-label">周末</text>
+                    <component :is="InputNumber" v-if="InputNumber" v-model="config.overtimeRateWeekend" :min="1" :max="5" :step="0.5" style="width:80px" />
+                    <text class="unit">倍</text>
+                  </view>
+                  <view class="rate-item">
+                    <text class="rate-label">节假日</text>
+                    <component :is="InputNumber" v-if="InputNumber" v-model="config.overtimeRateHoliday" :min="1" :max="5" :step="0.5" style="width:80px" />
+                    <text class="unit">倍</text>
+                  </view>
                 </view>
               </view>
               <view class="config-item">
@@ -74,8 +88,8 @@
             <view class="config-grid">
               <view class="config-item">
                 <label>结算周期</label>
-                <view class="config-value">
-                  <text>月结（1日-末日）</text>
+                <view class="config-control">
+                  <component :is="Select" v-if="Select" v-model="config.settleCycle" :options="settleCycleOptions" style="width:200px" />
                 </view>
               </view>
               <view class="config-item">
@@ -127,7 +141,9 @@
                 :key="index"
                 class="table-row"
               >
-                <view class="cell" style="flex: 1">{{ item.type }}</view>
+                <view class="cell" style="flex: 1">
+                  <component :is="Input" v-if="Input" v-model="item.type" size="small" style="width:120px" />
+                </view>
                 <view class="cell" style="flex: 1">
                   <component
                     :is="Select"
@@ -245,6 +261,10 @@ const config = ref({
   emailNotification: true,
   smsNotification: false,
   debugMode: false,
+  overtimeRateWeekday: 1.5,
+  overtimeRateWeekend: 2,
+  overtimeRateHoliday: 3,
+  settleCycle: 'monthly',
   retentionRules: [
     { type: '请假记录', period: '1年', action: '提醒后删除' },
     { type: '加班记录', period: '1年', action: '提醒后删除' },
@@ -253,6 +273,11 @@ const config = ref({
     { type: '施工日志', period: '3年', action: '提醒后删除' }
   ]
 })
+
+const settleCycleOptions = [
+  { label: '月结（1日-末日）', value: 'monthly' },
+  { label: '半月结（1-15日 / 16日-末日）', value: 'bimonthly' }
+]
 
 // 选项
 const checkInOptions = [
@@ -435,6 +460,23 @@ const removeRule = (index: number) => {
       .unit {
         font-size: 13px;
         color: var(--on-surface-variant);
+      }
+    }
+
+    .overtime-rates {
+      flex-wrap: wrap;
+      gap: 16px;
+
+      .rate-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+
+        .rate-label {
+          font-size: 12px;
+          color: var(--on-surface-variant);
+          white-space: nowrap;
+        }
       }
     }
 

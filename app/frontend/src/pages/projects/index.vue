@@ -509,9 +509,13 @@ const createProject = () => {
 
 // 项目列表
 .project-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
   .project-item {
     padding: 16px;
-    border-bottom: 1px solid var(--surface);
+    border: 1px solid var(--surface-high);
     cursor: pointer;
     transition: background 0.15s;
     border-radius: var(--radius-md);
@@ -523,10 +527,6 @@ const createProject = () => {
     &.active {
       background: rgba(0,52,102,0.06);
       border: 1px solid rgba(0,52,102,0.15);
-    }
-
-    &:last-child {
-      border-bottom: none;
     }
 
     .project-header {
