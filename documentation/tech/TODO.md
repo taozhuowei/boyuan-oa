@@ -18,7 +18,7 @@
 | **1**  | 前端壳 + 设计确认（与 Phase 0B 并行）    | 已完成   | 5个 mock 账号能点遍所有页面，视觉设计已确认        |
 | **0B** | 后端基础：DB schema + 真实启动（与 Phase 1 并行） | 已完成 | mvn 无报错启动，35张表建好，无控制台报错     |
 | **2** | 身份认证 + 账号/角色管理    | ✅ 已完成 | 真实账号登录，CEO 可增删改员工和角色              |
-| **3** | 组织管理（部门/项目/成员）  | 未开始   | 项目、成员关系可管理，不依赖内存 mock             |
+| **3** | 组织管理（部门/项目/成员）  | ✅ 已完成 | 项目、成员关系可管理，不依赖内存 mock             |
 | **4** | 考勤申请 + 审批流引擎       | 未开始   | 请假单从提交跑到归档，状态流转完整                |
 | **5** | 施工专属（日志 + 工伤补偿） | 未开始   | 劳工功能完整，工伤动态路由生效                    |
 | **6** | 薪资体系（结算 + 电子签名） | 未开始   | 财务完成结算，员工签名确认工资条                  |
@@ -269,24 +269,24 @@
 
 ### 检查点（全部通过才进入 Phase 4）
 
-- [ ] 部门树可展示，支持新增部门节点
-- [ ] 项目列表可管理（新增/编辑/关闭）
-- [ ] 项目经理可查看本项目成员，CEO 可添加/移除任意项目成员
-- [ ] 岗位列表可管理（创建/编辑薪资配置、假期配置、社保配置，设置等级）
-- [ ] 组织架构树可查看，CEO 可修改任意员工的直系领导
+- [x] 部门树可展示，支持新增部门节点
+- [x] 项目列表可管理（新增/编辑/关闭）
+- [x] 项目经理可查看本项目成员，CEO 可添加/移除任意项目成员
+- [x] 岗位列表可管理（创建/编辑薪资配置、假期配置、社保配置，设置等级）
+- [x] 组织架构树可查看，CEO 可修改任意员工的直系领导
 
 ### 前端任务
 
-- [ ] `[P1]` 员工管理接入部门树筛选
+- [x] `[P1]` 员工管理接入部门树筛选
   > 检查: `app/frontend/src/pages/employees/index.vue` — 搜索部门筛选组件，确认调用 `GET /departments` 获取树数据
 
-- [ ] `[P1]` 项目列表接入真实接口（`GET /projects`）
+- [x] `[P1]` 项目列表接入真实接口（`GET /projects`）
   > 检查: `app/frontend/src/pages/projects/index.vue` — 确认 onMounted 调用 `GET /projects`，无 mock 数据
 
-- [ ] `[P1]` 项目详情页（独立页面，见 COMPONENT_LAYOUT §4）
+- [x] `[P1]` 项目详情页（独立页面，见 COMPONENT_LAYOUT §4）
   > 检查: `app/frontend/src/pages/projects/` — 确认有 detail 或 `[id]` 页面，包含成员列表展示
 
-- [ ] `[P1]` 项目成员管理：添加/移除成员
+- [x] `[P1]` 项目成员管理：添加/移除成员
   > 检查: 项目详情页 — 搜索 `POST /projects/{id}/members` 和 `DELETE /projects/{id}/members` 调用
 
 - [ ] `[P2]` 员工管理项目经理视图（只读，仅显示本项目成员，见 COMPONENT_LAYOUT §5.3）
@@ -303,16 +303,16 @@
 
 ### 后端任务
 
-- [ ] `[P0]` 部门树接口（`GET /departments`）
+- [x] `[P0]` 部门树接口（`GET /departments`）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 确认 DepartmentController.java 存在，`GET /departments` 返回树形结构
 
-- [ ] `[P1]` 项目 CRUD 接口（`GET/POST/PUT/DELETE /projects`）
+- [x] `[P1]` 项目 CRUD 接口（`GET/POST/PUT/DELETE /projects`）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/ProjectController.java` — 确认4个方法均存在
 
-- [ ] `[P1]` 项目成员管理接口（`POST/DELETE /projects/{id}/members`）
+- [x] `[P1]` 项目成员管理接口（`POST/DELETE /projects/{id}/members`）
   > 检查: ProjectController.java — 搜索 `/members` 路由，确认 POST 添加成员、DELETE 移除成员
 
-- [ ] `[P1]` 将 `OaDataService` 部门/项目内存逻辑迁移到真实 Service + Mapper
+- [x] `[P1]` 将 `OaDataService` 部门/项目内存逻辑迁移到真实 Service + Mapper
   > 检查: `app/backend/src/main/java/com/oa/backend/service/OaDataService.java` — 确认部门/项目相关方法已删除或调用 DepartmentMapper / ProjectMapper
 
 
