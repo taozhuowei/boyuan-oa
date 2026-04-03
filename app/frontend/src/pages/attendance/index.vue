@@ -151,28 +151,30 @@
                   </view>
                   <view class="detail-section">
                     <text class="section-title">审批进度</text>
-                    <component :is="Timeline" v-if="Timeline" class="approval-timeline">
-                      <component
-                        :is="TimelineItem"
-                        v-if="TimelineItem"
-                        title="提交申请"
-                        :time="selectedItem.submitTime"
-                        status="success"
-                      />
-                      <component
-                        :is="TimelineItem"
-                        v-if="TimelineItem"
-                        title="项目经理审批"
-                        :time="selectedItem.pmApproveTime"
-                        :status="selectedItem.pmApproved ? 'success' : 'processing'"
-                      />
-                      <component
-                        :is="TimelineItem"
-                        v-if="TimelineItem && isCEO"
-                        title="CEO审批"
-                        :status="'pending'"
-                      />
-                    </component>
+                    <view class="approval-steps">
+                      <!-- 步骤 1：提交申请（始终完成） -->
+                      <view class="step done">
+                        <view class="step-dot" />
+                        <text class="step-label">提交申请</text>
+                        <text class="step-time">{{ selectedItem.submitTime }}</text>
+                      </view>
+                      <view class="step-line done" />
+                      <!-- 步骤 2：项目经理审批 -->
+                      <view class="step" :class="selectedItem.pmApproved ? 'done' : 'active'">
+                        <view class="step-dot" />
+                        <text class="step-label">项目经理审批</text>
+                        <text class="step-time">{{ selectedItem.pmApproved ? selectedItem.pmApproveTime : '待审批' }}</text>
+                      </view>
+                      <!-- 步骤 3：CEO 终审（仅 CEO 视图显示） -->
+                      <template v-if="isCEO">
+                        <view class="step-line" :class="selectedItem.pmApproved ? 'done' : ''" />
+                        <view class="step" :class="selectedItem.pmApproved ? 'active' : 'pending'">
+                          <view class="step-dot" />
+                          <text class="step-label">CEO 终审</text>
+                          <text class="step-time">{{ selectedItem.pmApproved ? '待终审' : '—' }}</text>
+                        </view>
+                      </template>
+                    </view>
                   </view>
                 </view>
               </view>
@@ -434,7 +436,7 @@ import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 import AppShell from '../../layouts/AppShell.vue'
 
-const { Row, Col, Card, Button, Badge, Empty, Form, Input, Select, DatePicker, Timeline, TimelineItem, StatCard, Modal, Textarea } = useComponent(['Row', 'Col', 'Card', 'Button', 'Badge', 'Empty', 'Form', 'Input', 'Select', 'DatePicker', 'Timeline', 'TimelineItem', 'StatCard', 'Modal', 'Textarea'])
+const { Row, Col, Card, Button, Badge, Empty, Form, Input, Select, DatePicker, StatCard, Modal, Textarea } = useComponent(['Row', 'Col', 'Card', 'Button', 'Badge', 'Empty', 'Form', 'Input', 'Select', 'DatePicker', 'StatCard', 'Modal', 'Textarea'])
 
 const userStore = useUserStore()
 
@@ -845,8 +847,76 @@ const confirmReject = () => {
       display: block;
     }
 
-    .approval-timeline {
-      padding-left: 8px;
+    // 横向审批步骤条
+    .approval-steps {
+      display: flex;
+      align-items: flex-start;
+      gap: 0;
+      margin-top: 4px;
+
+      .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        min-width: 80px;
+
+        .step-dot {
+          width: 20px;
+          height: 20px;
+          border-radius: 50%;
+          border: 2px solid var(--surface-high);
+          background: var(--surface);
+          flex-shrink: 0;
+        }
+
+        .step-label {
+          font-size: 11px;
+          color: var(--on-surface-variant);
+          text-align: center;
+          white-space: nowrap;
+        }
+
+        .step-time {
+          font-size: 10px;
+          color: var(--on-surface-variant);
+          text-align: center;
+          white-space: nowrap;
+        }
+
+        &.done {
+          .step-dot {
+            background: var(--success, #2e7d32);
+            border-color: var(--success, #2e7d32);
+          }
+          .step-label { color: var(--on-surface); font-weight: 600; }
+        }
+
+        &.active {
+          .step-dot {
+            background: var(--primary);
+            border-color: var(--primary);
+          }
+          .step-label { color: var(--primary); font-weight: 600; }
+        }
+
+        &.pending {
+          .step-dot {
+            background: var(--surface);
+            border-color: var(--surface-high);
+          }
+        }
+      }
+
+      .step-line {
+        flex: 1;
+        height: 2px;
+        background: var(--surface-high);
+        margin-top: 9px; // 垂直居中对齐圆点中心
+        align-self: flex-start;
+
+        &.done { background: var(--success, #2e7d32); }
+      }
     }
   }
 }
