@@ -163,8 +163,8 @@
 
 <script setup lang="ts">
 import { ref, computed, onUnmounted } from 'vue'
-import { request } from '../../utils/http'
-import { useComponent } from '../../composables/useComponent'
+import { request } from '../../../utils/http'
+import { useComponent } from '../../../composables/useComponent'
 
 /** 异步加载 Steps / Step 平台适配组件 */
 const { Steps, Step } = useComponent(['Steps', 'Step'])
