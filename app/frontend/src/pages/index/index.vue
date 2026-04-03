@@ -236,11 +236,11 @@ const noticeItems = ref([
 
 // ── 项目进度（mock，后续对接 GET /projects?status=active） ───────────────
 const projects = ref([
-  { id: 1, name: '碧桂园一期住宅楼',   phase: '主体结构阶段', progress: 68, status: 'normal',  statusLabel: '正常',   dueDate: '2025-09-30' },
-  { id: 2, name: '工业园区厂房改造',   phase: '装修施工阶段', progress: 82, status: 'normal',  statusLabel: '正常',   dueDate: '2025-07-15' },
-  { id: 3, name: '东区商业综合体',     phase: '地基基础阶段', progress: 23, status: 'warning', statusLabel: '预警',   dueDate: '2026-03-01' },
-  { id: 4, name: '学校教学楼扩建',     phase: '设计审批阶段', progress: 10, status: 'delayed', statusLabel: '延期',   dueDate: '2025-06-01' },
-  { id: 5, name: '政府办公楼翻新',     phase: '竣工验收阶段', progress: 95, status: 'normal',  statusLabel: '即将完工', dueDate: '2025-05-20' }
+  { id: 1, name: '万达广场中央空调安装', phase: '冷媒管道焊接阶段', progress: 62, status: 'normal',  statusLabel: '正常',    dueDate: '2026-04-30' },
+  { id: 2, name: '冷链物流园冷库制冷',   phase: '管道支架安装阶段', progress: 38, status: 'normal',  statusLabel: '正常',    dueDate: '2026-05-20' },
+  { id: 3, name: '汽车涂装车间通风排烟', phase: '深化设计阶段',     progress: 15, status: 'warning', statusLabel: '预警',    dueDate: '2026-06-10' },
+  { id: 4, name: '医院手术室净化空调',   phase: '风管安装阶段',     progress: 55, status: 'delayed', statusLabel: '延期',    dueDate: '2026-03-31' },
+  { id: 5, name: '科技园区新风系统改造', phase: '竣工验收阶段',     progress: 98, status: 'normal',  statusLabel: '即将完工', dueDate: '2026-01-15' }
 ])
 
 function progressColor(status: string): string {
@@ -269,16 +269,16 @@ function goTo(path: string) {
   box-sizing: border-box; // 使 height:100% 包含 padding
 }
 
-// ── ROW 1: 横向信息条 ────────────────────────────────────────────────────
+// ── ROW 1: 横向信息条（上下两行） ────────────────────────────────────────
 .alert-row {
   flex-shrink: 0;
   display: flex;
-  gap: 16px;
-  height: 88px;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .alert-strip {
-  flex: 1;
+  width: 100%;
   background: var(--surface-lowest);
   border: 1px solid var(--surface-high);
   border-radius: var(--radius-md);
@@ -286,7 +286,7 @@ function goTo(path: string) {
   align-items: center;
   gap: 12px;
   padding: 0 16px;
-  overflow: hidden;
+  height: 52px;
 
   .strip-head {
     flex-shrink: 0;
@@ -376,16 +376,15 @@ function goTo(path: string) {
     }
 
     &.notice-item {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 2px;
-      height: auto;
-      padding: 8px 12px;
+      gap: 8px;
+      max-width: 360px;
     }
 
     .item-time {
       font-size: 11px;
       color: var(--on-surface-variant);
+      white-space: nowrap;
+      flex-shrink: 0;
     }
   }
 
