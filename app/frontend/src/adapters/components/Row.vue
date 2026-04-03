@@ -32,13 +32,15 @@ const alignMap: Record<string, string> = {
 
 const rowStyle = computed(() => {
   const gapH = Array.isArray(props.gutter) ? props.gutter[0] : props.gutter
+  const gapV = Array.isArray(props.gutter) ? (props.gutter[1] ?? 0) : 0
   return {
     display: 'flex',
     flexWrap: 'wrap' as const,
     justifyContent: justifyMap[props.justify] ?? 'flex-start',
     alignItems: alignMap[props.align] ?? 'flex-start',
     marginLeft: `-${gapH / 2}px`,
-    marginRight: `-${gapH / 2}px`
+    marginRight: `-${gapH / 2}px`,
+    rowGap: gapV > 0 ? `${gapV}px` : undefined
   }
 })
 </script>

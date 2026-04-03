@@ -64,21 +64,33 @@
           <template v-if="selectedRole">
             <view class="card-header">
               <text class="card-title">{{ selectedRole.roleName }} - 权限配置</text>
-              <component
-                :is="Button"
-                v-if="Button && isCEO"
-                type="primary"
-                size="small"
-                @click="savePermissions"
-              >
-                保存权限
-              </component>
+              <view class="header-actions">
+                <component
+                  :is="Button"
+                  v-if="Button && isCEO && !selectedRole.isSystem"
+                  type="link"
+                  danger
+                  size="small"
+                  @click="deleteRole(selectedRole)"
+                >
+                  删除
+                </component>
+                <component
+                  :is="Button"
+                  v-if="Button && isCEO"
+                  type="primary"
+                  size="small"
+                  @click="savePermissions"
+                >
+                  保存权限
+                </component>
+              </view>
             </view>
             <view class="card-body scrollable">
               <view class="role-detail">
                 <view class="detail-section">
                   <text class="section-title">角色描述</text>
-                  <text class="role-desc">{{ selectedRole.description }}</text>
+                  <text class="role-desc">{{ selectedRole.description || '暂无描述' }}</text>
                 </view>
                 <view class="detail-section">
                   <text class="section-title">权限列表</text>
@@ -90,6 +102,7 @@
                     >
                       {{ perm }}
                     </view>
+                    <text v-if="!selectedRole.permissions?.length" class="empty-text">暂无权限</text>
                   </view>
                 </view>
                 <view class="detail-section">
@@ -99,11 +112,11 @@
                       v-for="perm in allPermissions"
                       :key="perm"
                       class="perm-option"
-                      :class="{ checked: selectedRole.permissions.includes(perm) }"
+                      :class="{ checked: selectedRole.permissions?.includes(perm) }"
                       @click="togglePermission(perm)"
                     >
                       <view class="perm-checkbox">
-                        <view v-if="selectedRole.permissions.includes(perm)" class="perm-check" />
+                        <view v-if="selectedRole.permissions?.includes(perm)" class="perm-check" />
                       </view>
                       <text class="perm-label">{{ perm }}</text>
                     </view>
@@ -142,7 +155,7 @@
         </view>
         <view class="form-item">
           <label>角色代码 <text class="required">*</text></label>
-          <component :is="Input" v-if="Input" v-model="newRole.roleCode" placeholder="请输入角色代码" />
+          <component :is="Input" v-if="Input" v-model="newRole.roleCode" placeholder="请输入角色代码（英文小写）" />
         </view>
         <view class="form-item">
           <label>角色描述</label>
@@ -165,9 +178,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
+import { request } from '../../utils/http'
 import AppShell from '../../layouts/AppShell.vue'
 
 const { Row, Col, Card, Tag, Button, Input, Modal } = useComponent(['Row', 'Col', 'Card', 'Tag', 'Button', 'Input', 'Modal'])
@@ -187,6 +201,9 @@ const newRole = ref({
   permissions: []
 })
 
+// 角色列表
+const roleList = ref<any[]>([])
+
 // 所有可用权限
 const allPermissions = [
   '查看本人信息',
@@ -205,39 +222,6 @@ const allPermissions = [
   '数据有效期配置',
   '经营总览'
 ]
-
-const roleList = ref([
-  {
-    roleCode: 'employee',
-    roleName: '员工',
-    description: '发起和查看本人业务单据，查看并确认工资条',
-    permissions: ['查看本人信息', '发起请假', '发起加班', '工资条确认与异议']
-  },
-  {
-    roleCode: 'worker',
-    roleName: '劳工',
-    description: '处理施工日志、工伤补偿和个人工资确认事项',
-    permissions: ['施工日志', '工伤补偿', '发起请假', '工资条确认与异议']
-  },
-  {
-    roleCode: 'finance',
-    roleName: '财务',
-    description: '维护人员与薪资配置，执行结算、复核异议、导出数据',
-    permissions: ['查看全员信息', '工资结算', '通讯录导入', '导出数据']
-  },
-  {
-    roleCode: 'project_manager',
-    roleName: '项目经理',
-    description: '处理项目范围内审批，维护日志模板，查看项目总览',
-    permissions: ['项目初审', '项目总览', '日志模板维护']
-  },
-  {
-    roleCode: 'ceo',
-    roleName: '首席经营者',
-    description: '管理全局配置、终审审批、配置角色权限、查看经营总览',
-    permissions: ['终审审批', '角色与权限配置', '数据有效期配置', '经营总览']
-  }
-])
 
 const getRoleLevel = (roleCode: string) => {
   const map: Record<string, string> = {
@@ -261,33 +245,108 @@ const togglePermission = (perm: string) => {
     return
   }
   
-  const idx = selectedRole.value.permissions.indexOf(perm)
+  const perms = selectedRole.value.permissions || []
+  const idx = perms.indexOf(perm)
   if (idx > -1) {
-    selectedRole.value.permissions.splice(idx, 1)
+    perms.splice(idx, 1)
   } else {
-    selectedRole.value.permissions.push(perm)
+    perms.push(perm)
   }
 }
 
-const savePermissions = () => {
-  uni.showToast({ title: '保存成功', icon: 'success' })
+const savePermissions = async () => {
+  if (!selectedRole.value || !isCEO.value) return
+  
+  try {
+    await request({
+      url: `/roles/${selectedRole.value.id}`,
+      method: 'PUT',
+      data: {
+        roleCode: selectedRole.value.roleCode,
+        roleName: selectedRole.value.roleName,
+        description: selectedRole.value.description,
+        status: selectedRole.value.status,
+        permissions: selectedRole.value.permissions || []
+      }
+    })
+    uni.showToast({ title: '保存成功', icon: 'success' })
+    fetchRoles()
+  } catch (err) {
+    uni.showToast({ title: '保存失败', icon: 'none' })
+  }
 }
 
-const createRole = () => {
+const createRole = async () => {
   if (!newRole.value.roleCode || !newRole.value.roleName) {
     uni.showToast({ title: '请填写必填项', icon: 'none' })
     return
   }
   
-  roleList.value.push({
-    ...newRole.value,
-    permissions: []
-  })
-  
-  showCreateModal.value = false
-  newRole.value = { roleCode: '', roleName: '', description: '', permissions: [] }
-  uni.showToast({ title: '创建成功', icon: 'success' })
+  try {
+    await request({
+      url: '/roles',
+      method: 'POST',
+      data: {
+        roleCode: newRole.value.roleCode,
+        roleName: newRole.value.roleName,
+        description: newRole.value.description,
+        status: 1,
+        permissions: []
+      }
+    })
+    
+    showCreateModal.value = false
+    newRole.value = { roleCode: '', roleName: '', description: '', permissions: [] }
+    uni.showToast({ title: '创建成功', icon: 'success' })
+    fetchRoles()
+  } catch (err) {
+    uni.showToast({ title: '创建失败', icon: 'none' })
+  }
 }
+
+const deleteRole = (role: any) => {
+  if (role.isSystem) {
+    uni.showToast({ title: '系统角色不可删除', icon: 'none' })
+    return
+  }
+  
+  uni.showModal({
+    title: '确认删除',
+    content: `确定要删除角色 ${role.roleName} 吗？`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await request({
+            url: `/roles/${role.id}`,
+            method: 'DELETE'
+          })
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          selectedRole.value = null
+          fetchRoles()
+        } catch (err) {
+          uni.showToast({ title: '删除失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
+// 获取角色列表
+const fetchRoles = async () => {
+  try {
+    const res: any = await request({
+      url: '/roles',
+      method: 'GET'
+    })
+    roleList.value = res || []
+  } catch (err) {
+    uni.showToast({ title: '获取角色列表失败', icon: 'none' })
+  }
+}
+
+onMounted(() => {
+  fetchRoles()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -398,6 +457,11 @@ const createRole = () => {
       font-size: 15px;
       font-weight: 600;
       color: var(--on-surface);
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 8px;
     }
   }
 
@@ -566,6 +630,11 @@ const createRole = () => {
   align-items: center;
   justify-content: center;
   padding: 48px 0;
+  color: var(--on-surface-variant);
+  font-size: 13px;
+}
+
+.empty-text {
   color: var(--on-surface-variant);
   font-size: 13px;
 }

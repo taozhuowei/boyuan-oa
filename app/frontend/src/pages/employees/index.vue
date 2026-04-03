@@ -25,25 +25,11 @@
         <view class="toolbar-left">
           <component
             :is="Button"
-            v-if="Button && (isCEO || isFinance)"
+            v-if="Button && isCEO"
             type="primary"
-            @click="showAddModal = true"
+            @click="openAddModal"
           >
             添加员工
-          </component>
-          <component
-            :is="Button"
-            v-if="Button && (isCEO || isFinance)"
-            @click="exportEmployees"
-          >
-            导出名单
-          </component>
-          <component
-            :is="Button"
-            v-if="Button && (isCEO || isFinance)"
-            @click="importEmployees"
-          >
-            批量导入
           </component>
           <component
             :is="Select"
@@ -52,6 +38,25 @@
             :options="departmentOptions"
             placeholder="全部部门"
             style="width: 140px"
+            @change="handleFilterChange"
+          />
+          <component
+            :is="Select"
+            v-if="Select"
+            v-model="filterRole"
+            :options="roleOptions"
+            placeholder="全部角色"
+            style="width: 140px"
+            @change="handleFilterChange"
+          />
+          <component
+            :is="Select"
+            v-if="Select"
+            v-model="filterStatus"
+            :options="statusOptions"
+            placeholder="全部状态"
+            style="width: 120px"
+            @change="handleFilterChange"
           />
         </view>
         <view class="toolbar-right">
@@ -62,6 +67,7 @@
             placeholder="搜索姓名或工号"
             :prefix="'search'"
             style="width: 240px"
+            @change="handleSearch"
           />
         </view>
       </view>
@@ -74,33 +80,33 @@
             <view class="cell" style="flex: 1">姓名</view>
             <view class="cell" style="flex: 1">工号</view>
             <view class="cell" style="flex: 1.5">部门</view>
-            <view class="cell" style="flex: 1">职位</view>
+            <view class="cell" style="flex: 1">角色</view>
             <view class="cell" style="flex: 1">入职日期</view>
             <view class="cell" style="flex: 0.8">状态</view>
-            <view v-if="isCEO || isFinance" class="cell" style="width: 100px; justify-content: center">操作</view>
+            <view v-if="isCEO" class="cell" style="width: 140px; justify-content: center">操作</view>
           </view>
           <view
-            v-for="emp in filteredEmployees"
+            v-for="emp in employeeList"
             :key="emp.id"
             class="table-row"
           >
             <view class="cell" style="width: 60px; justify-content: center">
-              <view class="avatar">{{ emp.name.charAt(0) }}</view>
+              <view class="avatar">{{ emp.name ? emp.name.charAt(0) : '?' }}</view>
             </view>
             <view class="cell" style="flex: 1; font-weight: 500">{{ emp.name }}</view>
             <view class="cell" style="flex: 1; color: var(--on-surface-variant)">{{ emp.employeeNo }}</view>
-            <view class="cell" style="flex: 1.5; color: var(--on-surface-variant)">{{ emp.department }}</view>
-            <view class="cell" style="flex: 1">{{ emp.position }}</view>
-            <view class="cell" style="flex: 1; color: var(--on-surface-variant)">{{ emp.joinDate }}</view>
+            <view class="cell" style="flex: 1.5; color: var(--on-surface-variant)">{{ emp.departmentName || '-' }}</view>
+            <view class="cell" style="flex: 1">{{ emp.roleName || emp.roleCode }}</view>
+            <view class="cell" style="flex: 1; color: var(--on-surface-variant)">{{ emp.entryDate || '-' }}</view>
             <view class="cell" style="flex: 0.8">
               <view 
                 class="status-tag"
-                :class="emp.status === '在职' ? 'success' : 'default'"
+                :class="emp.accountStatus === 'ACTIVE' ? 'success' : 'default'"
               >
-                {{ emp.status }}
+                {{ emp.accountStatus === 'ACTIVE' ? '在职' : '已禁用' }}
               </view>
             </view>
-            <view v-if="isCEO || isFinance" class="cell" style="width: 100px; justify-content: center">
+            <view v-if="isCEO" class="cell" style="width: 140px; justify-content: center">
               <component
                 :is="Button"
                 v-if="Button"
@@ -112,7 +118,7 @@
               </component>
               <component
                 :is="Button"
-                v-if="Button && isCEO"
+                v-if="Button"
                 type="link"
                 size="small"
                 danger
@@ -122,6 +128,27 @@
               </component>
             </view>
           </view>
+        </view>
+        
+        <!-- 分页 -->
+        <view v-if="totalPages > 1" class="pagination">
+          <component
+            :is="Button"
+            v-if="Button"
+            :disabled="currentPage <= 0"
+            @click="changePage(currentPage - 1)"
+          >
+            上一页
+          </component>
+          <text class="page-info">{{ currentPage + 1 }} / {{ totalPages }}</text>
+          <component
+            :is="Button"
+            v-if="Button"
+            :disabled="currentPage >= totalPages - 1"
+            @click="changePage(currentPage + 1)"
+          >
+            下一页
+          </component>
         </view>
       </view>
 
@@ -169,8 +196,33 @@
             <component :is="Input" v-if="Input" v-model="employeeForm.name" placeholder="请输入姓名" />
           </view>
           <view class="form-item half">
-            <label>工号 <text class="required">*</text></label>
-            <component :is="Input" v-if="Input" v-model="employeeForm.employeeNo" placeholder="请输入工号" />
+            <label>手机</label>
+            <component :is="Input" v-if="Input" v-model="employeeForm.phone" placeholder="请输入手机号" />
+          </view>
+        </view>
+        <view class="form-row">
+          <view class="form-item half">
+            <label>角色 <text class="required">*</text></label>
+            <component
+              :is="Select"
+              v-if="Select"
+              v-model="employeeForm.roleCode"
+              :options="roleOptions.filter(r => r.value)"
+              placeholder="请选择角色"
+            />
+          </view>
+          <view class="form-item half">
+            <label>员工类型 <text class="required">*</text></label>
+            <component
+              :is="Select"
+              v-if="Select"
+              v-model="employeeForm.employeeType"
+              :options="[
+                { label: '办公室员工', value: 'OFFICE' },
+                { label: '劳工', value: 'LABOR' }
+              ]"
+              placeholder="请选择类型"
+            />
           </view>
         </view>
         <view class="form-row">
@@ -179,19 +231,30 @@
             <component
               :is="Select"
               v-if="Select"
-              v-model="employeeForm.department"
+              v-model="employeeForm.departmentId"
               :options="departmentOptions.filter(d => d.value)"
               placeholder="请选择部门"
             />
           </view>
           <view class="form-item half">
-            <label>职位 <text class="required">*</text></label>
-            <component :is="Input" v-if="Input" v-model="employeeForm.position" placeholder="请输入职位" />
+            <label>入职日期 <text class="required">*</text></label>
+            <component :is="DatePicker" v-if="DatePicker" v-model="employeeForm.entryDate" />
           </view>
         </view>
-        <view class="form-item">
-          <label>入职日期 <text class="required">*</text></label>
-          <component :is="DatePicker" v-if="DatePicker" v-model="employeeForm.joinDate" />
+        <view v-if="editingEmployee" class="form-row">
+          <view class="form-item half">
+            <label>账号状态</label>
+            <component
+              :is="Select"
+              v-if="Select"
+              v-model="employeeForm.accountStatus"
+              :options="[
+                { label: '在职', value: 'ACTIVE' },
+                { label: '已禁用', value: 'DISABLED' }
+              ]"
+              placeholder="请选择状态"
+            />
+          </view>
         </view>
       </view>
       <template #footer>
@@ -203,9 +266,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
+import { request } from '../../utils/http'
 import AppShell from '../../layouts/AppShell.vue'
 
 const { Card, Row, Col, Badge, Button, Input, Select, DatePicker, Modal } = useComponent(['Card', 'Row', 'Col', 'Badge', 'Button', 'Input', 'Select', 'DatePicker', 'Modal'])
@@ -218,68 +282,177 @@ const isPM = computed(() => userRole.value === 'project_manager')
 
 // 状态
 const filterDept = ref('')
+const filterRole = ref('')
+const filterStatus = ref('')
 const searchKeyword = ref('')
 const showAddModal = ref(false)
 const editingEmployee = ref<any>(null)
 
+// 分页
+const currentPage = ref(0)
+const pageSize = 20
+const totalPages = ref(0)
+const totalElements = ref(0)
+
+// 数据
+const employeeList = ref<any[]>([])
+const departmentList = ref<any[]>([])
+const roleList = ref<any[]>([])
+
 const employeeForm = ref({
   name: '',
-  employeeNo: '',
-  department: '',
-  position: '',
-  joinDate: ''
+  phone: '',
+  email: '',
+  roleCode: '',
+  employeeType: 'OFFICE',
+  departmentId: '',
+  positionId: '',
+  levelId: '',
+  directSupervisorId: '',
+  accountStatus: 'ACTIVE',
+  entryDate: ''
 })
 
 // 选项
-const departmentOptions = [
+const departmentOptions = computed(() => [
   { label: '全部部门', value: '' },
-  { label: '技术部', value: '技术部' },
-  { label: '人事部', value: '人事部' },
-  { label: '财务部', value: '财务部' },
-  { label: '销售部', value: '销售部' }
+  ...departmentList.value.map(d => ({ label: d.name, value: d.id }))
+])
+
+const roleOptions = computed(() => [
+  { label: '全部角色', value: '' },
+  ...roleList.value.map(r => ({ label: r.roleName, value: r.roleCode }))
+])
+
+const statusOptions = [
+  { label: '全部状态', value: '' },
+  { label: '在职', value: 'ACTIVE' },
+  { label: '已禁用', value: 'DISABLED' }
 ]
 
-// Mock 数据
+// Mock 统计数据
 const stats = ref({
-  total: 28,
-  newThisMonth: 3
+  total: 0,
+  newThisMonth: 0
 })
 
-const employees = ref([
-  { id: 1, name: '张晓宁', employeeNo: 'EMP001', department: '技术部', position: '前端工程师', joinDate: '2022-03-15', status: '在职' },
-  { id: 2, name: '赵铁柱', employeeNo: 'EMP002', department: '技术部', position: '后端工程师', joinDate: '2021-08-20', status: '在职' },
-  { id: 3, name: '王小花', employeeNo: 'EMP003', department: '人事部', position: '人事专员', joinDate: '2023-01-10', status: '在职' },
-  { id: 4, name: '李明', employeeNo: 'EMP004', department: '销售部', position: '销售经理', joinDate: '2020-06-05', status: '在职' },
-  { id: 5, name: '刘芳', employeeNo: 'EMP005', department: '财务部', position: '会计', joinDate: '2022-11-20', status: '在职' }
-])
+const deptStats = ref<any[]>([])
 
-const deptStats = ref([
-  { name: '技术部', count: 12, percentage: 42 },
-  { name: '销售部', count: 8, percentage: 28 },
-  { name: '人事部', count: 4, percentage: 14 },
-  { name: '财务部', count: 4, percentage: 14 }
-])
+// 获取员工列表
+const fetchEmployees = async () => {
+  try {
+    const params = new URLSearchParams()
+    params.append('page', String(currentPage.value))
+    params.append('size', String(pageSize))
+    if (searchKeyword.value) params.append('keyword', searchKeyword.value)
+    if (filterRole.value) params.append('roleCode', filterRole.value)
+    if (filterStatus.value) params.append('accountStatus', filterStatus.value)
+    if (filterDept.value) params.append('departmentId', filterDept.value)
 
-const filteredEmployees = computed(() => {
-  let result = employees.value
+    const res: any = await request({
+      url: `/employees?${params.toString()}`,
+      method: 'GET'
+    })
 
-  if (filterDept.value) {
-    result = result.filter(e => e.department === filterDept.value)
+    employeeList.value = res.content || []
+    totalPages.value = res.totalPages || 0
+    totalElements.value = res.totalElements || 0
+    stats.value.total = res.totalElements || 0
+  } catch (err) {
+    uni.showToast({ title: '获取员工列表失败', icon: 'none' })
   }
+}
 
-  if (searchKeyword.value) {
-    result = result.filter(e =>
-      e.name.includes(searchKeyword.value) ||
-      e.employeeNo.includes(searchKeyword.value)
-    )
+// 获取部门列表
+const fetchDepartments = async () => {
+  try {
+    const res: any = await request({
+      url: '/departments',
+      method: 'GET'
+    })
+    departmentList.value = res || []
+    
+    // 计算部门统计
+    const total = employeeList.value.length
+    const stats = departmentList.value.map((dept: any) => {
+      const count = employeeList.value.filter((e: any) => e.departmentId === dept.id).length
+      return {
+        name: dept.name,
+        count,
+        percentage: total > 0 ? Math.round((count / total) * 100) : 0
+      }
+    }).filter((d: any) => d.count > 0)
+    deptStats.value = stats
+  } catch (err) {
+    console.error('获取部门列表失败', err)
   }
+}
 
-  return result
-})
+// 获取角色列表
+const fetchRoles = async () => {
+  try {
+    const res: any = await request({
+      url: '/roles',
+      method: 'GET'
+    })
+    roleList.value = res || []
+  } catch (err) {
+    console.error('获取角色列表失败', err)
+  }
+}
+
+// 筛选变化
+const handleFilterChange = () => {
+  currentPage.value = 0
+  fetchEmployees()
+}
+
+// 搜索
+const handleSearch = () => {
+  currentPage.value = 0
+  fetchEmployees()
+}
+
+// 分页
+const changePage = (page: number) => {
+  currentPage.value = page
+  fetchEmployees()
+}
+
+// 打开新增弹窗
+const openAddModal = () => {
+  editingEmployee.value = null
+  employeeForm.value = {
+    name: '',
+    phone: '',
+    email: '',
+    roleCode: '',
+    employeeType: 'OFFICE',
+    departmentId: '',
+    positionId: '',
+    levelId: '',
+    directSupervisorId: '',
+    accountStatus: 'ACTIVE',
+    entryDate: ''
+  }
+  showAddModal.value = true
+}
 
 const editEmployee = (emp: any) => {
   editingEmployee.value = emp
-  employeeForm.value = { ...emp }
+  employeeForm.value = {
+    name: emp.name || '',
+    phone: emp.phone || '',
+    email: emp.email || '',
+    roleCode: emp.roleCode || '',
+    employeeType: emp.employeeType || 'OFFICE',
+    departmentId: emp.departmentId || '',
+    positionId: emp.positionId || '',
+    levelId: emp.levelId || '',
+    directSupervisorId: emp.directSupervisorId || '',
+    accountStatus: emp.accountStatus || 'ACTIVE',
+    entryDate: emp.entryDate || ''
+  }
   showAddModal.value = true
 }
 
@@ -287,55 +460,80 @@ const deleteEmployee = (emp: any) => {
   uni.showModal({
     title: '确认删除',
     content: `确定要删除员工 ${emp.name} 吗？`,
-    success: (res) => {
+    success: async (res) => {
       if (res.confirm) {
-        const index = employees.value.findIndex(e => e.id === emp.id)
-        if (index > -1) {
-          employees.value.splice(index, 1)
-          stats.value.total--
+        try {
+          await request({
+            url: `/employees/${emp.id}`,
+            method: 'DELETE'
+          })
           uni.showToast({ title: '删除成功', icon: 'success' })
+          fetchEmployees()
+        } catch (err) {
+          uni.showToast({ title: '删除失败', icon: 'none' })
         }
       }
     }
   })
 }
 
-const saveEmployee = () => {
-  if (!employeeForm.value.name || !employeeForm.value.employeeNo ||
-      !employeeForm.value.department || !employeeForm.value.position) {
-    uni.showToast({ title: '请填写必填项', icon: 'none' })
+const saveEmployee = async () => {
+  if (!employeeForm.value.name) {
+    uni.showToast({ title: '请填写姓名', icon: 'none' })
+    return
+  }
+  if (!employeeForm.value.roleCode) {
+    uni.showToast({ title: '请选择角色', icon: 'none' })
+    return
+  }
+  if (!employeeForm.value.departmentId) {
+    uni.showToast({ title: '请选择部门', icon: 'none' })
     return
   }
 
-  if (editingEmployee.value) {
-    const index = employees.value.findIndex(e => e.id === editingEmployee.value.id)
-    if (index > -1) {
-      employees.value[index] = { ...editingEmployee.value, ...employeeForm.value }
+  try {
+    const data = {
+      name: employeeForm.value.name,
+      phone: employeeForm.value.phone,
+      email: employeeForm.value.email,
+      roleCode: employeeForm.value.roleCode,
+      employeeType: employeeForm.value.employeeType,
+      departmentId: employeeForm.value.departmentId ? Number(employeeForm.value.departmentId) : null,
+      positionId: employeeForm.value.positionId ? Number(employeeForm.value.positionId) : null,
+      levelId: employeeForm.value.levelId ? Number(employeeForm.value.levelId) : null,
+      directSupervisorId: employeeForm.value.directSupervisorId ? Number(employeeForm.value.directSupervisorId) : null,
+      entryDate: employeeForm.value.entryDate || new Date().toISOString().split('T')[0],
+      accountStatus: employeeForm.value.accountStatus
     }
-    uni.showToast({ title: '保存成功', icon: 'success' })
-  } else {
-    employees.value.unshift({
-      id: Date.now(),
-      ...employeeForm.value,
-      status: '在职'
-    })
-    stats.value.total++
-    stats.value.newThisMonth++
-    uni.showToast({ title: '添加成功', icon: 'success' })
+
+    if (editingEmployee.value) {
+      await request({
+        url: `/employees/${editingEmployee.value.id}`,
+        method: 'PUT',
+        data
+      })
+      uni.showToast({ title: '更新成功', icon: 'success' })
+    } else {
+      await request({
+        url: '/employees',
+        method: 'POST',
+        data
+      })
+      uni.showToast({ title: '添加成功', icon: 'success' })
+    }
+
+    showAddModal.value = false
+    fetchEmployees()
+  } catch (err: any) {
+    uni.showToast({ title: err.message || '保存失败', icon: 'none' })
   }
-
-  showAddModal.value = false
-  editingEmployee.value = null
-  employeeForm.value = { name: '', employeeNo: '', department: '', position: '', joinDate: '' }
 }
 
-const exportEmployees = () => {
-  uni.showToast({ title: '导出成功', icon: 'success' })
-}
-
-const importEmployees = () => {
-  uni.showToast({ title: '导入功能开发中', icon: 'none' })
-}
+onMounted(() => {
+  fetchEmployees()
+  fetchDepartments()
+  fetchRoles()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -482,6 +680,21 @@ const importEmployees = () => {
       padding: 0 8px;
       box-sizing: border-box;
     }
+  }
+}
+
+// 分页
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-top: 1px solid var(--surface-high);
+
+  .page-info {
+    font-size: 14px;
+    color: var(--on-surface-variant);
   }
 }
 

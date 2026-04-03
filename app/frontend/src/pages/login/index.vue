@@ -41,6 +41,21 @@
           </view>
         </view>
 
+        <!-- 快速选择账号（演示用） -->
+        <view class="quick-accounts">
+          <text class="quick-title">快速选择账号：</text>
+          <view class="quick-list">
+            <text
+              v-for="acc in quickAccounts"
+              :key="acc.username"
+              class="quick-item"
+              @click="selectAccount(acc)"
+            >
+              {{ acc.displayName }}({{ acc.roleName }})
+            </text>
+          </view>
+        </view>
+
         <!-- 错误提示（仅 H5） -->
         <!-- #ifdef H5 -->
         <view v-if="errorMsg" class="error-bar">
@@ -72,13 +87,22 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useUserStore } from '../../stores'
-import { loginWithAccount } from '../../utils/access'
+import { loginWithAccount, defaultTestAccounts } from '../../utils/access'
 
 const userStore = useUserStore()
 const form = ref({ identifier: '', password: '' })
 const loading = ref(false)
 const errorMsg = ref('')
 const showPassword = ref(false)
+
+// 快速选择账号列表
+const quickAccounts = defaultTestAccounts.slice(0, 5)
+
+// 选择账号快速填充
+const selectAccount = (acc: typeof defaultTestAccounts[0]) => {
+  form.value.identifier = acc.username
+  form.value.password = acc.password
+}
 
 // 显示错误：H5端行内+3秒自动消失，MP端showToast
 function showError(msg: string) {
@@ -106,7 +130,10 @@ const handleLogin = async () => {
       identifier: form.value.identifier.trim(),
       password: form.value.password.trim()
     })
+    
+    // 保存到 userStore
     userStore.setSession(result.token, result.user)
+    
     // sysadmin 跳初始化向导，其他跳工作台
     if (result.user.role === 'sysadmin') {
       uni.redirectTo({ url: '/pages/setup/index' })
@@ -207,6 +234,33 @@ const handleLogin = async () => {
   top: 50%;
   transform: translateY(-50%);
   font-size: 18px;
+  cursor: pointer;
+}
+
+/* 快速选择账号 */
+.quick-accounts {
+  margin-bottom: 16px;
+}
+
+.quick-title {
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.quick-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.quick-item {
+  font-size: 12px;
+  color: #003466;
+  background: rgba(0, 52, 102, 0.08);
+  padding: 4px 10px;
+  border-radius: 4px;
   cursor: pointer;
 }
 

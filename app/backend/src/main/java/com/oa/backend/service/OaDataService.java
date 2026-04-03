@@ -20,10 +20,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class OaDataService {
 
-    // 员工数据存储
-    private final Map<Long, EmployeeData> employees = new ConcurrentHashMap<>();
-    private final AtomicLong employeeSequence = new AtomicLong(0);
-
     // 项目数据存储
     private final Map<Long, ProjectData> projects = new ConcurrentHashMap<>();
     private final AtomicLong projectSequence = new AtomicLong(0);
@@ -62,21 +58,10 @@ public class OaDataService {
 
     @PostConstruct
     void init() {
-        initEmployees();
         initProjects();
         initPayrollCycles();
         initRetentionPolicies();
         initNotifications();
-    }
-
-    private void initEmployees() {
-        seedEmployee(1L, "E001", "张晓宁", "综合管理部", null, "OFFICE", LocalDate.of(2022, 3, 15), "ACTIVE", "13800138001", "zhangxn@oa.com");
-        seedEmployee(2L, "E002", "赵铁柱", "施工一部", "P001", "LABOR", LocalDate.of(2021, 6, 1), "ACTIVE", "13800138002", "zhaotz@oa.com");
-        seedEmployee(3L, "E003", "李静", "财务管理部", null, "OFFICE", LocalDate.of(2020, 1, 10), "ACTIVE", "13800138003", "lijing@oa.com");
-        seedEmployee(4L, "E004", "王建国", "项目一部", "P001", "OFFICE", LocalDate.of(2019, 8, 20), "ACTIVE", "13800138004", "wangjg@oa.com");
-        seedEmployee(5L, "E005", "陈明远", "运营管理部", null, "OFFICE", LocalDate.of(2018, 5, 1), "ACTIVE", "13800138005", "chenmy@oa.com");
-        seedEmployee(6L, "E006", "刘大力", "施工一部", "P002", "LABOR", LocalDate.of(2023, 2, 10), "ACTIVE", "13800138006", "liudl@oa.com");
-        seedEmployee(7L, "E007", "王小燕", "施工二部", "P002", "LABOR", LocalDate.of(2022, 9, 15), "ACTIVE", "13800138007", "wangxy@oa.com");
     }
 
     private void initProjects() {
@@ -119,35 +104,6 @@ public class OaDataService {
             false, null, "PAYROLL", "payroll/slip/1", "NORMAL");
         seedNotification(3L, "MESSAGE", "数据保留到期提醒", "部分表单数据将于30天后到期清理", "系统", LocalDateTime.now().minusHours(5),
             true, LocalDateTime.now().minusHours(4), "RETENTION", "retention/reminders", "HIGH");
-    }
-
-    // Employee methods
-    private void seedEmployee(Long id, String employeeNo, String name, String department, String project,
-                              String employeeType, LocalDate hireDate, String status, String phone, String email) {
-        employees.put(id, new EmployeeData(id, employeeNo, name, department, project, employeeType, hireDate, status, phone, email));
-        employeeSequence.set(Math.max(employeeSequence.get(), id));
-    }
-
-    public List<EmployeeProfileResponse> listEmployees() {
-        return employees.values().stream()
-            .map(this::toEmployeeResponse)
-            .collect(Collectors.toList());
-    }
-
-    public Optional<EmployeeProfileResponse> getEmployee(Long id) {
-        return Optional.ofNullable(employees.get(id))
-            .map(this::toEmployeeResponse);
-    }
-
-    public Optional<EmployeeProfileResponse> getEmployeeByName(String name) {
-        return employees.values().stream()
-            .filter(e -> e.name.equals(name))
-            .findFirst()
-            .map(this::toEmployeeResponse);
-    }
-
-    private EmployeeProfileResponse toEmployeeResponse(EmployeeData e) {
-        return new EmployeeProfileResponse(e.id, e.employeeNo, e.name, e.department, e.project, e.employeeType, e.hireDate, e.status, e.phone, e.email);
     }
 
     // Project methods
@@ -350,21 +306,25 @@ public class OaDataService {
     }
 
     private void initPayrollSlips() {
-        Long employeeId = 1L;
+        // 使用静态员工数据生成工资单（演示用）
+        String[] empNames = {"张晓宁", "赵铁柱", "李静", "王建国", "陈明远"};
+        String[] empDepts = {"综合管理部", "施工一部", "财务管理部", "项目一部", "运营管理部"};
+        
         for (PayrollCycleData cycle : payrollCycles.values()) {
-            for (EmployeeData emp : employees.values()) {
+            for (int i = 0; i < empNames.length; i++) {
+                Long empId = (long) (i + 1);
                 Long slipId = payrollSlipSequence.incrementAndGet();
-                String slipNo = "S" + cycle.cycleNo + String.format("%03d", emp.id);
-                double gross = 8000 + emp.id * 500;
+                String slipNo = "S" + cycle.cycleNo + String.format("%03d", empId);
+                double gross = 8000 + empId * 500;
                 double net = gross * 0.85;
                 List<PayrollSlipResponse.PayrollItem> items = Arrays.asList(
                     new PayrollSlipResponse.PayrollItem("BASE", "基本工资", 5000.0, ""),
-                    new PayrollSlipResponse.PayrollItem("ALLOWANCE", "岗位津贴", 2000.0 + emp.id * 200, ""),
+                    new PayrollSlipResponse.PayrollItem("ALLOWANCE", "岗位津贴", 2000.0 + empId * 200, ""),
                     new PayrollSlipResponse.PayrollItem("BONUS", "绩效奖金", 1000.0, ""),
                     new PayrollSlipResponse.PayrollItem("DEDUCTION", "社保公积金", -gross * 0.15, "")
                 );
-                PayrollSlipData slip = new PayrollSlipData(slipId, slipNo, cycle.id, cycle.cycleNo, emp.id, emp.name,
-                    emp.department, 1, "PENDING", itemsToString(items), gross, net, null, null, null);
+                PayrollSlipData slip = new PayrollSlipData(slipId, slipNo, cycle.id, cycle.cycleNo, empId, empNames[i],
+                    empDepts[i], 1, "PENDING", itemsToString(items), gross, net, null, null, null);
                 payrollSlips.put(slipId, slip);
             }
         }
@@ -572,17 +532,6 @@ public class OaDataService {
     }
 
     // Inner classes for data storage (mutable for updates)
-    private static class EmployeeData {
-        Long id; String employeeNo; String name; String department; String project;
-        String employeeType; LocalDate hireDate; String status; String phone; String email;
-        EmployeeData(Long id, String employeeNo, String name, String department, String project,
-                     String employeeType, LocalDate hireDate, String status, String phone, String email) {
-            this.id = id; this.employeeNo = employeeNo; this.name = name; this.department = department;
-            this.project = project; this.employeeType = employeeType; this.hireDate = hireDate;
-            this.status = status; this.phone = phone; this.email = email;
-        }
-    }
-
     private static class ProjectData {
         Long id; String projectNo; String name; String description; String department;
         String manager; LocalDate startDate; LocalDate endDate; String status;

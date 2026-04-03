@@ -95,7 +95,8 @@ import {
   SafetyOutlined,
   SettingOutlined,
   BellOutlined,
-  LogoutOutlined
+  LogoutOutlined,
+  SolutionOutlined
 } from '@ant-design/icons-vue'
 /* #endif */
 
@@ -126,6 +127,8 @@ const allMenus = [
   { label: '薪资管理', path: '/pages/payroll/index', icon: markRaw(DollarOutlined), roles: ['ceo', 'finance', 'employee', 'worker'] },
   { label: '项目管理', path: '/pages/projects/index', icon: markRaw(BuildOutlined), roles: ['ceo', 'project_manager', 'worker'] },
   { label: '员工管理', path: '/pages/employees/index', icon: markRaw(TeamOutlined), roles: ['ceo', 'finance', 'project_manager'] },
+  { label: '岗位管理', path: '/pages/positions/index', icon: markRaw(SolutionOutlined), roles: ['ceo', 'finance', 'project_manager'] },
+  { label: '组织架构', path: '/pages/org/index', icon: markRaw(TeamOutlined), roles: ['ceo'] },
   { label: '角色管理', path: '/pages/role/index', icon: markRaw(SafetyOutlined), roles: ['ceo'] },
   { label: '系统配置', path: '/pages/config/index', icon: markRaw(SettingOutlined), roles: ['ceo'] },
   /* #endif */
@@ -135,6 +138,8 @@ const allMenus = [
   { label: '薪资管理', path: '/pages/payroll/index', icon: '💰', roles: ['ceo', 'finance', 'employee', 'worker'] },
   { label: '项目管理', path: '/pages/projects/index', icon: '🏗️', roles: ['ceo', 'project_manager', 'worker'] },
   { label: '员工管理', path: '/pages/employees/index', icon: '👥', roles: ['ceo', 'finance', 'project_manager'] },
+  { label: '岗位管理', path: '/pages/positions/index', icon: '📋', roles: ['ceo', 'finance', 'project_manager'] },
+  { label: '组织架构', path: '/pages/org/index', icon: '🏢', roles: ['ceo'] },
   { label: '角色管理', path: '/pages/role/index', icon: '🔐', roles: ['ceo'] },
   { label: '系统配置', path: '/pages/config/index', icon: '⚙️', roles: ['ceo'] }
   /* #endif */

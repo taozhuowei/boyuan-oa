@@ -85,6 +85,18 @@ public class JwtTokenService {
     }
 
     /**
+     * 生成JWT认证令牌（旧版兼容）
+     *
+     * @param username 用户名
+     * @param role 用户角色
+     * @param displayName 用户显示名称
+     * @return 签名后的JWT字符串
+     */
+    public String generateToken(String username, String role, String displayName) {
+        return generateToken(username, null, role, null, displayName);
+    }
+
+    /**
      * 生成JWT认证令牌
      *
      * 职责：根据用户信息创建并签名JWT令牌，用于客户端后续请求的认证凭证
@@ -93,28 +105,33 @@ public class JwtTokenService {
      * 1. 使用JWT.create()构建器模式，清晰定义令牌的各个声明字段
      * 2. withIssuer设置发行者，配合验证器确保令牌来源可信
      * 3. withSubject存储用户名（主体标识），是RFC 7519标准推荐的主要标识字段
-     * 4. withClaim添加自定义声明（role、displayName），扩展令牌携带的信息，
+     * 4. withClaim添加自定义声明（userId, role, employeeType, displayName），扩展令牌携带的信息，
      *    避免频繁查询数据库获取用户基本信息
      * 5. withIssuedAt和withExpiresAt设置时间戳，支持令牌的时效性验证，
      *    过期令牌自动失效，降低令牌被盗用的风险
      * 6. sign使用预初始化的algorithm签名，确保令牌内容未被篡改
      *
      * @param username 用户名，作为令牌主体(subject)，用于标识用户身份
-     * @param role 用户角色，用于前端展示和权限控制的辅助信息
-     * @param displayName 用户显示名称，用于前端界面展示
+     * @param userId 用户ID
+     * @param roleCode 用户角色代码
+     * @param employeeType 员工类型
+     * @param displayName 用户显示名称
      * @return 签名后的JWT字符串，包含头部、载荷和签名三部分，用点号分隔
      */
-    public String generateToken(String username, String role, String displayName) {
+    public String generateToken(String username, Long userId, String roleCode, String employeeType, String displayName) {
         Instant now = Instant.now();
 
-        return JWT.create()
+        var builder = JWT.create()
             .withIssuer(issuer)
             .withSubject(username)
-            .withClaim("role", normalizeRole(role))
+            .withClaim("userId", userId != null ? userId : 0L)
+            .withClaim("role", normalizeRole(roleCode))
+            .withClaim("employeeType", employeeType != null ? employeeType : "OFFICE")
             .withClaim("displayName", displayName)
             .withIssuedAt(now)
-            .withExpiresAt(now.plusMillis(expiration))
-            .sign(algorithm);
+            .withExpiresAt(now.plusMillis(expiration));
+
+        return builder.sign(algorithm);
     }
 
     /**

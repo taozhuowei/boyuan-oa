@@ -1,18 +1,23 @@
 package com.oa.backend.controller;
 
-import com.oa.backend.dto.EmployeeProfileResponse;
-import com.oa.backend.security.SecurityUtils;
-import com.oa.backend.service.OaDataService;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.oa.backend.dto.EmployeeCreateRequest;
+import com.oa.backend.dto.EmployeeResponse;
+import com.oa.backend.dto.EmployeeUpdateRequest;
+import com.oa.backend.entity.Department;
+import com.oa.backend.entity.Employee;
+import com.oa.backend.entity.Role;
+import com.oa.backend.mapper.DepartmentMapper;
+import com.oa.backend.mapper.RoleMapper;
+import com.oa.backend.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 员工管理控制器
@@ -22,27 +27,137 @@ import java.util.List;
 @RequiredArgsConstructor
 public class EmployeeController {
 
-    private final OaDataService oaDataService;
+    private final EmployeeService employeeService;
+    private final DepartmentMapper departmentMapper;
+    private final RoleMapper roleMapper;
 
     /**
-     * 获取员工列表
-     * 权限：员工、财务、项目经理、CEO、劳工
+     * 获取员工列表（分页）
+     * 权限：CEO、财务、项目经理
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('EMPLOYEE','FINANCE','PROJECT_MANAGER','CEO','WORKER')")
-    public ResponseEntity<List<EmployeeProfileResponse>> listEmployees() {
-        return ResponseEntity.ok(oaDataService.listEmployees());
+    @PreAuthorize("hasAnyRole('CEO','FINANCE','PROJECT_MANAGER')")
+    public ResponseEntity<Map<String, Object>> listEmployees(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String roleCode,
+            @RequestParam(required = false) String employeeType,
+            @RequestParam(required = false) String accountStatus,
+            @RequestParam(required = false) Long departmentId) {
+
+        IPage<Employee> employeePage = employeeService.listEmployees(
+            page, size, keyword, roleCode, employeeType, accountStatus, departmentId);
+
+        // 转换为响应DTO
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", employeePage.getRecords().stream().map(this::toResponse).toList());
+        result.put("totalElements", employeePage.getTotal());
+        result.put("totalPages", employeePage.getPages());
+        result.put("number", employeePage.getCurrent());
+        result.put("size", employeePage.getSize());
+
+        return ResponseEntity.ok(result);
     }
 
     /**
      * 获取员工详情
-     * 权限：员工、财务、项目经理、CEO、劳工
+     * 权限：CEO、财务、项目经理
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','FINANCE','PROJECT_MANAGER','CEO','WORKER')")
-    public ResponseEntity<EmployeeProfileResponse> getEmployee(@PathVariable Long id) {
-        return oaDataService.getEmployee(id)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    @PreAuthorize("hasAnyRole('CEO','FINANCE','PROJECT_MANAGER')")
+    public ResponseEntity<EmployeeResponse> getEmployee(@PathVariable Long id) {
+        return employeeService.findById(id)
+            .map(emp -> ResponseEntity.ok(toResponse(emp)))
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * 创建员工
+     * 权限：CEO only
+     */
+    @PostMapping
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<EmployeeResponse> createEmployee(@RequestBody EmployeeCreateRequest request) {
+        Employee employee = employeeService.createEmployee(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(employee));
+    }
+
+    /**
+     * 更新员工
+     * 权限：CEO only
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<EmployeeResponse> updateEmployee(
+            @PathVariable Long id,
+            @RequestBody EmployeeUpdateRequest request) {
+        Employee employee = employeeService.updateEmployee(id, request);
+        return ResponseEntity.ok(toResponse(employee));
+    }
+
+    /**
+     * 删除员工（软删除）
+     * 权限：CEO only
+     */
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
+        employeeService.deleteEmployee(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 将 Employee 实体转换为 EmployeeResponse DTO
+     */
+    private EmployeeResponse toResponse(Employee employee) {
+        // 查询角色名称
+        String roleName = employee.getRoleCode();
+        try {
+            Role role = roleMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Role>()
+                    .eq("role_code", employee.getRoleCode())
+            );
+            if (role != null && role.getRoleName() != null) {
+                roleName = role.getRoleName();
+            }
+        } catch (Exception e) {
+            // 忽略查询失败
+        }
+
+        // 查询部门名称
+        String departmentName = "";
+        if (employee.getDepartmentId() != null) {
+            try {
+                Department dept = departmentMapper.selectById(employee.getDepartmentId());
+                if (dept != null && dept.getName() != null) {
+                    departmentName = dept.getName();
+                }
+            } catch (Exception e) {
+                // 忽略查询失败
+            }
+        }
+
+        return new EmployeeResponse(
+            employee.getId(),
+            employee.getEmployeeNo(),
+            employee.getName(),
+            employee.getPhone(),
+            employee.getEmail(),
+            employee.getRoleCode(),
+            roleName,
+            employee.getEmployeeType(),
+            employee.getDepartmentId(),
+            departmentName,
+            employee.getPositionId(),
+            employee.getLevelId(),
+            employee.getDirectSupervisorId(),
+            employee.getAccountStatus(),
+            employee.getEntryDate(),
+            employee.getLeaveDate(),
+            employee.getIsDefaultPassword(),
+            employee.getCreatedAt(),
+            employee.getUpdatedAt()
+        );
     }
 }

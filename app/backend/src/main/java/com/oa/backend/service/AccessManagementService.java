@@ -202,6 +202,29 @@ public class AccessManagementService {
     }
 
     /**
+     * 删除角色
+     * 
+     * 处理逻辑：
+     * 1. 检查角色是否存在
+     * 2. 系统角色（is_system=true）不可删除
+     * 3. 非系统角色从内存中移除
+     *
+     * @param id 角色ID
+     * @throws IllegalArgumentException 角色不存在
+     * @throws IllegalStateException 系统角色不可删除
+     */
+    public void deleteRole(Long id) {
+        ManagedRole role = roles.get(id);
+        if (role == null) {
+            throw new IllegalArgumentException("角色不存在");
+        }
+        if (role.system()) {
+            throw new IllegalStateException("系统角色不可删除");
+        }
+        roles.remove(id);
+    }
+
+    /**
      * 检查当前用户是否具有角色管理权限
      *
      * 权限判定逻辑：

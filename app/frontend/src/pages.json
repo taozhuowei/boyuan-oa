@@ -62,8 +62,18 @@
         "navigationBarTitleText": "系统配置",
         "navigationStyle": "custom"
       }
-    }
+    },
+
   ],
+  "tabBar": {
+    "color": "#999",
+    "selectedColor": "#003466",
+    "backgroundColor": "#fff",
+    "list": [
+      { "pagePath": "pages/login/index", "text": "登录" },
+      { "pagePath": "pages/index/index", "text": "工作台" }
+    ]
+  },
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "众维OA工作台",

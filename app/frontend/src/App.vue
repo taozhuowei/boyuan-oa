@@ -13,6 +13,13 @@ export default {}
 // H5 端：Ant Design 样式
 /* #ifdef H5 */
 @import 'ant-design-vue/dist/reset.css';
+
+// AppShell 已实现侧边导航，隐藏 uni-app 原生 tabBar（保留配置避免运行时 crash）
+uni-tabbar { display: none !important; }
+// uni-app H5 会将 uni-page-wrapper 高度设为 100vh - tabBarHeight(50px)，需强制还原
+// 同时锁定 body overflow，防止任何溢出内容触发页面级滚动
+uni-page-wrapper { height: 100vh !important; }
+body { overflow: hidden !important; }
 /* #endif */
 
 // 小程序端：Vant 样式
@@ -115,6 +122,12 @@ textarea {
 .page {
   min-height: 100vh;
   background: var(--surface-low);
+  animation: page-enter 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* 卡片基础 */

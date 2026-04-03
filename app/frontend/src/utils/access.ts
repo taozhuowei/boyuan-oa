@@ -47,12 +47,14 @@ export interface LoginPayload {
  * 会话用户信息类型
  * 描述：登录成功后返回的完整用户信息结构，包含身份、组织、状态等字段
  * @property username - 用户唯一标识（账号）
- * @property displayName - 显示名称（中文姓名）
+ * @property displayName - 显示名称（真实姓名）
  * @property role - 角色代码（系统内部标识，如 'employee'）
  * @property roleName - 角色中文名称（界面展示用，如 '员工'）
  * @property department - 所属部门名称
- * @property employeeType - 员工类型（普通员工、实习生等）
+ * @property employeeType - 员工类型（OFFICE/LABOR）
  * @property status - 当前在线状态（在线值守、离线等）
+ * @property userId - 用户ID
+ * @property positionId - 岗位ID
  */
 export interface SessionUser {
   username: string
@@ -62,6 +64,8 @@ export interface SessionUser {
   department: string
   employeeType: string
   status: string
+  userId: number | null
+  positionId: number | null
 }
 
 /**
@@ -137,7 +141,6 @@ export interface TestAccount {
 }
 
 /**
-/**
  * 角色本地存储键名
  * 用途：uni-app本地存储中保存角色数据的唯一标识
  * 存储位置：uni.getStorageSync(roleStorageKey)
@@ -178,7 +181,7 @@ export const defaultTestAccounts: TestAccount[] = [
     role: 'employee',
     roleName: '员工',
     department: '综合管理部',
-    employeeType: '普通员工'
+    employeeType: 'OFFICE'
   },
   {
     username: 'worker.demo',
@@ -187,7 +190,7 @@ export const defaultTestAccounts: TestAccount[] = [
     role: 'worker',
     roleName: '劳工',
     department: '施工一部',
-    employeeType: '劳工'
+    employeeType: 'LABOR'
   },
   {
     username: 'finance.demo',
@@ -196,7 +199,7 @@ export const defaultTestAccounts: TestAccount[] = [
     role: 'finance',
     roleName: '财务',
     department: '财务管理部',
-    employeeType: '普通员工'
+    employeeType: 'OFFICE'
   },
   {
     username: 'pm.demo',
@@ -205,16 +208,16 @@ export const defaultTestAccounts: TestAccount[] = [
     role: 'project_manager',
     roleName: '项目经理',
     department: '项目一部',
-    employeeType: '普通员工'
+    employeeType: 'OFFICE'
   },
   {
     username: 'ceo.demo',
     password: '123456',
-    displayName: 'Tao Zhuowei',
+    displayName: '陈明远',
     role: 'ceo',
     roleName: '首席经营者',
-    department: '总经理办公室',
-    employeeType: '管理层'
+    department: '运营管理部',
+    employeeType: 'OFFICE'
   }
 ]
 
@@ -341,7 +344,9 @@ function createLocalSession(account: TestAccount): LoginResult {
       roleName: account.roleName,
       department: account.department,
       employeeType: account.employeeType,
-      status: '在线值守'
+      status: '在线值守',
+      userId: null,
+      positionId: null
     }
   }
 }
@@ -375,6 +380,7 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
   try {
     const response = await request<{
       token: string
+      userId?: number
       username: string
       displayName: string
       role: string
@@ -384,9 +390,16 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
     }>({
       url: '/auth/login',
       method: 'POST',
-      data: payload,
+      data: { username: identifier, password },
       skipAuthRedirect: true
     })
+
+    // 保存token到本地存储（供http.ts拦截器使用）
+    if (typeof uni !== 'undefined') {
+      uni.setStorageSync('token', response.token)
+    } else {
+      localStorage.setItem('token', JSON.stringify(response.token))
+    }
 
     return {
       token: response.token,
@@ -396,8 +409,10 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
         role: response.role,
         roleName: response.roleName ?? roleNameMap[response.role] ?? response.role,
         department: response.department ?? '未分配部门',
-        employeeType: response.employeeType ?? '普通员工',
-        status: '在线值守'
+        employeeType: response.employeeType ?? 'OFFICE',
+        status: '在线值守',
+        userId: response.userId ?? null,
+        positionId: null  // 当前login response暂无positionId
       }
     }
   } catch {
@@ -499,5 +514,27 @@ export async function saveRole(payload: RolePayload): Promise<RoleItem> {
     const nextRoles = [...roles, nextRole]
     setStoredRoles(nextRoles)
     return nextRole
+  }
+}
+
+/**
+ * 删除角色
+ * 职责：删除指定角色
+ * 设计意图：优先调用后端API删除，失败时回退到本地存储
+ * 参数说明：
+ *   @param id - 角色ID
+ * 返回值：Promise<void>
+ */
+export async function deleteRole(id: number): Promise<void> {
+  try {
+    await request<void>({
+      url: `/roles/${id}`,
+      method: 'DELETE'
+    })
+  } catch {
+    // 本地回退：从缓存中删除
+    const roles = getStoredRoles()
+    const nextRoles = roles.filter((item) => item.id !== id)
+    setStoredRoles(nextRoles)
   }
 }

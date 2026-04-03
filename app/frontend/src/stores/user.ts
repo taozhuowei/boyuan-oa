@@ -8,7 +8,6 @@
 
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import type { SessionUser } from '../utils/access'
 
 // ============================================================
 // H5 环境 Polyfill - 在模块加载时立即执行
@@ -117,6 +116,26 @@ function removeStorage(key: string): void {
   } catch {
     // ignore
   }
+}
+
+// ============================================================
+// 类型定义
+// ============================================================
+
+/**
+ * 会话用户信息类型
+ */
+export interface SessionUser {
+  username: string
+  displayName: string
+  role: string
+  roleName: string
+  department: string
+  employeeType: string
+  status: string
+  // Phase 2 新增字段
+  userId: number | null
+  positionId: number | null
 }
 
 // ============================================================
