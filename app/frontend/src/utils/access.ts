@@ -210,7 +210,7 @@ export const defaultTestAccounts: TestAccount[] = [
   {
     username: 'ceo.demo',
     password: '123456',
-    displayName: '陶卓威',
+    displayName: 'Tao Zhuowei',
     role: 'ceo',
     roleName: '首席经营者',
     department: '总经理办公室',
