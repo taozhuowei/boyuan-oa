@@ -40,6 +40,9 @@ export function getPlatform(): Platform {
 /** 组件库映射：{ 库名 → 模块导出对象 } */
 let _libCachePromise: Promise<Record<string, Record<string, unknown>>> | null = null
 
+/** 同步组件缓存：getComponent 异步加载后写入，getComponentSync 从此读取 */
+const _syncCache: Record<string, Component | null> = {}
+
 function _loadThirdPartyLibs(): Promise<Record<string, Record<string, unknown>>> {
   const cache: Record<string, Record<string, unknown>> = {}
 
@@ -99,9 +102,12 @@ export async function getComponent(name: string): Promise<Component | null> {
     if (!component) {
       console.warn(`[Adapters] "${componentName}" not found in "${source}"`)
     }
-    return (component as Component) ?? null
+    const resolved = (component as Component) ?? null
+    _syncCache[name] = resolved  // 写入同步缓存
+    return resolved
   } catch (error) {
     console.error(`[Adapters] Failed to load "${name}" from "${source}":`, error)
+    _syncCache[name] = null
     return null
   }
 }
@@ -139,9 +145,17 @@ export function mapProps(componentName: string, props: Record<string, unknown>):
 }
 
 /**
- * 同步获取组件（条件编译场景占位，实际为空）
- * 注：同步场景需通过条件编译在各平台 index.ts 中实现
+ * 同步获取组件
+ * 数据流：组件名 → _syncCache（由 getComponent 异步加载后写入）→ 返回组件
+ * 注：首次调用时组件可能尚未加载，返回 null；
+ *     useComponent 的 onMounted 完成后缓存即可用。
  */
-export function getComponentSync(_name: string): Component | null {
+export function getComponentSync(name: string): Component | null {
+  /* #ifdef H5 */
+  return _syncCache[name] ?? null
+  /* #endif */
+  /* #ifdef MP-WEIXIN || APP-PLUS */
+  return _syncCache[name] ?? null
+  /* #endif */
   return null
 }
