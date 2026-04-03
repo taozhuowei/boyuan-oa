@@ -3,55 +3,64 @@
     {
       "path": "pages/login/index",
       "style": {
-        "navigationBarTitleText": "登录"
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "工作台"
+        "navigationBarTitleText": "工作台",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/attendance/index",
       "style": {
-        "navigationBarTitleText": "考勤"
+        "navigationBarTitleText": "考勤",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/payroll/index",
       "style": {
-        "navigationBarTitleText": "薪酬"
+        "navigationBarTitleText": "薪酬",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/projects/index",
       "style": {
-        "navigationBarTitleText": "项目"
+        "navigationBarTitleText": "项目",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/employees/index",
       "style": {
-        "navigationBarTitleText": "员工"
+        "navigationBarTitleText": "员工",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/role/index",
       "style": {
-        "navigationBarTitleText": "角色"
+        "navigationBarTitleText": "角色",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/todo/index",
       "style": {
-        "navigationBarTitleText": "待办中心"
+        "navigationBarTitleText": "待办中心",
+        "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/config/index",
       "style": {
-        "navigationBarTitleText": "系统配置"
+        "navigationBarTitleText": "系统配置",
+        "navigationStyle": "custom"
       }
     }
   ],
@@ -60,17 +69,5 @@
     "navigationBarTitleText": "众维OA工作台",
     "navigationBarBackgroundColor": "#fff",
     "backgroundColor": "#f5f5f5"
-  },
-  "tabBar": {
-    "color": "#999",
-    "selectedColor": "#324963",
-    "backgroundColor": "#fff",
-    "borderStyle": "black",
-    "list": [
-      {
-        "pagePath": "pages/index/index",
-        "text": "工作台"
-      }
-    ]
   }
 }
