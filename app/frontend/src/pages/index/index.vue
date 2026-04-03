@@ -41,29 +41,6 @@
           </view>
         </view>
 
-        <!-- 通知条 -->
-        <view class="alert-strip notice-strip">
-          <view class="strip-head">
-            <!-- #ifdef H5 -->
-            <BellOutlined class="strip-icon" />
-            <!-- #endif -->
-            <text class="strip-title">系统通知</text>
-            <view class="unread-dot" />
-          </view>
-          <view class="strip-scroll">
-            <view
-              v-for="item in noticeItems"
-              :key="item.id"
-              class="strip-item notice-item"
-            >
-              <text class="item-title">{{ item.title }}</text>
-              <text class="item-time">{{ item.time }}</text>
-            </view>
-          </view>
-          <view class="strip-link">
-            <text style="color: var(--outline); cursor: default; font-size: 12px;">暂无通知中心</text>
-          </view>
-        </view>
 
       </view>
 
@@ -135,7 +112,6 @@ import AppShell from '../../layouts/AppShell.vue'
 /* #ifdef H5 */
 import {
   AuditOutlined,
-  BellOutlined,
   RightOutlined,
   ClockCircleOutlined,
   WarningOutlined,
@@ -226,13 +202,6 @@ const todoItems = computed(() => {
     { id: 1, title: '3月工资条待确认签字',       category: '薪资', priority: 'high', path: '/pages/payroll/index' }
   ]
 })
-
-// ── 系统通知（mock） ─────────────────────────────────────────────────────
-const noticeItems = ref([
-  { id: 1, title: '系统维护：本周六凌晨 02:00 例行维护，请提前保存工作', time: '2小时前' },
-  { id: 2, title: 'OA 2.4.0 已上线：新增批量导入、工伤记录导出功能', time: '1天前' },
-  { id: 3, title: '五一假期安排：5月1日—5日放假，5月6日正常上班', time: '3天前' }
-])
 
 // ── 项目进度（mock，后续对接 GET /projects?status=active） ───────────────
 const projects = ref([
@@ -375,17 +344,6 @@ function goTo(path: string) {
       white-space: nowrap;
     }
 
-    &.notice-item {
-      gap: 8px;
-      max-width: 360px;
-    }
-
-    .item-time {
-      font-size: 11px;
-      color: var(--on-surface-variant);
-      white-space: nowrap;
-      flex-shrink: 0;
-    }
   }
 
   .strip-empty {

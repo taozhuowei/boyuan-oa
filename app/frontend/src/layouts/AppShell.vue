@@ -9,19 +9,16 @@
         <text class="logo-text">众维建筑</text>
       </view>
       
-      <view class="topbar-center">
-        <text class="module-title">{{ title || '工作台' }}</text>
-      </view>
-      
-      <view class="topbar-right">
-        <!-- 消息通知 -->
-        <view class="action-item">
-          <view class="badge-wrap">
-            <BellOutlined class="icon-btn" />
-            <view class="badge-dot" />
-          </view>
+      <!-- 通知摘要（铃铛 + 最新一条通知文字） -->
+      <view class="topbar-notice">
+        <view class="notice-bell">
+          <BellOutlined class="icon-btn" />
+          <view class="badge-dot" />
         </view>
-        
+        <text class="notice-text">{{ latestNotice }}</text>
+      </view>
+
+      <view class="topbar-right">
         <!-- 用户信息 -->
         <view class="user-profile">
           <text class="user-name">{{ activeUser.displayName }}</text>
@@ -103,8 +100,11 @@ import {
 /* #endif */
 
 const props = defineProps<{
-  title?: string
+  title?: string  // 保留兼容，不再渲染于顶栏中央
 }>()
+
+// Phase 1 mock：后续接入通知 store
+const latestNotice = '系统维护：本周六凌晨 02:00 例行维护，请提前保存工作'
 
 const userStore = useUserStore()
 
@@ -222,14 +222,40 @@ function handleLogout() {
       }
     }
 
-    .topbar-center {
+    .topbar-notice {
       flex: 1;
       display: flex;
-      justify-content: center;
-      .module-title {
+      align-items: center;
+      gap: 10px;
+      padding: 0 24px;
+      min-width: 0;
+
+      .notice-bell {
+        position: relative;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        color: var(--on-surface-variant);
         font-size: 16px;
-        font-weight: 600;
-        color: var(--on-surface);
+
+        .badge-dot {
+          position: absolute;
+          top: -2px;
+          right: -2px;
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: var(--error);
+          border: 1.5px solid var(--surface-lowest);
+        }
+      }
+
+      .notice-text {
+        font-size: 13px;
+        color: var(--on-surface-variant);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
     }
 
@@ -263,20 +289,6 @@ function handleLogout() {
         &.logout:hover {
           color: var(--error);
           background: #fff1f0;
-        }
-      }
-
-      .badge-wrap {
-        position: relative;
-        .badge-dot {
-          position: absolute;
-          top: 0;
-          right: 0;
-          width: 8px;
-          height: 8px;
-          background: var(--error);
-          border-radius: 50%;
-          border: 2px solid var(--surface-lowest);
         }
       }
 
