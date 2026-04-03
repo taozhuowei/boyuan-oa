@@ -116,7 +116,7 @@ function showError(msg: string) {
 }
 
 const handleForgotPassword = () => {
-  uni.showToast({ icon: 'none', title: '功能开发中' })
+  uni.navigateTo({ url: '/pages/auth/forgot_password/index' })
 }
 
 const handleLogin = async () => {

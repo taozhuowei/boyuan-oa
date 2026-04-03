@@ -201,4 +201,45 @@ public class EmployeeServiceImpl implements EmployeeService {
         
         return prefix + String.format("%04d", seq);
     }
+
+    @Override
+    @Transactional
+    public Employee updateAccountStatus(Long id, String status) {
+        Employee employee = findById(id).orElseThrow(() -> new IllegalArgumentException("员工不存在"));
+        employee.setAccountStatus(status);
+        employee.setUpdatedAt(LocalDateTime.now());
+        employeeMapper.updateById(employee);
+        return employee;
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(Long id) {
+        Employee employee = findById(id).orElseThrow(() -> new IllegalArgumentException("员工不存在"));
+        employee.setPasswordHash(passwordEncoder.encode("123456"));
+        employee.setIsDefaultPassword(true);
+        employee.setUpdatedAt(LocalDateTime.now());
+        employeeMapper.updateById(employee);
+    }
+
+    @Override
+    public Optional<Employee> findByPhone(String phone) {
+        QueryWrapper<Employee> wrapper = new QueryWrapper<>();
+        wrapper.eq("phone", phone);
+        wrapper.eq("deleted", 0);
+        return Optional.ofNullable(employeeMapper.selectOne(wrapper));
+    }
+
+    @Override
+    @Transactional
+    public void updatePassword(Long id, String newPasswordHash, boolean isDefaultPassword) {
+        Employee employee = employeeMapper.selectById(id);
+        if (employee == null) {
+            throw new IllegalArgumentException("员工不存在");
+        }
+        employee.setPasswordHash(newPasswordHash);
+        employee.setIsDefaultPassword(isDefaultPassword);
+        employee.setUpdatedAt(LocalDateTime.now());
+        employeeMapper.updateById(employee);
+    }
 }

@@ -193,7 +193,7 @@
 - [x] `[P1]` 角色管理页（列表、新增、编辑权限矩阵）对接接口
   > 检查: `app/frontend/src/pages/role/index.vue` — 确认调用 `GET/POST/PUT /roles`，权限矩阵可勾选
 
-- [ ] `[P1]` 岗位管理页（`pages/positions/`，CEO/财务可见）— 岗位列表、新增/编辑（含5个 Tab）、等级管理子表
+- [x] `[P1]` 岗位管理页（`pages/positions/`，CEO/财务可见）— 岗位列表、新增/编辑（含5个 Tab）、等级管理子表
   > 检查: `app/frontend/src/pages/positions/index.vue` — 确认文件存在，调用 `GET /positions`；编辑抽屉包含薪资/假期/社保/等级 Tab，各 Tab 对接对应子接口
 
 - [ ] `[P1]` 组织架构树页（`pages/org/`，CEO 可见）— 可视化员工汇报树，支持修改直系领导

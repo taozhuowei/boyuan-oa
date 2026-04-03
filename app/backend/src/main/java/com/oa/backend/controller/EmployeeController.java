@@ -108,6 +108,38 @@ public class EmployeeController {
     }
 
     /**
+     * 职责：更新员工账号状态（禁用/启用）
+     * 请求含义：修改指定员工的账号状态为 ACTIVE 或 DISABLED
+     * 响应含义：返回更新后的员工信息
+     * 权限期望：仅 CEO 可操作
+     */
+    @PatchMapping("/{id}/status")
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<EmployeeResponse> updateAccountStatus(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> request) {
+        String status = request.get("accountStatus");
+        if (!"ACTIVE".equals(status) && !"DISABLED".equals(status)) {
+            throw new IllegalArgumentException("账号状态必须是 ACTIVE 或 DISABLED");
+        }
+        Employee employee = employeeService.updateAccountStatus(id, status);
+        return ResponseEntity.ok(toResponse(employee));
+    }
+
+    /**
+     * 职责：重置员工密码为初始密码
+     * 请求含义：将指定员工的密码重置为默认初始密码 123456
+     * 响应含义：无内容返回（204 No Content）
+     * 权限期望：仅 CEO 可操作
+     */
+    @PostMapping("/{id}/reset-password")
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<Void> resetPassword(@PathVariable Long id) {
+        employeeService.resetPassword(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
      * 将 Employee 实体转换为 EmployeeResponse DTO
      */
     private EmployeeResponse toResponse(Employee employee) {

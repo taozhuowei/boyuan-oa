@@ -47,4 +47,24 @@ public interface EmployeeService {
      * 生成员工编号（格式：EMP + 年月 + 4位序号）
      */
     String generateEmployeeNo();
+
+    /**
+     * 更新账号状态（ACTIVE/DISABLED）
+     */
+    Employee updateAccountStatus(Long id, String status);
+
+    /**
+     * 重置密码为初始密码 123456
+     */
+    void resetPassword(Long id);
+
+    /**
+     * 根据手机号查找员工
+     */
+    Optional<Employee> findByPhone(String phone);
+
+    /**
+     * 更新员工密码
+     */
+    void updatePassword(Long id, String newPasswordHash, boolean isDefaultPassword);
 }
