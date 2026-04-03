@@ -6,20 +6,27 @@
       <view class="page-header">
         <view class="header-left">
           <text class="page-title">考勤管理</text>
-          <text class="page-desc">{{ isCEO || isPM ? '考勤数据总览与审批管理' : '请假、加班申请与审批' }}</text>
+          <text class="page-desc">{{ isCEO || isPM ? '考勤数据总览与审批管理' : isFinance ? '全员考勤记录查询' : '请假、加班申请与审批' }}</text>
         </view>
         <view class="header-stats">
-          <view v-if="!isCEO && !isPM" class="stat-item">
+          <!-- 员工/劳工：个人统计 -->
+          <view v-if="!isCEO && !isPM && !isFinance" class="stat-item">
             <text class="stat-value">{{ myLeaveCount }}</text>
             <text class="stat-label">请假记录</text>
           </view>
-          <view v-if="!isCEO && !isPM" class="stat-item">
+          <view v-if="!isCEO && !isPM && !isFinance" class="stat-item">
             <text class="stat-value">{{ myOvertimeCount }}</text>
             <text class="stat-label">加班记录</text>
           </view>
+          <!-- CEO/PM：待审批数 -->
           <view v-if="isCEO || isPM" class="stat-item">
             <text class="stat-value">{{ totalPending }}</text>
             <text class="stat-label">待审批</text>
+          </view>
+          <!-- 财务：全员总记录数 -->
+          <view v-if="isFinance" class="stat-item">
+            <text class="stat-value">{{ totalRecords }}</text>
+            <text class="stat-label">考勤记录</text>
           </view>
           <view class="stat-item">
             <text class="stat-value">{{ attendanceStats.completionRate }}</text>
@@ -31,34 +38,8 @@
       <!-- 工具栏 -->
       <view class="toolbar">
         <view class="toolbar-left">
-          <!-- 员工/劳工视图：Tab 切换 -->
-          <template v-if="!isCEO && !isPM">
-            <view class="tab-group">
-              <view 
-                class="tab-item" 
-                :class="{ active: activeTab === 'leave' }"
-                @click="switchTab('leave')"
-              >
-                请假申请
-              </view>
-              <view 
-                class="tab-item" 
-                :class="{ active: activeTab === 'overtime' }"
-                @click="switchTab('overtime')"
-              >
-                加班申请
-              </view>
-              <view 
-                class="tab-item" 
-                :class="{ active: activeTab === 'history' }"
-                @click="switchTab('history')"
-              >
-                我的记录
-              </view>
-            </view>
-          </template>
-          <!-- CEO/PM 视图：筛选 -->
-          <template v-else>
+          <!-- CEO/PM 视图：状态筛选 -->
+          <template v-if="isCEO || isPM">
             <component
               :is="Select"
               v-if="Select"
@@ -67,6 +48,36 @@
               placeholder="全部状态"
               style="width: 140px"
             />
+          </template>
+          <!-- 财务视图：无 Tab，搜索框已在 toolbar-right -->
+          <template v-else-if="isFinance">
+            <text style="font-size: 13px; color: var(--on-surface-variant)">全员考勤记录（只读）</text>
+          </template>
+          <!-- 员工/劳工视图：Tab 切换 -->
+          <template v-else>
+            <view class="tab-group">
+              <view
+                class="tab-item"
+                :class="{ active: activeTab === 'leave' }"
+                @click="switchTab('leave')"
+              >
+                请假申请
+              </view>
+              <view
+                class="tab-item"
+                :class="{ active: activeTab === 'overtime' }"
+                @click="switchTab('overtime')"
+              >
+                加班申请
+              </view>
+              <view
+                class="tab-item"
+                :class="{ active: activeTab === 'history' }"
+                @click="switchTab('history')"
+              >
+                我的记录
+              </view>
+            </view>
           </template>
         </view>
         <view class="toolbar-right">
@@ -83,8 +94,39 @@
 
       <!-- 主内容区 -->
       <view class="main-content">
+        <!-- 财务视图：全员考勤历史（只读，无审批） -->
+        <template v-if="isFinance">
+          <view class="full-panel content-card">
+            <view class="card-header">
+              <text class="card-title">全员考勤记录</text>
+            </view>
+            <view class="card-body scrollable">
+              <view v-if="allRecords.length" class="record-list">
+                <view
+                  v-for="item in allRecords"
+                  :key="item.id"
+                  class="record-item"
+                >
+                  <view class="record-info">
+                    <view class="record-line">
+                      <text class="record-title">{{ item.applicant }} · {{ item.type }}</text>
+                      <view class="status-tag" :class="statusClassMap[item.status]">
+                        {{ item.statusText }}
+                      </view>
+                    </view>
+                    <text class="record-date">{{ item.date }} · {{ item.duration }}</text>
+                  </view>
+                </view>
+              </view>
+              <view v-else class="empty-state">
+                <text>暂无记录</text>
+              </view>
+            </view>
+          </view>
+        </template>
+
         <!-- CEO/PM 审批视图：双栏 -->
-        <template v-if="isCEO || isPM">
+        <template v-else-if="isCEO || isPM">
           <!-- 左栏：待审批列表 -->
           <view class="left-panel content-card">
             <view class="card-header">
@@ -443,6 +485,7 @@ const userStore = useUserStore()
 const userRole = computed(() => userStore.userInfo?.role || 'employee')
 const isCEO = computed(() => userRole.value === 'ceo')
 const isPM = computed(() => userRole.value === 'project_manager')
+const isFinance = computed(() => userRole.value === 'finance')
 
 // 标签页状态
 const activeTab = ref('leave')
@@ -504,10 +547,19 @@ const attendanceStats = ref({
   completionRate: '82%'
 })
 
+// Finance：全员考勤记录（只读，无审批权限）
+const allRecords = ref([
+  { id: 1, applicant: '张晓宁', type: '请假', date: '2024-04-01 至 2024-04-03', duration: '3天', status: 'approved', statusText: '已通过' },
+  { id: 2, applicant: '赵铁柱', type: '加班', date: '2024-03-30', duration: '4小时', status: 'pending', statusText: '审批中' },
+  { id: 3, applicant: '李建国', type: '请假', date: '2024-03-20', duration: '1天', status: 'rejected', statusText: '已驳回' },
+  { id: 4, applicant: '王芳', type: '加班', date: '2024-03-18', duration: '3小时', status: 'approved', statusText: '已通过' }
+])
+
 // 计算属性
 const myLeaveCount = computed(() => myRecords.value.filter(r => r.type === '请假').length)
 const myOvertimeCount = computed(() => myRecords.value.filter(r => r.type === '加班').length)
 const totalPending = computed(() => pendingList.value.length)
+const totalRecords = computed(() => allRecords.value.length)
 
 const statusClassMap: Record<string, string> = {
   approved: 'success',
@@ -673,6 +725,13 @@ const confirmReject = () => {
   min-height: 0;
   display: flex;
   gap: 16px;
+}
+
+.full-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
 }
 
 .left-panel {

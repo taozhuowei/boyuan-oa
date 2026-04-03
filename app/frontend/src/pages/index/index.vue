@@ -63,8 +63,8 @@
         </view>
       </view>
 
-      <!-- ③ 项目进度面板（剩余空间，内部滚动） -->
-      <view class="project-panel">
+      <!-- ③ 项目进度面板（CEO/PM/劳工可见；财务不负责项目管理，不显示） -->
+      <view v-if="role !== 'finance'" class="project-panel">
         <view class="panel-head">
           <text class="panel-title">在建项目进度</text>
           <text class="panel-date">{{ todayStr }}</text>
@@ -180,11 +180,18 @@ const keyKpis = computed(() => {
 // ── 待办事项（按角色 mock） ──────────────────────────────────────────────
 const todoItems = computed(() => {
   const r = role.value
-  if (['ceo', 'finance'].includes(r)) {
+  if (r === 'ceo') {
     return [
-      { id: 1, title: '项目二部施工日志待审核', category: '项目', priority: 'high', path: '/pages/projects/index' },
-      { id: 2, title: '全员 3月工资条待发放',   category: '薪资', priority: 'mid',  path: '/pages/payroll/index'  },
+      { id: 1, title: '项目二部施工日志待审核', category: '项目', priority: 'high', path: '/pages/projects/index'   },
+      { id: 2, title: '全员 3月工资条待发放',   category: '薪资', priority: 'mid',  path: '/pages/payroll/index'   },
       { id: 3, title: '李小龙请假申请（3天）',   category: '考勤', priority: 'low',  path: '/pages/attendance/index' }
+    ]
+  }
+  if (r === 'finance') {
+    return [
+      { id: 1, title: '全员 3月工资条待发放',   category: '薪资', priority: 'high', path: '/pages/payroll/index'   },
+      { id: 2, title: '工资异议待处理（2件）',   category: '薪资', priority: 'mid',  path: '/pages/payroll/index'   },
+      { id: 3, title: '本月考勤异常待核查',       category: '考勤', priority: 'low',  path: '/pages/attendance/index' }
     ]
   }
   if (r === 'project_manager') {

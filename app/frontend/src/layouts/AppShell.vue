@@ -126,7 +126,7 @@ const allMenus = [
   { label: '薪资管理', path: '/pages/payroll/index', icon: markRaw(DollarOutlined), roles: ['ceo', 'finance', 'employee', 'worker'] },
   { label: '项目管理', path: '/pages/projects/index', icon: markRaw(BuildOutlined), roles: ['ceo', 'project_manager', 'worker'] },
   { label: '员工管理', path: '/pages/employees/index', icon: markRaw(TeamOutlined), roles: ['ceo', 'finance', 'project_manager'] },
-  { label: '角色管理', path: '/pages/role/index', icon: markRaw(SafetyOutlined), roles: ['ceo', 'finance'] },
+  { label: '角色管理', path: '/pages/role/index', icon: markRaw(SafetyOutlined), roles: ['ceo'] },
   { label: '系统配置', path: '/pages/config/index', icon: markRaw(SettingOutlined), roles: ['ceo'] },
   /* #endif */
   /* #ifndef H5 */
@@ -135,7 +135,7 @@ const allMenus = [
   { label: '薪资管理', path: '/pages/payroll/index', icon: '💰', roles: ['ceo', 'finance', 'employee', 'worker'] },
   { label: '项目管理', path: '/pages/projects/index', icon: '🏗️', roles: ['ceo', 'project_manager', 'worker'] },
   { label: '员工管理', path: '/pages/employees/index', icon: '👥', roles: ['ceo', 'finance', 'project_manager'] },
-  { label: '角色管理', path: '/pages/role/index', icon: '🔐', roles: ['ceo', 'finance'] },
+  { label: '角色管理', path: '/pages/role/index', icon: '🔐', roles: ['ceo'] },
   { label: '系统配置', path: '/pages/config/index', icon: '⚙️', roles: ['ceo'] }
   /* #endif */
 ]
