@@ -14,8 +14,9 @@
 
 | Phase | 目标                     | 当前状态  | 验收标准                                      |
 |-------|--------------------------|---------|-----------------------------------------------|
-| **0** | 工程基础：DB + HTTP 层     | 未开始   | 后端真实启动，前端 HTTP 层统一，无控制台报错       |
-| **1** | 前端壳 + 设计确认          | 未开始   | 5个 mock 账号能点遍所有页面，视觉设计已确认        |
+| **0F** | 前端基础：HTTP 层 + 组件注册              | 未开始   | 前端无控制台报错，可独立运行                        |
+| **1**  | 前端壳 + 设计确认（与 Phase 0B 并行）    | 未开始   | 5个 mock 账号能点遍所有页面，视觉设计已确认        |
+| **0B** | 后端基础：DB schema + 真实启动（与 Phase 1 并行） | 未开始 | mvn 无报错启动，35张表建好，无控制台报错     |
 | **2** | 身份认证 + 账号/角色管理    | 未开始   | 真实账号登录，CEO 可增删改员工和角色              |
 | **3** | 组织管理（部门/项目/成员）  | 未开始   | 项目、成员关系可管理，不依赖内存 mock             |
 | **4** | 考勤申请 + 审批流引擎       | 未开始   | 请假单从提交跑到归档，状态流转完整                |
@@ -27,43 +28,16 @@
 
 ---
 
-## Phase 0 — 工程基础
+## Phase 0F — 前端基础
 
-**目标：** 后端能真实启动并连接数据库，前端 HTTP 层统一，两端可独立运行。
+**目标：** 统一 HTTP 层，完成组件注册，前端可独立运行并启动后续 UI 开发。
 
 ### 检查点（全部通过才进入 Phase 1）
 
-- [ ] `mvn spring-boot:run` 无报错启动，H2 控制台可访问
-- [ ] `sys_user` 和 `sys_role` 以外的业务表 schema 已全部建好
 - [ ] 前端 `npm run dev:h5` 无控制台报错
 - [ ] 所有 HTTP 请求均经过 `utils/http.ts`，无私有 request 函数
-
-### 后端任务
-
-- [ ] `[P0]` 补全 `schema.sql`：新增以下业务表（共 35 张）
-  - 员工 & 权限：`employee`、`permission`（权限码表）
-  - 组织：`department`、`position`（岗位）、`position_level`（等级）
-  - 项目：`project`、`project_member`（含 `role ENUM(PM,MEMBER)`）、`project_milestone`（含 `actual_completion_date`，无 `planned_date`）、`project_progress_log`
-  - 审批：`form_type_def`（表单类型定义）、`form_record`（含 `form_type VARCHAR FK form_type_def`）、`approval_record`、`approval_flow_def`、`approval_flow_node`（含 `skip_condition JSON`、`approval_mode ENUM`）
-  - 施工：`work_item_template`、`work_item_template_item`、`construction_log_summary`
-  - 考勤：`overtime_notification`、`overtime_response`
-  - 薪资：`leave_type_def`（假种扣款比例）、`social_insurance_item`（险种分项）、`payroll_item_def`（自定义费目）、`payroll_cycle`（含窗口期字段 `window_days/window_status/window_start_date/window_end_date`，**无独立 payroll_window_period 表**）、`payroll_slip`（无 `items JSON`，净发工资字段）、`payroll_slip_item`（工资条明细行）、`salary_grade`、`payroll_adjustment`、`payroll_confirmation`
-  - 签名：`employee_signature`、`salary_confirmation_agreement`
-  - 工伤：`injury_claim`（理赔记录，独立于 form_record）
-  - 运维：`operation_log`（跟随全局保留策略，无 @TableLogic）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
-  > 检查: `app/backend/src/main/resources/db/schema.sql` — 搜索每个表名，确认所有 CREATE TABLE 语句存在；**特别确认不存在 `payroll_window_period` 表**
-
-- [ ] `[P0]` 补全 `data.sql`（dev profile 专用，仅 H2 加载，**不进生产**）：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
-  > 检查: `app/backend/src/main/resources/db/data.sql` — 搜索 employee.demo / worker.demo / pm.demo / ceo.demo / finance.demo，确认5条 INSERT 记录均存在
-
-- [ ] `[P0]` 创建 `preset-construction.sql`：建筑工程版生产初始化种子数据（角色 code 定义、岗位/等级预置、审批流模板节点、假种定义、社保险种、保留策略默认值），由 Sysadmin 初始化向导加载
-  > 检查: `app/backend/src/main/resources/db/preset-construction.sql` — 搜索 INSERT INTO sys_role / INSERT INTO approval_flow_def / INSERT INTO sys_retention_policy，确认主要业务类型均有预置记录；内容依据见 `documentation/DESIGN.md`
-
-- [ ] `[P1]` 补全 Mapper：`EmployeeMapper`（扩展现有）、`ProjectMapper`、`DepartmentMapper`
-  > 检查: `app/backend/src/main/java/com/oa/backend/mapper/` — 确认 ProjectMapper.java 和 DepartmentMapper.java 文件存在且有基础 CRUD 方法
-
-- [ ] `[P1]` `ApprovalFlowNode` 实体新增 `skipCondition` JSON 字段（用于工伤补偿动态路由，见 DESIGN.md §5.3）
-  > 检查: `app/backend/src/main/java/com/oa/backend/entity/ApprovalFlowNode.java` — 搜索 `skipCondition` 字段声明
+- [ ] `components.json` 中 Upload / Tabs / Tag / Steps / Popup / Textarea / Canvas 已注册
+- [ ] `Row` / `Col` 自定义组件存在且在 components.json 注册
 
 ### 前端任务
 
@@ -88,7 +62,11 @@
 
 ---
 
+---
+
 ## Phase 1 — 前端壳 + 设计确认
+
+> **并行提示：** 此阶段与 Phase 0B（后端基础）并行推进。
 
 **目标：** 用 5 个 mock 账号在本地跑起来，能点遍所有页面，确认设计风格和功能入口。
 
@@ -126,7 +104,49 @@
 - [ ] `[P2]` 各页面使用 mock 数据填充，确保表格、列表、表单均有内容可看
   > 检查: `app/frontend/src/pages/` 下各 index.vue — 搜索 mock 数据对象（如 const list = [] 或 ref([...])），确认有填充项
 
+---
+
+---
+
+## Phase 0B — 后端基础
+
+> **并行提示：** 此阶段与 Phase 1（前端壳 + 设计确认）并行推进。
+
+**目标：** 后端真实启动并连接数据库，数据库表结构完整，5 个测试账号可用。
+
+### 检查点（全部通过才进入 Phase 2）
+
+- [ ] `mvn spring-boot:run` 无报错启动，H2 控制台可访问
+- [ ] 业务表 schema 全部建好（35 张，不存在 `payroll_window_period` 表）
+- [ ] 5 个测试账号可通过 `POST /auth/login` 登录并返回 JWT
+- [ ] `GET /setup/status` 可访问（sysadmin 初始化向导入口）
+
 ### 后端任务
+
+- [ ] `[P0]` 补全 `schema.sql`：新增以下业务表（共 35 张）
+  - 员工 & 权限：`employee`、`permission`（权限码表）
+  - 组织：`department`、`position`（岗位）、`position_level`（等级）
+  - 项目：`project`、`project_member`（含 `role ENUM(PM,MEMBER)`）、`project_milestone`（含 `actual_completion_date`，无 `planned_date`）、`project_progress_log`
+  - 审批：`form_type_def`（表单类型定义）、`form_record`（含 `form_type VARCHAR FK form_type_def`）、`approval_record`、`approval_flow_def`、`approval_flow_node`（含 `skip_condition JSON`、`approval_mode ENUM`）
+  - 施工：`work_item_template`、`work_item_template_item`、`construction_log_summary`
+  - 考勤：`overtime_notification`、`overtime_response`
+  - 薪资：`leave_type_def`（假种扣款比例）、`social_insurance_item`（险种分项）、`payroll_item_def`（自定义费目）、`payroll_cycle`（含窗口期字段 `window_days/window_status/window_start_date/window_end_date`，**无独立 payroll_window_period 表**）、`payroll_slip`（无 `items JSON`，净发工资字段）、`payroll_slip_item`（工资条明细行）、`salary_grade`、`payroll_adjustment`、`payroll_confirmation`
+  - 签名：`employee_signature`、`salary_confirmation_agreement`
+  - 工伤：`injury_claim`（理赔记录，独立于 form_record）
+  - 运维：`operation_log`（跟随全局保留策略，无 @TableLogic）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
+  > 检查: `app/backend/src/main/resources/db/schema.sql` — 搜索每个表名，确认所有 CREATE TABLE 语句存在；**特别确认不存在 `payroll_window_period` 表**
+
+- [ ] `[P0]` 补全 `data.sql`（dev profile 专用，仅 H2 加载，**不进生产**）：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
+  > 检查: `app/backend/src/main/resources/db/data.sql` — 搜索 employee.demo / worker.demo / pm.demo / ceo.demo / finance.demo，确认5条 INSERT 记录均存在
+
+- [ ] `[P0]` 创建 `preset-construction.sql`：建筑工程版生产初始化种子数据（角色 code 定义、岗位/等级预置、审批流模板节点、假种定义、社保险种、保留策略默认值），由 Sysadmin 初始化向导加载
+  > 检查: `app/backend/src/main/resources/db/preset-construction.sql` — 搜索 INSERT INTO sys_role / INSERT INTO approval_flow_def / INSERT INTO sys_retention_policy，确认主要业务类型均有预置记录；内容依据见 `documentation/DESIGN.md`
+
+- [ ] `[P1]` 补全 Mapper：`EmployeeMapper`（扩展现有）、`ProjectMapper`、`DepartmentMapper`
+  > 检查: `app/backend/src/main/java/com/oa/backend/mapper/` — 确认 ProjectMapper.java 和 DepartmentMapper.java 文件存在且有基础 CRUD 方法
+
+- [ ] `[P1]` `ApprovalFlowNode` 实体新增 `skipCondition` JSON 字段（用于工伤补偿动态路由，见 DESIGN.md §5.3）
+  > 检查: `app/backend/src/main/java/com/oa/backend/entity/ApprovalFlowNode.java` — 搜索 `skipCondition` 字段声明
 
 - [ ] `[P1]` `GET /setup/status` 接口可用（初始化向导入口）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `/setup/status` 路由或 SetupController 文件
@@ -146,6 +166,36 @@
 - [ ] JWT payload 包含 `userId`、`roleCode`、`employeeType`
 - [ ] CEO 可新增员工，设置角色，账号立即可登录
 - [ ] 财务不能为任何角色开启终审权限（见 DESIGN.md §4.3）
+
+### 前端任务
+
+- [ ] `[P0]` 登录成功后将 `employeeType`、`positionId` 写入 `userStore`
+  > 检查: `app/frontend/src/stores/user.ts` — 搜索 `employeeType` 和 `positionId` 字段，确认从登录响应中写入
+
+- [ ] `[P1]` 员工列表接入真实接口，支持岗位/角色/类型/状态筛选、关键字搜索
+  > 检查: `app/frontend/src/pages/employees/index.vue` — 确认 onMounted 调用 `GET /employees`，筛选参数绑定到接口 query
+
+- [ ] `[P1]` 员工新增/编辑弹窗对接接口（含岗位、等级、直系领导字段）
+  > 检查: employees/index.vue 或弹窗组件 — 搜索 `POST /employees` 和 `PUT /employees` 调用；弹窗包含 positionId / levelId / directSupervisorId 选择器
+
+- [ ] `[P1]` 角色管理页（列表、新增、编辑权限矩阵）对接接口
+  > 检查: `app/frontend/src/pages/role/index.vue` — 确认调用 `GET/POST/PUT /roles`，权限矩阵可勾选
+
+- [ ] `[P1]` 岗位管理页（`pages/positions/`，CEO/财务可见）— 岗位列表、新增/编辑（含5个 Tab）、等级管理子表
+  > 检查: `app/frontend/src/pages/positions/index.vue` — 确认文件存在，调用 `GET /positions`；编辑抽屉包含薪资/假期/社保/等级 Tab，各 Tab 对接对应子接口
+
+- [ ] `[P1]` 组织架构树页（`pages/org/`，CEO 可见）— 可视化员工汇报树，支持修改直系领导
+  > 检查: `app/frontend/src/pages/org/index.vue` — 确认文件存在，调用 `GET /org/tree`；点击节点可打开侧边栏并调用 `PATCH /org/supervisor/{employeeId}` 修改领导
+
+- [ ] `[P1]` 忘记密码页（`pages/auth/forgot-password/`）— 4步流程：手机号+发验证码 → OTP 输入 → 新密码 → 成功跳转登录
+  > 检查: `app/frontend/src/pages/auth/forgot-password/` 或 `forgot_password.vue` — 确认文件存在，依次调用 /auth/send-reset-code → /auth/verify-reset-code → /auth/reset-password；成功后跳转登录页
+
+- [ ] `[P1]` 修改手机号弹窗（`components/` 或 Personal Center 页内联）— 3步：输入当前手机验证码 → 输入新手机+验证码 → 确认
+  > 检查: Personal Center 页或对应组件 — 搜索 `/me/phone` 调用；弹窗3步 Step 指示器；成功后手机号脱敏展示更新
+
+- [ ] `[P2]` 员工详情页（独立页面，见 UI_DESIGN.md §5）
+  > 检查: `app/frontend/src/pages/employees/` — 确认有独立的 detail 或 `[id]` 页面文件，路由可跳转
+
 
 ### 后端任务
 
@@ -198,34 +248,6 @@
   - `PUT /employees/me/phone`：携带 identityToken + 新手机号 + 新验证码，更新 `sys_user.phone`
   > 检查: EmployeeController.java — 搜索 `/me/phone` 相关路由，确认4个接口存在；verify-identity 返回 identityToken；最终 PUT 更新手机号前校验 identityToken 有效性
 
-### 前端任务
-
-- [ ] `[P0]` 登录成功后将 `employeeType`、`positionId` 写入 `userStore`
-  > 检查: `app/frontend/src/stores/user.ts` — 搜索 `employeeType` 和 `positionId` 字段，确认从登录响应中写入
-
-- [ ] `[P1]` 员工列表接入真实接口，支持岗位/角色/类型/状态筛选、关键字搜索
-  > 检查: `app/frontend/src/pages/employees/index.vue` — 确认 onMounted 调用 `GET /employees`，筛选参数绑定到接口 query
-
-- [ ] `[P1]` 员工新增/编辑弹窗对接接口（含岗位、等级、直系领导字段）
-  > 检查: employees/index.vue 或弹窗组件 — 搜索 `POST /employees` 和 `PUT /employees` 调用；弹窗包含 positionId / levelId / directSupervisorId 选择器
-
-- [ ] `[P1]` 角色管理页（列表、新增、编辑权限矩阵）对接接口
-  > 检查: `app/frontend/src/pages/role/index.vue` — 确认调用 `GET/POST/PUT /roles`，权限矩阵可勾选
-
-- [ ] `[P1]` 岗位管理页（`pages/positions/`，CEO/财务可见）— 岗位列表、新增/编辑（含5个 Tab）、等级管理子表
-  > 检查: `app/frontend/src/pages/positions/index.vue` — 确认文件存在，调用 `GET /positions`；编辑抽屉包含薪资/假期/社保/等级 Tab，各 Tab 对接对应子接口
-
-- [ ] `[P1]` 组织架构树页（`pages/org/`，CEO 可见）— 可视化员工汇报树，支持修改直系领导
-  > 检查: `app/frontend/src/pages/org/index.vue` — 确认文件存在，调用 `GET /org/tree`；点击节点可打开侧边栏并调用 `PATCH /org/supervisor/{employeeId}` 修改领导
-
-- [ ] `[P1]` 忘记密码页（`pages/auth/forgot-password/`）— 4步流程：手机号+发验证码 → OTP 输入 → 新密码 → 成功跳转登录
-  > 检查: `app/frontend/src/pages/auth/forgot-password/` 或 `forgot_password.vue` — 确认文件存在，依次调用 /auth/send-reset-code → /auth/verify-reset-code → /auth/reset-password；成功后跳转登录页
-
-- [ ] `[P1]` 修改手机号弹窗（`components/` 或 Personal Center 页内联）— 3步：输入当前手机验证码 → 输入新手机+验证码 → 确认
-  > 检查: Personal Center 页或对应组件 — 搜索 `/me/phone` 调用；弹窗3步 Step 指示器；成功后手机号脱敏展示更新
-
-- [ ] `[P2]` 员工详情页（独立页面，见 UI_DESIGN.md §5）
-  > 检查: `app/frontend/src/pages/employees/` — 确认有独立的 detail 或 `[id]` 页面文件，路由可跳转
 
 ---
 
@@ -240,20 +262,6 @@
 - [ ] 项目经理可查看本项目成员，CEO 可添加/移除任意项目成员
 - [ ] 岗位列表可管理（创建/编辑薪资配置、假期配置、社保配置，设置等级）
 - [ ] 组织架构树可查看，CEO 可修改任意员工的直系领导
-
-### 后端任务
-
-- [ ] `[P0]` 部门树接口（`GET /departments`）
-  > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 确认 DepartmentController.java 存在，`GET /departments` 返回树形结构
-
-- [ ] `[P1]` 项目 CRUD 接口（`GET/POST/PUT/DELETE /projects`）
-  > 检查: `app/backend/src/main/java/com/oa/backend/controller/ProjectController.java` — 确认4个方法均存在
-
-- [ ] `[P1]` 项目成员管理接口（`POST/DELETE /projects/{id}/members`）
-  > 检查: ProjectController.java — 搜索 `/members` 路由，确认 POST 添加成员、DELETE 移除成员
-
-- [ ] `[P1]` 将 `OaDataService` 部门/项目内存逻辑迁移到真实 Service + Mapper
-  > 检查: `app/backend/src/main/java/com/oa/backend/service/OaDataService.java` — 确认部门/项目相关方法已删除或调用 DepartmentMapper / ProjectMapper
 
 ### 前端任务
 
@@ -280,6 +288,22 @@
   - 导入结果明细
   > 检查: `app/frontend/src/pages/directory/` — 确认目录存在，包含上传、预览、映射、执行、结果5个交互步骤；对应后端 DirectoryImportController.java 有 preview 和 apply 接口
 
+
+### 后端任务
+
+- [ ] `[P0]` 部门树接口（`GET /departments`）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 确认 DepartmentController.java 存在，`GET /departments` 返回树形结构
+
+- [ ] `[P1]` 项目 CRUD 接口（`GET/POST/PUT/DELETE /projects`）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/ProjectController.java` — 确认4个方法均存在
+
+- [ ] `[P1]` 项目成员管理接口（`POST/DELETE /projects/{id}/members`）
+  > 检查: ProjectController.java — 搜索 `/members` 路由，确认 POST 添加成员、DELETE 移除成员
+
+- [ ] `[P1]` 将 `OaDataService` 部门/项目内存逻辑迁移到真实 Service + Mapper
+  > 检查: `app/backend/src/main/java/com/oa/backend/service/OaDataService.java` — 确认部门/项目相关方法已删除或调用 DepartmentMapper / ProjectMapper
+
+
 ---
 
 ## Phase 4 — 考勤申请 + 审批流引擎
@@ -295,6 +319,36 @@
 - [ ] 项目经理发起加班通知，员工收到后可确认/拒绝
 - [ ] CEO 发起的加班通知无需审批，直接归档
 - [ ] 员工发起自补加班申请（例外路径），经直系领导+CEO双审
+
+### 前端任务
+
+- [ ] `[P0]` 考勤页接入真实接口（提交请假、获取历史记录）
+  > 检查: `app/frontend/src/pages/attendance/index.vue` — 确认 onMounted 调用 `GET /attendance/history`，提交按钮调用对应 POST 接口
+
+- [ ] `[P1]` 加班通知列表（员工/劳工视图）：展示收到的通知，支持确认/拒绝
+  > 检查: attendance/index.vue — 确认加班通知 Tab 存在，调用 `GET /overtime-notifications?recipientId={me}`；确认/拒绝按钮调用 `POST /overtime-notifications/{id}/respond`
+
+- [ ] `[P1]` 加班通知管理页（PM/CEO 视图）：发起通知、查看响应情况
+  > 检查: attendance/index.vue 或独立 pages/overtime/ — 搜索 `POST /overtime-notifications` 调用；通知详情页展示 overtime_response 列表（已确认/已拒绝/待处理）
+
+- [ ] `[P1]` 自补加班申请表单（含附件上传，调用 `POST /attendance/overtime-self-report`）
+  > 检查: attendance/index.vue — 确认自补加班 Tab 存在；提交时携带 attachmentIds 并展示审批流路径提示
+
+- [ ] `[P1]` 待办中心页（`pages/todo/`，聚合所有待我审批，按类型/状态/项目筛选）
+  > 检查: `app/frontend/src/pages/todo/` — 确认目录存在，调用 `GET /forms/todo`，支持筛选条件传参
+
+- [ ] `[P1]` 审批通过/驳回对接（含驳回原因输入）
+  > 检查: pages/todo/ 相关组件 — 搜索 `POST /forms/{id}/approve` 和 `POST /forms/{id}/reject` 调用；驳回时弹出原因输入框
+
+- [ ] `[P2]` 新建 `components/customized/ApprovalTimeline.vue` — 审批历史时间轴组件
+  > 检查: `app/frontend/src/components/customized/ApprovalTimeline.vue` — 文件存在，接受 steps 数组 prop，每步包含操作人/时间/结果
+
+- [ ] `[P2]` 审批详情页使用 `ApprovalTimeline` 展示历史流转
+  > 检查: 审批详情页 — 搜索 `<ApprovalTimeline` 或 `ApprovalTimeline` 引用
+
+- [ ] `[P2]` 驳回后可查看驳回原因，支持重新发起
+  > 检查: attendance/index.vue 或 todo 页面 — 确认驳回单据卡片展示 rejectReason 字段，并有"重新发起"按钮跳转新建页
+
 
 ### 后端任务
 
@@ -337,34 +391,6 @@
 - [ ] `[P2]` 追溯请假接口（`POST /attendance/leave/retroactive`，任何时刻可补录，审批通过后扣款计入当月）
   > 检查: AttendanceController.java — 搜索 `retroactive`；审批通过后 PayrollService 按审批完成月结算扣款，不修改历史周期
 
-### 前端任务
-
-- [ ] `[P0]` 考勤页接入真实接口（提交请假、获取历史记录）
-  > 检查: `app/frontend/src/pages/attendance/index.vue` — 确认 onMounted 调用 `GET /attendance/history`，提交按钮调用对应 POST 接口
-
-- [ ] `[P1]` 加班通知列表（员工/劳工视图）：展示收到的通知，支持确认/拒绝
-  > 检查: attendance/index.vue — 确认加班通知 Tab 存在，调用 `GET /overtime-notifications?recipientId={me}`；确认/拒绝按钮调用 `POST /overtime-notifications/{id}/respond`
-
-- [ ] `[P1]` 加班通知管理页（PM/CEO 视图）：发起通知、查看响应情况
-  > 检查: attendance/index.vue 或独立 pages/overtime/ — 搜索 `POST /overtime-notifications` 调用；通知详情页展示 overtime_response 列表（已确认/已拒绝/待处理）
-
-- [ ] `[P1]` 自补加班申请表单（含附件上传，调用 `POST /attendance/overtime-self-report`）
-  > 检查: attendance/index.vue — 确认自补加班 Tab 存在；提交时携带 attachmentIds 并展示审批流路径提示
-
-- [ ] `[P1]` 待办中心页（`pages/todo/`，聚合所有待我审批，按类型/状态/项目筛选）
-  > 检查: `app/frontend/src/pages/todo/` — 确认目录存在，调用 `GET /forms/todo`，支持筛选条件传参
-
-- [ ] `[P1]` 审批通过/驳回对接（含驳回原因输入）
-  > 检查: pages/todo/ 相关组件 — 搜索 `POST /forms/{id}/approve` 和 `POST /forms/{id}/reject` 调用；驳回时弹出原因输入框
-
-- [ ] `[P2]` 新建 `components/customized/ApprovalTimeline.vue` — 审批历史时间轴组件
-  > 检查: `app/frontend/src/components/customized/ApprovalTimeline.vue` — 文件存在，接受 steps 数组 prop，每步包含操作人/时间/结果
-
-- [ ] `[P2]` 审批详情页使用 `ApprovalTimeline` 展示历史流转
-  > 检查: 审批详情页 — 搜索 `<ApprovalTimeline` 或 `ApprovalTimeline` 引用
-
-- [ ] `[P2]` 驳回后可查看驳回原因，支持重新发起
-  > 检查: attendance/index.vue 或 todo 页面 — 确认驳回单据卡片展示 rejectReason 字段，并有"重新发起"按钮跳转新建页
 
 ---
 
@@ -384,6 +410,42 @@
 - [ ] 项目经理代录工伤补偿 → 直接跳过节点1进入 CEO 终审
 - [ ] 其他员工代录工伤补偿 → 路由同 finance 代录
 - [ ] 工伤归档后生成待理赔记录，财务可在任意时间录入理赔金额并关联至指定薪资周期
+
+### 前端任务
+
+- [ ] `[P0]` 新建 `components/cross-platform/FileUpload/` — 附件上传组件（封装 uni 上传 API，支持预览和删除）
+  > 检查: `app/frontend/src/components/cross-platform/FileUpload/index.vue` — 文件存在，接受 maxCount / accept props，触发 change 事件返回已上传附件列表
+
+- [ ] `[P1]` 施工日志填报页（`pages/construction-log/`，劳工专用）
+  - `workItems` 动态列表：每行 [工作内容 + 数量 + 单位]，支持增删行
+  - "从模板快速填入"弹窗：展示模板列表，选中后追加工作项行
+  - 补充说明文本框（可选）、图片附件上传（多张）
+  > 检查: `app/frontend/src/pages/construction-log/index.vue` — 确认存在 workItems 数组和动态增删行逻辑；"从模板填入"弹窗调用 `GET /work-item-templates`；提交时 POST /construction-logs 携带 workItems JSON
+
+- [ ] `[P1]` 工作项模板管理页（`pages/construction-log/templates/`，PM/CEO 可见）— CRUD + 派生
+  > 检查: `app/frontend/src/pages/construction-log/templates/index.vue` — 确认存在，调用 GET/POST/PUT/DELETE /work-item-templates；派生按钮调用 `/derive` 接口
+
+- [ ] `[P1]` 里程碑管理 + 今日进度确认（PM 视图，集成在项目管理页施工日志 Tab 中）
+  > 检查: `app/frontend/src/pages/projects/index.vue` 里程碑 Tab — 确认调用 GET/POST/PUT/DELETE /projects/{id}/milestones；今日进度确认表单调用 POST /projects/{id}/progress
+
+- [ ] `[P1]` 施工日志审批页（PM 视图，含 PM 批注输入）
+  > 检查: projects/index.vue 日志审批 Tab — 确认审批操作调用 `PATCH /construction-logs/{id}/review`（含 pmNote 字段）
+
+- [ ] `[P1]` 汇总报告生成入口（PM 视图，全部日志审批完成后显示）— 可视化组件选择 + PM 总结
+  > 检查: projects/index.vue — 搜索汇总报告生成逻辑；`POST /projects/{id}/construction-summary` 调用；vizComponents 多选传参
+
+- [ ] `[P1]` 施工日志 Dashboard（CEO/PM 视图）— 折线图 + 里程碑时间轴 + 工作项汇总表；折线图点击钻取到当日日志列表
+  > 检查: `app/frontend/src/pages/projects/dashboard.vue`（或同级页面）— 确认文件存在；`{LineChart}` 组件绑定 timeSeriesData；点击事件传 date 参数到日志列表查询
+
+- [ ] `[P1]` 工伤补偿申请页（`pages/injury/`，劳工专用，任何员工可代录入，见 COMPONENT_LAYOUT §1.6）
+  > 检查: `app/frontend/src/pages/injury/index.vue` — 确认无金额字段；含 proxyEmployeeId 输入（代录时可见）；调用 POST /forms/injury
+
+- [ ] `[P1]` 工伤理赔录入入口（finance 视图，归档后可见"录入理赔金额"按钮，选择关联薪资周期）
+  > 检查: `app/frontend/src/pages/payroll/index.vue` 或 injury 相关页面 — 搜索 "录入理赔" 或 `POST /injury-claims` 调用，确认仅 finance 角色可见
+
+- [ ] `[P2]` 新建 `components/cross-platform/Steps/` — 审批流步骤条（MP 端无 AntD Steps，需自实现）
+  > 检查: `app/frontend/src/components/cross-platform/Steps/index.vue` — 文件存在，接受 steps 数组和 current 索引，在微信开发者工具中渲染正常
+
 
 ### 后端任务
 
@@ -432,40 +494,6 @@
 - [ ] `[P1]` 附件下载接口（`GET /attachments/{id}`，鉴权后返回文件流）
   > 检查: 同上 Controller — 搜索 `GET /attachments/{id}`，确认有 JWT 鉴权，返回 ResponseEntity<Resource>
 
-### 前端任务
-
-- [ ] `[P0]` 新建 `components/cross-platform/FileUpload/` — 附件上传组件（封装 uni 上传 API，支持预览和删除）
-  > 检查: `app/frontend/src/components/cross-platform/FileUpload/index.vue` — 文件存在，接受 maxCount / accept props，触发 change 事件返回已上传附件列表
-
-- [ ] `[P1]` 施工日志填报页（`pages/construction-log/`，劳工专用）
-  - `workItems` 动态列表：每行 [工作内容 + 数量 + 单位]，支持增删行
-  - "从模板快速填入"弹窗：展示模板列表，选中后追加工作项行
-  - 补充说明文本框（可选）、图片附件上传（多张）
-  > 检查: `app/frontend/src/pages/construction-log/index.vue` — 确认存在 workItems 数组和动态增删行逻辑；"从模板填入"弹窗调用 `GET /work-item-templates`；提交时 POST /construction-logs 携带 workItems JSON
-
-- [ ] `[P1]` 工作项模板管理页（`pages/construction-log/templates/`，PM/CEO 可见）— CRUD + 派生
-  > 检查: `app/frontend/src/pages/construction-log/templates/index.vue` — 确认存在，调用 GET/POST/PUT/DELETE /work-item-templates；派生按钮调用 `/derive` 接口
-
-- [ ] `[P1]` 里程碑管理 + 今日进度确认（PM 视图，集成在项目管理页施工日志 Tab 中）
-  > 检查: `app/frontend/src/pages/projects/index.vue` 里程碑 Tab — 确认调用 GET/POST/PUT/DELETE /projects/{id}/milestones；今日进度确认表单调用 POST /projects/{id}/progress
-
-- [ ] `[P1]` 施工日志审批页（PM 视图，含 PM 批注输入）
-  > 检查: projects/index.vue 日志审批 Tab — 确认审批操作调用 `PATCH /construction-logs/{id}/review`（含 pmNote 字段）
-
-- [ ] `[P1]` 汇总报告生成入口（PM 视图，全部日志审批完成后显示）— 可视化组件选择 + PM 总结
-  > 检查: projects/index.vue — 搜索汇总报告生成逻辑；`POST /projects/{id}/construction-summary` 调用；vizComponents 多选传参
-
-- [ ] `[P1]` 施工日志 Dashboard（CEO/PM 视图）— 折线图 + 里程碑时间轴 + 工作项汇总表；折线图点击钻取到当日日志列表
-  > 检查: `app/frontend/src/pages/projects/dashboard.vue`（或同级页面）— 确认文件存在；`{LineChart}` 组件绑定 timeSeriesData；点击事件传 date 参数到日志列表查询
-
-- [ ] `[P1]` 工伤补偿申请页（`pages/injury/`，劳工专用，任何员工可代录入，见 COMPONENT_LAYOUT §1.6）
-  > 检查: `app/frontend/src/pages/injury/index.vue` — 确认无金额字段；含 proxyEmployeeId 输入（代录时可见）；调用 POST /forms/injury
-
-- [ ] `[P1]` 工伤理赔录入入口（finance 视图，归档后可见"录入理赔金额"按钮，选择关联薪资周期）
-  > 检查: `app/frontend/src/pages/payroll/index.vue` 或 injury 相关页面 — 搜索 "录入理赔" 或 `POST /injury-claims` 调用，确认仅 finance 角色可见
-
-- [ ] `[P2]` 新建 `components/cross-platform/Steps/` — 审批流步骤条（MP 端无 AntD Steps，需自实现）
-  > 检查: `app/frontend/src/components/cross-platform/Steps/index.vue` — 文件存在，接受 steps 数组和 current 索引，在微信开发者工具中渲染正常
 
 ---
 
@@ -484,6 +512,42 @@
 - [ ] 财务可对已归档工伤记录录入理赔金额并关联薪资周期
 - [ ] 财务可发起更正，CEO 审批解锁后重新结算，历史版本保留
 - [ ] CEO 可上传/修改工资确认协议文件，员工下次签名时须重新阅读同意
+
+### 前端任务
+
+- [ ] `[P0]` 新建 `components/cross-platform/SignatureCanvas/` — 手写签名画板（双端兼容触控和鼠标，输出 base64）
+  > 检查: `app/frontend/src/components/cross-platform/SignatureCanvas/index.vue` — 文件存在；在 H5 用鼠标可绘制签名，clear() 和 getBase64() 方法可调用
+
+- [ ] `[P1]` 薪资页接入真实接口（`GET /payroll/cycles`、`GET /payroll/slips`）
+  > 检查: `app/frontend/src/pages/payroll/index.vue` — 确认 onMounted 调用真实接口，无 hardcoded mock 数据
+
+- [ ] `[P1]` 窗口期管理 Tab（财务视图）：展示窗口期剩余时间和各员工数据状态，支持提醒员工；**无提前关闭按钮**（窗口期仅自动到期关闭）
+  > 检查: `app/frontend/src/pages/payroll/index.vue` — 确认窗口期 Tab 存在，调用 `GET /payroll/cycles/{id}` 读取 windowStatus / windowEndDate；**确认不存在"提前关闭"按钮**
+
+- [ ] `[P1]` 预结算发起页：展示 **2 项**强制检查清单（无 PENDING_REVIEW 异议 + 无 CALCULATING 任务）；两项全通过后"发起结算"按钮激活
+  > 检查: pages/payroll/ 预结算相关页面 — 确认只展示2个强制检查项状态，无"提交例外申请"入口
+
+- [ ] `[P1]` 工资确认协议管理入口（CEO 视图）：上传/查看当前协议版本
+  > 检查: pages/payroll/ 或系统配置页 — 搜索 `POST /salary-confirmation-agreement` 上传调用；协议预览使用 PDF 预览或文本组件
+
+- [ ] `[P1]` 工资条详情页：工资项明细展示（社保按配置模式展示"扣款"或"补贴"）
+  > 检查: pages/payroll/ 详情页 — 确认社保字段根据模式显示不同标签（公司代缴: "社保扣款（个人）"；并入工资: "五险一金补贴（合计）"）
+
+- [ ] `[P1]` 电子签名流程：
+  - 首次签名引导：实名确认 → `SignatureCanvas` 手写 → 预览 → 绑定（`POST /signature/bind`）
+  - 设置 PIN 码（`POST /signature/set-pin`，4-6 位数字）
+  - 工资确认弹窗：签名预览 + 意图声明文本 + PIN 码输入 → 提交（`POST /payroll/slips/{id}/confirm`）
+  > 检查: pages/payroll/ 签名相关页面 — 搜索 SignatureCanvas 引用、/signature/bind 和 /signature/set-pin 调用；工资确认弹窗含意图声明文本（如"本人已阅读并确认以上工资明细"）
+
+- [ ] `[P2]` CEO 薪资审批视图（单独视图，见 COMPONENT_LAYOUT §3.1）
+  > 检查: pages/payroll/ 或 pages/index/ — 搜索 CEO 角色条件渲染，确认展示更正审批入口
+
+- [ ] `[P2]` 工资异议发起（`POST /payroll/slips/{id}/dispute`）
+  > 检查: pages/payroll/ 详情页 — 搜索 /dispute 调用，确认有异议原因输入框
+
+- [ ] `[P2]` 更正历史版本查看
+  > 检查: pages/payroll/ 详情页 — 搜索版本号展示（如 v1, v2）和历史版本列表入口
+
 
 ### 后端任务
 
@@ -535,40 +599,6 @@
 - [ ] `[P2]` 工资异议接口（`POST /payroll/slips/{id}/dispute`）
   > 检查: PayrollController.java — 搜索 `/dispute` 路由，确认存在且调用方创建异议记录
 
-### 前端任务
-
-- [ ] `[P0]` 新建 `components/cross-platform/SignatureCanvas/` — 手写签名画板（双端兼容触控和鼠标，输出 base64）
-  > 检查: `app/frontend/src/components/cross-platform/SignatureCanvas/index.vue` — 文件存在；在 H5 用鼠标可绘制签名，clear() 和 getBase64() 方法可调用
-
-- [ ] `[P1]` 薪资页接入真实接口（`GET /payroll/cycles`、`GET /payroll/slips`）
-  > 检查: `app/frontend/src/pages/payroll/index.vue` — 确认 onMounted 调用真实接口，无 hardcoded mock 数据
-
-- [ ] `[P1]` 窗口期管理 Tab（财务视图）：展示窗口期剩余时间和各员工数据状态，支持提醒员工；**无提前关闭按钮**（窗口期仅自动到期关闭）
-  > 检查: `app/frontend/src/pages/payroll/index.vue` — 确认窗口期 Tab 存在，调用 `GET /payroll/cycles/{id}` 读取 windowStatus / windowEndDate；**确认不存在"提前关闭"按钮**
-
-- [ ] `[P1]` 预结算发起页：展示 **2 项**强制检查清单（无 PENDING_REVIEW 异议 + 无 CALCULATING 任务）；两项全通过后"发起结算"按钮激活
-  > 检查: pages/payroll/ 预结算相关页面 — 确认只展示2个强制检查项状态，无"提交例外申请"入口
-
-- [ ] `[P1]` 工资确认协议管理入口（CEO 视图）：上传/查看当前协议版本
-  > 检查: pages/payroll/ 或系统配置页 — 搜索 `POST /salary-confirmation-agreement` 上传调用；协议预览使用 PDF 预览或文本组件
-
-- [ ] `[P1]` 工资条详情页：工资项明细展示（社保按配置模式展示"扣款"或"补贴"）
-  > 检查: pages/payroll/ 详情页 — 确认社保字段根据模式显示不同标签（公司代缴: "社保扣款（个人）"；并入工资: "五险一金补贴（合计）"）
-
-- [ ] `[P1]` 电子签名流程：
-  - 首次签名引导：实名确认 → `SignatureCanvas` 手写 → 预览 → 绑定（`POST /signature/bind`）
-  - 设置 PIN 码（`POST /signature/set-pin`，4-6 位数字）
-  - 工资确认弹窗：签名预览 + 意图声明文本 + PIN 码输入 → 提交（`POST /payroll/slips/{id}/confirm`）
-  > 检查: pages/payroll/ 签名相关页面 — 搜索 SignatureCanvas 引用、/signature/bind 和 /signature/set-pin 调用；工资确认弹窗含意图声明文本（如"本人已阅读并确认以上工资明细"）
-
-- [ ] `[P2]` CEO 薪资审批视图（单独视图，见 COMPONENT_LAYOUT §3.1）
-  > 检查: pages/payroll/ 或 pages/index/ — 搜索 CEO 角色条件渲染，确认展示更正审批入口
-
-- [ ] `[P2]` 工资异议发起（`POST /payroll/slips/{id}/dispute`）
-  > 检查: pages/payroll/ 详情页 — 搜索 /dispute 调用，确认有异议原因输入框
-
-- [ ] `[P2]` 更正历史版本查看
-  > 检查: pages/payroll/ 详情页 — 搜索版本号展示（如 v1, v2）和历史版本列表入口
 
 ---
 
@@ -582,20 +612,6 @@
 - [ ] 审批节点变更后，相关人员待办角标实时更新
 - [ ] 工资条发布后，员工收到通知
 - [ ] `usePageConfig` composable 可正确拉取页面配置
-
-### 后端任务
-
-- [ ] `[P0]` `GET /workbench/summary` 按角色返回摘要数据（待办数/薪资状态/项目数/到期提醒数）
-  > 检查: `app/backend/src/main/java/com/oa/backend/controller/WorkbenchController.java` — 确认 GET /workbench/summary 存在，按 JWT roleCode 区分返回字段
-
-- [ ] `[P1]` `GET /page-config/{routeCode}` 按 `X-Client-Type` 和角色返回页面字段/布局/按钮配置
-  > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `/page-config/{routeCode}` 路由，确认读取 X-Client-Type 请求头
-
-- [ ] `[P1]` 通知触发：审批节点变更、工资条发布、到期提醒 → 写入 `notification` 表
-  > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 搜索 NotificationService 或 notification 写入调用，确认在审批 service 和 payroll settle 方法中均有调用
-
-- [ ] `[P1]` 通知接口完整实现（`GET /notifications`、`POST /notifications/{id}/read`、`POST /notifications/read-all`、`DELETE /notifications/read`）
-  > 检查: `app/backend/src/main/java/com/oa/backend/controller/NotificationController.java` — 确认 GET 列表、单条已读、全部已读、清除已读4个方法存在
 
 ### 前端任务
 
@@ -611,6 +627,22 @@
 - [ ] `[P1]` 实现 `usePageConfig(routeCode)` composable，进入页面时拉取页面配置并 session 内缓存
   > 检查: `app/frontend/src/composables/` — 确认 usePageConfig.ts 存在，包含缓存逻辑（如 sessionStorage 或 Map 缓存）
 
+
+### 后端任务
+
+- [ ] `[P0]` `GET /workbench/summary` 按角色返回摘要数据（待办数/薪资状态/项目数/到期提醒数）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/WorkbenchController.java` — 确认 GET /workbench/summary 存在，按 JWT roleCode 区分返回字段
+
+- [ ] `[P1]` `GET /page-config/{routeCode}` 按 `X-Client-Type` 和角色返回页面字段/布局/按钮配置
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/` — 搜索 `/page-config/{routeCode}` 路由，确认读取 X-Client-Type 请求头
+
+- [ ] `[P1]` 通知触发：审批节点变更、工资条发布、到期提醒 → 写入 `notification` 表
+  > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 搜索 NotificationService 或 notification 写入调用，确认在审批 service 和 payroll settle 方法中均有调用
+
+- [ ] `[P1]` 通知接口完整实现（`GET /notifications`、`POST /notifications/{id}/read`、`POST /notifications/read-all`、`DELETE /notifications/read`）
+  > 检查: `app/backend/src/main/java/com/oa/backend/controller/NotificationController.java` — 确认 GET 列表、单条已读、全部已读、清除已读4个方法存在
+
+
 ---
 
 ## Phase 8 — 数据管理
@@ -624,6 +656,18 @@
 - [ ] CEO 可选择"导出后删除"或"忽略"（无延期选项，延期为后续收费功能）
 - [ ] 导出任务完成后可下载，链接 72 小时有效
 - [ ] 操作日志（`operation_log`）跟随全局保留策略（默认 1 年），无逻辑删除，到期物理清理
+
+### 前端任务
+
+- [ ] `[P1]` 数据有效期配置页（CEO 可见，展示各类型当前保留期）
+  > 检查: `app/frontend/src/pages/` — 搜索 retention 目录，确认调用 GET /retention/policies，列出各数据类型名称和保留天数
+
+- [ ] `[P1]` 到期提醒列表（`GET /retention/reminders`），支持"导出后删除"和"忽略"两个操作
+  > 检查: retention 相关页面 — 搜索 /reminders 调用；操作按钮触发 `POST /retention/reminders/{id}/export-delete` 或 `POST /retention/reminders/{id}/ignore`
+
+- [ ] `[P2]` 导出任务列表，展示进度和下载链接
+  > 检查: retention 相关页面 — 搜索 export_backup_task 轮询逻辑（如每5秒拉取任务状态），完成后展示下载链接
+
 
 ### 后端任务
 
@@ -651,16 +695,6 @@
 - [ ] `[P3]` 延期接口预留（接口骨架，UI 隐藏，后续收费功能）
   > 检查: RetentionController.java — 搜索 `/retention/extend` 路由，确认返回 HTTP 501 Not Implemented
 
-### 前端任务
-
-- [ ] `[P1]` 数据有效期配置页（CEO 可见，展示各类型当前保留期）
-  > 检查: `app/frontend/src/pages/` — 搜索 retention 目录，确认调用 GET /retention/policies，列出各数据类型名称和保留天数
-
-- [ ] `[P1]` 到期提醒列表（`GET /retention/reminders`），支持"导出后删除"和"忽略"两个操作
-  > 检查: retention 相关页面 — 搜索 /reminders 调用；操作按钮触发 `POST /retention/reminders/{id}/export-delete` 或 `POST /retention/reminders/{id}/ignore`
-
-- [ ] `[P2]` 导出任务列表，展示进度和下载链接
-  > 检查: retention 相关页面 — 搜索 export_backup_task 轮询逻辑（如每5秒拉取任务状态），完成后展示下载链接
 
 ---
 
@@ -795,6 +829,7 @@
 
 | 日期        | 内容                                                                                                                                           |
 |-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2026-04-03 | TODO 顺序调整：Phase 0 拆分为 0F（前端基础）和 0B（后端基础），0B 与 Phase 1 并行；Phase 2–8 各 Phase 内前端任务调整至后端任务之前 |
 | 2026-04-03 | Preset 文档合并：ROLE_CONFIG + ORG_CONFIG + WORKFLOW_CONFIG + CLIENT_FLOW_CONFIRMATION 合并为 documentation/DESIGN.md（732行），4个旧文件删除；PRODUCT.md 引用更新；Phase 2 新增忘记密码/修改手机号 API 任务（P1）；Phase 7 通知接口补全批量已读+清除已读；Phase 8 operation_log 任务说明去掉错误的 PERMANENT 标注改为跟随全局策略；P3 新增 Feedback 实体实现（后端/前端反馈弹窗/Admin列表） |
 | 2026-04-03 | 文档整体修订：platform/UI_DESIGN.md 全量重写（处理所有 [comment] 反馈，新增忘记密码/修改手机号流程，Admin 控制台重构为4 Tab 含集成配置/用户反馈，MP 壳去除 Tab 栏改头像导航）；所有文档"永久保留"统一改为跟随全局保留策略（默认1年）；operation_log 跟随全局策略；ApprovalRecord 同步；ARCHITECTURE.md retentionYears 去掉 -1 永久选项；BACKEND_IMPL.md 新增 Token 有效期明确说明/data.sql dev-prod 隔离方案/PayrollItemDef description 字段/9.1 清理失败操作人明确为 Sysadmin/10.1 step 注释；FRONTEND_IMPL.md 删除 §2.5（已知问题迁移至 TODO）；Phase 0 新增 Row/Col 自定义组件任务；CLIENT_FLOW_CONFIRMATION.md 删除已废弃例外申请章节 |
 | 2026-04-03 | 应用21项设计决策：schema 表清单新增 leave_type_def / social_insurance_item / form_type_def / permission / payroll_item_def / payroll_slip_item，移除 payroll_window_period（窗口期字段合并进 payroll_cycle）；Phase 6 窗口期去掉提前关闭、预结算强制检查简化为2项（无例外申请）、新增 PayrollItemDef CRUD；Phase 5 施工日志周期改为 CEO 直接修改；P3 新增 SMS通知、日结/周结、Excel字段映射；里程碑去 targetDate 改 actualCompletionDate；多 PM 审批改 ANY_OF 模式 |
