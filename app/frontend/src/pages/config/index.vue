@@ -114,15 +114,10 @@
             <view class="config-grid">
               <view class="config-item">
                 <label>全局数据保留期限</label>
-                <view class="config-control">
-                  <component
-                    :is="Select"
-                    v-if="Select"
-                    v-model="config.retentionPeriod"
-                    :options="periodOptions"
-                    style="width: 160px"
-                  />
+                <view class="config-value">
+                  <text>1 年（到期前 30 天提醒备份）</text>
                 </view>
+                <text class="config-hint">延长保留期为后续付费功能，当前版本不开放配置</text>
               </view>
             </view>
           </view>
@@ -201,18 +196,7 @@ const config = ref({
   overtimeRateWeekday: 1.5,
   overtimeRateWeekend: 2,
   overtimeRateHoliday: 3,
-  retentionPeriod: '3年'
 })
-
-const periodOptions = [
-  { label: '3个月', value: '3个月' },
-  { label: '6个月', value: '6个月' },
-  { label: '1年', value: '1年' },
-  { label: '3年', value: '3年' },
-  { label: '5年', value: '5年' },
-  { label: '永久', value: '永久' }
-]
-
 
 const saveConfig = () => {
   uni.showToast({ title: '保存成功', icon: 'success' })
@@ -388,6 +372,14 @@ const resetConfig = () => {
       padding: 8px 12px;
       background: var(--surface);
       border-radius: var(--radius-sm);
+    }
+
+    .config-hint {
+      display: block;
+      font-size: 11px;
+      color: var(--on-surface-variant);
+      margin-top: 4px;
+      opacity: 0.7;
     }
   }
 }
