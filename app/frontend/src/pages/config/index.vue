@@ -75,12 +75,6 @@
             </view>
             <view class="config-grid">
               <view class="config-item">
-                <label>结算周期</label>
-                <view class="config-control">
-                  <component :is="Select" v-if="Select" v-model="config.settleCycle" :options="settleCycleOptions" style="width:200px" />
-                </view>
-              </view>
-              <view class="config-item">
                 <label>发薪日</label>
                 <view class="config-control">
                   <component
@@ -251,7 +245,6 @@ const config = ref({
   overtimeRateWeekday: 1.5,
   overtimeRateWeekend: 2,
   overtimeRateHoliday: 3,
-  settleCycle: 'monthly',
   retentionRules: [
     { type: '请假记录', period: '1年', action: '提醒后删除' },
     { type: '加班记录', period: '1年', action: '提醒后删除' },
@@ -260,11 +253,6 @@ const config = ref({
     { type: '施工日志', period: '3年', action: '提醒后删除' }
   ]
 })
-
-const settleCycleOptions = [
-  { label: '月结（1日-末日）', value: 'monthly' },
-  { label: '半月结（1-15日 / 16日-末日）', value: 'bimonthly' }
-]
 
 const periodOptions = [
   { label: '3个月', value: '3个月' },
