@@ -418,7 +418,7 @@ PayrollCycle.windowStatus:
   "nextStep": "company",
   "steps": {
     "company":       { "done": false },
-    "ceo":           { "done": false },
+    "accounts":      { "done": false },
     "roles":         { "done": false },
     "workflows":     { "done": false },
     "retention":     { "done": false }
@@ -428,9 +428,14 @@ PayrollCycle.windowStatus:
 
 前端据此渲染向导步骤，所有步骤完成后 `initialized` 变为 `true`，向导入口隐藏。
 
-### 10.2 单次调用约束
+### 10.2 初始账号创建规则
 
-`POST /setup/init-ceo` 在 Service 层检查 `sys_employee` 表中是否已存在 `roleCode = 'ceo'` 的记录。存在则返回 `40900 CEO 账号已存在`，不允许重复创建。
+向导的 `accounts` 步骤（原 `ceo` 步骤）支持**创建多个初始业务账号**，数量不固定：
+
+- **CEO 账号**（必须至少一个）：`POST /setup/init-accounts` body 中必须包含至少一条 `roleCode = 'ceo'` 的记录，否则返回 `40000 必须至少创建一个 CEO 账号`
+- **其他角色账号**（可选）：可同时创建财务、HR 等账号，Sysadmin 根据客户实际分工决定，CEO 无需亲自操作后续数据录入
+- **CEO 唯一性约束**：`sys_employee` 表中 `roleCode = 'ceo'` 的记录只允许存在一条，重复传入则返回 `40900 CEO 账号已存在`
+- **接口设计**：`POST /setup/init-accounts` 接受账号数组，一次批量写入，不拆分为多个单独接口
 
 ---
 
