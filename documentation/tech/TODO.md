@@ -174,23 +174,23 @@
 
 ### 检查点（全部通过才进入 Phase 3）
 
-- [ ] 使用错误密码登录返回 401，正确密码返回 token
-- [ ] JWT payload 包含 `userId`、`roleCode`、`employeeType`
-- [ ] CEO 可新增员工，设置角色，账号立即可登录
+- [x] 使用错误密码登录返回 401，正确密码返回 token
+- [x] JWT payload 包含 `userId`、`roleCode`、`employeeType`
+- [x] CEO 可新增员工，设置角色，账号立即可登录
 - [ ] 财务不能为任何角色开启终审权限（见 DESIGN.md §4.3）
 
 ### 前端任务
 
-- [ ] `[P0]` 登录成功后将 `employeeType`、`positionId` 写入 `userStore`
+- [x] `[P0]` 登录成功后将 `employeeType`、`positionId` 写入 `userStore`
   > 检查: `app/frontend/src/stores/user.ts` — 搜索 `employeeType` 和 `positionId` 字段，确认从登录响应中写入
 
-- [ ] `[P1]` 员工列表接入真实接口，支持岗位/角色/类型/状态筛选、关键字搜索
+- [x] `[P1]` 员工列表接入真实接口，支持岗位/角色/类型/状态筛选、关键字搜索
   > 检查: `app/frontend/src/pages/employees/index.vue` — 确认 onMounted 调用 `GET /employees`，筛选参数绑定到接口 query
 
-- [ ] `[P1]` 员工新增/编辑弹窗对接接口（含岗位、等级、直系领导字段）
+- [x] `[P1]` 员工新增/编辑弹窗对接接口（含岗位、等级、直系领导字段）
   > 检查: employees/index.vue 或弹窗组件 — 搜索 `POST /employees` 和 `PUT /employees` 调用；弹窗包含 positionId / levelId / directSupervisorId 选择器
 
-- [ ] `[P1]` 角色管理页（列表、新增、编辑权限矩阵）对接接口
+- [x] `[P1]` 角色管理页（列表、新增、编辑权限矩阵）对接接口
   > 检查: `app/frontend/src/pages/role/index.vue` — 确认调用 `GET/POST/PUT /roles`，权限矩阵可勾选
 
 - [ ] `[P1]` 岗位管理页（`pages/positions/`，CEO/财务可见）— 岗位列表、新增/编辑（含5个 Tab）、等级管理子表
@@ -211,13 +211,13 @@
 
 ### 后端任务
 
-- [ ] `[P0]` JWT payload 写入 `employeeType`、`roleCode`、`userId`
+- [x] `[P0]` JWT payload 写入 `employeeType`、`roleCode`、`userId`
   > 检查: `app/backend/src/main/java/com/oa/backend/security/JwtTokenService.java` — 搜索 `employeeType` 和 `roleCode`，确认写入 Claims
 
-- [ ] `[P0]` 登录响应补充 `employeeType` 字段
+- [x] `[P0]` 登录响应补充 `employeeType` 字段
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/AuthController.java` — 查看登录接口返回的 DTO/Map，确认含 `employeeType` 字段
 
-- [ ] `[P1]` 员工 CRUD 接口（`GET/POST/PUT/DELETE /employees`），body 含 `positionId`、`levelId`（可选）、`roleCode`、`directSupervisorId`（可选）、`departmentId`
+- [x] `[P1]` 员工 CRUD 接口（`GET/POST/PUT/DELETE /employees`），body 含 `positionId`、`levelId`（可选）、`roleCode`、`directSupervisorId`（可选）、`departmentId`
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/EmployeeController.java` — 确认4个 HTTP 方法均存在，POST/PUT requestBody 含 positionId / levelId / directSupervisorId 字段
 
 - [ ] `[P1]` 岗位 CRUD 接口（`GET/POST/PUT/DELETE /positions`），含薪资配置、假期配置、社保配置
@@ -232,10 +232,10 @@
 - [ ] `[P1]` 组织架构接口（`GET /org/tree` 返回含 directSupervisorId 的员工树；`PATCH /org/supervisor/{employeeId}` 修改直系领导）
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/OrgController.java` — 确认 GET /org/tree 返回树形 JSON（含子节点数组）；PATCH 接口更新 employee.direct_supervisor_id
 
-- [ ] `[P1]` 角色 CRUD 接口（`GET/POST/PUT/DELETE /roles`），含权限项配置
+- [x] `[P1]` 角色 CRUD 接口（`GET/POST/PUT/DELETE /roles`），含权限项配置
   > 检查: `app/backend/src/main/java/com/oa/backend/controller/RoleController.java` — 确认4个 HTTP 方法存在；PUT 接口支持传递权限项列表
 
-- [ ] `[P1]` 将 `OaDataService` 员工/账号内存逻辑迁移到真实 Service + Mapper
+- [x] `[P1]` 将 `OaDataService` 员工/账号内存逻辑迁移到真实 Service + Mapper
   > 检查: `app/backend/src/main/java/com/oa/backend/service/OaDataService.java` — 确认员工/账号相关方法已删除或调用真实 Mapper（无内存 Map/List 存储）
 
 - [ ] `[P2]` 密码重置接口（`POST /employees/{id}/reset-password`，CEO 专用）

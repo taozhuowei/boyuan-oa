@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class Employee {
 
     /** 员工主键 ID */
-    @TableId(type = IdType.INPUT)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
     /** 员工编号（登录用户名） */
