@@ -171,7 +171,7 @@ function goTo(path: string) {
 
 function handleLogout() {
   userStore.logout()
-  uni.redirectTo({ url: '/pages/login/index' })
+  uni.switchTab({ url: '/pages/login/index' })
 }
 </script>
 
