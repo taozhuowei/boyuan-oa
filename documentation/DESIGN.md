@@ -4,7 +4,7 @@
 >
 > **目标读者**：产品经理、后端开发者、前端开发者。
 >
-> **关联文档**：实体字段定义和 API 路由见 `platform/ARCHITECTURE.md`；代码实现见 `platform/BACKEND_IMPL.md`；页面布局见 `UI_DESIGN.md`（Platform Shell + 业务页面合并文档）。
+> **关联文档**：实体字段定义和 API 路由见 `tech/ARCHITECTURE.md`；代码实现见 `tech/BACKEND_IMPL.md`；页面布局见 `UI_DESIGN.md`（Platform Shell + 业务页面合并文档）。
 
 ---
 

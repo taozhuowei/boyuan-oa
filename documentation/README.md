@@ -26,7 +26,7 @@ documentation/
 ├── context/                          ← AI 上下文存档（历史会话关键信息）
 │   └── CONTEXT.md                   ← 当前最新上下文摘要
 │
-├── platform/                         ← 博渊 OA 平台层（与具体企业无关）
+├── tech/                         ← 博渊 OA 平台层（与具体企业无关）
 │   ├── PRODUCT.md                   ← 平台产品定位与能力边界
 │   ├── ARCHITECTURE.md              ← 技术架构、实体模型、API 规范
 │   ├── FRONTEND_IMPL.md             ← 前端实现细节
@@ -55,16 +55,16 @@ documentation/
 
 ---
 
-## platform/ — 博渊 OA 平台
+## tech/ — 博渊 OA 平台
 
 **定位**：描述博渊平台本身的能力。与具体企业无关——换一家制造业企业接入博渊，这些文档依然适用。
 
 | 文档 | 内容摘要 | 何时读 |
 |------|---------|--------|
-| [PRODUCT.md](./platform/PRODUCT.md) | 平台定位、设计原则、标准能力清单、可配置边界、第二家企业接入指南 | 理解产品全貌 |
-| [ARCHITECTURE.md](./platform/ARCHITECTURE.md) | 技术选型、三层架构、权限/工作流/表单/薪资引擎设计、实体字段表、API 规范（7.4–7.10）、文件存储决策、签名流程、Excel 导入 | 后端开发、理解数据模型、设计接口 |
-| [BACKEND_IMPL.md](./platform/BACKEND_IMPL.md) | 后端包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务、Sysadmin 初始化机制 | 后端开发 |
-| [FRONTEND_IMPL.md](./platform/FRONTEND_IMPL.md) | 前端代码架构、双端适配层（`adapters/`）、`useComponent` composable、HTTP 层规范、CSS 变量体系 | 前端开发 |
+| [PRODUCT.md](./tech/PRODUCT.md) | 平台定位、设计原则、标准能力清单、可配置边界、第二家企业接入指南 | 理解产品全貌 |
+| [ARCHITECTURE.md](./tech/ARCHITECTURE.md) | 技术选型、三层架构、权限/工作流/表单/薪资引擎设计、实体字段表、API 规范（7.4–7.10）、文件存储决策、签名流程、Excel 导入 | 后端开发、理解数据模型、设计接口 |
+| [BACKEND_IMPL.md](./tech/BACKEND_IMPL.md) | 后端包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务、Sysadmin 初始化机制 | 后端开发 |
+| [FRONTEND_IMPL.md](./tech/FRONTEND_IMPL.md) | 前端代码架构、双端适配层（`adapters/`）、`useComponent` composable、HTTP 层规范、CSS 变量体系 | 前端开发 |
 
 ---
 
@@ -94,12 +94,12 @@ documentation/
 
 | 变更类型 | 必须同步更新的文档 |
 |---------|----------------|
-| 架构/实体/API 变更 | `platform/ARCHITECTURE.md` |
-| 后端包结构/约定/引擎实现变更 | `platform/BACKEND_IMPL.md` |
-| 前端适配层/HTTP层/状态管理变更 | `platform/FRONTEND_IMPL.md` |
+| 架构/实体/API 变更 | `tech/ARCHITECTURE.md` |
+| 后端包结构/约定/引擎实现变更 | `tech/BACKEND_IMPL.md` |
+| 前端适配层/HTTP层/状态管理变更 | `tech/FRONTEND_IMPL.md` |
 | 审批流/薪资规则/数据保留/权限/角色/组织架构变更 | `documentation/DESIGN.md` |
 | 新增/修改业务页面 | `documentation/UI_DESIGN.md` |
-| 平台能力新增 | `platform/PRODUCT.md` + `platform/ARCHITECTURE.md` |
+| 平台能力新增 | `tech/PRODUCT.md` + `tech/ARCHITECTURE.md` |
 | 重要设计决策变更 | `context/CONTEXT.md`（更新"当前状态"和"禁止事项"节） |
 | 任务完成 | `dev/TODO.md`（打勾，立即提交） |
 

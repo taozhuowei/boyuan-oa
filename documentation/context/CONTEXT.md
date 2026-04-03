@@ -8,7 +8,7 @@
 
 ## 1. 项目一句话定位
 
-**博渊 OA** 是面向中小型建筑施工企业的内部管理平台（首个客户：众维建筑工程有限公司，约 200 人）。引擎+配置分离架构：平台引擎（`platform/`）通用，建筑工程版业务设计集中在 `documentation/DESIGN.md` + `documentation/UI_DESIGN.md`，种子数据在后端 `db/preset-construction.sql`。
+**博渊 OA** 是面向中小型建筑施工企业的内部管理平台（首个客户：众维建筑工程有限公司，约 200 人）。引擎+配置分离架构：平台引擎（`tech/`）通用，建筑工程版业务设计集中在 `documentation/DESIGN.md` + `documentation/UI_DESIGN.md`，种子数据在后端 `db/preset-construction.sql`。
 
 ---
 
@@ -38,10 +38,10 @@
 
 | 文档 | 内容 | 优先阅读场景 |
 |------|------|------------|
-| `documentation/platform/ARCHITECTURE.md` | 技术架构、所有实体字段表、API 规范（7.4–7.10）、文件存储决策、签名流程、Excel 导入 | 后端开发、理解数据模型 |
-| `documentation/platform/BACKEND_IMPL.md` | 包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务 | 后端开发 |
-| `documentation/platform/FRONTEND_IMPL.md` | 前端代码架构、双端适配层、组件注册机制、HTTP 层规范、CSS 变量体系 | 前端开发 |
-| `documentation/platform/PRODUCT.md` | 平台定位、功能边界、可配置项清单 | 理解产品全貌 |
+| `documentation/tech/ARCHITECTURE.md` | 技术架构、所有实体字段表、API 规范（7.4–7.10）、文件存储决策、签名流程、Excel 导入 | 后端开发、理解数据模型 |
+| `documentation/tech/BACKEND_IMPL.md` | 包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务 | 后端开发 |
+| `documentation/tech/FRONTEND_IMPL.md` | 前端代码架构、双端适配层、组件注册机制、HTTP 层规范、CSS 变量体系 | 前端开发 |
+| `documentation/tech/PRODUCT.md` | 平台定位、功能边界、可配置项清单 | 理解产品全貌 |
 | `documentation/UI_DESIGN.md` | Part 1: Shell/登录/初始化向导/Admin/待办/通知/个人中心；Part 2: 工作台/考勤/薪资/项目/工伤/员工/岗位/角色/组织/数据管理/系统配置 | 前端所有页面开发 |
 | `documentation/DESIGN.md` | 角色定义、功能权限矩阵、审批流配置、薪资规则、数据保留策略、组织架构预置（建筑工程版） | 实现权限判断逻辑、审批/薪资引擎、配置种子数据 |
 | `documentation/dev/TODO.md` | **唯一进度入口**，Phase 0–9 任务列表和检查点 | 开始工作前必读 |

@@ -4,7 +4,7 @@
 >
 > **目标读者**：产品负责人、实施顾问、架构师。
 >
-> **不包含内容**：具体的业务配置（见 `presets/`）、代码实现细节（见 `platform/ARCHITECTURE.md` 和 `IMPLEMENTATION.md`）。
+> **不包含内容**：具体的业务配置（见 `DESIGN.md`）、代码实现细节（见 `tech/ARCHITECTURE.md` 和 `tech/BACKEND_IMPL.md`）。
 
 ---
 

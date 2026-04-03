@@ -4,7 +4,7 @@
 >
 > **目标读者**：前端开发者。
 >
-> **关联文档**：跨端适配层实现见 `platform/FRONTEND_IMPL.md`；业务规则见 `DESIGN.md`；组件开发状态见 `dev/TODO.md`。
+> **关联文档**：跨端适配层实现见 `tech/FRONTEND_IMPL.md`；业务规则见 `DESIGN.md`；组件开发状态见 `dev/TODO.md`。
 
 ---
 
