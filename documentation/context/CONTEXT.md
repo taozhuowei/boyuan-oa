@@ -27,7 +27,7 @@
 
 ### 当前应做的事
 
-开始 **Phase 0（工程基础）**，对应任务在 `dev/TODO.md §Phase 0`。核心阻塞项：
+开始 **Phase 0（工程基础）**，对应任务在 `tech/TODO.md §Phase 0`。核心阻塞项：
 1. 补全 `app/backend/src/main/resources/db/schema.sql`（30 张表 DDL）
 2. 补全 `data.sql`（5 个测试账号种子数据）
 3. `app/frontend/src/utils/access.ts` 和 `forms.ts` 中的私有 request 函数迁移到 `http.ts`
@@ -44,8 +44,8 @@
 | `documentation/tech/PRODUCT.md` | 平台定位、功能边界、可配置项清单 | 理解产品全貌 |
 | `documentation/UI_DESIGN.md` | Part 1: Shell/登录/初始化向导/Admin/待办/通知/个人中心；Part 2: 工作台/考勤/薪资/项目/工伤/员工/岗位/角色/组织/数据管理/系统配置 | 前端所有页面开发 |
 | `documentation/DESIGN.md` | 角色定义、功能权限矩阵、审批流配置、薪资规则、数据保留策略、组织架构预置（建筑工程版） | 实现权限判断逻辑、审批/薪资引擎、配置种子数据 |
-| `documentation/dev/TODO.md` | **唯一进度入口**，Phase 0–9 任务列表和检查点 | 开始工作前必读 |
-| `documentation/dev/TEST_DESIGN.md` | 测试策略、各层用例设计 | 写测试时参考 |
+| `documentation/tech/TODO.md` | **唯一进度入口**，Phase 0–9 任务列表和检查点 | 开始工作前必读 |
+| `documentation/tech/TEST_DESIGN.md` | 测试策略、各层用例设计 | 写测试时参考 |
 
 ---
 
@@ -255,7 +255,7 @@ Excel 模板必须字段：`employeeNo`、`name`、`positionCode`、`departmentN
 
 文档设计阶段已全部完成（含21项设计决策落地），可开始 **Phase 0（工程基础）**。
 
-按 `dev/TODO.md Phase 0` 顺序执行：
+按 `tech/TODO.md Phase 0` 顺序执行：
 
 ```
 后端：写 schema.sql（35张表DDL，含新参考表和合并窗口期字段）

@@ -9,7 +9,7 @@
 ```
 1. 本文件（README.md）        → 知道文档在哪、分别是干什么的
 2. context/CONTEXT.md        → 了解项目当前状态、历史设计决策、禁止事项
-3. dev/TODO.md               → 知道当前该做什么，检查点在哪里
+3. tech/TODO.md               → 知道当前该做什么，检查点在哪里
 4. 按任务需要，查阅下方具体文档
 ```
 
@@ -55,16 +55,18 @@ documentation/
 
 ---
 
-## tech/ — 博渊 OA 平台
+## tech/ — 技术文档
 
-**定位**：描述博渊平台本身的能力。与具体企业无关——换一家制造业企业接入博渊，这些文档依然适用。
+**定位**：技术架构、实现约定、开发进度、测试设计。
 
 | 文档 | 内容摘要 | 何时读 |
 |------|---------|--------|
 | [PRODUCT.md](./tech/PRODUCT.md) | 平台定位、设计原则、标准能力清单、可配置边界、第二家企业接入指南 | 理解产品全貌 |
-| [ARCHITECTURE.md](./tech/ARCHITECTURE.md) | 技术选型、三层架构、权限/工作流/表单/薪资引擎设计、实体字段表、API 规范（7.4–7.10）、文件存储决策、签名流程、Excel 导入 | 后端开发、理解数据模型、设计接口 |
+| [ARCHITECTURE.md](./tech/ARCHITECTURE.md) | 技术选型、三层架构、引擎设计、实体字段表、API 规范（7.4–7.10）、文件存储、签名架构、Excel 导入 | 后端开发、理解数据模型、设计接口 |
 | [BACKEND_IMPL.md](./tech/BACKEND_IMPL.md) | 后端包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务、Sysadmin 初始化机制 | 后端开发 |
 | [FRONTEND_IMPL.md](./tech/FRONTEND_IMPL.md) | 前端代码架构、双端适配层（`adapters/`）、`useComponent` composable、HTTP 层规范、CSS 变量体系 | 前端开发 |
+| [TODO.md](./tech/TODO.md) | **唯一进度管理入口**。Phase 0–9 任务列表，每 Phase 有目标、检查点、前后端任务，优先级标注 [P0]–[P3] | 开始任何开发任务前 |
+| [TEST_DESIGN.md](./tech/TEST_DESIGN.md) | 测试策略、单元/集成/E2E 测试用例设计 | 编写测试时 |
 
 ---
 
@@ -79,17 +81,6 @@ documentation/
 
 ---
 
-## dev/ — 开发过程文档
-
-**定位**：跟踪开发进度和测试策略。不包含设计内容。
-
-| 文档 | 内容摘要 | 何时读 |
-|------|---------|--------|
-| [TODO.md](./dev/TODO.md) | **唯一进度管理入口**。Phase 0–9 任务列表，每 Phase 有目标、检查点（pass/fail 标准）、前后端任务。优先级标注 [P0]–[P3]。完成一项立即打勾。 | 开始任何开发任务前 |
-| [TEST_DESIGN.md](./dev/TEST_DESIGN.md) | 测试策略、单元/集成/E2E 测试用例设计 | 编写测试时 |
-
----
-
 ## 文档维护规范
 
 | 变更类型 | 必须同步更新的文档 |
@@ -101,6 +92,6 @@ documentation/
 | 新增/修改业务页面 | `documentation/UI_DESIGN.md` |
 | 平台能力新增 | `tech/PRODUCT.md` + `tech/ARCHITECTURE.md` |
 | 重要设计决策变更 | `context/CONTEXT.md`（更新"当前状态"和"禁止事项"节） |
-| 任务完成 | `dev/TODO.md`（打勾，立即提交） |
+| 任务完成 | `tech/TODO.md`（打勾，立即提交） |
 
 **禁止在多个文档中重复维护同一内容。** 一处写明，其他地方引用。
