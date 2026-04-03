@@ -34,11 +34,7 @@ documentation/
 │   └── UI_DESIGN.md                 ← 平台级 UI 规范（Shell/登录/通用组件）
 │
 ├── DESIGN.md                         ← 建筑工程版业务设计（角色/权限/审批流/薪资/数据保留/组织预置）
-│
-├── presets/                          ← 预置业务方案（按企业/行业分目录）
-│   └── construction/                ← 众维建筑工程版（当前唯一客户）
-│       ├── UI_DESIGN.md             ← 所有业务页面布局
-│       └── preset.sql               ← 种子数据 SQL（角色/岗位/审批流模板等）
+├── UI_DESIGN.md                      ← 全量 UI 设计（Part 1: Platform Shell；Part 2: 建筑工程版业务页面）
 │
 └── dev/                              ← 开发过程文档
     ├── TODO.md                      ← 唯一进度管理入口（Phase 0–9 任务列表）
@@ -66,23 +62,20 @@ documentation/
 | 文档 | 内容摘要 | 何时读 |
 |------|---------|--------|
 | [PRODUCT.md](./platform/PRODUCT.md) | 平台定位、设计原则、标准能力清单、可配置边界、第二家企业接入指南 | 理解产品全貌 |
-| [ARCHITECTURE.md](./platform/ARCHITECTURE.md) | 技术选型、三层架构、权限/工作流/表单/薪资引擎设计、28 个实体字段表、API 规范（7.4–7.10）、文件存储决策、签名流程、Excel 导入 | 后端开发、理解数据模型、设计接口 |
+| [ARCHITECTURE.md](./platform/ARCHITECTURE.md) | 技术选型、三层架构、权限/工作流/表单/薪资引擎设计、实体字段表、API 规范（7.4–7.10）、文件存储决策、签名流程、Excel 导入 | 后端开发、理解数据模型、设计接口 |
 | [BACKEND_IMPL.md](./platform/BACKEND_IMPL.md) | 后端包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务、Sysadmin 初始化机制 | 后端开发 |
 | [FRONTEND_IMPL.md](./platform/FRONTEND_IMPL.md) | 前端代码架构、双端适配层（`adapters/`）、`useComponent` composable、HTTP 层规范、CSS 变量体系 | 前端开发 |
-| [UI_DESIGN.md](./platform/UI_DESIGN.md) | Web/MP Shell 结构、登录页、系统管理控制台、待办中心、个人中心、通用组件规范 | 平台级页面开发 |
 
 ---
 
-## presets/construction/ — 众维建筑工程版预置方案
+## 建筑工程版业务文档
 
-**定位**：描述博渊在众维建筑工程有限公司的具体配置。这是平台引擎的配置输入，不是平台能力本身。
-
-> 若接入其他企业，参考 `platform/PRODUCT.md §5`，在 `presets/` 下新建对应行业目录。
+**定位**：描述博渊在众维建筑工程有限公司的具体配置与页面设计。
 
 | 文档 | 内容摘要 | 何时读 |
 |------|---------|--------|
 | [DESIGN.md](./DESIGN.md) | 建筑工程版完整业务设计：5角色定义、功能权限矩阵、审批流配置（6类型）、薪资规则、数据保留策略、组织架构预置 | 实现权限逻辑、审批/薪资引擎，配置种子数据前必读 |
-| [UI_DESIGN.md](./presets/construction/UI_DESIGN.md) | 所有业务页面布局（考勤、薪资、项目管理含施工日志/里程碑/仪表盘、员工管理、岗位管理、组织架构） | 前端业务页面开发 |
+| [UI_DESIGN.md](./UI_DESIGN.md) | 全量 UI 设计：Part 1 Platform Shell（Shell/登录/向导/Admin/待办/通知/个人中心）；Part 2 业务页面（工作台/考勤/薪资/项目/工伤/员工/岗位/角色/组织/数据管理/系统配置） | 前端所有页面开发 |
 
 ---
 
@@ -105,7 +98,7 @@ documentation/
 | 后端包结构/约定/引擎实现变更 | `platform/BACKEND_IMPL.md` |
 | 前端适配层/HTTP层/状态管理变更 | `platform/FRONTEND_IMPL.md` |
 | 审批流/薪资规则/数据保留/权限/角色/组织架构变更 | `documentation/DESIGN.md` |
-| 新增/修改业务页面 | `presets/construction/UI_DESIGN.md` |
+| 新增/修改业务页面 | `documentation/UI_DESIGN.md` |
 | 平台能力新增 | `platform/PRODUCT.md` + `platform/ARCHITECTURE.md` |
 | 重要设计决策变更 | `context/CONTEXT.md`（更新"当前状态"和"禁止事项"节） |
 | 任务完成 | `dev/TODO.md`（打勾，立即提交） |

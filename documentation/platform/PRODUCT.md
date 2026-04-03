@@ -176,25 +176,21 @@
 
 ```
 documentation/
-├── DESIGN.md                   # [文档] 建筑工程版完整业务设计记录（角色/权限/审批流/薪资/数据保留/组织预置）
+├── DESIGN.md                            # [文档] 建筑工程版业务设计（角色/权限/审批流/薪资/数据保留）
+├── UI_DESIGN.md                         # [文档] 全量 UI 设计（Platform Shell + 业务页面）
 │
-presets/
-├── construction/               ← 建筑工程版（当前）
-│   ├── UI_DESIGN.md            # [文档] 页面布局设计记录
-│   └── preset.sql              # [配置数据] Sysadmin 初始化时加载的种子数据
-│
-└── {新行业}/
-    ├── DESIGN.md               # [文档] 该行业业务设计记录
-    ├── UI_DESIGN.md            # [文档] 页面布局设计记录
-    └── preset.sql              # [配置数据] 该行业的种子数据
+app/backend/src/main/resources/db/
+└── preset-construction.sql              # [配置数据] Sysadmin 初始化向导加载的种子数据
 ```
 
-#### 三层工作内容
+> 接入新行业时：在 `documentation/` 下新建 `DESIGN-{行业}.md` + `UI_DESIGN-{行业}.md`，在后端 db/ 下新建 `preset-{行业}.sql`。
+
+#### 两层工作内容
 
 **1. 文档层（*.md）**
 设计记录，供实施人员理解配置意图，不被系统直接读取。
 
-**2. 配置数据层（preset.sql）**
+**2. 配置数据层（preset-construction.sql）**
 Sysadmin 初始化向导加载此文件，写入以下 DB 表：
 
 | 表 | 内容 |

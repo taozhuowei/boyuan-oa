@@ -53,8 +53,11 @@
   - 运维：`operation_log`（跟随全局保留策略，无 @TableLogic）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
   > 检查: `app/backend/src/main/resources/db/schema.sql` — 搜索每个表名，确认所有 CREATE TABLE 语句存在；**特别确认不存在 `payroll_window_period` 表**
 
-- [ ] `[P0]` 补全 `data.sql`：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
+- [ ] `[P0]` 补全 `data.sql`（dev profile 专用，仅 H2 加载，**不进生产**）：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
   > 检查: `app/backend/src/main/resources/db/data.sql` — 搜索 employee.demo / worker.demo / pm.demo / ceo.demo / finance.demo，确认5条 INSERT 记录均存在
+
+- [ ] `[P0]` 创建 `preset-construction.sql`：建筑工程版生产初始化种子数据（角色 code 定义、岗位/等级预置、审批流模板节点、假种定义、社保险种、保留策略默认值），由 Sysadmin 初始化向导加载
+  > 检查: `app/backend/src/main/resources/db/preset-construction.sql` — 搜索 INSERT INTO sys_role / INSERT INTO approval_flow_def / INSERT INTO sys_retention_policy，确认主要业务类型均有预置记录；内容依据见 `documentation/DESIGN.md`
 
 - [ ] `[P1]` 补全 Mapper：`EmployeeMapper`（扩展现有）、`ProjectMapper`、`DepartmentMapper`
   > 检查: `app/backend/src/main/java/com/oa/backend/mapper/` — 确认 ProjectMapper.java 和 DepartmentMapper.java 文件存在且有基础 CRUD 方法

@@ -1,10 +1,10 @@
 # 博渊 OA — 业务规则与权限设计
 
-> **文档职责**：定义建筑工程版的组织架构、角色权限、审批流、薪资计算规则和数据保留策略。这是当前唯一预置方案（建筑工程版）的完整业务设计，同时也是 `preset.sql` 种子数据的业务依据。凡文中标注"可配置"的项，均可由指定角色在系统运营期修改。
+> **文档职责**：定义建筑工程版的组织架构、角色权限、审批流、薪资计算规则和数据保留策略。这是当前唯一预置方案（建筑工程版）的完整业务设计，同时也是后端 `app/backend/src/main/resources/db/preset-construction.sql` 种子数据的业务依据。凡文中标注"可配置"的项，均可由指定角色在系统运营期修改。
 >
 > **目标读者**：产品经理、后端开发者、前端开发者。
 >
-> **关联文档**：实体字段定义和 API 路由见 `platform/ARCHITECTURE.md`；代码实现见 `platform/BACKEND_IMPL.md`；页面布局见 `presets/construction/UI_DESIGN.md`（业务页面）和 `platform/UI_DESIGN.md`（平台Shell）。
+> **关联文档**：实体字段定义和 API 路由见 `platform/ARCHITECTURE.md`；代码实现见 `platform/BACKEND_IMPL.md`；页面布局见 `UI_DESIGN.md`（Platform Shell + 业务页面合并文档）。
 
 ---
 

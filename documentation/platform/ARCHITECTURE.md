@@ -4,7 +4,7 @@
 >
 > **目标读者**：后端架构师、技术负责人。
 >
-> **不包含内容**：具体的代码实现细节（见 `BACKEND_IMPL.md`）；前端实现细节（见 `FRONTEND_IMPL.md`）；业务规则与权限配置（见 `DESIGN.md`）；页面布局（见 `presets/construction/UI_DESIGN.md` 及 `platform/UI_DESIGN.md`）。
+> **不包含内容**：具体的代码实现细节（见 `BACKEND_IMPL.md`）；前端实现细节（见 `FRONTEND_IMPL.md`）；业务规则与权限配置（见 `DESIGN.md`）；页面布局（见 `UI_DESIGN.md`）。
 
 ---
 

@@ -8,7 +8,7 @@
 
 ## 1. 项目一句话定位
 
-**博渊 OA** 是面向中小型建筑施工企业的内部管理平台（首个客户：众维建筑工程有限公司，约 200 人）。引擎+配置分离架构：平台引擎（`platform/`）通用，业务配置（`presets/construction/`）为众维定制。
+**博渊 OA** 是面向中小型建筑施工企业的内部管理平台（首个客户：众维建筑工程有限公司，约 200 人）。引擎+配置分离架构：平台引擎（`platform/`）通用，建筑工程版业务设计集中在 `documentation/DESIGN.md` + `documentation/UI_DESIGN.md`，种子数据在后端 `db/preset-construction.sql`。
 
 ---
 
@@ -42,9 +42,8 @@
 | `documentation/platform/BACKEND_IMPL.md` | 包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务 | 后端开发 |
 | `documentation/platform/FRONTEND_IMPL.md` | 前端代码架构、双端适配层、组件注册机制、HTTP 层规范、CSS 变量体系 | 前端开发 |
 | `documentation/platform/PRODUCT.md` | 平台定位、功能边界、可配置项清单 | 理解产品全貌 |
-| `documentation/platform/UI_DESIGN.md` | Shell 结构、登录页、通用页面规范 | 平台级 UI |
+| `documentation/UI_DESIGN.md` | Part 1: Shell/登录/初始化向导/Admin/待办/通知/个人中心；Part 2: 工作台/考勤/薪资/项目/工伤/员工/岗位/角色/组织/数据管理/系统配置 | 前端所有页面开发 |
 | `documentation/DESIGN.md` | 角色定义、功能权限矩阵、审批流配置、薪资规则、数据保留策略、组织架构预置（建筑工程版） | 实现权限判断逻辑、审批/薪资引擎、配置种子数据 |
-| `documentation/presets/construction/UI_DESIGN.md` | 所有业务页面布局：考勤、薪资、项目、员工、岗位、组织架构 | 前端页面开发 |
 | `documentation/dev/TODO.md` | **唯一进度入口**，Phase 0–9 任务列表和检查点 | 开始工作前必读 |
 | `documentation/dev/TEST_DESIGN.md` | 测试策略、各层用例设计 | 写测试时参考 |
 
