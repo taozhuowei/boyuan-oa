@@ -63,7 +63,13 @@
         "navigationStyle": "custom"
       }
     },
-
+    {
+      "path": "pages/positions/index",
+      "style": {
+        "navigationBarTitleText": "岗位管理",
+        "navigationStyle": "custom"
+      }
+    }
   ],
   "tabBar": {
     "color": "#999",
