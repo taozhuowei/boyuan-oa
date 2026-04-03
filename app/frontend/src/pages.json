@@ -78,6 +78,13 @@
       }
     },
     {
+      "path": "pages/projects/detail",
+      "style": {
+        "navigationBarTitleText": "项目详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/auth/forgot_password/index",
       "style": {
         "navigationBarTitleText": "重置密码",

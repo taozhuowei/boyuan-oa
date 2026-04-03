@@ -6,17 +6,7 @@
       <view class="page-header">
         <view class="header-left">
           <text class="page-title">项目管理</text>
-          <text class="page-desc">{{ isCEO ? '全公司项目总览与资源调配' : '我的项目与任务管理' }}</text>
-        </view>
-        <view class="header-stats">
-          <view class="stat-item">
-            <text class="stat-value">{{ stats.active }}</text>
-            <text class="stat-label">在建项目</text>
-          </view>
-          <view class="stat-item">
-            <text class="stat-value">{{ stats.completed }}</text>
-            <text class="stat-label">已完成</text>
-          </view>
+          <text v-if="is_ceo" class="page-desc">全公司项目总览与管理</text>
         </view>
       </view>
 
@@ -25,133 +15,111 @@
         <view class="toolbar-left">
           <component
             :is="Button"
-            v-if="Button && isCEO"
+            v-if="Button && is_ceo"
             type="primary"
-            @click="showCreateModal = true"
+            @click="open_create_modal"
           >
             新建项目
           </component>
           <component
             :is="Select"
             v-if="Select"
-            v-model="filterStatus"
-            :options="statusOptions"
+            v-model="filter_status"
+            :options="status_options"
             placeholder="全部状态"
             style="width: 120px"
+            @change="handle_filter_change"
           />
         </view>
         <view class="toolbar-right">
           <component
             :is="Input"
             v-if="Input"
-            v-model="searchKeyword"
+            v-model="search_keyword"
             placeholder="搜索项目名称"
             :prefix="'search'"
             style="width: 240px"
+            @change="handle_search"
           />
         </view>
       </view>
 
-      <!-- 主内容区 -->
-      <view class="main-content">
-        <!-- 左栏：项目列表 -->
-        <view class="left-panel content-card">
-          <view class="card-header">
-            <text class="card-title">项目列表（{{ filteredProjects.length }}）</text>
+      <!-- 项目列表表格 -->
+      <view class="content-card">
+        <view class="data-table">
+          <view class="table-head">
+            <view class="cell" style="flex: 2">项目名</view>
+            <view class="cell" style="flex: 1">状态</view>
+            <view class="cell" style="flex: 1">成员数</view>
+            <view class="cell" style="flex: 1">开始日期</view>
+            <view class="cell" style="width: 180px; justify-content: center">操作</view>
           </view>
-          <view class="card-body scrollable">
-            <view v-if="filteredProjects.length" class="project-list">
-              <view
-                v-for="project in filteredProjects"
-                :key="project.id"
-                class="project-item"
-                :class="{ active: selectedProject?.id === project.id }"
-                @click="selectProject(project)"
+          <view
+            v-for="project in project_list"
+            :key="project.id"
+            class="table-row"
+          >
+            <view class="cell" style="flex: 2; font-weight: 500">{{ project.name }}</view>
+            <view class="cell" style="flex: 1">
+              <component
+                :is="Tag"
+                v-if="Tag"
+                :color="project.status === 'ACTIVE' ? 'success' : 'default'"
               >
-                <view class="project-header">
-                  <text class="project-name">{{ project.name }}</text>
-                  <view 
-                    class="status-tag"
-                    :class="getStatusClass(project.status)"
-                  >
-                    {{ project.status }}
-                  </view>
-                </view>
-                <text class="project-desc">{{ project.description }}</text>
-                <view class="project-meta">
-                  <text class="meta-item">👤 {{ project.manager }}</text>
-                  <text class="meta-item">📅 {{ project.deadline }}</text>
-                </view>
-                <view class="project-progress">
-                  <view class="progress-bar">
-                    <view
-                      class="progress-fill"
-                      :style="{ width: project.progress + '%' }"
-                      :class="getProgressClass(project.progress)"
-                    />
-                  </view>
-                  <text class="progress-text">{{ project.progress }}%</text>
-                </view>
-                <view class="project-members">
-                  <view
-                    v-for="member in project.members.slice(0, 3)"
-                    :key="member"
-                    class="member-avatar"
-                  >
-                    {{ member.charAt(0) }}
-                  </view>
-                  <view v-if="project.members.length > 3" class="member-more">
-                    +{{ project.members.length - 3 }}
-                  </view>
-                </view>
+                {{ project.status === 'ACTIVE' ? '进行中' : '已完成' }}
+              </component>
+              <view v-else class="status-tag" :class="project.status === 'ACTIVE' ? 'success' : 'default'">
+                {{ project.status === 'ACTIVE' ? '进行中' : '已完成' }}
               </view>
             </view>
-            <view v-else class="empty-state">
-              <text>暂无项目</text>
+            <view class="cell" style="flex: 1; color: var(--on-surface-variant)">{{ project.memberCount }}人</view>
+            <view class="cell" style="flex: 1; color: var(--on-surface-variant)">{{ project.startDate || '-' }}</view>
+            <view class="cell" style="width: 180px; justify-content: center">
+              <component
+                :is="Button"
+                v-if="Button"
+                type="link"
+                size="small"
+                @click="view_detail(project)"
+              >
+                详情
+              </component>
+              <component
+                :is="Button"
+                v-if="Button && is_ceo && project.status === 'ACTIVE'"
+                type="link"
+                size="small"
+                danger
+                @click="close_project(project)"
+              >
+                关闭项目
+              </component>
             </view>
+          </view>
+          <view v-if="!project_list.length" class="table-empty">
+            <text>暂无项目数据</text>
           </view>
         </view>
 
-        <!-- 右栏：项目详情/施工日志 -->
-        <view class="right-panel content-card">
-          <template v-if="selectedProject">
-            <view class="card-header">
-              <text class="card-title">{{ selectedProject.name }} - 施工日志</text>
-              <component
-                :is="Button"
-                v-if="Button && (isCEO || isPM)"
-                type="primary"
-                size="small"
-                @click="showAddLog = true"
-              >
-                新建日志
-              </component>
-            </view>
-            <view class="card-body scrollable">
-              <component :is="Timeline" v-if="Timeline">
-                <component
-                  :is="TimelineItem"
-                  v-if="TimelineItem"
-                  v-for="(log, index) in constructionLogs"
-                  :key="index"
-                  :title="log.title"
-                  :description="log.description"
-                  :time="log.time"
-                  :status="log.status"
-                />
-              </component>
-            </view>
-          </template>
-          <template v-else>
-            <view class="card-header">
-              <text class="card-title">项目详情</text>
-            </view>
-            <view class="card-body">
-              <view class="empty-state">
-                <text>请选择一个项目查看详情</text>
-              </view>
-            </view>
-          </template>
+        <!-- 分页 -->
+        <view v-if="total_pages > 1" class="pagination">
+          <component
+            :is="Button"
+            v-if="Button"
+            :disabled="current_page <= 1"
+            @click="change_page(current_page - 1)"
+          >
+            上一页
+          </component>
+          <text class="page-info">{{ current_page }} / {{ total_pages }}</text>
+          <component
+            :is="Button"
+            v-if="Button"
+            :disabled="current_page >= total_pages"
+            @click="change_page(current_page + 1)"
+          >
+            下一页
+          </component>
         </view>
       </view>
 
@@ -161,220 +129,233 @@
     <component
       :is="Modal"
       v-if="Modal"
-      v-model="showCreateModal"
+      v-model="create_modal_visible"
       title="新建项目"
-      width="600px"
+      width="500px"
     >
       <view class="form-content">
         <view class="form-item">
           <label>项目名称 <text class="required">*</text></label>
-          <component :is="Input" v-if="Input" v-model="newProject.name" placeholder="请输入项目名称" />
-        </view>
-        <view class="form-item">
-          <label>项目描述</label>
           <component
             :is="Input"
             v-if="Input"
-            v-model="newProject.description"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入项目描述"
+            v-model="create_form.name"
+            placeholder="请输入项目名称"
           />
         </view>
-        <view class="form-row">
-          <view class="form-item half">
-            <label>项目经理 <text class="required">*</text></label>
-            <component
-              :is="Select"
-              v-if="Select"
-              v-model="newProject.manager"
-              :options="employeeOptions"
-              placeholder="请选择"
-            />
-          </view>
-          <view class="form-item half">
-            <label>截止日期 <text class="required">*</text></label>
-            <component :is="DatePicker" v-if="DatePicker" v-model="newProject.deadline" />
-          </view>
+        <view class="form-item">
+          <label>开始日期</label>
+          <component
+            :is="Input"
+            v-if="Input"
+            v-model="create_form.startDate"
+            placeholder="YYYY-MM-DD"
+          />
+        </view>
+        <view class="form-item">
+          <label>日志提交周期（天）</label>
+          <component
+            :is="Input"
+            v-if="Input"
+            v-model.number="create_form.logCycleDays"
+            type="number"
+            placeholder="默认为1天"
+          />
         </view>
       </view>
       <template #footer>
-        <component :is="Button" v-if="Button" @click="showCreateModal = false">取消</component>
-        <component :is="Button" v-if="Button" type="primary" @click="createProject">创建</component>
+        <component :is="Button" v-if="Button" @click="create_modal_visible = false">取消</component>
+        <component :is="Button" v-if="Button" type="primary" @click="create_project">创建</component>
       </template>
     </component>
   </AppShell>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
+import { request } from '../../utils/http'
 import AppShell from '../../layouts/AppShell.vue'
 
-const { Card, Row, Col, Badge, Button, Input, Select, DatePicker, Modal, Timeline, TimelineItem } = useComponent(['Card', 'Row', 'Col', 'Badge', 'Button', 'Input', 'Select', 'DatePicker', 'Modal', 'Timeline', 'TimelineItem'])
+/**
+ * 项目列表页面
+ * 功能：展示项目列表，支持筛选、搜索，CEO可新建项目和关闭项目
+ */
 
-const userStore = useUserStore()
-const userRole = computed(() => userStore.userInfo?.role || 'employee')
-const isCEO = computed(() => userRole.value === 'ceo')
-const isPM = computed(() => userRole.value === 'project_manager')
+// 异步加载平台适配组件
+const { Button, Input, Select, Modal, Tag } = useComponent(['Button', 'Input', 'Select', 'Modal', 'Tag'])
 
-// 状态
-const filterStatus = ref('')
-const searchKeyword = ref('')
-const showCreateModal = ref(false)
-const selectedProject = ref<any>(null)
-const showAddLog = ref(false)
+// 用户状态
+const user_store = useUserStore()
+const is_ceo = computed(() => user_store.userInfo?.role === 'ceo')
 
-const newProject = ref({
+// 筛选和搜索状态
+const filter_status = ref('')
+const search_keyword = ref('')
+
+// 分页状态
+const current_page = ref(1)
+const page_size = 20
+const total_pages = ref(0)
+const total_elements = ref(0)
+
+// 项目列表数据
+const project_list = ref<Project[]>([])
+
+// 状态选项
+const status_options = [
+  { label: '全部状态', value: '' },
+  { label: '进行中', value: 'ACTIVE' },
+  { label: '已完成', value: 'CLOSED' }
+]
+
+// 创建项目弹窗状态
+const create_modal_visible = ref(false)
+const create_form = ref({
   name: '',
-  description: '',
-  manager: '',
-  deadline: ''
+  startDate: '',
+  logCycleDays: 1
 })
 
-// 选项
-const statusOptions = [
-  { label: '全部', value: '' },
-  { label: '进行中', value: '进行中' },
-  { label: '已完成', value: '已完成' },
-  { label: '已延期', value: '已延期' }
-]
-
-const employeeOptions = [
-  { label: '陈建国', value: '陈建国' },
-  { label: '刘伟',   value: '刘伟' },
-  { label: '张磊',   value: '张磊' },
-  { label: '孙鹏',   value: '孙鹏' },
-  { label: '王海峰', value: '王海峰' }
-]
-
-// 施工日志数据（通风制冷工程场景）
-const constructionLogs = ref([
-  { title: '设备进场验收', description: '冷水机组、冷却塔、水泵等主要设备进场，完成开箱验收', time: '2026-02-10 09:00', status: 'success' as const },
-  { title: '管道支架安装', description: '完成冷媒管道支吊架预埋及安装，共计 320 个点位', time: '2026-02-28 17:00', status: 'success' as const },
-  { title: '冷媒管道焊接', description: '主管道焊接完成，支管施工中，已完成约 70%', time: '2026-03-15 12:00', status: 'processing' as const },
-  { title: '设备单机调试', description: '等待管道施工完成后进行', time: '预计 2026-04-10', status: 'pending' as const },
-  { title: '系统联合调试', description: '等待单机调试通过后进行', time: '预计 2026-04-25', status: 'pending' as const }
-])
-
-// Mock 统计数据
-const stats = ref({
-  active: 4,
-  completed: 9
-})
-
-// Mock 项目数据（通风制冷工程场景）
-const projects = ref([
-  {
-    id: 1,
-    name: '万达广场中央空调安装工程',
-    description: '地上6层商业综合体中央空调系统全套安装，含冷水机组、风机盘管及自控系统',
-    status: '进行中',
-    manager: '陈建国',
-    deadline: '2026-04-30',
-    progress: 62,
-    members: ['陈建国', '刘伟', '张磊', '王海峰', '赵军']
-  },
-  {
-    id: 2,
-    name: '冷链物流园冷库制冷系统工程',
-    description: '新建10000㎡冷藏库及2000㎡冷冻库制冷系统安装，含氨压缩机组及管道',
-    status: '进行中',
-    manager: '刘伟',
-    deadline: '2026-05-20',
-    progress: 38,
-    members: ['刘伟', '陈建国', '孙鹏', '李志强']
-  },
-  {
-    id: 3,
-    name: '科技园区办公楼新风系统改造',
-    description: '既有5栋办公楼新风系统全面改造，新增热回收装置，提升室内空气质量',
-    status: '已完成',
-    manager: '张磊',
-    deadline: '2026-01-15',
-    progress: 100,
-    members: ['张磊', '王海峰']
-  },
-  {
-    id: 4,
-    name: '汽车涂装车间通风排烟工程',
-    description: '喷漆房及烘干室通风换气、废气处理及消防排烟系统安装',
-    status: '进行中',
-    manager: '孙鹏',
-    deadline: '2026-06-10',
-    progress: 15,
-    members: ['孙鹏', '李志强', '赵军']
-  },
-  {
-    id: 5,
-    name: '医院手术室净化空调工程',
-    description: '12间手术室洁净空调及正压送风系统安装，含高效过滤末端及压差监控',
-    status: '已延期',
-    manager: '王海峰',
-    deadline: '2026-03-31',
-    progress: 55,
-    members: ['王海峰', '陈建国', '刘伟', '孙鹏', '李志强', '赵军']
-  }
-])
-
-const filteredProjects = computed(() => {
-  let result = projects.value
-
-  if (filterStatus.value) {
-    result = result.filter(p => p.status === filterStatus.value)
-  }
-
-  if (searchKeyword.value) {
-    result = result.filter(p =>
-      p.name.toLowerCase().includes(searchKeyword.value.toLowerCase())
-    )
-  }
-
-  return result
-})
-
-const getStatusClass = (status: string) => {
-  const map: Record<string, string> = {
-    '进行中': 'primary',
-    '已完成': 'success',
-    '已延期': 'error'
-  }
-  return map[status] || 'default'
+/**
+ * 项目数据类型
+ */
+interface Project {
+  id: number
+  name: string
+  status: 'ACTIVE' | 'CLOSED'
+  startDate?: string
+  actualEndDate?: string
+  logCycleDays: number
+  memberCount: number
 }
 
-const getProgressClass = (progress: number) => {
-  if (progress >= 100) return 'success'
-  if (progress >= 60) return 'primary'
-  return 'warning'
+/**
+ * 获取项目列表
+ */
+const fetch_projects = async () => {
+  try {
+    const params = new URLSearchParams()
+    params.append('page', String(current_page.value))
+    params.append('size', String(page_size))
+    if (filter_status.value) params.append('status', filter_status.value)
+
+    const res: any = await request({
+      url: `/projects?${params.toString()}`,
+      method: 'GET'
+    })
+
+    project_list.value = res.content || []
+    total_pages.value = res.totalPages || 0
+    total_elements.value = res.totalElements || 0
+  } catch (err) {
+    uni.showToast({ title: '获取项目列表失败', icon: 'none' })
+  }
 }
 
-const selectProject = (project: any) => {
-  selectedProject.value = project
+/**
+ * 筛选变化处理
+ */
+const handle_filter_change = () => {
+  current_page.value = 1
+  fetch_projects()
 }
 
-const createProject = () => {
-  if (!newProject.value.name || !newProject.value.manager || !newProject.value.deadline) {
-    uni.showToast({ title: '请填写必填项', icon: 'none' })
+/**
+ * 搜索处理
+ */
+const handle_search = () => {
+  current_page.value = 1
+  // 后端暂不支持关键字搜索，前端过滤
+  fetch_projects()
+}
+
+/**
+ * 分页切换
+ */
+const change_page = (page: number) => {
+  current_page.value = page
+  fetch_projects()
+}
+
+/**
+ * 打开创建项目弹窗
+ */
+const open_create_modal = () => {
+  create_form.value = {
+    name: '',
+    startDate: '',
+    logCycleDays: 1
+  }
+  create_modal_visible.value = true
+}
+
+/**
+ * 创建项目
+ */
+const create_project = async () => {
+  if (!create_form.value.name) {
+    uni.showToast({ title: '请填写项目名称', icon: 'none' })
     return
   }
 
-  projects.value.unshift({
-    id: Date.now(),
-    name: newProject.value.name,
-    description: newProject.value.description,
-    status: '进行中',
-    manager: newProject.value.manager,
-    deadline: newProject.value.deadline,
-    progress: 0,
-    members: [newProject.value.manager]
-  })
+  try {
+    const data = {
+      name: create_form.value.name,
+      startDate: create_form.value.startDate || undefined,
+      logCycleDays: create_form.value.logCycleDays || 1
+    }
 
-  showCreateModal.value = false
-  newProject.value = { name: '', description: '', manager: '', deadline: '' }
-  stats.value.active++
-  uni.showToast({ title: '创建成功', icon: 'success' })
+    await request({
+      url: '/projects',
+      method: 'POST',
+      data
+    })
+
+    uni.showToast({ title: '创建成功', icon: 'success' })
+    create_modal_visible.value = false
+    fetch_projects()
+  } catch (err: any) {
+    uni.showToast({ title: err.message || '创建失败', icon: 'none' })
+  }
 }
+
+/**
+ * 查看项目详情
+ */
+const view_detail = (project: Project) => {
+  uni.navigateTo({ url: '/pages/projects/detail?id=' + project.id })
+}
+
+/**
+ * 关闭项目
+ */
+const close_project = (project: Project) => {
+  uni.showModal({
+    title: '确认关闭',
+    content: `确定要关闭项目 "${project.name}" 吗？`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await request({
+            url: `/projects/${project.id}/status`,
+            method: 'PATCH',
+            data: { status: 'CLOSED' }
+          })
+          uni.showToast({ title: '关闭成功', icon: 'success' })
+          fetch_projects()
+        } catch (err) {
+          uni.showToast({ title: '关闭失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
+onMounted(() => {
+  fetch_projects()
+})
 </script>
 
 <style lang="scss" scoped>
@@ -390,9 +371,6 @@ const createProject = () => {
 
 .page-header {
   flex-shrink: 0;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
 
   .page-title {
     font-size: 20px;
@@ -406,28 +384,6 @@ const createProject = () => {
     color: var(--on-surface-variant);
     margin-top: 2px;
     display: block;
-  }
-
-  .header-stats {
-    display: flex;
-    gap: 24px;
-
-    .stat-item {
-      text-align: right;
-
-      .stat-value {
-        font-size: 22px;
-        font-weight: 700;
-        color: var(--primary);
-        display: block;
-        font-family: var(--font-display, 'Manrope');
-      }
-
-      .stat-label {
-        font-size: 12px;
-        color: var(--on-surface-variant);
-      }
-    }
   }
 }
 
@@ -451,214 +407,92 @@ const createProject = () => {
   }
 }
 
-.main-content {
+.content-card {
   flex: 1;
   min-height: 0;
-  display: flex;
-  gap: 16px;
-}
-
-.left-panel {
-  flex: 0 0 380px;
-  display: flex;
-  flex-direction: column;
-}
-
-.right-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.content-card {
   background: var(--surface-lowest);
   border: 1px solid var(--surface-high);
   border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
 
-  .card-header {
-    flex-shrink: 0;
+// 自定义表格
+.data-table {
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+
+  .table-head {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 20px;
+    padding: 12px 16px;
+    background: var(--surface-low);
     border-bottom: 1px solid var(--surface-high);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--on-surface-variant);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+  }
 
-    .card-title {
-      font-size: 15px;
-      font-weight: 600;
+  .table-row {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--surface);
+    transition: background 0.15s;
+
+    &:hover { background: var(--surface-low); }
+    &:last-child { border-bottom: none; }
+
+    .cell {
+      display: flex;
+      align-items: center;
+      font-size: 14px;
       color: var(--on-surface);
+      padding: 0 8px;
+      box-sizing: border-box;
     }
   }
 
-  .card-body {
-    flex: 1;
-    min-height: 0;
-
-    &.scrollable {
-      overflow-y: auto;
-      padding: 16px 20px;
-    }
+  .table-empty {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 48px;
+    color: var(--on-surface-variant);
+    font-size: 14px;
   }
 }
 
-// 状态标签
+// 状态标签（fallback）
 .status-tag {
   display: inline-flex;
   align-items: center;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
 
   &.success { background: #f0f9eb; color: #2e7d32; }
-  &.warning { background: #fff7e6; color: #ed6c02; }
-  &.error { background: #fff1f0; color: #ba1a1a; }
-  &.primary { background: rgba(0,52,102,0.08); color: var(--primary); }
   &.default { background: var(--surface-low); color: var(--on-surface-variant); }
 }
 
-// 项目列表
-.project-list {
+// 分页
+.pagination {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-
-  .project-item {
-    padding: 16px;
-    border: 1px solid var(--surface-high);
-    cursor: pointer;
-    transition: background 0.15s;
-    border-radius: var(--radius-md);
-
-    &:hover {
-      background: var(--surface-low);
-    }
-
-    &.active {
-      background: rgba(0,52,102,0.06);
-      border: 1px solid rgba(0,52,102,0.15);
-    }
-
-    .project-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: 8px;
-
-      .project-name {
-        font-size: 14px;
-        font-weight: 600;
-        color: var(--on-surface);
-      }
-    }
-
-    .project-desc {
-      font-size: 12px;
-      color: var(--on-surface-variant);
-      line-height: 1.5;
-      margin-bottom: 12px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .project-meta {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 12px;
-
-      .meta-item {
-        font-size: 12px;
-        color: var(--on-surface-variant);
-      }
-    }
-
-    .project-progress {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-bottom: 12px;
-
-      .progress-bar {
-        flex: 1;
-        height: 5px;
-        background: var(--surface-high);
-        border-radius: 3px;
-        overflow: hidden;
-      }
-
-      .progress-fill {
-        height: 100%;
-        border-radius: 3px;
-        transition: width 0.3s;
-
-        &.success { background: var(--success); }
-        &.primary { background: var(--primary); }
-        &.warning { background: var(--warning); }
-      }
-
-      .progress-text {
-        font-size: 11px;
-        font-weight: 500;
-        color: var(--on-surface-variant);
-        min-width: 32px;
-        text-align: right;
-      }
-    }
-
-    .project-members {
-      display: flex;
-      align-items: center;
-
-      .member-avatar {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: var(--surface-low);
-        color: var(--primary);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 11px;
-        font-weight: 500;
-        margin-left: -6px;
-        border: 2px solid var(--surface-lowest);
-
-        &:first-child {
-          margin-left: 0;
-        }
-      }
-
-      .member-more {
-        width: 24px;
-        height: 24px;
-        border-radius: 50%;
-        background: var(--surface);
-        color: var(--on-surface-variant);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 10px;
-        margin-left: -6px;
-        border: 2px solid var(--surface-lowest);
-      }
-    }
-  }
-}
-
-// 空状态
-.empty-state {
-  display: flex;
-  align-items: center;
   justify-content: center;
-  padding: 48px 0;
-  color: var(--on-surface-variant);
-  font-size: 13px;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-top: 1px solid var(--surface-high);
+
+  .page-info {
+    font-size: 14px;
+    color: var(--on-surface-variant);
+  }
 }
 
 // 表单样式
@@ -666,18 +500,8 @@ const createProject = () => {
   padding: 16px 0;
 }
 
-.form-row {
-  display: flex;
-  gap: 16px;
-}
-
 .form-item {
   margin-bottom: 16px;
-
-  &.half {
-    flex: 1;
-    min-width: 0;
-  }
 
   label {
     display: block;

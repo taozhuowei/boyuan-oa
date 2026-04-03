@@ -5,11 +5,11 @@
       <view class="page-header">
         <view class="header-left">
           <text class="page-title">组织架构</text>
-          <text class="page-desc">查看和管理公司人员汇报关系</text>
+          <text class="page-desc">查看和管理公司人员汇报关系及部门结构</text>
         </view>
       </view>
 
-      <!-- 组织架构树 -->
+      <!-- 汇报关系树 -->
       <view class="org-tree-container content-card">
         <view class="card-header">
           <text class="card-title">汇报关系图</text>
@@ -28,6 +28,38 @@
           </view>
           <view v-else class="empty-state">
             <text>暂无组织架构数据</text>
+          </view>
+        </view>
+      </view>
+
+      <!-- 部门树 -->
+      <view class="dept-tree-container content-card">
+        <view class="card-header">
+          <text class="card-title">部门树</text>
+          <component
+            :is="Button"
+            v-if="Button && is_ceo"
+            type="primary"
+            size="small"
+            @click="open_create_dept_modal"
+          >
+            新建部门
+          </component>
+        </view>
+        <view class="card-body scrollable">
+          <view v-if="dept_tree.length" class="dept-tree">
+            <dept-node
+              v-for="node in dept_tree"
+              :key="node.id"
+              :node="node"
+              :level="0"
+              :is_ceo="is_ceo"
+              @edit="handle_dept_edit"
+              @delete="handle_dept_delete"
+            />
+          </view>
+          <view v-else class="empty-state">
+            <text>暂无部门数据</text>
           </view>
         </view>
       </view>
@@ -80,6 +112,53 @@
           </view>
         </view>
       </component>
+
+      <!-- 部门编辑弹窗 -->
+      <component
+        :is="Modal"
+        v-if="Modal"
+        v-model="dept_modal_visible"
+        :title="editing_dept ? '编辑部门' : '新建部门'"
+        width="500px"
+      >
+        <view class="form-content">
+          <view class="form-item">
+            <label>部门名称 <text class="required">*</text></label>
+            <component
+              :is="Input"
+              v-if="Input"
+              v-model="dept_form.name"
+              placeholder="请输入部门名称"
+            />
+          </view>
+          <view class="form-item">
+            <label>父部门</label>
+            <component
+              :is="Select"
+              v-if="Select"
+              v-model="dept_form.parentId"
+              :options="parent_dept_options"
+              placeholder="请选择父部门（留空为顶级部门）"
+              allow-clear
+              style="width: 100%"
+            />
+          </view>
+          <view class="form-item">
+            <label>排序</label>
+            <component
+              :is="Input"
+              v-if="Input"
+              v-model.number="dept_form.sort"
+              type="number"
+              placeholder="数字越小排序越前，默认为0"
+            />
+          </view>
+        </view>
+        <template #footer>
+          <component :is="Button" v-if="Button" @click="dept_modal_visible = false">取消</component>
+          <component :is="Button" v-if="Button" type="primary" @click="save_dept">保存</component>
+        </template>
+      </component>
     </view>
   </AppShell>
 </template>
@@ -91,13 +170,22 @@ import { request } from '../../utils/http'
 import { useUserStore } from '../../stores'
 import AppShell from '../../layouts/AppShell.vue'
 
+/**
+ * 组织架构页面
+ * 功能：展示汇报关系树和部门树，CEO可修改直系领导、管理部门
+ */
+
 const user_store = useUserStore()
 
 /** 判断当前用户是否为 CEO */
 const is_ceo = computed(() => user_store.userInfo?.role === 'ceo')
 
 /** 异步加载平台适配组件 */
-const { Button, Popup, Select } = useComponent(['Button', 'Popup', 'Select'])
+const { Button, Popup, Select, Modal, Input } = useComponent(['Button', 'Popup', 'Select', 'Modal', 'Input'])
+
+// ============================================================
+// 汇报关系树相关
+// ============================================================
 
 /** 本地 mock 数据：接口失败时使用 */
 const mock_org_tree = [
@@ -262,8 +350,218 @@ const OrgNode = {
   }
 }
 
+// ============================================================
+// 部门树相关
+// ============================================================
+
+/** 部门节点数据类型 */
+interface DepartmentNode {
+  id: number
+  name: string
+  parentId: number | null
+  sort: number
+  employeeCount: number
+  children: DepartmentNode[]
+}
+
+/** 部门树数据 */
+const dept_tree = ref<DepartmentNode[]>([])
+
+/** 部门编辑弹窗状态 */
+const dept_modal_visible = ref(false)
+const editing_dept = ref<DepartmentNode | null>(null)
+const dept_form = ref({
+  name: '',
+  parentId: '',
+  sort: 0
+})
+
+/** 父部门选项（排除当前编辑的部门及其子部门） */
+const parent_dept_options = computed(() => {
+  const exclude_ids = new Set<number>()
+  if (editing_dept.value) {
+    exclude_ids.add(editing_dept.value.id)
+    collect_child_ids(editing_dept.value, exclude_ids)
+  }
+  return [
+    { label: '无（顶级部门）', value: '' },
+    ...flatten_dept_tree(dept_tree.value)
+      .filter(d => !exclude_ids.has(d.id))
+      .map(d => ({
+        label: '  '.repeat(d.level) + d.name,
+        value: String(d.id)
+      }))
+  ]
+})
+
+/** 收集所有子部门ID */
+const collect_child_ids = (node: DepartmentNode, ids: Set<number>) => {
+  for (const child of node.children || []) {
+    ids.add(child.id)
+    collect_child_ids(child, ids)
+  }
+}
+
+/** 平铺部门树用于下拉选择 */
+const flatten_dept_tree = (nodes: DepartmentNode[], level = 0): Array<DepartmentNode & { level: number }> => {
+  const result: Array<DepartmentNode & { level: number }> = []
+  for (const node of nodes) {
+    result.push({ ...node, level })
+    if (node.children?.length) {
+      result.push(...flatten_dept_tree(node.children, level + 1))
+    }
+  }
+  return result
+}
+
+/** 加载部门树 */
+const load_dept_tree = async () => {
+  try {
+    const res = await request<DepartmentNode[]>({ url: '/departments', method: 'GET' })
+    dept_tree.value = res || []
+  } catch (e) {
+    console.error('获取部门树失败', e)
+    dept_tree.value = []
+  }
+}
+
+/** 打开新建部门弹窗 */
+const open_create_dept_modal = () => {
+  editing_dept.value = null
+  dept_form.value = {
+    name: '',
+    parentId: '',
+    sort: 0
+  }
+  dept_modal_visible.value = true
+}
+
+/** 编辑部门 */
+const handle_dept_edit = (node: DepartmentNode) => {
+  editing_dept.value = node
+  dept_form.value = {
+    name: node.name,
+    parentId: node.parentId ? String(node.parentId) : '',
+    sort: node.sort
+  }
+  dept_modal_visible.value = true
+}
+
+/** 删除部门 */
+const handle_dept_delete = (node: DepartmentNode) => {
+  uni.showModal({
+    title: '确认删除',
+    content: `确定要删除部门 "${node.name}" 吗？${node.children?.length ? '该部门有子部门，将一并删除。' : ''}`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await request({
+            url: `/departments/${node.id}`,
+            method: 'DELETE'
+          })
+          uni.showToast({ title: '删除成功', icon: 'success' })
+          load_dept_tree()
+        } catch (e: any) {
+          uni.showToast({ title: e.message || '删除失败', icon: 'none' })
+        }
+      }
+    }
+  })
+}
+
+/** 保存部门 */
+const save_dept = async () => {
+  if (!dept_form.value.name) {
+    uni.showToast({ title: '请填写部门名称', icon: 'none' })
+    return
+  }
+
+  try {
+    const data = {
+      name: dept_form.value.name,
+      parentId: dept_form.value.parentId ? Number(dept_form.value.parentId) : null,
+      sort: dept_form.value.sort || 0
+    }
+
+    if (editing_dept.value) {
+      await request({
+        url: `/departments/${editing_dept.value.id}`,
+        method: 'PUT',
+        data
+      })
+      uni.showToast({ title: '更新成功', icon: 'success' })
+    } else {
+      await request({
+        url: '/departments',
+        method: 'POST',
+        data
+      })
+      uni.showToast({ title: '创建成功', icon: 'success' })
+    }
+
+    dept_modal_visible.value = false
+    load_dept_tree()
+  } catch (e: any) {
+    uni.showToast({ title: e.message || '保存失败', icon: 'none' })
+  }
+}
+
+/** 递归渲染组件：部门树节点 */
+const DeptNode = {
+  name: 'DeptNode',
+  props: ['node', 'level', 'is_ceo'],
+  emits: ['edit', 'delete'],
+  setup(props: any, { emit }: any) {
+    const expanded = ref(true)
+    const has_children = computed(() => props.node.children?.length > 0)
+    const toggle_expand = () => { expanded.value = !expanded.value }
+    return { expanded, has_children, toggle_expand, emit }
+  },
+  render() {
+    const { node, level, is_ceo } = this
+    const indent_style = { paddingLeft: `${level * 24}px` }
+    return h('view', { class: 'dept-node' }, [
+      h('view', { class: 'dept-card', style: indent_style }, [
+        h('view', { class: 'dept-main' }, [
+          this.has_children && h('text', {
+            class: 'expand-icon',
+            onClick: (e: Event) => { e.stopPropagation(); this.toggle_expand() }
+          }, this.expanded ? '▼' : '▶'),
+          h('view', { class: 'dept-info' }, [
+            h('text', { class: 'dept-name' }, node.name),
+            h('text', { class: 'dept-count' }, `（${node.employeeCount || 0}人）`)
+          ])
+        ]),
+        is_ceo && h('view', { class: 'dept-actions' }, [
+          h('text', {
+            class: 'action-link',
+            onClick: () => this.$emit('edit', node)
+          }, '编辑'),
+          h('text', {
+            class: 'action-link danger',
+            onClick: () => this.$emit('delete', node)
+          }, '删除')
+        ])
+      ]),
+      this.expanded && this.has_children && h('view', { class: 'dept-children' },
+        node.children.map((child: any) =>
+          h(DeptNode, {
+            key: child.id,
+            node: child,
+            level: level + 1,
+            is_ceo,
+            onEdit: (n: any) => this.$emit('edit', n),
+            onDelete: (n: any) => this.$emit('delete', n)
+          })
+        )
+      )
+    ])
+  }
+}
+
 onMounted(() => {
   load_org_tree()
+  load_dept_tree()
 })
 </script>
 
@@ -296,20 +594,20 @@ onMounted(() => {
   }
 }
 
-.org-tree-container {
+.content-card {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
-}
-
-.content-card {
   background: var(--surface-lowest);
   border: 1px solid var(--surface-high);
   border-radius: var(--radius-lg);
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
+
+  &.org-tree-container,
+  &.dept-tree-container {
+    flex: 0 0 45%;
+  }
 
   .card-header {
     flex-shrink: 0;
@@ -432,6 +730,85 @@ onMounted(() => {
   }
 }
 
+// 部门树样式
+.dept-tree {
+  .dept-node {
+    .dept-card {
+      background: var(--surface);
+      border: 1px solid var(--surface-high);
+      border-radius: var(--radius-md);
+      padding: 10px 16px;
+      margin-bottom: 6px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: all 0.2s;
+
+      &:hover {
+        background: var(--surface-low);
+      }
+
+      .dept-main {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+
+        .expand-icon {
+          font-size: 10px;
+          color: var(--on-surface-variant);
+          width: 16px;
+          text-align: center;
+          cursor: pointer;
+
+          &:hover {
+            color: var(--primary);
+          }
+        }
+
+        .dept-info {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+
+          .dept-name {
+            font-weight: 500;
+            font-size: 14px;
+            color: var(--on-surface);
+          }
+
+          .dept-count {
+            font-size: 12px;
+            color: var(--on-surface-variant);
+          }
+        }
+      }
+
+      .dept-actions {
+        display: flex;
+        gap: 12px;
+
+        .action-link {
+          font-size: 12px;
+          color: var(--primary);
+          cursor: pointer;
+
+          &:hover {
+            opacity: 0.8;
+          }
+
+          &.danger {
+            color: var(--error);
+          }
+        }
+      }
+    }
+
+    .dept-children {
+      margin-top: 4px;
+    }
+  }
+}
+
 // 空状态
 .empty-state {
   text-align: center;
@@ -507,6 +884,26 @@ onMounted(() => {
           border-color: var(--primary);
         }
       }
+    }
+  }
+}
+
+// 表单样式
+.form-content {
+  padding: 16px 0;
+}
+
+.form-item {
+  margin-bottom: 16px;
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: var(--on-surface-variant);
+
+    .required {
+      color: var(--error);
     }
   }
 }
