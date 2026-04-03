@@ -41,6 +41,18 @@
       "style": {
         "navigationBarTitleText": "角色"
       }
+    },
+    {
+      "path": "pages/todo/index",
+      "style": {
+        "navigationBarTitleText": "待办中心"
+      }
+    },
+    {
+      "path": "pages/config/index",
+      "style": {
+        "navigationBarTitleText": "系统配置"
+      }
     }
   ],
   "globalStyle": {

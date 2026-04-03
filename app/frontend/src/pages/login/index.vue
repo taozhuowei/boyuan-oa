@@ -108,7 +108,7 @@ const handleLogin = async () => {
 
     userStore.setSession(result.token, result.user)
 
-    uni.redirectTo({ url: '/pages/role/index' })
+    uni.redirectTo({ url: '/pages/index/index' })
   } catch (err) {
     errorMsg.value = err instanceof Error ? err.message : '登录失败，请重试'
   } finally {

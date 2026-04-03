@@ -1,237 +1,159 @@
 <template>
   <view class="page role-page">
-    <view class="role-container">
-      <view class="role-header">
-        <text class="role-title">选择您的身份</text>
-        <text class="role-subtitle">请选择要登录的角色以进入相应的工作台</text>
+    <view class="hero">
+      <view class="hero-main">
+        <view class="hero-title-row">
+          <text class="hero-title">角色管理</text>
+          <component :is="Button" v-if="Button" type="default" @click="goBack">返回工作台</component>
+        </view>
+        <text class="hero-subtitle">配置角色及其权限</text>
       </view>
+    </view>
 
-      <component :is="Row" v-if="Row" :gutter="24">
-        <component :is="Col" v-if="Col" :span="12">
-          <view
-            class="role-card"
-            :class="{ active: selectedRole === 'employee' }"
-            @click="selectRole('employee')"
-          >
-            <view class="role-icon employee">
-              <view class="icon-placeholder"></view>
+    <view class="role-container">
+      <component :is="Row" v-if="Row" :gutter="16">
+        <component :is="Col" v-if="Col" :span="8" v-for="role in roleList" :key="role.roleCode">
+          <component :is="Card" v-if="Card" :bordered="true">
+            <view class="role-card-header">
+              <view class="role-meta">
+                <text class="role-name">{{ role.roleName }}</text>
+                <text class="role-code">{{ role.roleCode }}</text>
+              </view>
+              <component :is="Button" v-if="Button && isCEO" type="primary" size="small">编辑</component>
             </view>
-            <view class="role-info">
-              <text class="role-name">普通员工</text>
-              <text class="role-desc">查看个人薪资、提交考勤申请、参与项目</text>
+            <view class="role-desc">{{ role.description }}</view>
+            <view class="role-perms">
+              <component :is="Tag" v-if="Tag" v-for="perm in role.permissions" :key="perm">{{ perm }}</component>
             </view>
-            <view v-if="selectedRole === 'employee'" class="role-check">
-              <view class="icon-placeholder"></view>
-            </view>
-          </view>
-        </component>
-
-        <component :is="Col" v-if="Col" :span="12">
-          <view
-            class="role-card"
-            :class="{ active: selectedRole === 'ceo' }"
-            @click="selectRole('ceo')"
-          >
-            <view class="role-icon ceo">
-              <view class="icon-placeholder"></view>
-            </view>
-            <view class="role-info">
-              <text class="role-name">CEO / 管理员</text>
-              <text class="role-desc">管理员工、审批考勤、查看全公司数据</text>
-            </view>
-            <view v-if="selectedRole === 'ceo'" class="role-check">
-              <view class="icon-placeholder"></view>
-            </view>
-          </view>
+          </component>
         </component>
       </component>
-
-      <view class="role-actions">
-        <component
-          :is="Button"
-          v-if="Button"
-          type="primary"
-          size="large"
-          block
-          :disabled="!selectedRole"
-          :loading="loading"
-          @click="confirmRole"
-        >
-          进入系统
-        </component>
-        <component :is="Button" v-if="Button" type="link" @click="goBack">
-          返回登录
-        </component>
-      </view>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed } from 'vue'
 import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 
-const { Row, Col, Button } = useComponent(['Row', 'Col', 'Button'])
+const { Row, Col, Card, Tag, Button, Empty } = useComponent(['Row', 'Col', 'Card', 'Tag', 'Button', 'Empty'])
 
 const userStore = useUserStore()
+const userRole = computed(() => userStore.userInfo?.role || 'employee')
+const isCEO = computed(() => userRole.value === 'ceo')
 
-const selectedRole = ref('')
-const loading = ref(false)
-
-const selectRole = (role: string) => {
-  selectedRole.value = role
-}
-
-const confirmRole = async () => {
-  if (!selectedRole.value) return
-
-  loading.value = true
-
-  try {
-    // 更新用户角色
-    userStore.setUserInfo({
-      ...userStore.userInfo,
-      role: selectedRole.value
-    })
-
-    // 模拟加载
-    await new Promise(resolve => setTimeout(resolve, 500))
-
-    // 跳转到首页
-    uni.switchTab({ url: '/pages/index/index' })
-  } finally {
-    loading.value = false
+const roleList = [
+  {
+    roleCode: 'employee',
+    roleName: '员工',
+    description: '发起和查看本人业务单据，查看并确认工资条',
+    permissions: ['查看本人信息', '发起请假', '发起加班', '工资条确认与异议']
+  },
+  {
+    roleCode: 'worker',
+    roleName: '劳工',
+    description: '处理施工日志、工伤补偿和个人工资确认事项',
+    permissions: ['施工日志', '工伤补偿', '发起请假', '工资条确认与异议']
+  },
+  {
+    roleCode: 'finance',
+    roleName: '财务',
+    description: '维护人员与薪资配置，执行结算、复核异议、导出数据',
+    permissions: ['查看全员信息', '工资结算', '通讯录导入', '导出数据']
+  },
+  {
+    roleCode: 'project_manager',
+    roleName: '项目经理',
+    description: '处理项目范围内审批，维护日志模板，查看项目总览',
+    permissions: ['项目初审', '项目总览', '日志模板维护']
+  },
+  {
+    roleCode: 'ceo',
+    roleName: '首席经营者',
+    description: '管理全局配置、终审审批、配置角色权限、查看经营总览',
+    permissions: ['终审审批', '角色与权限配置', '数据有效期配置', '经营总览']
   }
-}
+]
 
 const goBack = () => {
-  userStore.logout()
-  uni.redirectTo({ url: '/pages/login/index' })
+  uni.switchTab({ url: '/pages/index/index' })
 }
 </script>
 
 <style lang="scss" scoped>
 .role-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f0f2f5 0%, #e6e9f0 100%);
+  background: var(--oa-bg);
+  padding: 16px;
+}
+
+.hero {
+  background: linear-gradient(135deg, #003466 0%, #324963 100%);
+  color: #fff;
+  padding: 24px;
+  margin-bottom: 16px;
+  border-radius: var(--oa-radius-lg);
+}
+
+.hero-title-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 24px;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.hero-title {
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.hero-subtitle {
+  font-size: 14px;
+  opacity: 0.9;
 }
 
 .role-container {
-  width: 100%;
-  max-width: 640px;
-}
-
-.role-header {
-  text-align: center;
-  margin-bottom: 48px;
-
-  .role-title {
-    font-size: 28px;
-    font-weight: 700;
-    color: var(--oa-text-primary);
-    display: block;
-    margin-bottom: 12px;
-  }
-
-  .role-subtitle {
-    font-size: 14px;
-    color: var(--oa-text-secondary);
+  :deep(.oa-card) {
+    margin-bottom: 0;
   }
 }
 
-.role-card {
-  background: #fff;
-  border-radius: var(--oa-radius-lg);
-  padding: 32px;
+.role-card-header {
   display: flex;
+  justify-content: space-between;
   align-items: flex-start;
-  gap: 20px;
-  cursor: pointer;
-  border: 2px solid transparent;
-  transition: all 0.3s;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  position: relative;
-
-  &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  }
-
-  &.active {
-    border-color: var(--oa-primary);
-    background: linear-gradient(135deg, #fff 0%, #f0f7ff 100%);
-  }
-
-  .role-icon {
-    width: 64px;
-    height: 64px;
-    border-radius: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-
-    &.employee {
-      background: linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%);
-      color: var(--oa-primary);
-    }
-
-    &.ceo {
-      background: linear-gradient(135deg, #fff7e6 0%, #ffd591 100%);
-      color: #fa8c16;
-    }
-  }
-
-  .role-info {
-    flex: 1;
-  }
-
-  .role-name {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--oa-text-primary);
-    display: block;
-    margin-bottom: 8px;
-  }
-
-  .role-desc {
-    font-size: 13px;
-    color: var(--oa-text-secondary);
-    line-height: 1.5;
-  }
-
-  .role-check {
-    position: absolute;
-    top: 16px;
-    right: 16px;
-    color: var(--oa-primary);
-  }
+  margin-bottom: 12px;
 }
 
-.role-actions {
-  margin-top: 48px;
-  text-align: center;
-
-  :deep(.oa-button) {
-    margin-bottom: 16px;
-  }
+.role-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-// 响应式
-@media (max-width: 640px) {
-  .role-card {
-    padding: 24px;
-    flex-direction: column;
-    text-align: center;
+.role-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--oa-text-primary);
+}
 
-    .role-icon {
-      margin: 0 auto;
-    }
-  }
+.role-code {
+  font-size: 12px;
+  color: var(--oa-text-tertiary);
+}
+
+.role-desc {
+  font-size: 14px;
+  color: var(--oa-text-secondary);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.role-perms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 </style>

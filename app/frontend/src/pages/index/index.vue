@@ -241,6 +241,26 @@ const visibleSystems = computed(() => {
       path: '/pages/role/index',
       roles: ['ceo', 'finance'],
       badge: 0
+    },
+    {
+      key: 'todo',
+      title: '待办中心',
+      description: '待审批事项汇总',
+      icon: '📋',
+      iconTheme: 'warning' as const,
+      path: '/pages/todo/index',
+      roles: ['ceo', 'finance', 'project_manager', 'employee', 'worker'],
+      badge: 3
+    },
+    {
+      key: 'config',
+      title: '系统配置',
+      description: '全局参数配置',
+      icon: '⚙️',
+      iconTheme: 'error' as const,
+      path: '/pages/config/index',
+      roles: ['ceo'],
+      badge: 0
     }
   ]
 

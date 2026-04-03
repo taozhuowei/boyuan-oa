@@ -80,22 +80,22 @@
 
 ### 前端任务
 
-- [ ] `[P0]` 验证 5 个测试账号 mock 登录均可正常工作，路由分发正确（sysadmin → `/pages/setup`，其余 → `/pages/index`）
+- [x] `[P0]` 验证 5 个测试账号 mock 登录均可正常工作，路由分发正确（sysadmin → `/pages/setup`，其余 → `/pages/index`）
   > 检查: `app/frontend/src/pages/login/index.vue` — 查看 mock 账号列表和登录后 router.push 逻辑，确认 sysadmin 走 setup、其余走 index
 
-- [ ] `[P0]` 排查并修复所有页面 `onMounted` 报错（组件缺失 crash、undefined 引用等）
+- [x] `[P0]` 排查并修复所有页面 `onMounted` 报错（组件缺失 crash、undefined 引用等）
   > 检查: 运行 `npm run build:h5` — 输出无 error（warning 可忽略）；浏览器 Console 在各页面切换时无红色报错
 
-- [ ] `[P1]` 补全 `components/cross-platform/Table/` 组件（当前文件缺失，MP 会 crash）
+- [x] `[P1]` 补全 `components/cross-platform/Table/` 组件（当前文件缺失，MP 会 crash）
   > 检查: `app/frontend/src/components/cross-platform/Table/index.vue` — 文件存在且包含 columns / data props 定义
 
-- [ ] `[P1]` 验证 AntD CSS 变量覆盖（`--ant-color-primary` 对齐 `--oa-primary: #003466`）
+- [x] `[P1]` 验证 AntD CSS 变量覆盖（`--ant-color-primary` 对齐 `--oa-primary: #003466`）
   > 检查: `app/frontend/src/` 中的全局样式文件（如 app.vue 或 styles/）— 搜索 `--ant-color-primary`，确认值为 `#003466` 或引用 `--oa-primary`
 
-- [ ] `[P1]` 验证 Vant CSS 变量覆盖（`--van-primary-color` 对齐 `--oa-primary`）
+- [x] `[P1]` 验证 Vant CSS 变量覆盖（`--van-primary-color` 对齐 `--oa-primary`）
   > 检查: 同上全局样式文件 — 搜索 `--van-primary-color`，确认与主色一致
 
-- [ ] `[P1]` 修复 `components.json` 中 `Textarea` H5 端来源错误（应为 `Textarea` 而非 `Input.TextArea`）
+- [x] `[P1]` 修复 `components.json` 中 `Textarea` H5 端来源错误（应为 `Textarea` 而非 `Input.TextArea`）
   > 检查: `app/frontend/src/adapters/config/components.json` — 搜索 Textarea 的 h5 字段，确认值为 `Textarea`（AntD）而非 `Input.TextArea`
 
 - [ ] `[P2]` 验证双端主色、圆角、字体、间距视觉一致性（H5 Chrome + 微信开发者工具模拟器）
