@@ -468,8 +468,9 @@ CEO 操作选项：
         ├─ 成功 → 删除数据库记录 → 写入审计日志
         └─ 失败 → 进入重试队列（最多重试 3 次，每次间隔 24h）
                    多次失败 → cleanup_task.status = FAILED
-                            → Sysadmin 登录时弹出 Admin 运营看板，列出所有 FAILED 清理任务（见 BACKEND_IMPL §10）
-                   **P3**：连续 N 天未处理 FAILED 任务时，通过 SmsService 发送短信提醒（接口预留，当前实现为 no-op）
+                            → **Sysadmin** 登录 Admin 运营控制台「系统状态」Tab 可见异常提醒
+                            → 由 Sysadmin 执行「重试」（排查磁盘/存储问题后）或「标记处理」（人工已处理）
+                   **P3**：连续 N 天未处理 FAILED 任务时，通过 SmsService 发送短信提醒至 Sysadmin（接口预留，当前实现为 no-op）
 ```
 
 ---

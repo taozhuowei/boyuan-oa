@@ -86,14 +86,6 @@ const Button = await getComponent('Button')
 - **登录页、系统初始化向导等纯输入页面**：直接使用 uni-app 原生元素（`input`、`view`），确保立即渲染，不受适配层异步加载影响
 - **新增组件**：先在 `components.json` 注册，再在页面中调用
 
-### 2.5 已知问题与 TODO
-
-| 问题                  | 描述                                                            | 优先级 |
-|----------------------|----------------------------------------------------------------|--------|
-| `Row` / `Col`        | Vant 无此组件，MP 端需自定义实现                                   | 高     |
-| `Textarea`           | components.json 中 H5 端来源有误，应为 `Textarea` 而非 `Input.TextArea` | 高 |
-| `getComponentSync`   | 当前为空壳，需补充条件编译实现                                      | 中     |
-
 ---
 
 ## 3. HTTP 层规范

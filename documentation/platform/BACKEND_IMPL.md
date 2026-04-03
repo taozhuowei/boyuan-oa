@@ -44,10 +44,26 @@ src/main/java/com/oa/backend/
 ```
 src/main/resources/
 ├── db/
-│   ├── schema.sql                  # 全量 DDL（30 张表，含 CREATE TABLE IF NOT EXISTS）
-│   └── data.sql                    # 种子数据（5 个测试账号，角色，部门，岗位）
-└── application.yml                 # 应用配置
+│   ├── schema.sql                  # 全量 DDL（35 张表，含 CREATE TABLE IF NOT EXISTS）
+│   └── data.sql                    # 仅开发环境种子数据（通过 Spring Profile 隔离，见下）
+├── application.yml                 # 公共配置
+├── application-dev.yml             # 开发环境（含 H2 内存库、data.sql 自动加载）
+└── application-prod.yml            # 生产环境（连接真实数据库，禁止加载 data.sql）
 ```
+
+**开发/生产数据隔离方案：**
+
+`application-dev.yml` 开启 H2 内存库并自动执行 `data.sql`（测试种子数据）；`application-prod.yml` 连接 PostgreSQL，**不配置 `spring.sql.init.data-locations`**，`data.sql` 永不被生产环境加载。启动方式：
+
+```bash
+# 开发
+java -jar app.jar --spring.profiles.active=dev
+
+# 生产
+java -jar app.jar --spring.profiles.active=prod
+```
+
+`data.sql` 中的测试账号（employee.demo 等）只存在于开发环境内存数据库，不会进入生产。
 
 ---
 
@@ -83,7 +99,7 @@ public class FormRecord {
 }
 ```
 
-> `operation_log`（审计日志）**不加 `@TableLogic`**，永久物理保留，不可逻辑删除。
+> `operation_log`（审计日志）**不加 `@TableLogic`**，不可逻辑删除。跟随全局保留策略（`sys_retention_policy` 配置，默认 1 年），到期后物理删除，与其他业务数据遵循相同的清理流程。
 
 ### 2.3 自动填充配置
 
@@ -118,9 +134,19 @@ Payload claims:
   role        → roleCode（小写，如 ceo / project_manager / finance）
   displayName → 员工姓名（用于前端展示，避免二次查库）
   iat         → 签发时间
-  exp         → 过期时间（默认 24 小时，生产环境应缩短至 2 小时）
+  exp         → 过期时间：开发环境默认 24 小时；生产环境配置为 2 小时
   iss         → "oa-backend"
 ```
+
+**Token 有效期配置**（`application.yml`）：
+
+```yaml
+jwt:
+  expiration-hours: 24      # 开发默认；生产环境覆盖为 2
+  secret: ${JWT_SECRET}     # 从环境变量读取，禁止硬编码
+```
+
+Token 过期后返回 401，前端自动跳转登录页；**无 Token 刷新机制**（MVP 阶段不引入 Refresh Token 复杂度）。
 
 ### 3.2 业务用户与 Sysadmin 共用同一 Token 格式
 
@@ -361,7 +387,7 @@ PayrollCycle.windowStatus:
 
 ### 8.2 多版本管理
 
-工资条每次更正生成新版本（`version` 字段自增），旧版本状态置为 `SUPERSEDED`，永不物理删除。查询时默认取最新版本（`ORDER BY version DESC LIMIT 1`）。
+工资条每次更正生成新版本（`version` 字段自增），旧版本状态置为 `SUPERSEDED`。所有版本（含历史）跟随全局保留策略（默认 1 年），与最新版本同等对待，到期后一并清理。查询时默认取最新版本（`ORDER BY version DESC LIMIT 1`）。
 
 ### 8.3 两项强制前置检查
 
@@ -377,10 +403,14 @@ PayrollCycle.windowStatus:
 
 工资条中除固定算法项（加班、请假、社保等）外，支持财务/CEO 通过 `PayrollItemDef` 表配置额外费目：
 
-| 类型 | 说明 | 示例 |
+| 字段 | 类型 | 说明 |
 |------|------|------|
-| `ALLOWANCE` | 补贴/奖金，加入应发 | 餐补、驻场补贴 |
-| `DEDUCTION` | 扣减项，减少实发 | 公司罚款、设备损坏赔偿 |
+| `itemType` | `ENUM(ALLOWANCE, DEDUCTION)` | `ALLOWANCE` 计入应发；`DEDUCTION` 从实发中扣减 |
+| `itemName` | `VARCHAR` | 费目名称，如"餐补"、"设备赔偿" |
+| `description` | `VARCHAR(200)` | 说明补贴用途或扣款原因，体现在员工工资条对应行中（如"驻场补贴-2026年3月"、"设备损坏赔偿-钻机维修"） |
+| `amount` | `DECIMAL(12,2)` | 金额，财务结算时按需录入 |
+
+**工资条展示规则**：`PayrollSlipItem` 展示时同步显示 `description` 字段内容，员工可见扣款/补贴原因。
 
 财务在结算时按需将自定义金额挂载到当期 `PayrollSlip`（生成 `PayrollSlipItem` 行），平台引擎汇总计算实发工资。
 
@@ -399,8 +429,10 @@ PayrollCycle.windowStatus:
 ### 9.1 清理安全约束
 
 ```
-物理文件删除失败 → 不标记清理完成，进入重试队列（最多 3 次）
-重试全部失败    → 写入 cleanup_task（status=FAILED）等待人工干预
+物理文件删除失败 → 不标记清理完成，进入重试队列（最多 3 次，每次间隔 24h）
+重试全部失败    → 写入 cleanup_task（status=FAILED）
+               → Sysadmin 登录后 Admin 运营控制台「系统状态」Tab 自动弹出异常提醒
+               → 由 Sysadmin 在控制台执行「重试」或「标记处理」，人工排查磁盘/存储问题
 禁止只删 DB 记录不删文件，或只删文件不删 DB
 ```
 
@@ -417,16 +449,16 @@ PayrollCycle.windowStatus:
   "initialized": false,
   "nextStep": "company",
   "steps": {
-    "company":       { "done": false },
-    "accounts":      { "done": false },
-    "roles":         { "done": false },
-    "workflows":     { "done": false },
-    "retention":     { "done": false }
+    "company":    { "done": false },  // true = 公司全称已填写并保存
+    "accounts":   { "done": false },  // true = 至少一个 CEO 账号已创建
+    "roles":      { "done": false },  // true = 角色权限模板已确认（可使用默认值直接确认）
+    "workflows":  { "done": false },  // true = 各业务类型审批流节点已确认
+    "retention":  { "done": false }   // true = 数据保留说明页已点击"下一步"确认阅读
   }
 }
 ```
 
-前端据此渲染向导步骤，所有步骤完成后 `initialized` 变为 `true`，向导入口隐藏。
+前端据此渲染向导步骤，所有步骤 `done=true` 后 `initialized` 变为 `true`，向导入口隐藏，跳转至 Admin 运营控制台。
 
 ### 10.2 初始账号创建规则
 

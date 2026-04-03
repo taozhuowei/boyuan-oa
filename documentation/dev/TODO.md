@@ -50,7 +50,7 @@
   - 薪资：`leave_type_def`（假种扣款比例）、`social_insurance_item`（险种分项）、`payroll_item_def`（自定义费目）、`payroll_cycle`（含窗口期字段 `window_days/window_status/window_start_date/window_end_date`，**无独立 payroll_window_period 表**）、`payroll_slip`（无 `items JSON`，净发工资字段）、`payroll_slip_item`（工资条明细行）、`salary_grade`、`payroll_adjustment`、`payroll_confirmation`
   - 签名：`employee_signature`、`salary_confirmation_agreement`
   - 工伤：`injury_claim`（理赔记录，独立于 form_record）
-  - 运维：`operation_log`（永久保留）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
+  - 运维：`operation_log`（跟随全局保留策略，无 @TableLogic）、`notification`、`retention_policy`、`retention_reminder`、`cleanup_task`、`export_backup_task`
   > 检查: `app/backend/src/main/resources/db/schema.sql` — 搜索每个表名，确认所有 CREATE TABLE 语句存在；**特别确认不存在 `payroll_window_period` 表**
 
 - [ ] `[P0]` 补全 `data.sql`：写入 5 个测试账号（employee.demo、worker.demo、pm.demo、ceo.demo、finance.demo）及对应角色、部门数据
@@ -75,6 +75,10 @@
 
 - [ ] `[P1]` `components.json` 补全注册：`Upload`、`Tabs`/`Tab`、`Tag`、`Steps`/`Step`、`Popup`、`Textarea`、`Canvas`
   > 检查: `app/frontend/src/adapters/config/components.json` — 搜索上述7个组件名，确认全部有 h5 / mp 来源注册
+  > 注意：H5 端 `Textarea` 来源应为 `Textarea`，不是 `Input.TextArea`
+
+- [ ] `[P1]` 自定义 `Row` / `Col` 布局组件（MP 端 Vant 无此组件，需自实现）
+  > 检查: `app/frontend/src/adapters/components/Row.vue` 和 `Col.vue` — 确认存在并在 `components.json` 注册；H5 端可直接映射 AntD Row/Col
 
 - [ ] `[P2]` `getComponentSync` 补充条件编译实现（当前为空壳）
   > 检查: `app/frontend/src/composables/useComponent.ts` — 查看 `getComponentSync` 函数体，确认有 `#ifdef H5` 和 `#ifdef MP-WEIXIN` 分支
@@ -278,7 +282,7 @@
 - [ ] `[P0]` 系统启动时写入 LEAVE、OVERTIME 默认两级审批流配置
   > 检查: `app/backend/src/main/resources/db/data.sql` — 搜索 `INSERT INTO approval_flow_def` 含 `LEAVE` 和 `OVERTIME` 两条记录
 
-- [ ] `[P0]` 所有审批节点操作（提交、审批、驳回、归档、追溯驳回）写入 `operation_log`，永久保留（不受数据保留策略删除）
+- [ ] `[P0]` 所有审批节点操作（提交、审批、驳回、归档、追溯驳回）写入 `operation_log`（跟随全局保留策略，默认 1 年，无逻辑删除）
   > 检查: `app/backend/src/main/java/com/oa/backend/service/` — 搜索 `OperationLogService` 或 `operationLog`（或对应 Mapper），确认在审批方法中调用
 
 - [ ] `[P1]` 将 `OaDataService` 表单/审批内存逻辑迁移到真实 Service + Mapper
@@ -597,7 +601,7 @@
 - [ ] 模拟数据到期前 30 天，CEO 收到通知
 - [ ] CEO 可选择"导出后删除"或"忽略"（无延期选项，延期为后续收费功能）
 - [ ] 导出任务完成后可下载，链接 72 小时有效
-- [ ] 操作日志不受保留策略影响，写入 `operation_log` 后永久保存
+- [ ] 操作日志（`operation_log`）跟随全局保留策略（默认 1 年），无逻辑删除，到期物理清理
 
 ### 后端任务
 
@@ -756,6 +760,7 @@
 
 | 日期        | 内容                                                                                                                                           |
 |-----------|------------------------------------------------------------------------------------------------------------------------------------------------|
+| 2026-04-03 | 文档整体修订：platform/UI_DESIGN.md 全量重写（处理所有 [comment] 反馈，新增忘记密码/修改手机号流程，Admin 控制台重构为4 Tab 含集成配置/用户反馈，MP 壳去除 Tab 栏改头像导航）；所有文档"永久保留"统一改为跟随全局保留策略（默认1年）；operation_log 跟随全局策略；ApprovalRecord 同步；ARCHITECTURE.md retentionYears 去掉 -1 永久选项；BACKEND_IMPL.md 新增 Token 有效期明确说明/data.sql dev-prod 隔离方案/PayrollItemDef description 字段/9.1 清理失败操作人明确为 Sysadmin/10.1 step 注释；FRONTEND_IMPL.md 删除 §2.5（已知问题迁移至 TODO）；Phase 0 新增 Row/Col 自定义组件任务；CLIENT_FLOW_CONFIRMATION.md 删除已废弃例外申请章节 |
 | 2026-04-03 | 应用21项设计决策：schema 表清单新增 leave_type_def / social_insurance_item / form_type_def / permission / payroll_item_def / payroll_slip_item，移除 payroll_window_period（窗口期字段合并进 payroll_cycle）；Phase 6 窗口期去掉提前关闭、预结算强制检查简化为2项（无例外申请）、新增 PayrollItemDef CRUD；Phase 5 施工日志周期改为 CEO 直接修改；P3 新增 SMS通知、日结/周结、Excel字段映射；里程碑去 targetDate 改 actualCompletionDate；多 PM 审批改 ANY_OF 模式 |
 | 2026-04-02 | 大规模补充新模块任务：schema 扩展至30张表；Phase 2 加岗位/等级/组织架构接口及前端页面；Phase 4 新增加班通知制三条路径（PM通知/CEO直通/自补例外）；Phase 5 施工日志重设计（工作项模板、里程碑进度、汇总报告、Dashboard折线图）；Phase 6 引入窗口期模型（取代4项阻塞检查）、工资确认协议管理；同步更新 UI_DESIGN.md、ROLE_CONFIG.md、CLIENT_FLOW_CONFIRMATION.md |
 | 2026-04-02 | 补充预结算例外申请任务（Phase 6），为全部任务添加逐项检查点（文件路径 + 验证内容）；社保并入工资模式明确为五险一金合计补贴 + 灵活就业说明 |

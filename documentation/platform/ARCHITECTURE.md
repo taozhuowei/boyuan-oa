@@ -433,7 +433,7 @@ GET /forms/config?formType={type}
 
 #### `ApprovalRecord` — 审批操作记录
 
-> 永久保留，不受数据保留策略影响。
+> 跟随全局保留策略（`sys_retention_policy` 默认 1 年），到期物理删除。无 `@TableLogic`，不可逻辑删除。
 
 | 字段           | 类型                          | 说明                    |
 |--------------|-------------------------------|-------------------------|
@@ -688,7 +688,7 @@ GET /forms/config?formType={type}
 
 #### `OperationLog` — 审批操作日志
 
-> **永久保留，不受数据保留策略影响。**
+> 跟随全局保留策略（`sys_retention_policy` 默认 1 年），到期物理删除。无 `@TableLogic`，不可逻辑删除。
 
 | 字段          | 类型               | 说明                                          |
 |-------------|-------------------|-----------------------------------------------|
@@ -708,7 +708,7 @@ GET /forms/config?formType={type}
 |-----------------|-------------|-------------------------------------------|
 | `id`            | UUID PK      | 主键                                      |
 | `dataType`      | VARCHAR(50)  | 数据类型（leave/injury/construction-log/…）|
-| `retentionYears`| INT          | 保留年限（-1 表示永久，仅 OperationLog 使用）|
+| `retentionYears`| INT          | 保留年限（正整数，默认 1；所有数据类型均有期限，无永久选项）|
 | `warnBeforeDays`| INT DEFAULT 30 | 到期前多少天提醒                         |
 
 ---
