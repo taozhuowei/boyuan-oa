@@ -172,17 +172,44 @@
 
 ### 5.1 创建预置方案
 
-在 `presets/` 下新建目录，命名建议使用行业英文名（如 `manufacturing`、`hvac`、`real-estate`）：
+接入第二家企业需要完成**三层工作**，MD 文件只是其中的设计记录层：
 
 ```
 presets/
-├── construction/     ← 建筑工程版（当前）
+├── construction/               ← 建筑工程版（当前）
+│   ├── ROLE_CONFIG.md          # [文档] 角色权限设计记录
+│   ├── WORKFLOW_CONFIG.md      # [文档] 工作流与业务规则记录
+│   ├── UI_DESIGN.md            # [文档] 页面布局设计记录
+│   ├── ORG_CONFIG.md           # [文档] 组织架构初始配置记录
+│   ├── CLIENT_FLOW_CONFIRMATION.md  # [文档] 产品功能确认记录
+│   └── preset.sql              # [配置数据] Sysadmin 初始化时加载的种子数据
+│
 └── {新行业}/
-    ├── BUSINESS.md           # 业务需求设计
-    ├── ROLE_CONFIG.md        # 角色权限配置
-    ├── WORKFLOW_CONFIG.md    # 工作流与业务规则
-    └── UI_DESIGN.md          # 业务模块页面设计
+    ├── *.md                    # [文档] 同结构设计记录
+    └── preset.sql              # [配置数据] 该行业的种子数据
 ```
+
+#### 三层工作内容
+
+**1. 文档层（*.md）**
+设计记录，供实施人员理解配置意图，不被系统直接读取。
+
+**2. 配置数据层（preset.sql）**
+Sysadmin 初始化向导加载此文件，写入以下 DB 表：
+
+| 表 | 内容 |
+|----|------|
+| `sys_role` | 角色定义 + 默认权限码列表 |
+| `permission` | 预置权限码集合 |
+| `biz_form_type_def` | 启用的表单业务类型 |
+| `biz_approval_flow_def` + `biz_approval_flow_node` | 各业务类型的审批流节点 |
+| `pay_leave_type_def` | 假种及扣款比例 |
+| `pay_social_insurance_item` | 社保险种及默认比例 |
+| `sys_retention_policy` | 各类数据的默认保留期 |
+| `sys_config` | 平台级参数（窗口期时长、计量单位等） |
+
+**3. 业务模块层（可选，视行业需求）**
+若新行业有专属业务流程（如建筑版的施工日志、工伤补偿），需在后端新增 Service/Controller，前端新增业务页面。若该行业只使用通用模块（考勤/薪资/请假/加班），无需改代码，仅配置数据即可上线。
 
 ### 5.2 配置决策清单
 
