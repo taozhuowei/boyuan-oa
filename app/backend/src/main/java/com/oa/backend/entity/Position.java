@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
 public class Position {
 
     /** 岗位主键 ID */
-    @TableId(type = IdType.INPUT)
+    @TableId(type = IdType.AUTO)
     private Long id;
 
     /** 岗位编码 */
