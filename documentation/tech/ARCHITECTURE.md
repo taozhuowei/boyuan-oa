@@ -195,7 +195,7 @@ CREATED → WINDOW_OPEN（窗口期开放员工确认数据）
 
 > 账号与档案合并，员工即系统用户。`employeeNo` 作为登录用户名，`phone` 也可作为登录凭证。
 > Sysadmin 是独立系统管理账号，不存入此表。
-> `employeeType` 由所属岗位 `position.employeeCategory` 自动同步，不可手动修改。
+> `employeeType` 由所属岗位 `positionName` 自动同步（存中文，如"项目经理"、"架子工"），不可手动修改。
 
 | 字段                  | 类型                   | 说明                                          |
 |---------------------|------------------------|-----------------------------------------------|
@@ -220,7 +220,7 @@ CREATED → WINDOW_OPEN（窗口期开放员工确认数据）
 
 #### `Position` — 岗位
 
-> 岗位是员工与薪资规则的连接点，同时通过 featureFlags 控制功能模块入口。
+> 岗位是员工与薪资规则的连接点，同时通过 `positionFeatures` 控制功能模块入口。
 > 假期扣款比例通过 `LeaveTypeDef` 行式配置，社保通过 `SocialInsuranceItem` 行式配置，不再使用 JSON 字段。
 
 | 字段                    | 类型                   | 说明                                          |
@@ -228,18 +228,16 @@ CREATED → WINDOW_OPEN（窗口期开放员工确认数据）
 | `id`                   | UUID PK                | 主键                                          |
 | `positionCode`         | VARCHAR(50) UNIQUE     | 岗位编码（不可重复，用于程序引用）             |
 | `positionName`         | VARCHAR(100)           | 显示名称（如"项目经理"、"架子工"）             |
-| `employeeCategory`     | ENUM(OFFICE, LABOR)    | 员工类型，自动同步到关联员工的 employeeType    |
 | `defaultRoleCode`      | VARCHAR FK → Role      | 新建员工时的默认角色                           |
-| `supervisorPositionCode`| VARCHAR NULL          | 默认上级岗位编码，用于组织架构兜底路由         |
-| `requiresConstructionLog`| BOOLEAN             | 是否需要提交施工日志（LABOR 类型可开启）       |
-| `hasPerformanceBonus`  | BOOLEAN                | 是否有绩效奖金（OFFICE 类型可开启）            |
+| `parentPositionCode`   | VARCHAR NULL           | 上级岗位编码，用于组织架构兜底路由             |
+| `positionFeatures`     | VARCHAR(500) NULL      | 功能开关集合（JSON 数组，如 `["CONSTRUCTION_LOG"]`）|
+| `performanceBase`      | DECIMAL DEFAULT 0      | 绩效基数（元/月）；0 表示无绩效奖金            |
 | `baseSalary`           | DECIMAL                | 基本工资基准（元/月）                          |
 | `overtimeBaseType`     | ENUM(BASE, TOTAL, CUSTOM)| 加班费计算基准：基本工资/全部工资/自定义金额  |
 | `overtimeBaseAmount`   | DECIMAL NULL           | 自定义加班基准金额（overtimeBaseType=CUSTOM 时有效）|
 | `overtimeRateWeekday`  | DECIMAL DEFAULT 1.5    | 平日加班倍数                                  |
 | `overtimeRateWeekend`  | DECIMAL DEFAULT 2.0    | 周末加班倍数                                  |
 | `overtimeRateHoliday`  | DECIMAL DEFAULT 3.0    | 法定节假日加班倍数                             |
-| `defaultPerformanceBonus`| DECIMAL NULL         | 绩效奖金默认值（hasPerformanceBonus=true 时有效）|
 | `annualLeave`          | INT                    | 年假天数（天/年）                              |
 | `leaveDeductBaseType`  | ENUM(BASE, TOTAL, CUSTOM)| 请假扣款计算基准                             |
 | `socialInsuranceMode`  | ENUM(COMPANY_PAID, MERGED)| 社保处理：公司代缴 / 并入工资               |
@@ -827,8 +825,8 @@ POST /{resource}/import/apply        # 导入提交（两步操作第二步）
 | POST   | `/employees`                        | 新建员工（同时创建账号）            | finance / ceo |
 | GET    | `/employees/{id}`                   | 员工详情                           | self / pm(项目内) / finance / ceo |
 | PUT    | `/employees/{id}`                   | 更新档案                           | finance(基本) / ceo(全部) |
-| PATCH  | `/employees/{id}/status`            | 启用/禁用账号                      | finance / ceo |
-| PATCH  | `/employees/{id}/password/reset`    | 重置密码（管理员操作）              | ceo           |
+| PATCH  | `/employees/{id}/status`            | 启用/禁用账号                      | finance（需CEO审批）/ ceo（直接） |
+| PATCH  | `/employees/{id}/password/reset`    | 重置密码（管理员操作）              | finance（需CEO审批）/ ceo（直接） |
 | PUT    | `/employees/me/password`            | 修改本人密码（需当前密码验证）       | self          |
 | POST   | `/employees/me/phone/send-verify-code` | 发送当前手机验证码（修改手机第1步）| self          |
 | POST   | `/employees/me/phone/verify-identity`  | 验证身份（返回 changeToken，5min有效）| self        |
@@ -845,14 +843,14 @@ POST /{resource}/import/apply        # 导入提交（两步操作第二步）
 | 方法   | 路径                              | 说明                    | 权限          |
 |--------|-----------------------------------|-------------------------|---------------|
 | GET    | `/positions`                      | 岗位列表                | finance / ceo |
-| POST   | `/positions`                      | 新建岗位                | ceo           |
+| POST   | `/positions`                      | 新建岗位                | finance（需CEO审批）/ ceo（直接） |
 | GET    | `/positions/{id}`                 | 岗位详情（含等级列表）  | finance / ceo |
-| PUT    | `/positions/{id}`                 | 更新岗位配置            | ceo           |
-| DELETE | `/positions/{id}`                 | 删除（无员工时可删）    | ceo           |
+| PUT    | `/positions/{id}`                 | 更新岗位配置            | finance（需CEO审批）/ ceo（直接） |
+| DELETE | `/positions/{id}`                 | 删除（无员工时可删）    | finance（需CEO审批）/ ceo（直接） |
 | GET    | `/positions/{id}/levels`          | 等级列表                | finance / ceo |
-| POST   | `/positions/{id}/levels`          | 新建等级                | ceo           |
-| PUT    | `/positions/{id}/levels/{levelId}`| 更新等级                | ceo           |
-| DELETE | `/positions/{id}/levels/{levelId}`| 删除等级                | ceo           |
+| POST   | `/positions/{id}/levels`          | 新建等级                | finance（需CEO审批）/ ceo（直接） |
+| PUT    | `/positions/{id}/levels/{levelId}`| 更新等级                | finance（需CEO审批）/ ceo（直接） |
+| DELETE | `/positions/{id}/levels/{levelId}`| 删除等级                | finance（需CEO审批）/ ceo（直接） |
 | GET    | `/positions/{id}/social-insurance`| 社保配置行列表          | finance / ceo |
 | PUT    | `/positions/{id}/social-insurance`| 更新社保配置行（全量替换）| ceo          |
 

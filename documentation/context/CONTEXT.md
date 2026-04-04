@@ -68,7 +68,7 @@
 ③ 看到多大范围  →  roleCode → dataScope 静态映射（GLOBAL/DEPARTMENT/PROJECT/SELF）
 ```
 
-三条线独立，不互相推导。`employeeType`（OFFICE/LABOR）由 `position.employeeCategory` 自动同步，不参与权限计算。
+三条线独立，不互相推导。`employeeType` 由 `position.positionName` 自动同步（存中文岗位名），不参与权限计算。
 
 ### 4.2.1 Permission 表（全量 RBAC）
 
@@ -240,7 +240,7 @@ Excel 模板必须字段：`employeeNo`、`name`、`positionCode`、`departmentN
 ## 9. 禁止事项（从历史讨论中提炼）
 
 - **禁止创建独立 `User` 实体**，员工即用户
-- **禁止将 employeeType 参与权限计算**，employeeType 只是薪资/假期的分类标签，从岗位 employeeCategory 自动同步
+- **禁止将 employeeType 参与权限计算**，employeeType 只是展示字段，从岗位 positionName 自动同步，不做逻辑判断
 - **禁止将薪资结算前置检查扩展超过 2 项**（无 PENDING_REVIEW 异议单 + 无 CALCULATING 计算任务），其他状态不阻塞结算
 - **禁止创建独立 `payroll_window_period` 表**，窗口期字段存在 `payroll_cycle` 中
 - **禁止实现 PayrollEngine.closeWindow()（提前关闭窗口期）**，窗口期只能自动到期锁定
