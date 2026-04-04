@@ -55,7 +55,8 @@ export function request<T>(options: RequestOptions): Promise<T> {
       success(res) {
         if (res.statusCode === 401 && options.skipAuthRedirect !== true) {
           userStore.logout()
-          uni.navigateTo({ url: '/pages/login/index' })
+          // 登录页是 tabBar 页面，必须用 switchTab 而非 navigateTo
+          uni.switchTab({ url: '/pages/login/index' })
           pendingRequests.delete(requestKey)
           reject(new Error('Unauthorized'))
           return
