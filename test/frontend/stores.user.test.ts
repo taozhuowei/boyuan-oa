@@ -4,10 +4,23 @@
  * 覆盖：setSession、logout、setUserInfo、isLoggedIn 计算属性、
  *       localStorage 持久化与恢复
  */
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useUserStore } from '@/stores/user'
-import type { SessionUser } from '@/stores/user'
+import type { SessionUser } from '@shared/types'
+
+// uni polyfill — stores/user.ts 调用 uni.* 读写存储，在 jsdom 环境下用 localStorage 模拟
+vi.stubGlobal('uni', {
+  getStorageSync: (key: string) => {
+    try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null } catch { return null }
+  },
+  setStorageSync: (key: string, value: unknown) => {
+    try { localStorage.setItem(key, JSON.stringify(value)) } catch { /* ignore */ }
+  },
+  removeStorageSync: (key: string) => {
+    try { localStorage.removeItem(key) } catch { /* ignore */ }
+  }
+})
 
 function mockUser(overrides: Partial<SessionUser> = {}): SessionUser {
   return {

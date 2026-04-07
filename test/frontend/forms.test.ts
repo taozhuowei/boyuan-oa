@@ -8,7 +8,7 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('@/utils/http', () => ({ request: vi.fn() }))
 
 import { getAvailableFormOptions } from '@/utils/forms'
-import type { SessionUser } from '@/utils/access'
+import type { SessionUser } from '@shared/types'
 
 // 辅助：构造最小 SessionUser
 function makeUser(overrides: Partial<SessionUser> = {}): SessionUser {

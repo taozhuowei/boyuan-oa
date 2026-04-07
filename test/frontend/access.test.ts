@@ -37,10 +37,9 @@ import { request } from '@/utils/http'
 import {
   loginWithAccount,
   saveRole,
-  fetchRoles,
-  roleNameMap,
-  defaultTestAccounts
+  fetchRoles
 } from '@/utils/access'
+import { roleNameMap, defaultTestAccounts } from '@shared/types'
 
 const mockRequest = vi.mocked(request)
 
