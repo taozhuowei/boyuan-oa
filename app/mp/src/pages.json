@@ -1,0 +1,75 @@
+{
+  "pages": [
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "工作台",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/todo/index",
+      "style": {
+        "navigationBarTitleText": "待办中心",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/attendance/index",
+      "style": {
+        "navigationBarTitleText": "考勤",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/projects/index",
+      "style": {
+        "navigationBarTitleText": "项目",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/projects/detail",
+      "style": {
+        "navigationBarTitleText": "项目详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/projects/construction_log_form",
+      "style": {
+        "navigationBarTitleText": "填写施工日志",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/auth/forgot_password/index",
+      "style": {
+        "navigationBarTitleText": "重置密码",
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#999",
+    "selectedColor": "#003466",
+    "backgroundColor": "#fff",
+    "list": [
+      { "pagePath": "pages/login/index", "text": "登录" },
+      { "pagePath": "pages/index/index", "text": "工作台" }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "众维OA工作台",
+    "navigationBarBackgroundColor": "#fff",
+    "backgroundColor": "#f5f5f5"
+  }
+}
