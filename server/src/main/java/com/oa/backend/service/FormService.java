@@ -56,7 +56,7 @@ public class FormService {
         formRecord.setFormType(formType);
         formRecord.setSubmitterId(submitterId);
         formRecord.setFormData(formDataJson);
-        formRecord.setStatus("DRAFT"); // 初始状态为草稿，initFlow 会更新为 PENDING
+        formRecord.setStatus("PENDING"); // initFlow will update to APPROVING once nodes are assigned
         formRecord.setCurrentNodeOrder(0);
         formRecord.setRemark(remark);
         formRecord.setCreatedAt(LocalDateTime.now());

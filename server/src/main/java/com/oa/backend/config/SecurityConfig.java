@@ -78,8 +78,9 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(Arrays.asList(
-            "http://localhost:4173", "http://127.0.0.1:4173",
-            "http://localhost:4174", "http://127.0.0.1:4174"
+            "http://localhost:3000", "http://127.0.0.1:3000",  // Nuxt H5 dev
+            "http://localhost:4173", "http://127.0.0.1:4173",  // Vite preview
+            "http://localhost:4174", "http://127.0.0.1:4174"   // Vite preview alt
         ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

@@ -47,6 +47,8 @@
           <a-descriptions-item label="状态">{{ selectedRecord.status }}</a-descriptions-item>
         </a-descriptions>
 
+        <CustomizedApprovalTimeline :steps="approvalHistory" />
+
         <div class="modal-actions">
           <a-space>
             <a-input v-model:value="approvalComment" placeholder="审批意见（选填）" style="width: 280px" />
@@ -62,6 +64,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { request } from '~/utils/http'
+import type { ApprovalStep } from '~/types/approval'
 
 interface FormRecord {
   id: number
@@ -79,6 +82,7 @@ const activeTab = ref('all')
 const modalVisible = ref(false)
 const selectedRecord = ref<FormRecord | null>(null)
 const approvalComment = ref('')
+const approvalHistory = ref<ApprovalStep[]>([])
 
 const columns = [
   { title: '类型', dataIndex: 'formTypeName', key: 'formTypeName', width: 100 },
@@ -121,10 +125,18 @@ function onTabChange(key: string) {
   activeTab.value = key
 }
 
-function viewApproval(record: FormRecord) {
+async function viewApproval(record: FormRecord) {
   selectedRecord.value = record
   approvalComment.value = ''
+  approvalHistory.value = []
   modalVisible.value = true
+  // Load approval history (best-effort; not blocking modal open)
+  try {
+    const history = await request<ApprovalStep[]>({ url: `/attendance/${record.id}/history` })
+    approvalHistory.value = history ?? []
+  } catch {
+    approvalHistory.value = []
+  }
 }
 
 async function handleApprove() {
