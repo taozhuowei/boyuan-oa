@@ -15,15 +15,20 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.security.SecureRandom;
 
 /**
@@ -45,6 +50,23 @@ public class AuthController {
     private final PasswordEncoder passwordEncoder;
 
     private final SecureRandom secureRandom = new SecureRandom();
+
+    // Phone change flow stores
+    private final Map<String, PhoneChangeCodeEntry> phoneChangeCurrentCodeStore = new ConcurrentHashMap<>();
+    private final Map<String, PhoneChangeCodeEntry> phoneChangeNewCodeStore = new ConcurrentHashMap<>();
+    private final Map<String, PhoneChangeTokenEntry> phoneChangeTokenStore = new ConcurrentHashMap<>();
+
+    private record PhoneChangeCodeEntry(String code, LocalDateTime expireAt) {
+        boolean isExpired() {
+            return LocalDateTime.now().isAfter(expireAt);
+        }
+    }
+
+    private record PhoneChangeTokenEntry(Long userId, LocalDateTime expireAt) {
+        boolean isExpired() {
+            return LocalDateTime.now().isAfter(expireAt);
+        }
+    }
 
     /**
      * 职责：处理用户密码登录请求，验证用户身份并返回JWT令牌
@@ -223,5 +245,154 @@ public class AuthController {
 
         log.info("Password reset successfully for employee: {}", employee.getEmployeeNo());
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 职责：发送当前手机号的变更验证码
+     * 请求含义：向当前登录用户的绑定手机号发送验证码
+     * 响应含义：返回发送成功消息
+     * 权限期望：已认证用户
+     */
+    @PostMapping("/phone-change/send-current-code")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> sendCurrentPhoneCode(
+            @RequestHeader("Authorization") String authorization) {
+        Long userId = getCurrentUserId(authorization);
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "无法获取当前用户信息");
+        }
+        Employee employee = employeeService.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
+        if (employee.getPhone() == null || employee.getPhone().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "当前用户未绑定手机号");
+        }
+        String code = String.format("%06d", secureRandom.nextInt(1000000));
+        phoneChangeCurrentCodeStore.put("phone-change-current:" + userId,
+            new PhoneChangeCodeEntry(code, LocalDateTime.now().plusMinutes(5)));
+        log.info("Phone change current SMS code for user {} phone {}: {}", userId, employee.getPhone(), code);
+        return ResponseEntity.ok(Map.of("message", "验证码已发送"));
+    }
+
+    /**
+     * 职责：验证当前手机号的变更验证码
+     * 请求含义：提交验证码验证当前手机号所有权
+     * 响应含义：验证成功后返回 changeToken
+     * 权限期望：已认证用户
+     */
+    @PostMapping("/phone-change/verify-current-code")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> verifyCurrentPhoneCode(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody Map<String, String> request) {
+        Long userId = getCurrentUserId(authorization);
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "无法获取当前用户信息");
+        }
+        String code = request.get("code");
+        if (code == null || code.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "验证码不能为空");
+        }
+        String key = "phone-change-current:" + userId;
+        PhoneChangeCodeEntry entry = phoneChangeCurrentCodeStore.get(key);
+        if (entry == null || entry.isExpired() || !entry.code().equals(code)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "验证码不正确或已过期");
+        }
+        phoneChangeCurrentCodeStore.remove(key);
+
+        String token = UUID.randomUUID().toString();
+        phoneChangeTokenStore.put("phone-change-token:" + token,
+            new PhoneChangeTokenEntry(userId, LocalDateTime.now().plusMinutes(10)));
+        return ResponseEntity.ok(Map.of("changeToken", token));
+    }
+
+    /**
+     * 职责：发送新手机号的变更验证码
+     * 请求含义：使用 changeToken 向新手机号发送验证码
+     * 响应含义：返回发送成功消息
+     * 权限期望：已认证用户
+     */
+    @PostMapping("/phone-change/send-new-code")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> sendNewPhoneCode(
+            @RequestBody Map<String, String> request) {
+        String changeToken = request.get("changeToken");
+        String newPhone = request.get("newPhone");
+        if (changeToken == null || changeToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "changeToken 不能为空");
+        }
+        if (newPhone == null || newPhone.isBlank() || !newPhone.matches("^1[3-9]\\d{9}$")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "手机号格式不正确");
+        }
+
+        String tokenKey = "phone-change-token:" + changeToken;
+        PhoneChangeTokenEntry tokenEntry = phoneChangeTokenStore.get(tokenKey);
+        if (tokenEntry == null || tokenEntry.isExpired()) {
+            phoneChangeTokenStore.remove(tokenKey);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "changeToken 无效或已过期");
+        }
+        Long userId = tokenEntry.userId();
+
+        String code = String.format("%06d", secureRandom.nextInt(1000000));
+        phoneChangeNewCodeStore.put("phone-change-new:" + userId,
+            new PhoneChangeCodeEntry(code, LocalDateTime.now().plusMinutes(5)));
+        log.info("Phone change new SMS code for user {} phone {}: {}", userId, newPhone, code);
+        return ResponseEntity.ok(Map.of("message", "验证码已发送"));
+    }
+
+    /**
+     * 职责：确认手机号变更
+     * 请求含义：提交 changeToken、新手机号和验证码完成变更
+     * 响应含义：返回变更成功消息
+     * 权限期望：已认证用户
+     */
+    @PostMapping("/phone-change/confirm")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, String>> confirmPhoneChange(
+            @RequestBody Map<String, String> request) {
+        String changeToken = request.get("changeToken");
+        String newPhone = request.get("newPhone");
+        String code = request.get("code");
+        if (changeToken == null || changeToken.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "changeToken 不能为空");
+        }
+        if (newPhone == null || newPhone.isBlank() || !newPhone.matches("^1[3-9]\\d{9}$")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "手机号格式不正确");
+        }
+        if (code == null || code.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "验证码不能为空");
+        }
+
+        String tokenKey = "phone-change-token:" + changeToken;
+        PhoneChangeTokenEntry tokenEntry = phoneChangeTokenStore.get(tokenKey);
+        if (tokenEntry == null || tokenEntry.isExpired()) {
+            phoneChangeTokenStore.remove(tokenKey);
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "changeToken 无效或已过期");
+        }
+        Long userId = tokenEntry.userId();
+
+        String codeKey = "phone-change-new:" + userId;
+        PhoneChangeCodeEntry codeEntry = phoneChangeNewCodeStore.get(codeKey);
+        if (codeEntry == null || codeEntry.isExpired() || !codeEntry.code().equals(code)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "验证码不正确或已过期");
+        }
+
+        employeeService.updatePhone(userId, newPhone);
+
+        // 失效该用户的所有变更令牌和验证码
+        phoneChangeTokenStore.entrySet().removeIf(e -> e.getValue().userId().equals(userId));
+        phoneChangeCurrentCodeStore.remove("phone-change-current:" + userId);
+        phoneChangeNewCodeStore.remove(codeKey);
+
+        return ResponseEntity.ok(Map.of("message", "手机号修改成功"));
+    }
+
+    private Long getCurrentUserId(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return null;
+        }
+        String token = authorization.substring(7);
+        return jwtTokenService.verify(token)
+            .map(decodedJWT -> decodedJWT.getClaim("userId").asLong())
+            .orElse(null);
     }
 }

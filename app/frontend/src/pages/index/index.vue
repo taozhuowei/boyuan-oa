@@ -50,7 +50,8 @@
           v-for="kpi in keyKpis"
           :key="kpi.key"
           class="kpi-card"
-          :class="kpi.urgent ? 'kpi-urgent' : ''"
+          :class="[kpi.urgent ? 'kpi-urgent' : '', role === 'worker' && kpi.key === 'log' ? 'kpi-clickable' : '']"
+          @click="role === 'worker' && kpi.key === 'log' ? goTo('/pages/projects/construction_log_form') : null"
         >
           <view class="kpi-top">
             <!-- #ifdef H5 -->
@@ -145,7 +146,8 @@
         </view>
         <view class="activity-list">
           <view v-for="item in myActivities" :key="item.id" class="activity-row">
-            <text class="act-icon">{{ item.icon }}</text>
+            <!-- #ifdef H5 --><component :is="item.icon" class="act-icon" /><!-- #endif -->
+            <!-- #ifndef H5 --><text class="act-icon">{{ item.icon }}</text><!-- #endif -->
             <view class="act-content">
               <text class="act-text">{{ item.text }}</text>
               <text class="act-time">{{ item.time }}</text>
@@ -182,7 +184,8 @@ import {
   DollarOutlined,
   TeamOutlined,
   BuildOutlined,
-  SolutionOutlined
+  SolutionOutlined,
+  NotificationOutlined
 } from '@ant-design/icons-vue'
 /* #endif */
 
@@ -285,12 +288,22 @@ const payrollList = ref([
 ])
 
 // ── Employee: 我的近期动态 mock ─────────────────────────────────────────────
+/* #ifdef H5 */
 const myActivities = ref([
-  { id: 1, icon: '💰', text: '3月工资条已生成，待确认签字',           time: '2026-04-01', status: 'pending',  statusText: '待处理' },
-  { id: 2, icon: '📅', text: '请假申请（3月20日，1天）已通过',         time: '2026-03-21', status: 'approved', statusText: '已完成' },
-  { id: 3, icon: '⏰', text: '加班申请（3月18日，3小时）审批中',       time: '2026-03-19', status: 'process',  statusText: '审批中' },
-  { id: 4, icon: '📢', text: '系统通知：4月绩效考核将于4月15日启动',   time: '2026-03-15', status: 'info',     statusText: '通知' }
+  { id: 1, icon: markRaw(DollarOutlined),        text: '3月工资条已生成，待确认签字',           time: '2026-04-01', status: 'pending',  statusText: '待处理' },
+  { id: 2, icon: markRaw(CalendarOutlined),       text: '请假申请（3月20日，1天）已通过',         time: '2026-03-21', status: 'approved', statusText: '已完成' },
+  { id: 3, icon: markRaw(ClockCircleOutlined),    text: '加班申请（3月18日，3小时）审批中',       time: '2026-03-19', status: 'process',  statusText: '审批中' },
+  { id: 4, icon: markRaw(NotificationOutlined),   text: '系统通知：4月绩效考核将于4月15日启动',   time: '2026-03-15', status: 'info',     statusText: '通知' }
 ])
+/* #endif */
+/* #ifndef H5 */
+const myActivities = ref([
+  { id: 1, icon: '¥', text: '3月工资条已生成，待确认签字',           time: '2026-04-01', status: 'pending',  statusText: '待处理' },
+  { id: 2, icon: '◷', text: '请假申请（3月20日，1天）已通过',         time: '2026-03-21', status: 'approved', statusText: '已完成' },
+  { id: 3, icon: '◑', text: '加班申请（3月18日，3小时）审批中',       time: '2026-03-19', status: 'process',  statusText: '审批中' },
+  { id: 4, icon: '◉', text: '系统通知：4月绩效考核将于4月15日启动',   time: '2026-03-15', status: 'info',     statusText: '通知' }
+])
+/* #endif */
 
 // ── 项目进度（mock，后续对接 GET /projects?status=active） ───────────────
 const projects = ref([
@@ -477,6 +490,16 @@ function goTo(path: string) {
 
     .kpi-icon { color: var(--error); }
     .kpi-value { color: var(--error); }
+  }
+
+  &.kpi-clickable {
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      border-color: var(--primary);
+      box-shadow: 0 2px 8px rgba(0, 52, 102, 0.1);
+    }
   }
 
   .kpi-top {

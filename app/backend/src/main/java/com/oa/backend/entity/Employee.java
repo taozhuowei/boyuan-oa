@@ -2,6 +2,7 @@ package com.oa.backend.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -80,6 +81,18 @@ public class Employee {
     /** 更新时间 */
     @TableField("updated_at")
     private LocalDateTime updatedAt;
+
+    /** 基础薪资覆盖值 */
+    @TableField("base_salary_override")
+    private BigDecimal baseSalaryOverride;
+
+    /** 绩效基数覆盖值 */
+    @TableField("performance_base_override")
+    private BigDecimal performanceBaseOverride;
+
+    /** 薪资覆盖备注 */
+    @TableField("salary_override_note")
+    private String salaryOverrideNote;
 
     /** 逻辑删除标志 */
     @TableLogic

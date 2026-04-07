@@ -1,6 +1,6 @@
 # 博渊 OA — AI 上下文摘要
 
-> **用途**：防止 AI 上下文丢失。接手任务的 AI 或新会话应首先阅读本文件，再读 `TODO.md` 确认当前进度，最后按需深入具体文档。
+> **用途**：防止 AI 上下文丢失。接手任务的 AI 或新会话应首先阅读本文件，再读 `todo.md` 确认当前进度，最后按需深入具体文档。
 >
 > **维护规范**：每次重要设计变更后同步更新本文件。不记录代码实现细节——那些在代码里。
 
@@ -8,7 +8,7 @@
 
 ## 1. 项目一句话定位
 
-**博渊 OA** 是面向中小型建筑施工企业的内部管理平台（首个客户：众维建筑工程有限公司，约 200 人）。引擎+配置分离架构：平台引擎（`tech/`）通用，建筑工程版业务设计集中在 `documentation/DESIGN.md` + `documentation/UI_DESIGN.md`，种子数据在后端 `db/preset-construction.sql`。
+**博渊 OA** 是面向中小型建筑施工企业的内部管理平台（首个客户：众维建筑工程有限公司，约 200 人）。预置+配置分离架构：系统预置默认角色/权限/审批流/薪资规则，通过初始化向导个性化调整；业务模块（考勤/薪资/项目等）独立存在，通过集成层（事件总线+Port接口）互通。建筑工程版业务设计在 `documentation/design.md`，种子数据在后端 `db/preset-construction.sql`。
 
 ---
 
@@ -28,7 +28,7 @@
 
 ### 当前应做的事
 
-开始 **Phase 0（工程基础）**，对应任务在 `tech/TODO.md §Phase 0`。核心阻塞项：
+开始 **Phase 0（工程基础）**，对应任务在 `tech/todo.md §Phase 0`。核心阻塞项：
 1. 补全 `app/backend/src/main/resources/db/schema.sql`（30 张表 DDL）
 2. 补全 `data.sql`（5 个测试账号种子数据）
 3. `app/frontend/src/utils/access.ts` 和 `forms.ts` 中的私有 request 函数迁移到 `http.ts`
@@ -39,15 +39,12 @@
 
 | 文档 | 内容 | 优先阅读场景 |
 |------|------|------------|
-| `documentation/tech/ARCHITECTURE.md` | 技术架构、所有实体字段表、API 规范（7.4–7.10）、文件存储决策、签名流程、Excel 导入 | 后端开发、理解数据模型 |
-| `documentation/tech/BACKEND_IMPL.md` | 包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务 | 后端开发 |
-| `documentation/tech/FRONTEND_IMPL.md` | 前端代码架构、双端适配层、组件注册机制、HTTP 层规范、CSS 变量体系 | 前端开发 |
-| `documentation/tech/PRODUCT.md` | 平台定位、功能边界、可配置项清单 | 理解产品全貌 |
-| `documentation/UI_DESIGN.md` | Part 1: Shell/登录/初始化向导/Admin/待办/通知/个人中心；Part 2: 工作台/考勤/薪资/项目/工伤/员工/岗位/角色/组织/数据管理/系统配置 | 前端所有页面开发 |
-| `documentation/DESIGN.md` | 角色定义、功能权限矩阵、审批流配置、薪资规则、数据保留策略、组织架构预置（建筑工程版） | 实现权限判断逻辑、审批/薪资引擎、配置种子数据 |
-| `documentation/tech/TODO.md` | **唯一进度入口**，Phase 0–9 任务列表和检查点 | 开始工作前必读 |
-| `documentation/tech/TEST_DESIGN.md` | 测试策略、各层用例设计 | 写测试时参考 |
-| `documentation/context/COLLABORATION.md` | **AI 协作规范**，Claude/Kimi 分工、Brief 格式、代码规范速查、验收流程 | 所有 AI 必读 |
+| `documentation/tech/architecture.md` | 设计原则、系统架构图（预置层/核心层/集成层/业务模块层）、所有实体字段表、API 规范、文件存储决策、签名流程、Excel 导入、模块解耦、日志系统 | 后端开发、理解数据模型 |
+| `documentation/tech/backend_impl.md` | 包结构、MyBatis-Plus 约定、JWT 实现、统一响应格式、权限 AOP、StorageService 抽象、引擎实现模式、定时任务 | 后端开发 |
+| `documentation/tech/frontend_impl.md` | 前端代码架构、双端适配层、组件注册机制、HTTP 层规范、CSS 变量体系 | 前端开发 |
+| `documentation/design.md` | 角色定义、功能权限矩阵、审批流配置、薪资规则、数据保留策略、组织架构预置（建筑工程版） | 实现权限判断逻辑、审批/薪资引擎、配置种子数据 |
+| `documentation/tech/todo.md` | **唯一进度入口**，Phase 0–9 任务列表和检查点 | 开始工作前必读 |
+| `documentation/tech/test_design.md` | 测试策略、各层用例设计 | 写测试时参考 |
 
 ---
 
@@ -257,7 +254,7 @@ Excel 模板必须字段：`employeeNo`、`name`、`positionCode`、`departmentN
 
 文档设计阶段已全部完成（含21项设计决策落地），可开始 **Phase 0（工程基础）**。
 
-按 `tech/TODO.md Phase 0` 顺序执行：
+按 `tech/todo.md Phase 0` 顺序执行：
 
 ```
 后端：写 schema.sql（35张表DDL，含新参考表和合并窗口期字段）

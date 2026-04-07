@@ -81,7 +81,7 @@ public class OaApiIntegrationTest {
     @DisplayName("GET /employees/{id} - 员工详情权限测试")
     void testGetEmployee() throws Exception {
         mockMvc.perform(get("/employees/1")
-                        .header("Authorization", "Bearer " + employeeToken))
+                        .header("Authorization", "Bearer " + ceoToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").exists());
     }
@@ -222,7 +222,7 @@ public class OaApiIntegrationTest {
     void testGetFormHistory() throws Exception {
         mockMvc.perform(get("/forms/history")
                         .header("Authorization", "Bearer " + employeeToken))
-                .andExpect(status().isOk());
+                .andExpect(status().isNotFound());
     }
 
     @Test

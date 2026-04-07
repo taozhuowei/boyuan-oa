@@ -5,43 +5,55 @@ import lombok.Data;
 import java.time.LocalDateTime;
 
 /**
- * 表单记录实体类
+ * 表单记录实体类，对应数据表 form_record
  */
 @Data
-@TableName("biz_form_record")
+@TableName("form_record")
 public class FormRecord {
 
+    /** 主键 ID */
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String formNo;
-
+    /** 表单类型 */
+    @TableField("form_type")
     private String formType;
 
+    /** 提交人 ID */
+    @TableField("submitter_id")
     private Long submitterId;
 
-    private String submitterName;
+    /** 目标员工 ID（如代填时） */
+    @TableField("target_employee_id")
+    private Long targetEmployeeId;
 
-    private String department;
+    /** 项目 ID */
+    @TableField("project_id")
+    private Long projectId;
 
-    private LocalDateTime submitTime;
-
-    private String status;
-
-    private String currentNode;
-
+    /** 表单数据（JSON 格式） */
+    @TableField("form_data")
     private String formData;
 
-    private String history;
+    /** 状态：PENDING, APPROVING, APPROVED, REJECTED, ARCHIVED, RECALLED */
+    private String status;
 
+    /** 当前节点顺序 */
+    @TableField("current_node_order")
+    private Integer currentNodeOrder;
+
+    /** 备注 */
     private String remark;
 
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
+    /** 创建时间 */
+    @TableField("created_at")
+    private LocalDateTime createdAt;
 
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
+    /** 更新时间 */
+    @TableField("updated_at")
+    private LocalDateTime updatedAt;
 
+    /** 逻辑删除标志 */
     @TableLogic
     private Integer deleted;
 }

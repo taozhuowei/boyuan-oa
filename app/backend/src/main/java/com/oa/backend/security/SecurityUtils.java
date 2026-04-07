@@ -1,5 +1,7 @@
 package com.oa.backend.security;
 
+import com.oa.backend.entity.Employee;
+import com.oa.backend.mapper.EmployeeMapper;
 import org.springframework.security.core.Authentication;
 
 import java.util.Arrays;
@@ -24,8 +26,54 @@ public class SecurityUtils {
     );
 
     /**
-     * 根据用户名获取显示名称
+     * 根据用户名获取员工 ID
+     * 查询 employee_no = username 的员工记录
+     *
+     * @param username 用户名（员工编号）
+     * @param employeeMapper 员工数据访问接口
+     * @return 员工 ID，未找到返回 null
      */
+    public static Long getEmployeeIdFromUsername(String username, EmployeeMapper employeeMapper) {
+        Employee employee = employeeMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getEmployeeNo, username)
+                        .eq(Employee::getDeleted, 0)
+        );
+        return employee != null ? employee.getId() : null;
+    }
+
+    /**
+     * 根据用户名获取员工信息
+     *
+     * @param username 用户名（员工编号）
+     * @param employeeMapper 员工数据访问接口
+     * @return 员工实体，未找到返回 null
+     */
+    public static Employee getEmployeeFromUsername(String username, EmployeeMapper employeeMapper) {
+        return employeeMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getEmployeeNo, username)
+                        .eq(Employee::getDeleted, 0)
+        );
+    }
+
+    /**
+     * 根据员工 ID 获取显示名称
+     *
+     * @param employeeId 员工 ID
+     * @param employeeMapper 员工数据访问接口
+     * @return 员工姓名，未找到返回 null
+     */
+    public static String getDisplayNameFromEmployeeId(Long employeeId, EmployeeMapper employeeMapper) {
+        Employee employee = employeeMapper.selectById(employeeId);
+        return employee != null ? employee.getName() : null;
+    }
+
+    /**
+     * 根据用户名获取显示名称（兼容性方法，建议迁移到 DB 查询）
+     * @deprecated 使用 {@link #getDisplayNameFromEmployeeId(Long, EmployeeMapper)} 替代
+     */
+    @Deprecated
     public static String getDisplayNameFromUsername(String username) {
         return switch (username.toLowerCase()) {
             case "employee.demo" -> "张晓宁";
@@ -38,8 +86,10 @@ public class SecurityUtils {
     }
 
     /**
-     * 根据用户名获取部门
+     * 根据用户名获取部门（兼容性方法，建议迁移到 DB 查询）
+     * @deprecated 使用员工部门关联查询替代
      */
+    @Deprecated
     public static String getDepartmentFromUsername(String username) {
         return switch (username.toLowerCase()) {
             case "employee.demo" -> "综合管理部";

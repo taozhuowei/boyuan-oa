@@ -4,7 +4,7 @@
 >
 > **目标读者**：QA、后端开发者、前端开发者。
 >
-> **关联文档**：业务规则见 `DESIGN.md`；API 规范见 `ARCHITECTURE.md`；测试账号数据见后端 `db/data.sql`（dev profile 专用）。
+> **关联文档**：业务规则见 `design.md`；API 规范见 `architecture.md`；测试账号数据见后端 `db/data.sql`（dev profile 专用）。
 
 ---
 
@@ -371,9 +371,342 @@ cd app/tests && node run-e2e.js --suite smoke
 
 ---
 
+---
+
+## 9. 自动化测试系统
+
+### 9.1 自动化测试工具选型
+
+| 层级         | 工具                              | 理由                                                          |
+|------------|-----------------------------------|---------------------------------------------------------------|
+| 后端单元     | JUnit 5 + Mockito                 | Spring Boot 官方推荐；Mockito 依赖隔离完善                    |
+| 后端集成     | Spring Boot Test + H2 + Testcontainers | H2 用于快速 CI；Testcontainers 用于 PostgreSQL 精确验证    |
+| 前端单元     | Vitest + Vue Test Utils           | 与 Vite 同生态，速度快；Vue Test Utils 是 Vue 3 官方测试库   |
+| API/E2E     | REST Assured（后端）+ Playwright（前端）| REST Assured 链式 API 适合 Java 业务流测试；Playwright 多浏览器 E2E |
+| 覆盖率报告   | JaCoCo（后端）+ V8 Coverage（前端）| JaCoCo 集成 Maven；V8 覆盖率内置于 Vitest                    |
+
+**Playwright vs Cypress 选择理由：** Playwright 支持 Chromium/Firefox/WebKit 三端，原生支持 API 请求拦截（无需额外配置），并行执行能力强，适合本项目双端（H5 + 微信开发者工具模拟）测试需求。
+
+---
+
+### 9.2 测试目录结构
+
+```
+app/
+├── backend/
+│   └── src/test/java/com/oa/backend/
+│       ├── unit/                    # 单元测试（不依赖 Spring 容器）
+│       │   ├── engine/              # ApprovalFlowEngineTest, PayrollEngineTest
+│       │   └── service/             # SignatureServiceTest, RetentionServiceTest
+│       └── integration/             # 集成测试（@SpringBootTest）
+│           ├── api/                 # Controller 层 HTTP 接口测试
+│           └── workflow/            # 跨 Service 业务流程测试
+└── tests/                           # E2E 测试（独立于前后端）
+    ├── playwright.config.ts
+    ├── fixtures/                    # 测试数据和环境重置
+    │   └── reset.ts                 # 调用 POST /test/reset 重置业务数据
+    ├── specs/                       # 测试用例文件（按角色组织）
+    │   ├── employee.spec.ts
+    │   ├── worker.spec.ts
+    │   ├── pm.spec.ts
+    │   ├── ceo.spec.ts
+    │   └── finance.spec.ts
+    └── pages/                       # Page Object 对象（见 §9.4）
+        ├── LoginPage.ts
+        ├── AttendancePage.ts
+        ├── PayrollPage.ts
+        └── ...
+```
+
+---
+
+### 9.3 自动化测试流水线
+
+```
+每次提交 (git push)
+  └─► 后端单元测试（mvn test -Dtest=*Unit*）         ≈ 30s
+       后端快速集成测试（H2，mvn test -Ph2）           ≈ 90s
+  └─► 前端类型检查（npm run type-check）              ≈ 20s
+       前端单元测试（npm run test:web）               ≈ 30s
+
+每日构建 (nightly)
+  └─► 后端全量集成测试（Testcontainers + PostgreSQL） ≈ 5min
+       E2E 冒烟测试（Playwright smoke suite）         ≈ 3min
+
+发版前 (release tag)
+  └─► E2E 全量测试（Playwright full suite）          ≈ 15min
+       覆盖率报告生成（JaCoCo + V8）
+       人工验收（TEST_DESIGN §4 各角色主线）
+```
+
+---
+
+### 9.4 Page Object 模式（E2E 可扩展性）
+
+E2E 测试使用 Page Object 模式，将页面操作封装为复用方法，避免直接在 spec 文件中写选择器。新增业务流程只需扩展 Page Object，不修改已有用例。
+
+```typescript
+// pages/AttendancePage.ts
+export class AttendancePage {
+  constructor(private page: Page) {}
+
+  async submitLeave(type: string, days: number, reason: string) {
+    await this.page.click('[data-testid="leave-tab"]')
+    await this.page.selectOption('[data-testid="leave-type"]', type)
+    await this.page.fill('[data-testid="leave-days"]', String(days))
+    await this.page.fill('[data-testid="leave-reason"]', reason)
+    await this.page.click('[data-testid="submit-btn"]')
+    await this.page.waitForSelector('[data-testid="status-pending"]')
+  }
+
+  async getLeaveStatus(leaveId: string): Promise<string> {
+    // 复用于多个测试场景
+    const cell = await this.page.$(`[data-record-id="${leaveId}"] [data-testid="status"]`)
+    return cell?.textContent() ?? ''
+  }
+}
+
+// specs/employee.spec.ts
+test('员工提交请假单，状态为 PENDING', async ({ page }) => {
+  const attendancePage = new AttendancePage(page)
+  await attendancePage.submitLeave('年假', 3, '个人原因')
+  // 同时断言 DB 状态（通过 API 验证）
+  const resp = await page.request.get('/api/attendance/history')
+  const records = await resp.json()
+  expect(records.items[0].status).toBe('PENDING')
+})
+```
+
+**扩展规则：**
+- 新增业务页面 → 在 `tests/pages/` 新建对应 Page Object 类
+- 新增角色测试场景 → 在 `tests/specs/` 新建对应 spec 文件
+- 禁止在 spec 文件中直接使用 CSS 选择器，必须通过 `data-testid` 属性
+
+---
+
+### 9.5 基于日志的问题复现
+
+当生产环境出现问题，可通过以下流程将日志转化为可复现的测试用例：
+
+```
+步骤 1：从服务器获取相关时间段的日志文件
+         → oa-system.2026-04-07.log
+
+步骤 2：使用 tools/log_analyzer 工具（见 ARCHITECTURE §13.6）
+         → 输入 trace_id，定位出错的模块/类/方法/行号
+
+步骤 3：根据工具输出的调用链，提取问题场景的输入参数
+         → 如：PayrollEngine.settle(cycleId=xxx) 在特定数据条件下抛出异常
+
+步骤 4：在对应测试类中编写回归用例
+         → 复现问题的数据条件作为测试 fixture
+         → 断言修复后该场景不再触发异常
+
+步骤 5：合并回归用例到 fix PR，确保以后不复现
+```
+
+**约定：** P0/P1 缺陷修复后必须补充回归用例（见 §8.2），并在 PR 描述中注明对应 trace_id。
+
+---
+
+### 9.6 测试数据隔离增强
+
+**模块化测试数据：** 各模块测试数据独立初始化，避免跨模块干扰：
+
+```java
+// 考勤模块集成测试基类
+@SpringBootTest
+@ActiveProfiles("test")
+public abstract class AttendanceIntegrationBase {
+    @BeforeEach
+    void setupAttendanceData() {
+        // 只插入考勤测试所需的最小数据集
+        testDataBuilder.createEmployee("test-emp-001", "employee")
+                       .withPosition("office_worker")
+                       .withSupervisor("test-pm-001");
+    }
+
+    @AfterEach
+    void cleanupAttendanceData() {
+        // 回滚，不影响其他模块测试
+    }
+}
+```
+
+**E2E 数据隔离：** 每个测试文件执行前调用 `POST /test/reset`，保留账号/配置/预置数据，清理业务数据：
+
+```typescript
+// fixtures/reset.ts
+export const resetFixture = base.extend<{ reset: void }>({
+  reset: [async ({ request }, use) => {
+    await request.post('/api/test/reset')
+    await use()
+  }, { auto: true }]  // 自动在每个测试前执行
+})
+```
+
+---
+
+---
+
+## §10 Dev 快捷工具设计
+
+> **目标读者**：开发者在本地测试时使用，尤其是初始化向导、各角色业务流程的快速验证。
+>
+> **生产安全保证**：所有 Dev 工具均通过两道独立机制防止泄漏到生产环境——前端 `import.meta.env.DEV` 守门（production build 时 Rollup dead-code-elimination 剔除）；后端 `@Profile("dev")` 守门（生产 Spring 不加载，路由物理不存在）。两道机制互相独立，任一均可单独保证安全。
+
+---
+
+### 10.1 测试账号
+
+所有账号密码统一 `123456`，数据写入 `db/data.sql`（dev profile 专用）。
+
+| 账号 | 姓名 | 角色 | 员工类型 | 典型测试场景 |
+|------|------|------|----------|-------------|
+| `employee.demo` | 张晓宁 | employee（员工） | OFFICE | 提交请假/加班申请，查看工资条 |
+| `finance.demo` | 李静 | finance（财务） | OFFICE | 薪资结算、人员档案、导入通讯录 |
+| `pm.demo` | 王建国 | project_manager（项目经理） | OFFICE | 审批请假/施工日志，管理项目成员 |
+| `ceo.demo` | 陈明远 | ceo（CEO） | OFFICE | 终审审批、系统配置、全局数据总览 |
+| `worker.demo` | 赵铁柱 | worker（劳工） | LABOR | 提交施工日志、发起工伤补偿申请 |
+
+---
+
+### 10.2 组件清单
+
+| 组件 | 位置 | 平台 | 用途 |
+|------|------|------|------|
+| `DevToolbar.vue` | `components/customized/DevToolbar.vue` | H5 + 小程序 | 悬浮按钮，点击展开操作面板（重置向导/跳过向导/快捷登录） |
+| `DevLoginPanel.vue` | `components/customized/DevLoginPanel.vue` | H5 | 已存在；登录页内嵌，5个账号一键登录按钮 |
+| `DevController.java` | `controller/DevController.java` | 后端 | `@Profile("dev")` 接口，提供 reset-setup 操作 |
+
+---
+
+### 10.3 DevToolbar 详细设计
+
+#### 激活条件
+
+```typescript
+// 组件顶层，无需平台判断
+const is_dev = import.meta.env.DEV  // production build 时恒为 false，整块被 tree-shake
+```
+
+`v-if="is_dev"` 包裹整个组件根元素。`yarn build`（Vite production mode）输出时，Rollup 识别 `import.meta.env.DEV === false` 为死代码并完整删除，不需要 `#ifdef` 条件编译。
+
+#### 平台差异
+
+H5 和小程序均呈现为**右下角固定悬浮按钮**，点击展开操作面板，样式一致，体验对齐。
+
+| 平台 | 悬浮按钮 | 展开面板 | 实现方式 |
+|------|---------|---------|---------|
+| H5 | 右下角圆形按钮「DEV」 | 向上弹出操作卡片 | `position: fixed; bottom: 24px; right: 24px` |
+| 小程序 | 右下角圆形按钮「DEV」 | 向上弹出操作列表 | `position: fixed`（小程序支持）+ `v-show` 切换 |
+
+两端均默认**收起**，点击展开/收起切换，避免遮挡正文内容。
+
+#### 三个功能入口
+
+**① 一键重置初始化向导**
+
+```
+点击 → 确认弹窗（"确认重置？系统将回到未初始化状态"）
+     → 确认 → POST /dev/reset-setup
+             → 成功：清空 userStore session → 跳转 /pages/setup/index
+             → 失败：Toast 展示错误信息
+```
+
+**② 一键跳过初始化向导**
+
+```
+点击 → POST /dev/reset-setup（重置为未初始化）
+     → POST /setup/init（填入预设测试数据，见下方 payload）
+     → 成功：Toast "初始化完成" → 跳转登录页
+```
+
+预设 init payload：
+
+```json
+{
+  "companyName": "众维建筑工程有限公司",
+  "ceoEmployeeNo": "ceo.demo",
+  "ceoPassword": "123456",
+  "departments": ["综合管理部", "财务管理部", "项目一部", "运营管理部", "施工一部"],
+  "approvalFlows": "DEFAULT"
+}
+```
+
+**③ 快捷登录（5个测试账号）**
+
+| 按钮标签 | 账号 | 角色 |
+|---------|------|------|
+| 员工登录 | `employee.demo` | employee |
+| 财务登录 | `finance.demo` | finance |
+| PM 登录 | `pm.demo` | project_manager |
+| CEO 登录 | `ceo.demo` | ceo |
+| 劳工登录 | `worker.demo` | worker |
+
+密码统一 `123456`。点击后复用 `loginWithAccount()`，登录成功后跳转工作台，失败后显示错误提示。
+
+H5 端此功能由 `DevLoginPanel.vue` 实现（已存在），DevToolbar 在小程序端复制同样的按钮列表。
+
+---
+
+### 10.4 后端 DevController 设计
+
+```java
+@RestController
+@RequestMapping("/dev")
+@Profile("dev")   // 生产 Spring 环境不加载此 Bean，路由物理不存在
+@RequiredArgsConstructor
+public class DevController {
+
+    private final SystemConfigMapper systemConfigMapper;
+
+    /**
+     * 重置系统初始化状态，用于开发测试重走初始化向导
+     * 仅在 spring.profiles.active=dev 时可用
+     */
+    @PostMapping("/reset-setup")
+    public ResponseEntity<Void> resetSetup() {
+        systemConfigMapper.setInitialized(false);
+        // 写 WARN 级别 SystemLog，标注"仅开发环境操作"
+        return ResponseEntity.noContent().build();
+    }
+}
+```
+
+**生产验证方式**：以 `spring.profiles.active=prod` 启动后，`POST /dev/reset-setup` 应返回 404（Spring 未注册该路由）。
+
+---
+
+### 10.5 Dev 工具使用场景
+
+| 测试场景 | 推荐操作 | 步骤 |
+|---------|---------|------|
+| 测试初始化向导全流程 | 一键重置 | 点击"重置向导" → 走向导5步 → 验证完成后入口锁定 |
+| 快速进入业务测试 | 一键跳过 + 快捷登录 | 点击"跳过向导" → 选择目标角色登录 → 直接进入业务页面 |
+| 验证某角色权限 | 快捷登录 | 点击对应角色按钮，无需手动输入账号密码 |
+| 复现 bug 后验证修复 | 快捷登录 + 业务操作 | 登录对应角色 → 复现操作路径 → 确认 bug 消失 |
+| 验证向导锁定机制 | 完成初始化后直接访问 `/pages/setup/index` | 应跳转登录页，且后端返回 403 |
+
+---
+
+### 10.6 生产构建验证清单
+
+以下检查在每次 `npm run build` 后执行，确保 Dev 工具完全剔除：
+
+- [ ] `dist/build/h5/` 中所有 JS 文件搜索 `reset-setup`，结果为空
+- [ ] `dist/build/h5/` 中所有 JS 文件搜索 `DevToolbar`，结果为空
+- [ ] `dist/build/mp-weixin/` 中所有 JS 文件搜索 `reset-setup`，结果为空
+- [ ] 以 `spring.profiles.active=prod` 启动后端，`POST /dev/reset-setup` 返回 404
+- [ ] H5 生产页面 DOM 中不存在 `dev-toolbar` 相关元素
+
+---
+
 ## 变更记录
 
 | 日期        | 内容                                                                                         |
 |-----------|----------------------------------------------------------------------------------------------|
+| 2026-04-07 | 新增 §10 Dev 快捷工具设计：DevToolbar 双端设计、DevController、使用场景、生产构建验证清单 |
+| 2026-04-07 | 新增 §9 自动化测试系统：工具选型对比（REST Assured + Playwright）；测试目录结构；流水线设计；Page Object 扩展模式；日志驱动问题复现流程；模块化测试数据隔离 |
 | 2026-04-03 | 全量重写：修正 OaDataService 旧引用；新增忘记密码/修改手机号/工伤 skipCondition/签名存证/数据保留/通知/Feedback/Sysadmin 向导完整测试路径；E2E 增加 DB 断言维度；补充认证安全边界用例；修正测试数据来源（data.sql 非 docs/test-accounts.md） |
 | 2026-03-31 | 初始版本：基础5角色 E2E 框架、单元测试占位用例 |

@@ -125,6 +125,9 @@ CREATE TABLE IF NOT EXISTS employee (
     account_status VARCHAR(20) DEFAULT 'ACTIVE' CHECK(account_status IN('ACTIVE','DISABLED')),
     entry_date DATE,
     leave_date DATE,
+    base_salary_override DECIMAL(12,2),
+    performance_base_override DECIMAL(12,2),
+    salary_override_note VARCHAR(500),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted INT DEFAULT 0

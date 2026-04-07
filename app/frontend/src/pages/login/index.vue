@@ -1,5 +1,8 @@
 <template>
   <view class="login-page">
+    <!-- #ifdef H5 -->
+    <DevLoginPanel />
+    <!-- #endif -->
     <view class="login-container">
       <!-- 企业名称区域 -->
       <view class="company-section">
@@ -73,6 +76,9 @@
 import { ref } from 'vue'
 import { useUserStore } from '../../stores'
 import { loginWithAccount } from '../../utils/access'
+/* #ifdef H5 */
+import DevLoginPanel from '../../components/customized/DevLoginPanel.vue'
+/* #endif */
 
 const userStore = useUserStore()
 const form = ref({ identifier: '', password: '' })

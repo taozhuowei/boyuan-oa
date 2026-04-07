@@ -134,5 +134,9 @@
   "Switch": {
     "h5": { "source": "ant-design-vue", "name": "Switch" },
     "mp": { "source": "vant", "name": "Switch" }
+  },
+  "ChangePhoneModal": {
+    "h5": { "source": "@/components/customized/ChangePhoneModal", "name": "ChangePhoneModal" },
+    "mp": { "source": "@/components/customized/ChangePhoneModal", "name": "ChangePhoneModal" }
   }
 }

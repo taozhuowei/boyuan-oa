@@ -49,9 +49,29 @@ KEY (project_id, employee_id) VALUES
 (1, 5, 'MEMBER'),
 (2, 3, 'PM');
 
+-- ============================================
+-- Phase 4: 审批流定义种子数据
+-- ============================================
+
+-- Phase 4: Approval flow definitions for LEAVE and OVERTIME
+MERGE INTO approval_flow_def (id, business_type, version, is_active)
+KEY (id) VALUES
+(1, 'LEAVE', 1, TRUE),
+(2, 'OVERTIME', 1, TRUE);
+
+-- LEAVE flow: Node 1 = DIRECT_SUPERVISOR, Node 2 = CEO role
+MERGE INTO approval_flow_node (id, flow_id, node_order, node_name, approval_mode, approver_type, approver_ref, skip_condition)
+KEY (id) VALUES
+(1, 1, 1, 'Initial Review', 'SEQUENTIAL', 'DIRECT_SUPERVISOR', NULL, NULL),
+(2, 1, 2, 'Final Approval', 'SEQUENTIAL', 'ROLE', 'ceo', NULL),
+(3, 2, 1, 'Initial Review', 'SEQUENTIAL', 'DIRECT_SUPERVISOR', NULL, NULL),
+(4, 2, 2, 'Final Approval', 'SEQUENTIAL', 'ROLE', 'ceo', NULL);
+
 -- 重置各表的 IDENTITY 序列，避免手动插入 ID 后序列冲突
 ALTER TABLE employee ALTER COLUMN id RESTART WITH 100;
 ALTER TABLE department ALTER COLUMN id RESTART WITH 100;
 ALTER TABLE sys_role ALTER COLUMN id RESTART WITH 100;
 ALTER TABLE project ALTER COLUMN id RESTART WITH 100;
 ALTER TABLE project_member ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE approval_flow_def ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE approval_flow_node ALTER COLUMN id RESTART WITH 100;

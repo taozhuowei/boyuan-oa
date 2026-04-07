@@ -85,6 +85,13 @@
       }
     },
     {
+      "path": "pages/projects/construction_log_form",
+      "style": {
+        "navigationBarTitleText": "填写施工日志",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/auth/forgot_password/index",
       "style": {
         "navigationBarTitleText": "重置密码",

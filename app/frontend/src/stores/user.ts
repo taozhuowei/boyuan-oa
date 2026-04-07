@@ -136,6 +136,8 @@ export interface SessionUser {
   // Phase 2 新增字段
   userId: number | null
   positionId: number | null
+  // Phone field for change phone feature
+  phone?: string
 }
 
 // ============================================================

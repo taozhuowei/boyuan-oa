@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oa.backend.dto.EmployeeCreateRequest;
 import com.oa.backend.dto.EmployeeUpdateRequest;
+import com.oa.backend.dto.SalaryOverrideRequest;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.service.EmployeeService;
@@ -241,5 +242,33 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setIsDefaultPassword(isDefaultPassword);
         employee.setUpdatedAt(LocalDateTime.now());
         employeeMapper.updateById(employee);
+    }
+
+    @Override
+    @Transactional
+    public void updatePhone(Long id, String newPhone) {
+        Employee employee = findById(id).orElseThrow(() -> new IllegalArgumentException("员工不存在"));
+        employee.setPhone(newPhone);
+        employee.setUpdatedAt(LocalDateTime.now());
+        employeeMapper.updateById(employee);
+    }
+
+    @Override
+    @Transactional
+    public Employee applySalaryOverride(Long id, SalaryOverrideRequest request) {
+        Employee employee = findById(id).orElseThrow(() -> new IllegalArgumentException("员工不存在"));
+        // TODO: CEO approval required for FINANCE role (Phase 4)
+        if (request.baseSalaryOverride() != null) {
+            employee.setBaseSalaryOverride(request.baseSalaryOverride());
+        }
+        if (request.performanceBaseOverride() != null) {
+            employee.setPerformanceBaseOverride(request.performanceBaseOverride());
+        }
+        if (request.note() != null) {
+            employee.setSalaryOverrideNote(request.note());
+        }
+        employee.setUpdatedAt(LocalDateTime.now());
+        employeeMapper.updateById(employee);
+        return employee;
     }
 }

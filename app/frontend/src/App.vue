@@ -3,28 +3,23 @@ export default {}
 </script>
 
 <style lang="scss">
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@400;600;700;800&display=swap');
-
 // ============================================
 // 全局样式变量 (OA Design System)
+// @use 必须位于所有规则之前
 // ============================================
-@import './styles/variables.scss';
+@use './styles/variables';
 
-// H5 端：Ant Design 样式
+// Web 字体（CSS @import url() 由 Sass 原样透传，不触发弃用警告）
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Manrope:wght@400;600;700;800&display=swap');
+
+// H5 端：组件库 CSS 已移至 main.ts 用 JS 条件导入
 /* #ifdef H5 */
-@import 'ant-design-vue/dist/reset.css';
-
 // AppShell 已实现侧边导航，隐藏 uni-app 原生 tabBar（保留配置避免运行时 crash）
 uni-tabbar { display: none !important; }
 // uni-app H5 会将 uni-page-wrapper 高度设为 100vh - tabBarHeight(50px)，需强制还原
 // 同时锁定 body overflow，防止任何溢出内容触发页面级滚动
 uni-page-wrapper { height: 100vh !important; }
 body { overflow: hidden !important; }
-/* #endif */
-
-// 小程序端：Vant 样式
-/* #ifdef MP-WEIXIN || APP-PLUS */
-@import 'vant/lib/index.css';
 /* #endif */
 
 :root,

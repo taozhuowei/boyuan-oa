@@ -1,4 +1,4 @@
-# 众维 OA 工作台
+# 博渊 OA 工作台
 
 企业微信工作台小程序 + Web 管理后台，面向建筑与工程企业的内部办公协同系统。
 
@@ -28,7 +28,7 @@
 ## 目录结构
 
 ```
-/home/tzw/OA/
+BOYUAN OA/
 ├── app/                        # 应用代码
 │   ├── frontend/               # 前端 (uni-app + Vue 3)
 │   │   └── src/
@@ -41,26 +41,42 @@
 │   │       ├── stores/         # Pinia 状态管理
 │   │       └── utils/          # 工具函数
 │   │
-│   └── backend/                # 后端 (Spring Boot)
-│       └── src/
-│           ├── controller/     # 控制器
-│           ├── service/        # 服务层
-│           ├── entity/         # 实体
-│           └── mapper/         # MyBatis 映射
+│   ├── backend/                # 后端 (Spring Boot)
+│   │   └── src/
+│   │       ├── controller/     # 控制器（HTTP 入口层）
+│   │       ├── service/        # 服务层（业务逻辑）
+│   │       ├── engine/         # 引擎层（审批流/薪资/签名）
+│   │       ├── entity/         # 实体（MyBatis-Plus）
+│   │       ├── mapper/         # MyBatis 映射
+│   │       ├── aspect/         # AOP（OperationLog 自动记录）
+│   │       ├── filter/         # 过滤器（TraceIdFilter）
+│   │       └── event/          # 跨模块 ApplicationEvent 定义
+│   │
+│   └── tests/                  # E2E 测试（Playwright）
+│       ├── specs/              # 按角色组织的测试用例
+│       └── pages/              # Page Object 封装
 │
-├── documentation/              # 项目文档
-│   ├── biz/                    # 业务文档
-│   │   └── PROJECT.md          # 项目介绍
-│   ├── dev/                    # 开发文档
-│   │   ├── ARCHITECTURE.md     # 技术架构
-│   │   ├── TEST_DESIGN.md      # 测试设计
-│   │   └── TODO.md             # 开发进度管理
-│   ├── designs/                # UI 设计稿
-│   └── README.md               # 文档索引
+├── documentation/              # 项目文档（详见 documentation/readme.md）
+│   ├── readme.md               # 文档中心导航入口（必读）
+│   ├── design.md               # 建筑工程版完整业务设计
+│   ├── tech/
+│   │   ├── architecture.md     # 技术架构（设计原则 + 系统架构图 + 模块解耦 + 日志系统）
+│   │   ├── todo.md             # 唯一开发进度管理入口（按模块顺序）
+│   │   ├── test_design.md      # 测试策略、自动化测试系统设计
+│   │   ├── backend_impl.md     # 后端实现细节
+│   │   └── frontend_impl.md    # 前端实现细节
+│   └── context/
+│       └── context.md          # 历史决策、禁止事项（AI 接手时必读）
 │
-└── test/                       # 测试相关
-    ├── reports/                # 测试报告
-    └── integration/            # 集成测试
+├── tools/                      # 运维工具（独立子项目）
+│   └── log_analyzer/           # OA 日志分析 GUI 工具（Python）
+│       ├── analyzer.py         # 主程序，需 OA_DEPLOY_KEY 认证
+│       ├── requirements.txt    # 依赖（tkinterdnd2 可选）
+│       ├── .env.example        # 环境变量模板
+│       └── README.md           # 使用说明
+│
+└── test/                       # 测试报告和历史测试数据
+    └── reports/
 ```
 
 ## 技术栈
@@ -77,62 +93,111 @@
 | ORM | MyBatis-Plus | 3.5 |
 | 数据库 | PostgreSQL | 15 |
 
-## 快速启动
+## npm 脚本
+
+所有脚本在 `app/` 目录下执行（`cd app && npm run <script>`）。
+
+### 开发
+
+| 脚本 | 说明 |
+|------|------|
+| `npm run dev` | **并行启动 H5 前端 + 后端**，单命令完成本地开发环境启动 |
+| `npm run dev:mp` | 单独启动小程序编译（监听模式），配合微信开发者工具使用 |
+| `npm run dev:backend` | 单独启动后端（Spring Boot dev profile） |
 
 ```bash
-# 前端
-cd app/frontend
-yarn install
-yarn dev:web              # Web 本地调试
-yarn dev:mp-weixin        # 小程序开发模式
-
-# 后端
-cd app/backend
-mvn spring-boot:run
+cd app
+npm run dev               # H5 前端 + 后端同时启动
+npm run dev:mp            # 小程序编译，微信开发者工具打开 dist/dev/mp-weixin
 ```
 
-## 测试
+### 构建（生产）
+
+| 脚本 | 说明 |
+|------|------|
+| `npm run build` | **完整生产构建**：类型检查 → H5 → 小程序（串行，任一失败终止） |
+| `npm run build:h5` | 仅构建 H5，代码压缩混淆、剔除所有 console/debug/dev 工具 |
+| `npm run build:mp` | 仅构建小程序，同样剔除 dev 工具 |
+| `npm run build:backend` | 后端打包（`mvn clean package`） |
 
 ```bash
-# 前端
-cd app/frontend
-yarn type-check           # 类型检查
-yarn test:web             # 单元测试
+cd app
+npm run build             # 完整生产构建（推荐发版前使用）
+npm run build:h5          # 仅 H5
+npm run build:mp          # 仅小程序
+```
 
-# 后端
+> **生产构建保证**：`npm run build:h5` 启用 Terser 压缩混淆，自动 `drop_console`、`drop_debugger`，不输出 source map。Dev 快捷工具（`DevToolbar`）通过 `import.meta.env.DEV` 守门，production build 时被 Rollup dead-code-elimination 完整剔除。
+
+### 检查与测试
+
+| 脚本 | 说明 |
+|------|------|
+| `npm run type-check` | TypeScript 类型检查（`vue-tsc --noEmit`） |
+| `npm run test` | 前端单元测试（Vitest） |
+
+```bash
+cd app
+npm run type-check        # 类型检查，CI 失败时退出码非零
+npm run test              # 单元测试
+```
+
+### 部署
+
+| 脚本 | 说明 |
+|------|------|
+| `npm run deploy:h5` | 构建 H5 后通过 rsync 推送到服务器 |
+
+```bash
+# 配置环境变量（复制 app/.env.example 为 app/.env）
+OA_DEPLOY_HOST=user@your-server
+OA_DEPLOY_PATH=/var/www/oa-h5
+
+cd app
+npm run deploy:h5         # build:h5 → rsync 推送
+```
+
+### 安装依赖
+
+```bash
+cd app
+npm run install:all       # 安装前端依赖
+```
+
+### 后端单独操作
+
+```bash
 cd app/backend
-mvn test                  # 单元测试
+mvn test                  # 后端单元测试
+mvn spring-boot:run       # 直接启动（等同于 npm run dev:backend）
 ```
 
 ## 核心功能模块
 
-- **工作台** - 数据概览、快捷入口、待办事项
-- **考勤管理** - 请假/加班申请、审批流程（初审+终审）
-- **薪资管理** - 工资条查看、确认、异议、结算
-- **项目管理** - 项目列表、施工日志、阶段审批
-- **员工管理** - 员工信息、组织架构、权限设置
-
-## 角色权限
-
-| 角色 | 核心权限 |
-|------|---------|
-| 员工 | 发起请假/加班、查看本人工资条 |
-| 劳工 | 在员工基础上，提交施工日志、发起工伤补偿 |
-| 项目经理 | 处理项目范围内初审、维护施工日志模板 |
-| 财务 | 维护人员与薪资配置、执行结算、导入通讯录 |
-| CEO | 管理全局配置、终审审批、配置角色权限 |
+| 模块 | 说明 | 可差分部署 |
+|------|------|-----------|
+| 工作台 & 通知 | 数据概览、待办事项、系统通知 | 否（核心） |
+| 审批流引擎 | 通用审批流（支持动态路由、skipCondition） | 否（核心） |
+| 考勤管理 | 请假/加班申请、自补加班，走审批流 | `modules.attendance` |
+| 施工 & 工伤 | 施工日志填报与审批、工伤补偿申请与理赔 | `modules.construction` |
+| 薪资管理 | 结算周期、工资条确认、电子签名存证、更正 | `modules.payroll` |
+| 项目管理 | 里程碑、进度、汇总报告、Dashboard | `modules.project` |
+| 数据生命周期 | 保留策略、到期提醒、清理任务、数据导出 | `modules.data_lifecycle` |
+| 员工 & 组织 | 员工档案、部门树、组织架构、岗位薪资配置 | 否（核心） |
 
 ## 文档索引
 
-所有文档集中在 `documentation/` 目录，按受众分类：
+所有文档集中在 `documentation/`，**从 `documentation/readme.md` 开始阅读**。
 
 | 文档 | 路径 | 说明 |
 |------|------|------|
-| 文档索引 | `documentation/README.md` | 文档中心入口 |
-| 项目介绍 | `documentation/biz/PROJECT.md` | 业务背景、目标 |
-| 技术架构 | `documentation/dev/ARCHITECTURE.md` | 架构设计、接口规范 |
-| 测试设计 | `documentation/dev/TEST_DESIGN.md` | 测试策略、用例 |
-| **开发进度** | `documentation/dev/TODO.md` | **前后端进度管理** |
+| **文档导航** | `documentation/readme.md` | **AI/新开发者必读：文档在哪里、读什么** |
+| 历史决策 | `documentation/context/context.md` | 禁止事项、设计决策（每次新会话必读） |
+| 业务设计 | `documentation/design.md` | 完整业务规则：角色/权限/审批流/薪资/数据保留 |
+| 技术架构 | `documentation/tech/architecture.md` | 设计原则、系统架构图、模块解耦、日志系统、引擎设计、API 规范 |
+| **开发进度** | `documentation/tech/todo.md` | **唯一进度入口，按模块顺序组织** |
+| 测试设计 | `documentation/tech/test_design.md` | 测试策略、自动化测试系统设计、E2E 用例 |
+| 运维工具 | `tools/log_analyzer/README.md` | 日志分析 GUI 工具使用说明 |
 
 ## 前端组件开发原则
 

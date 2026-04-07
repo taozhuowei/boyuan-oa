@@ -4,38 +4,72 @@
 >
 > **目标读者**：后端架构师、技术负责人。
 >
-> **不包含内容**：具体的代码实现细节（见 `BACKEND_IMPL.md`）；前端实现细节（见 `FRONTEND_IMPL.md`）；业务规则与权限配置（见 `DESIGN.md`）；页面布局（见 `UI_DESIGN.md`）。
+> **不包含内容**：具体的代码实现细节（见 `backend_impl.md`）；前端实现细节（见 `frontend_impl.md`）；业务规则与权限配置（见 `design.md`）。
+
+---
+
+## 0. 设计原则
+
+**原则一：配置驱动，平台与业务解耦**
+平台不内置具体业务逻辑（如"请假审批需要项目经理初审"）。所有业务规则以配置形式存储，平台引擎读取配置并执行，同一套代码可服务不同行业的企业。
+
+**原则二：渐进式接入，开箱即用**
+平台提供预置方案（`presets/`），企业直接采用最接近自身需求的预置方案，经 Sysadmin 初始化向导快速上线，无需从零配置。
+
+**原则三：系统管理与业务运营分层**
+系统实施/运维人员（Sysadmin）与企业内部业务用户（CEO、财务等）使用独立账号体系和操作界面，二者职责不交叉，平台稳定性不依赖业务用户操作。
+
+**原则四：存证与合规优先**
+薪资确认、审批记录等法律敏感操作原生支持电子签名、操作留痕、数据完整性校验，满足劳动合同法相关合规要求。
 
 ---
 
 ## 1. 系统架构
 
 ```
-┌─────────────────┐     ┌─────────────────┐
-│  企业微信工作台   │     │   Web 浏览器     │
-│    小程序        │     │ (PC/平板/手机)   │
-└────────┬────────┘     └────────┬────────┘
-         └───────────┬───────────┘
-                     ▼
-            ┌─────────────────┐
-            │  uni-app 前端    │
-            │  (Vue 3 + Vite) │
-            │  配置驱动渲染    │
-            └────────┬────────┘
-                     │ REST API  X-Client-Type: web | mp
-                     ▼
-            ┌─────────────────┐
-            │  Spring Boot    │
-            │  平台引擎层      │
-            │  + 业务配置层    │
-            └────────┬────────┘
-                     │
-         ┌───────────┼───────────┐
-         ▼           ▼           ▼
-    ┌─────────┐ ┌─────────┐ ┌──────────┐
-    │PostgreSQL│ │ 文件存储 │ │ 企业微信  │
-    │         │ │（本地 FS）│ │   API    │
-    └─────────┘ └─────────┘ └──────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          客户端层（Client Layer）                          │
+│  ┌─────────────────────────────┐   ┌──────────────────────────────────┐  │
+│  │    企业微信工作台小程序        │   │    Web 浏览器（PC / 平板 / 手机）  │  │
+│  │  Vant 4.9 · uni-app · MP   │   │  Ant Design Vue 4 · uni-app · H5 │  │
+│  └──────────────┬──────────────┘   └────────────────┬─────────────────┘  │
+│                 └──────────────────┬─────────────────┘                   │
+└───────────────────────────────────┼────────────────────────────────────┘
+                                    │  REST API · JWT Bearer Token
+                                    │  X-Client-Type: mp | web
+┌───────────────────────────────────▼────────────────────────────────────┐
+│                          Spring Boot 后端                                │
+│                                                                          │
+│  ╔══════════════════════════════════════════════════════════════════╗    │
+│  ║          预置与初始化层（Preset & Initialization Layer）           ║    │
+│  ║  preset-{行业}.sql → 部署时写入角色/权限/审批流/薪资规则/保留期    ║    │
+│  ║  Init Wizard（步骤 1–10）→ Sysadmin 在预置基础上个性化配置        ║    │
+│  ╚══════════════════════════════════════════════════════════════════╝    │
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────────┐   │
+│  │              核心层（Core Layer · 始终加载，不可关闭）               │   │
+│  │  auth │ employee │ org │ approval_engine │ notify │ sys │ sign   │   │
+│  └────────────────────────────────┬─────────────────────────────────┘   │
+│                                   │                                      │
+│  ┌────────────────────────────────▼─────────────────────────────────┐   │
+│  │                  集成层（Integration Layer）                        │   │
+│  │   ApplicationEvent 事件总线（异步）│ Port Interface 接口（同步读）    │   │
+│  └───┬──────────┬──────────┬───────────┬──────────┬─────────────────┘   │
+│      │          │          │           │          │                      │
+│  ┌───▼────┐  ┌───▼────┐  ┌────▼────┐  ┌───▼────┐  ┌───▼──────────┐    │
+│  │ 考勤   │  │ 薪资   │  │项目管理 │  │施工专属 │  │ 数据生命周期 │    │
+│  │ atd_* │  │ pay_* │  │ prj_*  │  │ con_*  │  │   dlc_*     │    │
+│  └────────┘  └────────┘  └─────────┘  └────────┘  └──────────────┘    │
+│       各业务模块由 modules.yml 独立开关控制，互不直接依赖                  │
+└──────────────────────────────────┬─────────────────────────────────────┘
+                                   │
+             ┌─────────────────────┼──────────────────────┐
+             ▼                     ▼                      ▼
+        ┌──────────┐         ┌──────────┐          ┌──────────┐
+        │PostgreSQL│         │ 文件存储  │          │ 企业微信  │
+        │（核心表  │         │ /uploads │          │   API    │
+        │+模块分表）│         │ 本地 FS  │          │（预留）   │
+        └──────────┘         └──────────┘          └──────────┘
 ```
 
 ---
@@ -57,23 +91,40 @@
 
 ## 3. 分层架构
 
+后端内部五层，从上至下依次驱动：
+
 ```
-┌────────────────────────────────────────────────────┐
-│  配置层（Config Layer）                              │
-│  角色/权限配置 / 工作流定义 / 表单类型 / 薪资规则    │
-│  由 Sysadmin 初始化 + CEO/财务 日常维护              │
-└──────────────────────────┬─────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│  预置层（Preset Layer）                                    │
+│  preset-{行业}.sql → 部署时一次性写入                       │
+│  角色 / 权限 / 审批流 / 薪资规则 / 数据保留期默认值           │
+└──────────────────────────┬───────────────────────────────┘
+                           │ 部署时写入 DB，向导前已就绪
+┌──────────────────────────▼───────────────────────────────┐
+│  配置层（Config Layer）                                    │
+│  Init Wizard（步骤 1–10）→ 个性化调整预置值                │
+│  运营期：CEO / 财务 / HR 动态维护角色、审批流、薪资规则等    │
+└──────────────────────────┬───────────────────────────────┘
                            │ 配置读取
-┌──────────────────────────▼─────────────────────────┐
-│  引擎层（Engine Layer）                              │
-│  权限引擎 / 工作流引擎 / 表单引擎 / 薪资引擎          │
-│  通知引擎 / 签名引擎 / 数据生命周期引擎               │
-└──────────────────────────┬─────────────────────────┘
-                           │ 引擎调用
-┌──────────────────────────▼─────────────────────────┐
-│  业务运行层（Business Runtime Layer）                │
-│  REST API / 业务状态机 / 事件发布 / 数据持久化        │
-└────────────────────────────────────────────────────┘
+┌──────────────────────────▼───────────────────────────────┐
+│  核心引擎层（Core Engine Layer · 始终加载）                 │
+│  权限引擎 / 工作流引擎 / 表单引擎 / 薪资引擎                │
+│  通知引擎 / 签名引擎 / 数据生命周期引擎                     │
+└──────────────────────────┬───────────────────────────────┘
+                           │
+┌──────────────────────────▼───────────────────────────────┐
+│  集成层（Integration Layer）                               │
+│  ApplicationEvent 事件总线（跨模块异步通信）                │
+│  Port Interface 接口（跨模块同步数据读取）                  │
+│  模块 A 不直接依赖模块 B 的 Service / Repository            │
+└──────────────────────────┬───────────────────────────────┘
+                           │ 事件 / 端口调用
+┌──────────────────────────▼───────────────────────────────┐
+│  业务模块层（Business Module Layer）                        │
+│  由 modules.yml 按需加载，各模块独立，可随时增减            │
+│  考勤(atd_*) / 薪资(pay_*) / 项目(prj_*) /                │
+│  施工专属(con_*) / 报销 / 数据生命周期(dlc_*)              │
+└──────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -138,7 +189,7 @@ APPROVED → ARCHIVED
 ```json
 { "type": "SUBMITTER_ROLE_MATCH", "roleCode": "project_manager" }
 ```
-具体业务场景（哪些审批流使用了此功能）见 `DESIGN.md §5`。
+具体业务场景（哪些审批流使用了此功能）见 `design.md §5`。
 
 约束：
 - 当前版本不支持条件分支（多路径）
@@ -158,7 +209,7 @@ GET /forms/config?formType={type}
 
 ### 5.4 薪资引擎
 
-> 窗口期时长、预结算强制检查条件、各岗位计算公式等业务规则见 `DESIGN.md §6`。本节只描述引擎技术实现。
+> 窗口期时长、预结算强制检查条件、各岗位计算公式等业务规则见 `design.md §6`。本节只描述引擎技术实现。
 
 **算薪输入来源：**
 ```
@@ -172,7 +223,7 @@ GET /forms/config?formType={type}
 ```
 CREATED → WINDOW_OPEN（窗口期开放员工确认数据）
         → WINDOW_CLOSED（到期自动关闭，Scheduler 触发，无手动关闭接口）
-        → PRE_CHECK（引擎执行前置检查，检查条件见 DESIGN.md §6.2）
+        → PRE_CHECK（引擎执行前置检查，检查条件见 design.md §6.2）
         → LOCKED（正式结算，生成 PayrollSlip）
         → CORRECTION（CEO 审批解锁）→ LOCKED（重算，version 递增）
 ```
@@ -407,10 +458,75 @@ CREATED → WINDOW_OPEN（窗口期开放员工确认数据）
 | `submitterId`  | UUID FK → Employee   | 发起人（代为提交时为代提交者）                  |
 | `targetEmployeeId` | UUID FK → Employee | 实际受益员工（本人提交时与 submitterId 相同） |
 | `projectId`    | UUID FK → Project NULL | 关联项目（施工日志必填，其他可选）            |
-| `formData`     | JSON                 | 各业务类型特有字段（JSON 序列化）               |
+| `formData`     | JSON                 | 各业务类型特有字段（JSON 序列化，结构见下表）    |
 | `status`       | ENUM(PENDING, APPROVING, APPROVED, REJECTED, ARCHIVED, RECALLED) | 单据状态 |
 | `currentNodeOrder`| INT             | 当前处于第几个审批节点                         |
 | `remark`       | VARCHAR(500) NULL    | 备注（驳回原因等）                             |
+
+##### `formData` JSON 结构（按业务类型）
+
+**LEAVE（请假申请）**
+```json
+{
+  "leaveType":   "string",   // 假种：年假 | 事假 | 病假 | 婚假 | 产假
+  "startDate":   "string",   // ISO 8601 日期，如 "2026-04-01"
+  "endDate":     "string",   // ISO 8601 日期
+  "leaveDays":   "number",   // 请假天数（含 0.5 步长）
+  "reason":      "string",   // 请假原因
+  "attachments": ["string"], // 附件 URL 列表，可为空数组
+  "isRetroactive": "boolean" // true 表示补录（事后提交）
+}
+```
+
+**OVERTIME（加班申请，项目经理/CEO 代报，针对指定员工）**
+```json
+{
+  "overtimeDate":    "string",   // ISO 8601 日期
+  "overtimeType":    "string",   // 工作日加班 | 周末加班 | 节假日加班
+  "hours":           "number",   // 加班小时数
+  "targetEmployees": ["string"], // 受益员工 employeeNo 列表
+  "reason":          "string"    // 加班原因
+}
+```
+
+**OVERTIME（加班申请，员工/劳工自报）**
+```json
+{
+  "overtimeDate":  "string",   // ISO 8601 日期
+  "overtimeType":  "string",   // 工作日加班 | 周末加班 | 节假日加班
+  "hours":         "number",   // 加班小时数
+  "reason":        "string",   // 加班原因
+  "evidenceFiles": ["string"]  // 证明材料 URL 列表，可为空数组
+}
+```
+
+**INJURY（工伤申报）**
+```json
+{
+  "injuryDate":     "string",   // ISO 8601 日期
+  "injuredPart":    "string",   // 受伤部位描述
+  "description":    "string",   // 事故经过
+  "medicalRecords": ["string"], // 医疗证明 URL 列表
+  "proxyEmployeeNo": "string"   // 代为申报者 employeeNo，本人申报时省略
+}
+```
+
+**CONSTRUCTION_LOG（施工日志）**
+```json
+{
+  "projectId":   "number",   // 关联项目 ID（必填）
+  "logDate":     "string",   // ISO 8601 日期
+  "workItems": [
+    {
+      "name":     "string",  // 工作项名称
+      "quantity": "number",  // 数量
+      "unit":     "string"   // 单位，如 m² | 根 | 组
+    }
+  ],
+  "workContent": "string",   // 当日施工情况综述，可选
+  "photos":      ["string"]  // 现场照片 URL 列表，可为空数组
+}
+```
 
 ---
 
@@ -1204,3 +1320,375 @@ POST /employees/import/apply
 - **通讯录批量导入**：当前使用 mock 数据
 - **应用消息推送**：审批通知、工资条发布、到期提醒（当前为系统内通知）
 - **小程序内发起联系人会话**：PM/CEO 可直接联系员工
+
+---
+
+## 12. 模块解耦架构（差分部署）
+
+> **设计目标：** 支持按需启用/禁用业务模块（如"不含报销模块"、"不含项目管理"），任何模块的缺失不影响系统整体可运行。
+
+### 12.1 模块注册表（modules.yml）
+
+所有业务模块在 `src/main/resources/modules.yml` 中注册，部署者在该文件或环境变量中切换开关，无需改代码：
+
+```yaml
+# modules.yml — 模块开关配置
+# 修改后重启服务生效；未列出的模块不纳入加载
+modules:
+  attendance:      true    # 考勤（请假/加班申请，审批流引擎依赖此模块）
+  construction:    true    # 施工专属（施工日志 + 工伤补偿，依赖 attendance）
+  payroll:         true    # 薪资结算（窗口期 + 结算 + 签名存证）
+  project:         true    # 项目管理（里程碑 + 进度，依赖 construction）
+  reimbursement:   false   # 报销（预留，当前未实现）
+  data_lifecycle:  true    # 数据生命周期（保留策略 + 清理调度，建议始终开启）
+```
+
+**核心模块（不可关闭）：** `auth`（认证）、`employee`（员工档案）、`org`（组织管理）、`approval_engine`（审批流引擎内核）、`notification`（通知）、`system`（系统配置 + Admin）。
+
+环境变量优先级高于文件：`OA_MODULE_PAYROLL=false` 可覆盖 yml 配置，适合 CI/CD 场景。
+
+---
+
+### 12.2 Spring 条件加载（@ConditionalOnProperty）
+
+每个可选模块的 `@Configuration` 类均使用 `@ConditionalOnProperty` 守门：
+
+```java
+// 考勤模块配置类
+@Configuration
+@ConditionalOnProperty(prefix = "modules", name = "attendance", havingValue = "true")
+public class AttendanceModuleConfig {
+    // 注册 AttendanceController、AttendanceService、AttendanceRepository 等 Bean
+}
+
+// 薪资模块配置类
+@Configuration
+@ConditionalOnProperty(prefix = "modules", name = "payroll", havingValue = "true")
+public class PayrollModuleConfig { ... }
+```
+
+模块未启用时，Spring 容器不注册对应 Bean，相关接口路径不挂载，403 之外不会抛 NoSuchBeanDefinitionException。
+
+---
+
+### 12.3 模块间通信（Spring ApplicationEvent）
+
+**禁止模块间直接注入 Service**（产生编译期耦合）。跨模块调用一律通过 Spring `ApplicationEvent`：
+
+```
+Attendance 模块（发布方）          Payroll 模块（订阅方）
+     │                                    │
+     │  publishEvent(LeaveApprovedEvent)  │
+     └──────────────────────────────────►│
+                                          │ @EventListener(LeaveApprovedEvent)
+                                          │ → 更新考勤数据，用于算薪
+```
+
+**已定义的跨模块事件：**
+
+| 事件类                         | 发布方       | 订阅方            | 触发时机                          |
+|-------------------------------|-------------|------------------|-----------------------------------|
+| `LeaveApprovedEvent`          | attendance  | payroll          | 请假单终审通过，携带 days/deductionRate |
+| `OvertimeRecordedEvent`       | attendance  | payroll          | 加班通知归档，携带 hours/rate       |
+| `InjuryClaimSettledEvent`     | construction| payroll          | 工伤理赔金额录入，携带 compensationAmount |
+| `ConstructionLogApprovedEvent`| construction| project          | 施工日志审批通过，触发项目进度更新  |
+| `PayrollCycleLockedEvent`     | payroll     | notification     | 结算周期锁定，推送工资条待确认通知  |
+| `RetentionExpiredEvent`       | data_lifecycle | all modules   | 数据到期，通知各模块执行物理删除    |
+
+---
+
+### 12.4 端口接口（Port Interface）
+
+当模块 B 需要读取模块 A 的数据时，通过 Port 接口隔离，避免直接调用 Repository：
+
+```java
+// 在 payroll 模块内定义接口（端口）
+public interface AttendancePort {
+    List<LeaveRecord> getApprovedLeaves(Long employeeId, YearMonth period);
+    List<OvertimeRecord> getArchivedOvertime(Long employeeId, YearMonth period);
+}
+
+// 在 attendance 模块内提供实现
+@Component
+@ConditionalOnProperty(prefix = "modules", name = "attendance", havingValue = "true")
+public class AttendancePortImpl implements AttendancePort { ... }
+
+// attendance 模块未启用时，提供空实现（返回空列表）
+@Component
+@ConditionalOnMissingBean(AttendancePortImpl.class)
+public class AttendancePortNoop implements AttendancePort {
+    public List<LeaveRecord> getApprovedLeaves(...) { return Collections.emptyList(); }
+    public List<OvertimeRecord> getArchivedOvertime(...) { return Collections.emptyList(); }
+}
+```
+
+这样 payroll 模块编译时不依赖 attendance 模块是否存在，部署时两种情况均可正常运行。
+
+---
+
+### 12.5 数据库隔离（表前缀 + 分 Migration）
+
+每个可选模块的表使用专属前缀，Migration 脚本按模块分目录：
+
+| 模块            | 表前缀  | Migration 目录                              |
+|----------------|--------|----------------------------------------------|
+| 核心（始终加载） | 无前缀 | `db/migration/core/`                         |
+| 考勤            | `atd_` | `db/migration/attendance/`                   |
+| 施工            | `con_` | `db/migration/construction/`                 |
+| 薪资            | `pay_` | `db/migration/payroll/`                      |
+| 项目管理        | `prj_` | `db/migration/project/`                      |
+| 数据生命周期    | `dlc_` | `db/migration/data_lifecycle/`               |
+
+Flyway 通过 `spring.flyway.locations` 配置项控制加载哪些目录，模块关闭时对应目录不扫描，不建表。
+
+---
+
+### 12.6 前端动态路由
+
+登录响应中携带 `enabledModules` 列表，前端据此动态注册菜单和路由：
+
+```jsonc
+// POST /auth/login 响应
+{
+  "token": "...",
+  "employee": { ... },
+  "enabledModules": ["attendance", "payroll", "project", "construction", "data_lifecycle"]
+}
+```
+
+前端路由注册逻辑：
+
+```typescript
+// 登录成功后，根据 enabledModules 动态挂载路由
+function registerModuleRoutes(enabledModules: string[]) {
+  if (enabledModules.includes("attendance")) {
+    router.addRoute("main", attendanceRoutes)
+  }
+  if (enabledModules.includes("payroll")) {
+    router.addRoute("main", payrollRoutes)
+  }
+  // ...
+}
+```
+
+菜单、待办聚合、工作台卡片均根据 `enabledModules` 过滤，不依赖权限判断。
+
+---
+
+## 13. 全流程日志系统
+
+> **设计目标：** 问题发生后能在 5 分钟内定位到触发问题的模块、类、文件和代码行。日志分两层：业务层（可在 UI 中查看）和系统层（运维专用文件日志）。
+
+### 13.1 两层日志分工
+
+| 层级              | 存储位置     | 可见性         | 用途                              |
+|-----------------|-------------|---------------|-----------------------------------|
+| OperationLog    | 数据库表      | UI 可见（Admin）| 业务操作审计：谁在什么时间做了什么   |
+| SystemLog       | 服务器文件    | 运维专用        | 技术诊断：完整调用链、异常堆栈、性能数据 |
+
+两层互补：OperationLog 提供业务可读的审计轨迹；SystemLog 提供完整的技术诊断信息。
+
+---
+
+### 13.2 SystemLog 结构化 JSON 格式
+
+每条 SystemLog 为独立 JSON 行（Newline-delimited JSON），字段如下：
+
+```jsonc
+{
+  "timestamp":   "2026-04-07T14:23:01.234Z",   // ISO 8601
+  "level":       "INFO",                         // DEBUG | INFO | WARN | ERROR
+  "trace_id":    "a3f8c2d1-xxxx-xxxx-xxxx",     // 请求级别唯一标识（见 §13.3）
+  "module":      "payroll",                      // 所属业务模块（见 §12.1 模块名）
+  "operation":   "payroll.cycle.settle",         // 操作码（{module}.{资源}.{动作}）
+  "user_id":     "emp-001",                      // 操作人 employeeNo（匿名请求为 "anonymous"）
+  "role":        "finance",                      // 操作人角色
+  "class":       "PayrollController",            // 产生日志的类名
+  "method":      "settle",                       // 方法名
+  "file":        "PayrollController.java",       // 文件名
+  "line":        247,                            // 代码行号
+  "duration_ms": 312,                            // 本次请求处理耗时（仅 Controller 层记录）
+  "status":      200,                            // HTTP 状态码（仅 Controller 层记录）
+  "message":     "Payroll cycle 2026-04 settled, 18 slips generated",
+  "error":       null                            // 异常信息（ERROR 级别时有值）
+}
+```
+
+**operation 命名规范：** `{module}.{resource}.{action}`，如 `attendance.leave.approve`、`payroll.cycle.settle`、`auth.employee.login`。
+
+---
+
+### 13.3 Trace ID（MDC 传播）
+
+每个 HTTP 请求入口生成一个 UUID 作为 `trace_id`，通过 SLF4J MDC 传播到所有下游调用：
+
+```java
+// TraceIdFilter.java — OncePerRequestFilter
+@Component
+public class TraceIdFilter extends OncePerRequestFilter {
+    @Override
+    protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) {
+        String traceId = Optional.ofNullable(req.getHeader("X-Trace-Id"))
+                .orElse(UUID.randomUUID().toString());
+        MDC.put("trace_id", traceId);
+        res.setHeader("X-Trace-Id", traceId);
+        try {
+            chain.doFilter(req, res);
+        } finally {
+            MDC.clear(); // 线程归还时清理，防止线程池泄漏
+        }
+    }
+}
+```
+
+**跨异步边界传播：** Spring `@Async` 和 `ApplicationEvent` 的异步监听器使用 `MdcTaskDecorator` 确保 trace_id 传递到子线程。
+
+---
+
+### 13.4 日志文件滚动策略
+
+```
+logs/
+  oa-system.log          # 当前日志（滚动写入）
+  oa-system.2026-04-06.log  # 按日归档
+  oa-error.log           # 仅 ERROR 级别，便于告警扫描
+  oa-slow.log            # 请求耗时 > 2000ms 的慢请求独立归档
+
+保留策略：
+  - oa-system.*：保留 30 天
+  - oa-error.*：保留 90 天
+  - oa-slow.*：保留 30 天
+```
+
+Logback 配置文件：`src/main/resources/logback-spring.xml`；生产环境通过 Spring Profile 切换到 JSON Appender。
+
+---
+
+### 13.5 OperationLog 写入时机
+
+以下操作**强制写入** OperationLog（数据库），UI 中可见：
+
+| 操作域       | 触发动作                                       |
+|------------|------------------------------------------------|
+| 认证        | 登录成功/失败、密码重置、手机号修改              |
+| 员工管理    | 员工创建/修改/禁用/删除、角色变更、薪资覆盖      |
+| 审批流      | 提交单据、审批通过/驳回/跳过、撤回               |
+| 薪资        | 结算、更正、窗口期开启/关闭                     |
+| 权限配置    | 角色新增/删除、权限项变更                        |
+| 数据管理    | 保留策略修改、清理任务执行、数据导出             |
+| 系统配置    | 公司信息修改、集成配置变更                       |
+
+OperationLog 通过 AOP 拦截器自动写入，业务代码无需手动调用：
+
+```java
+// OperationLogAspect.java
+@Aspect
+@Component
+public class OperationLogAspect {
+    @Around("@annotation(OperationLogRecord)")
+    public Object record(ProceedingJoinPoint pjp, OperationLogRecord annotation) throws Throwable {
+        // 记录操作前快照、执行业务方法、记录操作后状态、写入 OperationLog 表
+    }
+}
+```
+
+---
+
+### 13.6 日志分析工具（tools/log_analyzer）
+
+> 日志文件为运维专用，携带 `trace_id` 可快速定位问题链路。工具详见 `tools/log_analyzer/README.md`。
+
+**认证机制：** 工具启动时读取环境变量 `OA_DEPLOY_KEY`（部署者持有，不进源码），无 key 则拒绝解析。防止日志文件流出后被第三方轻易读取。
+
+**使用场景：** 将一段日志文本（或日志文件）拖入工具，输入 trace_id / 时间范围 / 模块名过滤，工具输出：
+
+```
+[PAYROLL] PayrollController.java:247 — settle() — 312ms
+[PAYROLL] PayrollEngine.java:89 — validatePrerequisites() — 8ms
+[PAYROLL] PayrollSlipRepository.java:134 — bulkInsert() — 287ms — ERROR
+  java.sql.BatchUpdateException: Duplicate key value violates unique constraint ...
+  at com.oa.backend.repository.PayrollSlipRepository.bulkInsert(PayrollSlipRepository.java:134)
+```
+
+工具路径：`tools/log_analyzer/`，独立 Python 子项目，部署时与服务器分离。
+
+---
+
+## 14. 可配置边界
+
+### 14.1 可配置项（Sysadmin 向导或后台运营期修改）
+
+| 配置项         | 配置粒度    | 运行时可修改          |
+|---------------|------------|----------------------|
+| 角色定义与权限  | 角色级      | ✓                    |
+| 审批流节点     | 业务类型级   | ✓（仅影响新单据）      |
+| 表单字段       | 表单模板级   | ✓                    |
+| 薪资计算规则   | 工资项级    | ✓（仅影响新周期）      |
+| 数据保留策略   | 数据类型级   | ✓                    |
+| 结算周期类型   | 全局        | ✓                    |
+| 启用的功能模块  | 模块级      | ✓                    |
+| 公司基本信息   | 全局        | ✓                    |
+
+### 14.2 平台固定项（不可通过配置修改）
+
+- JWT 认证机制与 Token 格式
+- Sysadmin 账号层级与初始化流程
+- 电子签名与存证的数据结构
+- 文件存储路径规范（`/uploads/{业务类型}/{yyyy-MM}/{UUID}.{ext}`）
+- 数据清理的物理删除机制
+- 双端适配架构（uni-app + 组件适配层）
+- 状态机流转规则（审批流基本状态集合）
+
+---
+
+## 15. 多企业预置方案（接入新行业）
+
+### 15.1 三层工作结构
+
+接入第二家企业需完成三层工作：
+
+```
+documentation/
+├── DESIGN-{行业}.md        # [文档层] 角色/权限/审批流/薪资/数据保留设计记录
+│
+app/backend/src/main/resources/db/
+└── preset-{行业}.sql        # [配置数据层] Sysadmin 初始化向导加载的种子数据
+│
+app/backend/... / app/frontend/...
+                             # [业务模块层] 行业专属 Service/Controller/页面（可选）
+```
+
+### 15.2 配置数据层（preset-{行业}.sql）写入表
+
+| 表 | 内容 |
+|----|------|
+| `sys_role` | 角色定义 + 默认权限码列表 |
+| `permission` | 预置权限码集合 |
+| `biz_form_type_def` | 启用的表单业务类型 |
+| `biz_approval_flow_def` + `biz_approval_flow_node` | 各业务类型的审批流节点 |
+| `pay_leave_type_def` | 假种及扣款比例 |
+| `pay_social_insurance_item` | 社保险种及默认比例 |
+| `sys_retention_policy` | 各类数据的默认保留期 |
+| `sys_config` | 平台级参数（窗口期时长、计量单位等） |
+
+### 15.3 业务模块层（可选）
+
+若新行业有专属业务流程（如建筑版的施工日志、工伤补偿），需在后端新增 Service/Controller，前端新增业务页面。若该行业只使用通用模块（考勤/薪资/请假/加班），仅配置数据即可上线，无需改代码。
+
+### 15.4 不同行业差异点参考
+
+| 差异维度       | 建筑工程版           | 其他行业示例          |
+|--------------|---------------------|----------------------|
+| 核心业务模块   | 施工日志、工伤补偿    | 制造业：生产工单、设备巡检 |
+| 特殊角色      | 劳工（劳务人员）      | 制造业：班组长          |
+| 薪资规则复杂度  | 工伤补偿纳入薪资      | 制造业：计件工资         |
+| 审批链长度     | 2 节点（初审+终审）   | 大型企业：3-4 节点       |
+
+---
+
+## 变更记录
+
+| 日期        | 内容                                                                                       |
+|-----------|------------------------------------------------------------------------------------------|
+| 2026-04-07 | §1 系统架构图重绘（新增预置与初始化层、核心层、集成层、业务模块层）；§3 分层架构图升级为5层（预置→配置→核心引擎→集成→业务模块）；所有文档文件改名为小写；新增 §0 设计原则、§14 可配置边界、§15 多企业预置方案（内容从 product.md 合并后删除）；新增 §12 模块解耦架构；新增 §13 全流程日志系统 |
+| 2026-04-03 | 初始版本：技术选型、三层架构、引擎设计、实体模型、API 规范、文件存储、电子签名、Excel 导入、企业微信预留 |

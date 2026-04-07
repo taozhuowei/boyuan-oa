@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.oa.backend.dto.EmployeeCreateRequest;
 import com.oa.backend.dto.EmployeeResponse;
 import com.oa.backend.dto.EmployeeUpdateRequest;
+import com.oa.backend.dto.SalaryOverrideRequest;
+import java.math.BigDecimal;
 import com.oa.backend.entity.Department;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.Role;
@@ -140,6 +142,21 @@ public class EmployeeController {
     }
 
     /**
+     * 职责：更新员工薪资覆盖
+     * 请求含义：修改指定员工的薪资覆盖字段
+     * 响应含义：返回更新后的员工信息
+     * 权限期望：财务或 CEO 可操作
+     */
+    @PatchMapping("/{id}/salary-override")
+    @PreAuthorize("hasAnyRole('FINANCE','CEO')")
+    public ResponseEntity<EmployeeResponse> updateSalaryOverride(
+            @PathVariable Long id,
+            @RequestBody SalaryOverrideRequest request) {
+        Employee employee = employeeService.applySalaryOverride(id, request);
+        return ResponseEntity.ok(toResponse(employee));
+    }
+
+    /**
      * 将 Employee 实体转换为 EmployeeResponse DTO
      */
     private EmployeeResponse toResponse(Employee employee) {
@@ -188,6 +205,9 @@ public class EmployeeController {
             employee.getEntryDate(),
             employee.getLeaveDate(),
             employee.getIsDefaultPassword(),
+            employee.getBaseSalaryOverride(),
+            employee.getPerformanceBaseOverride(),
+            employee.getSalaryOverrideNote(),
             employee.getCreatedAt(),
             employee.getUpdatedAt()
         );

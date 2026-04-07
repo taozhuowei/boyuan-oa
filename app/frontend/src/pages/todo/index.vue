@@ -102,9 +102,21 @@
                   </view>
                 </view>
                 <view class="todo-meta">
-                  <text class="meta-item">👤 {{ item.submitter }}</text>
-                  <text class="meta-item">🏢 {{ item.dept }}</text>
-                  <text class="meta-item">📅 {{ item.date }}</text>
+                  <view class="meta-item">
+                    <!-- #ifdef H5 --><UserOutlined class="meta-icon" /><!-- #endif -->
+                    <!-- #ifndef H5 --><text class="meta-icon">人</text><!-- #endif -->
+                    <text>{{ item.submitter }}</text>
+                  </view>
+                  <view class="meta-item">
+                    <!-- #ifdef H5 --><BankOutlined class="meta-icon" /><!-- #endif -->
+                    <!-- #ifndef H5 --><text class="meta-icon">部</text><!-- #endif -->
+                    <text>{{ item.dept }}</text>
+                  </view>
+                  <view class="meta-item">
+                    <!-- #ifdef H5 --><CalendarOutlined class="meta-icon" /><!-- #endif -->
+                    <!-- #ifndef H5 --><text class="meta-icon">日</text><!-- #endif -->
+                    <text>{{ item.date }}</text>
+                  </view>
                 </view>
               </view>
               <view class="todo-actions">
@@ -209,6 +221,10 @@ import { ref, computed } from 'vue'
 import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 import AppShell from '../../layouts/AppShell.vue'
+
+/* #ifdef H5 */
+import { UserOutlined, BankOutlined, CalendarOutlined } from '@ant-design/icons-vue'
+/* #endif */
 
 const { Row, Col, Card, Badge, Button, Tag, Empty, Tabs, Tab, Input, Select, Modal } = useComponent(['Row', 'Col', 'Card', 'Badge', 'Button', 'Tag', 'Empty', 'Tabs', 'Tab', 'Input', 'Select', 'Modal'])
 
@@ -509,8 +525,16 @@ const rejectItem = () => {
         gap: 16px;
 
         .meta-item {
+          display: flex;
+          align-items: center;
+          gap: 4px;
           font-size: 12px;
           color: var(--on-surface-variant);
+        }
+
+        .meta-icon {
+          font-size: 12px;
+          flex-shrink: 0;
         }
       }
     }

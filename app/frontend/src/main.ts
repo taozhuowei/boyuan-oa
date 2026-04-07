@@ -16,6 +16,14 @@ import { createSSRApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 
+// 组件库全局样式 — 按平台条件导入，避免在 SCSS 中使用已弃用的 @import 语法
+// #ifdef H5
+import 'ant-design-vue/dist/reset.css'
+// #endif
+// #ifdef MP-WEIXIN || APP-PLUS
+import 'vant/lib/index.css'
+// #endif
+
 /**
  * 创建应用实例工厂函数
  * @description 初始化Vue SSR应用并注册Pinia状态管理

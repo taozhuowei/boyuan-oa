@@ -50,6 +50,18 @@ class AuthControllerTest {
     @MockBean
     private AccessManagementService accessManagementService;
 
+    @MockBean
+    private com.oa.backend.service.EmployeeService employeeService;
+
+    @MockBean
+    private com.oa.backend.security.ResetCodeStore resetCodeStore;
+
+    @MockBean
+    private com.oa.backend.mapper.RoleMapper roleMapper;
+
+    @MockBean
+    private com.oa.backend.mapper.DepartmentMapper departmentMapper;
+
     /**
      * 测试开发环境登录接口
      *
@@ -94,7 +106,7 @@ class AuthControllerTest {
      * 测试密码登录接口
      *
      * 验证：POST /auth/login 端点在提供正确用户名密码时能正确返回JWT令牌
-     * 模拟：设置accessManagementService.authenticate返回包含用户信息的Optional
+     * 模拟：设置employeeService.authenticate返回包含用户信息的Optional
      * 断言：
      * - HTTP状态码为200（isOk）
      * - mode字段值为"PASSWORD_LOGIN"
@@ -103,15 +115,22 @@ class AuthControllerTest {
      */
     @Test
     void shouldReturnJwtForPasswordLogin() throws Exception {
-        given(accessManagementService.authenticate("finance.demo", "123456"))
-            .willReturn(Optional.of(new AccessManagementService.AuthenticatedUser(
-                "finance.demo",
-                "李静",
-                "finance",
-                "财务",
-                "财务管理部",
-                "普通员工"
-            )));
+        com.oa.backend.entity.Employee employee = new com.oa.backend.entity.Employee();
+        employee.setId(2L);
+        employee.setEmployeeNo("finance.demo");
+        employee.setName("李静");
+        employee.setRoleCode("finance");
+        employee.setEmployeeType("OFFICE");
+        employee.setDepartmentId(2L);
+
+        com.oa.backend.entity.Role role = new com.oa.backend.entity.Role();
+        role.setRoleCode("finance");
+        role.setRoleName("财务");
+
+        given(employeeService.authenticate("finance.demo", "123456"))
+            .willReturn(Optional.of(employee));
+        given(roleMapper.selectOne(org.mockito.Mockito.any()))
+            .willReturn(role);
 
         mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -148,7 +167,7 @@ class AuthControllerTest {
      */
     @Test
     void shouldAllowProtectedEndpointWithValidToken() throws Exception {
-        String token = jwtTokenService.generateToken("finance.demo", "finance", "财务经理");
+        String token = jwtTokenService.generateToken("ceo.demo", 1L, "ceo", "OFFICE", "陈明远");
         given(userService.list()).willReturn(List.of());
 
         mockMvc.perform(get("/users")

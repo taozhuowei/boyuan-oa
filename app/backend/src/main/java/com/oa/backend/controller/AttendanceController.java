@@ -1,8 +1,13 @@
 package com.oa.backend.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oa.backend.dto.*;
+import com.oa.backend.entity.Employee;
+import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.security.SecurityUtils;
-import com.oa.backend.service.OaDataService;
+import com.oa.backend.service.ApprovalFlowService;
+import com.oa.backend.service.FormService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +27,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AttendanceController {
 
-    private final OaDataService oaDataService;
+    private final FormService formService;
+    private final ApprovalFlowService approvalFlowService;
+    private final EmployeeMapper employeeMapper;
+    private final ObjectMapper objectMapper;
 
     /**
      * 获取请假表单配置
@@ -41,10 +49,19 @@ public class AttendanceController {
     public ResponseEntity<FormRecordResponse> submitLeave(
             @Valid @RequestBody FormSubmitRequest request,
             Authentication authentication) {
-        String displayName = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        String department = SecurityUtils.getDepartmentFromUsername(authentication.getName());
-        return ResponseEntity.ok(oaDataService.createForm("LEAVE", displayName, department, 
-                request.formData(), request.remark()));
+        Long submitterId = getCurrentEmployeeId(authentication);
+        if (submitterId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        String formDataJson;
+        try {
+            formDataJson = objectMapper.writeValueAsString(request.formData());
+        } catch (JsonProcessingException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        return ResponseEntity.ok(formService.submitForm(submitterId, "LEAVE", formDataJson, request.remark()));
     }
 
     /**
@@ -64,10 +81,19 @@ public class AttendanceController {
     public ResponseEntity<FormRecordResponse> submitOvertime(
             @Valid @RequestBody FormSubmitRequest request,
             Authentication authentication) {
-        String displayName = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        String department = SecurityUtils.getDepartmentFromUsername(authentication.getName());
-        return ResponseEntity.ok(oaDataService.createForm("OVERTIME", displayName, department,
-                request.formData(), request.remark()));
+        Long submitterId = getCurrentEmployeeId(authentication);
+        if (submitterId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        String formDataJson;
+        try {
+            formDataJson = objectMapper.writeValueAsString(request.formData());
+        } catch (JsonProcessingException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        return ResponseEntity.ok(formService.submitForm(submitterId, "OVERTIME", formDataJson, request.remark()));
     }
 
     /**
@@ -76,12 +102,15 @@ public class AttendanceController {
     @GetMapping("/records")
     @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO')")
     public ResponseEntity<List<FormRecordResponse>> getRecords(Authentication authentication) {
-        String displayName = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        // 财务和CEO查看全部，其他只看自己的
-        if (SecurityUtils.hasFinanceAccess(authentication) || SecurityUtils.isCEO(authentication)) {
-            return ResponseEntity.ok(oaDataService.listFormsByTypes(Arrays.asList("LEAVE", "OVERTIME")));
+        Long currentEmployeeId = getCurrentEmployeeId(authentication);
+        if (currentEmployeeId == null) {
+            return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(oaDataService.listFormsBySubmitter(displayName));
+
+        String roleCode = getCurrentRoleCode(authentication);
+        List<String> formTypes = Arrays.asList("LEAVE", "OVERTIME");
+        
+        return ResponseEntity.ok(formService.getHistory(currentEmployeeId, roleCode, formTypes));
     }
 
     /**
@@ -91,12 +120,11 @@ public class AttendanceController {
     @GetMapping("/todo")
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO')")
     public ResponseEntity<List<FormRecordResponse>> getTodoList(Authentication authentication) {
-        String approverRole = SecurityUtils.getApproverRole(authentication);
-        if ("PROJECT_MANAGER".equals(approverRole)) {
-            return ResponseEntity.ok(oaDataService.listFormsByStatus("PENDING"));
-        } else {
-            return ResponseEntity.ok(oaDataService.listFormsByStatus("APPROVING"));
+        Long currentEmployeeId = getCurrentEmployeeId(authentication);
+        if (currentEmployeeId == null) {
+            return ResponseEntity.badRequest().build();
         }
+        return ResponseEntity.ok(approvalFlowService.getTodo(currentEmployeeId));
     }
 
     /**
@@ -108,11 +136,13 @@ public class AttendanceController {
             @PathVariable Long id,
             @Valid @RequestBody FormApprovalRequest request,
             Authentication authentication) {
-        String approver = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        String approverRole = SecurityUtils.getApproverRole(authentication);
-        return oaDataService.approveForm(id, "APPROVE", approver, approverRole, request.comment())
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Long currentEmployeeId = getCurrentEmployeeId(authentication);
+        if (currentEmployeeId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(
+                approvalFlowService.advance(id, currentEmployeeId, "APPROVE", request.comment())
+        );
     }
 
     /**
@@ -124,11 +154,37 @@ public class AttendanceController {
             @PathVariable Long id,
             @Valid @RequestBody FormApprovalRequest request,
             Authentication authentication) {
-        String approver = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        String approverRole = SecurityUtils.getApproverRole(authentication);
-        return oaDataService.approveForm(id, "REJECT", approver, approverRole, request.comment())
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        Long currentEmployeeId = getCurrentEmployeeId(authentication);
+        if (currentEmployeeId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(
+                approvalFlowService.advance(id, currentEmployeeId, "REJECT", request.comment())
+        );
+    }
+
+    /**
+     * 获取当前登录员工的 ID
+     */
+    private Long getCurrentEmployeeId(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        String username = authentication.getName();
+        Employee employee = SecurityUtils.getEmployeeFromUsername(username, employeeMapper);
+        return employee != null ? employee.getId() : null;
+    }
+
+    /**
+     * 获取当前登录员工的角色代码
+     */
+    private String getCurrentRoleCode(Authentication authentication) {
+        if (authentication == null) {
+            return null;
+        }
+        String username = authentication.getName();
+        Employee employee = SecurityUtils.getEmployeeFromUsername(username, employeeMapper);
+        return employee != null ? employee.getRoleCode() : null;
     }
 
     private FormConfigResponse buildLeaveConfig() {

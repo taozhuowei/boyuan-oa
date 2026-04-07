@@ -1,6 +1,7 @@
 <template>
   <!-- H5 端：完整 Shell (TopBar + LeftNav + Main) -->
   <!-- #ifdef H5 -->
+  <DevLoginPanel />
   <view class="app-shell h5-shell">
     <!-- TopBar -->
     <view class="shell-topbar">
@@ -70,7 +71,9 @@
       <view class="mp-logo">众维</view>
       <text class="mp-title">{{ title || '工作台' }}</text>
       <view class="mp-actions">
-        <text v-if="activeUser.role === 'ceo'" @click="goTo('/pages/config/index')">⚙️</text>
+        <view v-if="activeUser.role === 'ceo'" class="mp-setting-btn" @click="goTo('/pages/config/index')">
+          <!-- #ifndef H5 --><van-icon name="setting-o" size="20" color="#fff" /><!-- #endif -->
+        </view>
       </view>
     </view>
     <view class="mp-content">
@@ -84,6 +87,7 @@
 import { computed, onMounted, ref, markRaw } from 'vue'
 import { useUserStore } from '../stores'
 import { roleNameMap } from '../utils/access'
+import DevLoginPanel from '../components/customized/DevLoginPanel.vue'
 
 /* #ifdef H5 */
 import {
@@ -133,15 +137,16 @@ const allMenus = [
   { label: '系统配置', path: '/pages/config/index', icon: markRaw(SettingOutlined), roles: ['ceo'] },
   /* #endif */
   /* #ifndef H5 */
-  { label: '工作台', path: '/pages/index/index', icon: '🏠', roles: ['all'] },
-  { label: '考勤管理', path: '/pages/attendance/index', icon: '📅', roles: ['all'] },
-  { label: '薪资管理', path: '/pages/payroll/index', icon: '💰', roles: ['ceo', 'finance', 'employee', 'worker'] },
-  { label: '项目管理', path: '/pages/projects/index', icon: '🏗️', roles: ['ceo', 'project_manager', 'worker'] },
-  { label: '员工管理', path: '/pages/employees/index', icon: '👥', roles: ['ceo', 'finance', 'project_manager'] },
-  { label: '岗位管理', path: '/pages/positions/index', icon: '📋', roles: ['ceo', 'finance', 'project_manager'] },
-  { label: '组织架构', path: '/pages/org/index', icon: '🏢', roles: ['ceo'] },
-  { label: '角色管理', path: '/pages/role/index', icon: '🔐', roles: ['ceo'] },
-  { label: '系统配置', path: '/pages/config/index', icon: '⚙️', roles: ['ceo'] }
+  // MP 端导航暂未渲染，icon 字段预留 Vant icon name，待 MP 导航组件实现时接入
+  { label: '工作台',  path: '/pages/index/index',       icon: 'home-o',        roles: ['all'] },
+  { label: '考勤管理', path: '/pages/attendance/index',  icon: 'calendar-o',    roles: ['all'] },
+  { label: '薪资管理', path: '/pages/payroll/index',     icon: 'balance-o',     roles: ['ceo', 'finance', 'employee', 'worker'] },
+  { label: '项目管理', path: '/pages/projects/index',    icon: 'cluster-o',     roles: ['ceo', 'project_manager', 'worker'] },
+  { label: '员工管理', path: '/pages/employees/index',   icon: 'friends-o',     roles: ['ceo', 'finance', 'project_manager'] },
+  { label: '岗位管理', path: '/pages/positions/index',   icon: 'manager-o',     roles: ['ceo', 'finance', 'project_manager'] },
+  { label: '组织架构', path: '/pages/org/index',         icon: 'department-o',  roles: ['ceo'] },
+  { label: '角色管理', path: '/pages/role/index',        icon: 'shield-o',      roles: ['ceo'] },
+  { label: '系统配置', path: '/pages/config/index',      icon: 'setting-o',     roles: ['ceo'] }
   /* #endif */
 ]
 

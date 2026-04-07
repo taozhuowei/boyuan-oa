@@ -259,7 +259,8 @@
                 :class="{ active: activeTab === 'leave' }"
                 @click="switchTab('leave')"
               >
-                <text class="menu-icon">📝</text>
+                <!-- #ifdef H5 --><FormOutlined class="menu-icon" /><!-- #endif -->
+                <!-- #ifndef H5 --><text class="menu-icon">✎</text><!-- #endif -->
                 <text>请假申请</text>
               </view>
               <view
@@ -267,7 +268,8 @@
                 :class="{ active: activeTab === 'overtime' }"
                 @click="switchTab('overtime')"
               >
-                <text class="menu-icon">⏰</text>
+                <!-- #ifdef H5 --><ClockCircleOutlined class="menu-icon" /><!-- #endif -->
+                <!-- #ifndef H5 --><text class="menu-icon">◷</text><!-- #endif -->
                 <text>加班申请</text>
               </view>
               <view
@@ -275,7 +277,8 @@
                 :class="{ active: activeTab === 'history' }"
                 @click="switchTab('history')"
               >
-                <text class="menu-icon">📋</text>
+                <!-- #ifdef H5 --><UnorderedListOutlined class="menu-icon" /><!-- #endif -->
+                <!-- #ifndef H5 --><text class="menu-icon">≡</text><!-- #endif -->
                 <text>我的记录</text>
               </view>
             </view>
@@ -477,6 +480,10 @@ import { ref, computed } from 'vue'
 import { useComponent } from '../../composables/useComponent'
 import { useUserStore } from '../../stores'
 import AppShell from '../../layouts/AppShell.vue'
+
+/* #ifdef H5 */
+import { FormOutlined, ClockCircleOutlined, UnorderedListOutlined } from '@ant-design/icons-vue'
+/* #endif */
 
 const { Row, Col, Card, Button, Badge, Empty, Form, Input, Select, DatePicker, StatCard, Modal, Textarea } = useComponent(['Row', 'Col', 'Card', 'Button', 'Badge', 'Empty', 'Form', 'Input', 'Select', 'DatePicker', 'StatCard', 'Modal', 'Textarea'])
 

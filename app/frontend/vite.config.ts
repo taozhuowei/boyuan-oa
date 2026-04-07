@@ -48,6 +48,14 @@ export default defineConfig(async () => {
     plugins: [
       uni.default ? uni.default() : uni()
     ],
+    css: {
+      preprocessorOptions: {
+        scss: {
+          // 使用 Dart Sass 现代编译器 API，消除 legacy-js-api 弃用警告
+          api: 'modern-compiler'
+        }
+      }
+    },
     server: {
       port,
       open: true,
