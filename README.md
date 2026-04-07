@@ -56,17 +56,14 @@ BOYUAN OA/
 │       ├── specs/              # 按角色组织的测试用例
 │       └── pages/              # Page Object 封装
 │
-├── documentation/              # 项目文档（详见 documentation/readme.md）
-│   ├── readme.md               # 文档中心导航入口（必读）
-│   ├── design.md               # 建筑工程版完整业务设计
-│   ├── tech/
-│   │   ├── architecture.md     # 技术架构（设计原则 + 系统架构图 + 模块解耦 + 日志系统）
-│   │   ├── todo.md             # 唯一开发进度管理入口（按模块顺序）
-│   │   ├── test_design.md      # 测试策略、自动化测试系统设计
-│   │   ├── backend_impl.md     # 后端实现细节
-│   │   └── frontend_impl.md    # 前端实现细节
-│   └── context/
-│       └── context.md          # 历史决策、禁止事项（AI 接手时必读）
+├── design.md                   # 建筑工程版完整业务设计（角色/权限/审批流/薪资）
+├── context.md                  # 历史决策、禁止事项（AI 接手时必读）
+│
+├── tech_doc/                   # 技术设计文档
+│   ├── architecture.md         # 技术架构（设计原则 + 系统架构图 + 模块解耦 + 日志系统）
+│   ├── todo.md                 # 唯一开发进度管理入口（按模块顺序）
+│   ├── backend_impl.md         # 后端实现细节
+│   └── frontend_impl.md        # 前端实现细节
 │
 ├── tools/                      # 运维工具（独立子项目）
 │   └── log_analyzer/           # OA 日志分析 GUI 工具（Python）
@@ -75,8 +72,9 @@ BOYUAN OA/
 │       ├── .env.example        # 环境变量模板
 │       └── README.md           # 使用说明
 │
-└── test/                       # 测试报告和历史测试数据
-    └── reports/
+└── test/                       # 测试文档、工具和报告
+    ├── test_design.md          # 测试策略、自动化测试系统设计
+    └── reports/                # 测试报告
 ```
 
 ## 技术栈
@@ -185,16 +183,15 @@ mvn spring-boot:run       # 直接启动（等同于 npm run dev:backend）
 
 ## 文档索引
 
-所有文档集中在 `documentation/`，**从 `documentation/readme.md` 开始阅读**。
-
 | 文档 | 路径 | 说明 |
 |------|------|------|
-| **文档导航** | `documentation/readme.md` | **AI/新开发者必读：文档在哪里、读什么** |
-| 历史决策 | `documentation/context/context.md` | 禁止事项、设计决策（每次新会话必读） |
-| 业务设计 | `documentation/design.md` | 完整业务规则：角色/权限/审批流/薪资/数据保留 |
-| 技术架构 | `documentation/tech/architecture.md` | 设计原则、系统架构图、模块解耦、日志系统、引擎设计、API 规范 |
-| **开发进度** | `documentation/tech/todo.md` | **唯一进度入口，按模块顺序组织** |
-| 测试设计 | `documentation/tech/test_design.md` | 测试策略、自动化测试系统设计、E2E 用例 |
+| 历史决策 | `context.md` | 禁止事项、设计决策（每次新会话必读） |
+| 业务设计 | `design.md` | 完整业务规则：角色/权限/审批流/薪资/数据保留 |
+| 技术架构 | `tech_doc/architecture.md` | 设计原则、系统架构图、模块解耦、日志系统、引擎设计、API 规范 |
+| **开发进度** | `tech_doc/todo.md` | **唯一进度入口，按模块顺序组织** |
+| 后端实现 | `tech_doc/backend_impl.md` | 后端包结构、MyBatis-Plus 约定、JWT、引擎实现模式 |
+| 前端实现 | `tech_doc/frontend_impl.md` | 适配层、useComponent、HTTP 层、CSS 变量 |
+| 测试设计 | `test/test_design.md` | 测试策略、自动化测试系统设计、E2E 用例 |
 | 运维工具 | `tools/log_analyzer/README.md` | 日志分析 GUI 工具使用说明 |
 
 ## 前端组件开发原则

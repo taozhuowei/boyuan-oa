@@ -107,6 +107,105 @@ test('concurrent requests to same URL are deduplicated', async () => {
 })
 ```
 
+### 2.3 M0–M2 已完成模块单元测试
+
+> M0（基础设施）、M1（身份认证）、M2（组织管理）均已完成，以下为当前需落地的后端单元测试。
+> 测试文件放置在 `app/backend/src/test/java/com/oa/backend/`，与被测类同包结构。
+
+#### M1 身份认证
+
+| 测试类 | 被测方法 | 关键场景 | 期望断言 |
+|--------|---------|---------|---------|
+| `JwtTokenServiceTest` | `generateToken` / `parseToken` | 正常生成 → 解析 payload | userId / roleCode / employeeType 一致 |
+| `JwtTokenServiceTest` | `parseToken` | token 超期 | 抛出 `ExpiredJwtException` |
+| `JwtTokenServiceTest` | `parseToken` | 签名篡改 | 抛出 `JwtException` |
+| `EmployeeServiceImplTest` | `authenticate` | 正确密码 | 返回 `Optional.of(employee)` |
+| `EmployeeServiceImplTest` | `authenticate` | 错误密码 | 返回 `Optional.empty()` |
+| `EmployeeServiceImplTest` | `authenticate` | 账号不存在 | 返回 `Optional.empty()` |
+| `EmployeeServiceImplTest` | `authenticate` | 账号 disabled | 返回 `Optional.empty()` |
+| `EmployeeServiceImplTest` | `generateEmployeeNo` | 正常生成 | 格式匹配 `EMP\d{6}\d{4}` |
+| `ResetCodeStoreTest` | `store` / `verify` | 正确验证码 10 min 内 | verify 返回 true |
+| `ResetCodeStoreTest` | `verify` | 过期验证码 | verify 返回 false |
+| `ResetCodeStoreTest` | `verify` | 错误验证码 | verify 返回 false |
+| `ResetCodeStoreTest` | `getCodeForTest` | 已存码 | 返回 code 字符串；prod 环境下此方法应被 profile 守门 |
+
+**JwtTokenServiceTest 示例**
+```java
+@Test
+void generateAndParse_shouldReturnCorrectClaims() {
+    String token = jwtTokenService.generateToken("emp.001", 42L, "finance", "OFFICE", "李静");
+    Claims claims = jwtTokenService.parseToken(token);
+    assertEquals("emp.001", claims.getSubject());
+    assertEquals(42L, claims.get("userId", Long.class));
+    assertEquals("finance", claims.get("roleCode", String.class));
+}
+
+@Test
+void parseToken_expired_shouldThrow() {
+    String expiredToken = jwtTokenService.generateTokenWithExpiry("emp.001", Duration.ofMillis(1));
+    Thread.sleep(10);
+    assertThrows(ExpiredJwtException.class, () -> jwtTokenService.parseToken(expiredToken));
+}
+```
+
+#### M2 组织管理
+
+| 测试类 | 被测方法 | 关键场景 | 期望断言 |
+|--------|---------|---------|---------|
+| `PositionServiceImplTest` | `createPosition` | 重复 positionCode | 抛出 `DuplicateKeyException` 或业务异常 |
+| `PositionServiceImplTest` | `createPosition` | idType = AUTO | 自动生成 positionId；idType = INPUT 则使用传入值 |
+| `ProjectServiceImplTest` | `createProject` | 正常创建 | 返回带 id 的 Project；projectNo 格式 `PRJ-YYYYMM-XXXX` |
+| `ProjectServiceImplTest` | `addMember` | 添加 PM 成员 | ProjectMember.role = PM；不写 pmId 到 project 表 |
+| `ProjectServiceImplTest` | `addMember` | 添加重复成员 | 不重复插入（幂等）或抛出明确异常 |
+| `ProjectServiceImplTest` | `updateStatus` | ACTIVE → COMPLETED | status 变更成功；COMPLETED → ACTIVE 应失败 |
+| `AccessManagementServiceTest` | `buildProfile` | 已知角色 ceo | 返回正确 roleName / visibleModules |
+| `AccessManagementServiceTest` | `buildProfile` | 未知角色 | 返回 null 或抛出异常（文档定义哪种） |
+
+**ProjectServiceImplTest 示例**
+```java
+@ExtendWith(MockitoExtension.class)
+class ProjectServiceImplTest {
+
+    @InjectMocks ProjectServiceImpl projectService;
+    @Mock ProjectMapper projectMapper;
+    @Mock ProjectMemberMapper projectMemberMapper;
+
+    @Test
+    void addMember_pm_shouldNotWritePmIdToProject() {
+        // Project 表无 pmId 字段，此测试验证不会尝试写 pmId
+        ProjectMemberRequest req = new ProjectMemberRequest(101L, "PM", null);
+        projectService.addMember(1L, req);
+        verify(projectMapper, never()).updateById(argThat(p -> p.getId() != null));
+        verify(projectMemberMapper).insert(argThat(m -> "PM".equals(m.getRole())));
+    }
+}
+```
+
+#### M0 基础设施
+
+| 测试类 | 被测内容 | 关键场景 | 期望断言 |
+|--------|---------|---------|---------|
+| `SchemaIntegrityTest`（集成） | schema.sql DDL | Spring Boot 启动 + H2 兼容模式 | 应用上下文加载成功；无 `BeanCreationException` |
+| `HealthControllerTest` | `GET /health` | 无 token | 200；body 含 `status: UP` |
+| `SetupControllerTest` | `GET /setup/status` | 无 token | 200（permitAll 端点） |
+
+```java
+// SchemaIntegrityTest — 验证所有 mapper 的 Bean 正常注入
+@SpringBootTest
+class SchemaIntegrityTest {
+    @Autowired ApplicationContext ctx;
+
+    @Test
+    void allMappersBeansShouldLoad() {
+        assertNotNull(ctx.getBean(EmployeeMapper.class));
+        assertNotNull(ctx.getBean(ProjectMapper.class));
+        assertNotNull(ctx.getBean(DepartmentMapper.class));
+        assertNotNull(ctx.getBean(PositionMapper.class));
+        assertNotNull(ctx.getBean(RoleMapper.class));
+    }
+}
+```
+
 ---
 
 ## 3. 集成测试

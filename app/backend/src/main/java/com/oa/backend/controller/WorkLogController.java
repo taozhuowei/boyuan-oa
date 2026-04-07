@@ -1,169 +1,98 @@
 package com.oa.backend.controller;
 
-import com.oa.backend.dto.*;
-import com.oa.backend.security.SecurityUtils;
-import com.oa.backend.service.OaDataService;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
  * 施工日志系统控制器
- * 职责：处理施工日志提交与工伤申报
+ * 当前状态：M3 剩余任务（迁移到 FormService）未完成，返回 501 占位
+ * TODO M3: 迁移到 FormService + ApprovalFlowService，参照 AttendanceController 实现
  */
 @RestController
 @RequestMapping("/logs")
-@RequiredArgsConstructor
 public class WorkLogController {
-
-    private final OaDataService oaDataService;
 
     /**
      * 获取施工日志表单配置
+     * TODO M3: 从 FormService 获取表单配置
      */
     @GetMapping("/config")
     @PreAuthorize("hasRole('WORKER')")
-    public ResponseEntity<FormConfigResponse> getLogConfig() {
-        return ResponseEntity.ok(buildLogConfig());
+    public ResponseEntity<?> getLogConfig() {
+        return ResponseEntity.status(501).build();
     }
 
     /**
      * 提交施工日志
+     * TODO M3: 调用 FormService.submitForm("LOG", ...)
      */
     @PostMapping
     @PreAuthorize("hasRole('WORKER')")
-    public ResponseEntity<FormRecordResponse> submitLog(
-            @Valid @RequestBody FormSubmitRequest request,
-            Authentication authentication) {
-        String displayName = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        String department = SecurityUtils.getDepartmentFromUsername(authentication.getName());
-        return ResponseEntity.ok(oaDataService.createForm("LOG", displayName, department,
-                request.formData(), request.remark()));
+    public ResponseEntity<?> submitLog(@RequestBody Object request, Authentication authentication) {
+        return ResponseEntity.status(501).build();
     }
 
     /**
      * 获取工伤申报表单配置
+     * TODO M3: 从 FormService 获取表单配置
      */
     @GetMapping("/injury/config")
     @PreAuthorize("hasRole('WORKER')")
-    public ResponseEntity<FormConfigResponse> getInjuryConfig() {
-        return ResponseEntity.ok(buildInjuryConfig());
+    public ResponseEntity<?> getInjuryConfig() {
+        return ResponseEntity.status(501).build();
     }
 
     /**
      * 提交工伤申报
+     * TODO M3: 调用 FormService.submitForm("INJURY", ...)
      */
     @PostMapping("/injury")
     @PreAuthorize("hasRole('WORKER')")
-    public ResponseEntity<FormRecordResponse> submitInjury(
-            @Valid @RequestBody FormSubmitRequest request,
-            Authentication authentication) {
-        String displayName = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        String department = SecurityUtils.getDepartmentFromUsername(authentication.getName());
-        return ResponseEntity.ok(oaDataService.createForm("INJURY", displayName, department,
-                request.formData(), request.remark()));
+    public ResponseEntity<?> submitInjury(@RequestBody Object request, Authentication authentication) {
+        return ResponseEntity.status(501).build();
     }
 
     /**
      * 获取日志记录列表
-     * 权限：劳工看自己的，项目经理看全部
+     * TODO M3: 通过 FormService 按角色范围查询
      */
     @GetMapping("/records")
     @PreAuthorize("hasAnyRole('WORKER','PROJECT_MANAGER')")
-    public ResponseEntity<List<FormRecordResponse>> getRecords(Authentication authentication) {
-        if (SecurityUtils.isProjectManager(authentication)) {
-            return ResponseEntity.ok(oaDataService.listFormsByTypes(Arrays.asList("LOG", "INJURY")));
-        }
-        String displayName = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        return ResponseEntity.ok(oaDataService.listFormsBySubmitter(displayName));
+    public ResponseEntity<List<?>> getRecords(Authentication authentication) {
+        return ResponseEntity.status(501).build();
     }
 
     /**
      * 获取待审批列表
-     * 权限：项目经理
+     * TODO M3: 通过 ApprovalFlowService 查询待办
      */
     @GetMapping("/todo")
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    public ResponseEntity<List<FormRecordResponse>> getTodoList() {
-        return ResponseEntity.ok(oaDataService.listFormsByTypes(Arrays.asList("LOG", "INJURY")));
+    public ResponseEntity<List<?>> getTodoList() {
+        return ResponseEntity.status(501).build();
     }
 
     /**
      * 审批通过
+     * TODO M3: 调用 ApprovalFlowService.approve(...)
      */
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    public ResponseEntity<FormRecordResponse> approve(
-            @PathVariable Long id,
-            @Valid @RequestBody FormApprovalRequest request,
-            Authentication authentication) {
-        String approver = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        return oaDataService.approveForm(id, "APPROVE", approver, "PROJECT_MANAGER", request.comment())
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<?> approve(@PathVariable Long id, @RequestBody Object request, Authentication authentication) {
+        return ResponseEntity.status(501).build();
     }
 
     /**
      * 审批驳回
+     * TODO M3: 调用 ApprovalFlowService.reject(...)
      */
     @PostMapping("/{id}/reject")
     @PreAuthorize("hasRole('PROJECT_MANAGER')")
-    public ResponseEntity<FormRecordResponse> reject(
-            @PathVariable Long id,
-            @Valid @RequestBody FormApprovalRequest request,
-            Authentication authentication) {
-        String approver = SecurityUtils.getDisplayNameFromUsername(authentication.getName());
-        return oaDataService.approveForm(id, "REJECT", approver, "PROJECT_MANAGER", request.comment())
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    private FormConfigResponse buildLogConfig() {
-        return new FormConfigResponse("LOG", "施工日志",
-                Arrays.asList(
-                        new FormConfigResponse.FormField("logDate", "日志日期", "DATE", true, null, null, "请选择日期", 1),
-                        new FormConfigResponse.FormField("project", "所属项目", "SELECT", true, null,
-                                Arrays.asList("绿地中心大厦", "科技园区改造"), "请选择项目", 2),
-                        new FormConfigResponse.FormField("weather", "天气", "SELECT", true, null,
-                                Arrays.asList("晴", "多云", "阴", "雨"), "请选择天气", 3),
-                        new FormConfigResponse.FormField("workContent", "工作内容", "TEXTAREA", true, null, null, "请输入工作内容", 4),
-                        new FormConfigResponse.FormField("progress", "完成进度", "NUMBER", true, null, null, "请输入完成百分比", 5),
-                        new FormConfigResponse.FormField("problems", "存在问题", "TEXTAREA", false, null, null, "请输入存在的问题", 6)
-                ),
-                Arrays.asList(
-                        new FormConfigResponse.FormAction("submit", "提交日志", "primary", Arrays.asList("WORKER")),
-                        new FormConfigResponse.FormAction("save", "保存草稿", "default", Arrays.asList("WORKER"))
-                ),
-                new FormConfigResponse.ApprovalFlow("DEFAULT",
-                        Arrays.asList(
-                                new FormConfigResponse.ApprovalFlow.FlowNode("初审", "项目经理审批", "PROJECT_MANAGER", 1)
-                        ))
-        );
-    }
-
-    private FormConfigResponse buildInjuryConfig() {
-        return new FormConfigResponse("INJURY", "工伤申报",
-                Arrays.asList(
-                        new FormConfigResponse.FormField("injuryDate", "发生日期", "DATE", true, null, null, "请选择发生日期", 1),
-                        new FormConfigResponse.FormField("injuryLocation", "发生地点", "TEXT", true, null, null, "请输入发生地点", 2),
-                        new FormConfigResponse.FormField("injuryDesc", "伤情描述", "TEXTAREA", true, null, null, "请详细描述受伤经过和伤情", 3),
-                        new FormConfigResponse.FormField("medicalFee", "医疗费用", "NUMBER", false, null, null, "请输入医疗费用", 4),
-                        new FormConfigResponse.FormField("compensation", "申请补偿", "NUMBER", false, null, null, "请输入申请补偿金额", 5)
-                ),
-                Arrays.asList(
-                        new FormConfigResponse.FormAction("submit", "提交申报", "primary", Arrays.asList("WORKER")),
-                        new FormConfigResponse.FormAction("save", "保存草稿", "default", Arrays.asList("WORKER"))
-                ),
-                new FormConfigResponse.ApprovalFlow("DEFAULT",
-                        Arrays.asList(
-                                new FormConfigResponse.ApprovalFlow.FlowNode("初审", "项目经理审批", "PROJECT_MANAGER", 1)
-                        ))
-        );
+    public ResponseEntity<?> reject(@PathVariable Long id, @RequestBody Object request, Authentication authentication) {
+        return ResponseEntity.status(501).build();
     }
 }
