@@ -1,4 +1,6 @@
 <template>
+  <!-- a-config-provider: disable AntD's auto space insertion between Chinese characters in buttons -->
+  <a-config-provider :auto-insert-space-in-button="false">
   <a-layout class="app-shell">
     <!-- Left sidebar navigation — menus fetched from /workbench/config (role-based) -->
     <a-layout-sider v-model:collapsed="collapsed" collapsible width="220" theme="dark">
@@ -85,6 +87,7 @@
       </a-layout-content>
     </a-layout>
   </a-layout>
+  </a-config-provider>
 </template>
 
 <script setup lang="ts">
