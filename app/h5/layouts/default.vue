@@ -1,0 +1,309 @@
+<template>
+  <a-layout class="app-shell">
+    <!-- Left sidebar navigation — menus fetched from /workbench/config (role-based) -->
+    <a-layout-sider v-model:collapsed="collapsed" collapsible width="220" theme="dark">
+      <div class="logo">
+        <span v-if="!collapsed" class="logo-text">众维OA工作台</span>
+        <span v-else class="logo-icon">OA</span>
+      </div>
+      <a-menu
+        v-model:selectedKeys="selectedKeys"
+        theme="dark"
+        mode="inline"
+        @click="onMenuClick"
+      >
+        <template v-for="item in menuItems" :key="item.key">
+          <a-sub-menu v-if="item.children?.length" :key="item.key">
+            <template #title>{{ item.label }}</template>
+            <a-menu-item v-for="child in item.children" :key="child.path">
+              {{ child.label }}
+            </a-menu-item>
+          </a-sub-menu>
+          <a-menu-item v-else :key="item.path">{{ item.label }}</a-menu-item>
+        </template>
+      </a-menu>
+    </a-layout-sider>
+
+    <a-layout>
+      <!-- Top bar: 博渊 OA · [角色] [姓名]  [⚙系统]  [🔔通知 N]  [📋待办 N]  [●]▼ -->
+      <a-layout-header class="app-header">
+        <div class="header-brand">
+          博渊 OA
+          <span v-if="userStore.userInfo" class="header-user-label">
+            · {{ userStore.userInfo.roleName ?? userStore.userInfo.role }}
+            {{ userStore.userInfo.displayName }}
+          </span>
+        </div>
+        <div class="header-actions">
+          <!-- ⚙系统 — CEO only -->
+          <a-button
+            v-if="userStore.userInfo?.role === 'ceo'"
+            type="text"
+            class="action-btn"
+            @click="navigateTo('/config')"
+          >
+            ⚙ 系统
+          </a-button>
+
+          <!-- 🔔通知 N -->
+          <a-badge :count="notificationCount" :overflow-count="99" class="action-badge">
+            <a-button type="text" class="action-btn" @click="navigateTo('/notifications')">
+              🔔 通知
+            </a-button>
+          </a-badge>
+
+          <!-- 📋待办 N -->
+          <a-badge :count="todoCount" :overflow-count="99" class="action-badge">
+            <a-button type="text" class="action-btn" @click="navigateTo('/todo')">
+              📋 待办
+            </a-button>
+          </a-badge>
+
+          <!-- ● 头像菜单 -->
+          <a-dropdown placement="bottomRight">
+            <a-button type="text" class="avatar-btn">
+              <a-avatar size="small" :style="{ backgroundColor: '#003466' }">
+                {{ userStore.userInfo?.displayName?.slice(0, 1) ?? '?' }}
+              </a-avatar>
+              ▼
+            </a-button>
+            <template #overlay>
+              <a-menu @click="onAvatarMenuClick">
+                <a-menu-item key="profile">个人信息</a-menu-item>
+                <a-menu-item key="password">修改密码</a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="logout">退出登录</a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+        </div>
+      </a-layout-header>
+
+      <!-- Page content -->
+      <a-layout-content class="app-content">
+        <slot />
+      </a-layout-content>
+    </a-layout>
+  </a-layout>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, onMounted } from 'vue'
+import { useUserStore } from '~/stores/user'
+
+interface MenuItem {
+  key: string
+  label: string
+  path: string
+  icon?: string
+  children?: MenuItem[]
+}
+
+interface WorkbenchMenu {
+  code: string
+  name: string
+  icon: string
+  path: string
+  visible: boolean
+  children: WorkbenchMenu[] | null
+}
+
+// Static role→menus map — mirrors backend WorkbenchController logic.
+// Provides immediate rendering without async delay.
+// Updated by API response in onMounted.
+const ROLE_MENUS: Record<string, MenuItem[]> = {
+  ceo: [
+    { key: '/', label: '工作台', path: '/' },
+    { key: '/approval', label: '审批中心', path: '/approval' },
+    { key: '/employees', label: '员工管理', path: '/employees' },
+    { key: '/projects', label: '项目管理', path: '/projects' },
+    { key: '/payroll', label: '薪资管理', path: '/payroll' },
+    { key: '/retention', label: '数据保留', path: '/retention' },
+    { key: '/settings', label: '系统设置', path: '/settings' }
+  ],
+  finance: [
+    { key: '/', label: '工作台', path: '/' },
+    { key: '/approval', label: '审批中心', path: '/approval' },
+    { key: '/employees', label: '员工管理', path: '/employees' },
+    { key: '/payroll', label: '薪资管理', path: '/payroll' },
+    { key: '/directory', label: '通讯录导入', path: '/directory' }
+  ],
+  project_manager: [
+    { key: '/', label: '工作台', path: '/' },
+    { key: '/approval', label: '审批中心', path: '/approval' },
+    { key: '/projects', label: '项目管理', path: '/projects' },
+    { key: '/forms', label: '表单中心', path: '/forms' }
+  ],
+  worker: [
+    { key: '/', label: '工作台', path: '/' },
+    { key: '/forms', label: '表单中心', path: '/forms' },
+    { key: '/payroll', label: '工资条', path: '/payroll/slips' }
+  ],
+  employee: [
+    { key: '/', label: '工作台', path: '/' },
+    { key: '/forms', label: '表单中心', path: '/forms' },
+    { key: '/payroll', label: '工资条', path: '/payroll/slips' }
+  ]
+}
+
+const DEFAULT_MENUS: MenuItem[] = [
+  { key: '/', label: '工作台', path: '/' }
+]
+
+const userStore = useUserStore()
+const route = useRoute()
+const collapsed = ref(false)
+const selectedKeys = ref([route.path])
+const notificationCount = ref(0)
+const todoCount = ref(0)
+
+// Menus computed immediately from role (no async delay), overridden by API data
+const apiMenus = ref<MenuItem[] | null>(null)
+const menuItems = computed<MenuItem[]>(() => {
+  if (apiMenus.value) return apiMenus.value
+  const role = userStore.userInfo?.role ?? 'employee'
+  return ROLE_MENUS[role] ?? DEFAULT_MENUS
+})
+
+watch(() => route.path, (path) => {
+  selectedKeys.value = [path]
+})
+
+// Backend paths may differ from Nuxt file-based routes; normalize here
+function normalizePath(p: string): string {
+  const map: Record<string, string> = { '/workbench': '/' }
+  return map[p] ?? p
+}
+
+function buildMenuItems(menus: WorkbenchMenu[]): MenuItem[] {
+  return menus.map((m) => ({
+    key: normalizePath(m.path),
+    label: m.name,
+    path: normalizePath(m.path),
+    icon: m.icon,
+    children: m.children ? buildMenuItems(m.children) : undefined
+  }))
+}
+
+// Refresh menus and todo count from API (updates after initial static render)
+onMounted(async () => {
+  const token = userStore.token
+  const headers: Record<string, string> = { 'X-Client-Type': 'web' }
+  if (token) headers['Authorization'] = 'Bearer ' + token
+
+  await Promise.all([
+    $fetch<{ menus: WorkbenchMenu[] }>('http://localhost:8080/api/workbench/config', { headers })
+      .then((data) => {
+        if (data.menus?.length) apiMenus.value = buildMenuItems(data.menus)
+      })
+      .catch(() => {/* keep computed fallback */}),
+    $fetch<unknown[]>('http://localhost:8080/api/attendance/todo', { headers })
+      .then((list) => { todoCount.value = list?.length ?? 0 })
+      .catch(() => { todoCount.value = 0 })
+  ])
+})
+
+function onMenuClick({ key }: { key: string }) {
+  navigateTo(key)
+}
+
+async function onAvatarMenuClick({ key }: { key: string }) {
+  if (key === 'logout') {
+    userStore.logout()
+    await navigateTo('/login')
+  } else if (key === 'profile') {
+    await navigateTo('/me')
+  } else if (key === 'password') {
+    await navigateTo('/me/password')
+  }
+}
+</script>
+
+<style scoped>
+.app-shell {
+  min-height: 100vh;
+}
+
+.logo {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 0 16px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.logo-icon {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.app-header {
+  background: #fff;
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.header-brand {
+  font-size: 16px;
+  font-weight: 600;
+  color: #003466;
+  white-space: nowrap;
+}
+
+.header-user-label {
+  font-weight: 400;
+  color: #333;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.action-badge {
+  display: inline-flex;
+  align-items: center;
+}
+
+.action-btn {
+  font-size: 13px;
+  color: #333;
+  padding: 0 10px;
+}
+
+.action-btn:hover {
+  color: #003466;
+  background: #f0f4ff;
+}
+
+.avatar-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: #333;
+  padding: 0 8px;
+}
+
+.avatar-btn:hover {
+  color: #003466;
+  background: #f0f4ff;
+}
+
+.app-content {
+  margin: 24px;
+  padding: 24px;
+  background: #fff;
+  border-radius: 8px;
+  min-height: calc(100vh - 64px - 48px);
+}
+</style>
