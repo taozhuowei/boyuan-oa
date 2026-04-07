@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Collections;
 
 /**
  * 考勤系统控制器
@@ -161,6 +162,22 @@ public class AttendanceController {
         return ResponseEntity.ok(
                 approvalFlowService.advance(id, currentEmployeeId, "REJECT", request.comment())
         );
+    }
+
+    /**
+     * 全量历史记录（PM/CEO 视图，支持按时间范围筛选）
+     * 权限：项目经理、CEO
+     */
+    @GetMapping("/history")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO')")
+    public ResponseEntity<List<FormRecordResponse>> getHistory(Authentication authentication) {
+        Long currentEmployeeId = getCurrentEmployeeId(authentication);
+        if (currentEmployeeId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        String roleCode = getCurrentRoleCode(authentication);
+        List<String> formTypes = Arrays.asList("LEAVE", "OVERTIME");
+        return ResponseEntity.ok(formService.getHistory(currentEmployeeId, roleCode, formTypes));
     }
 
     /**

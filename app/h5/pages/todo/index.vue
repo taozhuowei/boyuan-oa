@@ -145,7 +145,7 @@ async function handleApprove() {
     await request({
       url: `/attendance/${selectedRecord.value.id}/approve`,
       method: 'POST',
-      body: { comment: approvalComment.value }
+      body: { action: 'APPROVE', comment: approvalComment.value }
     })
     modalVisible.value = false
     await loadTodo()
@@ -161,7 +161,7 @@ async function handleReject() {
     await request({
       url: `/attendance/${selectedRecord.value.id}/reject`,
       method: 'POST',
-      body: { comment: approvalComment.value }
+      body: { action: 'REJECT', comment: approvalComment.value }
     })
     modalVisible.value = false
     await loadTodo()

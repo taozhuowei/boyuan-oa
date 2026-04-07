@@ -1,5 +1,6 @@
 <template>
   <!-- Attendance page — shows personal attendance records; sub-tabs for leave/overtime requests -->
+  <!-- PM/CEO additionally see: 发起通知 + 已发起 tabs -->
   <div class="attendance-page">
     <h2 class="page-title">考勤管理</h2>
 
@@ -8,7 +9,10 @@
         <a-tab-pane key="records" tab="我的记录" />
         <a-tab-pane key="leave" tab="请假申请" />
         <a-tab-pane key="overtime" tab="加班申报" />
+        <a-tab-pane key="self-report" tab="自补加班" />
         <a-tab-pane key="notifications" tab="加班通知" />
+        <a-tab-pane v-if="isPmOrCeo" key="notify-create" tab="发起通知" />
+        <a-tab-pane v-if="isPmOrCeo" key="notify-initiated" tab="已发起" />
       </a-tabs>
 
       <!-- 我的记录 -->
@@ -105,6 +109,41 @@
         </a-form>
       </template>
 
+      <!-- 自补加班 — 补申报历史加班，走审批流 -->
+      <template v-if="activeTab === 'self-report'">
+        <a-form
+          :model="selfReportForm"
+          layout="vertical"
+          style="max-width: 480px"
+          @finish="submitSelfReport"
+        >
+          <a-form-item label="加班日期" name="date" :rules="[{ required: true, message: '请选择日期' }]">
+            <a-date-picker v-model:value="selfReportForm.date" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="开始时间" name="startTime" :rules="[{ required: true, message: '请选择开始时间' }]">
+            <a-time-picker v-model:value="selfReportForm.startTime" format="HH:mm" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="结束时间" name="endTime" :rules="[{ required: true, message: '请选择结束时间' }]">
+            <a-time-picker v-model:value="selfReportForm.endTime" format="HH:mm" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="加班类型" name="overtimeType" :rules="[{ required: true, message: '请选择类型' }]">
+            <a-select v-model:value="selfReportForm.overtimeType" placeholder="请选择">
+              <a-select-option value="WEEKDAY">工作日加班</a-select-option>
+              <a-select-option value="WEEKEND">周末加班</a-select-option>
+              <a-select-option value="HOLIDAY">节假日加班</a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="补申报原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
+            <a-textarea v-model:value="selfReportForm.reason" :rows="3" placeholder="请说明未能及时申报的原因" />
+          </a-form-item>
+          <a-form-item>
+            <a-button type="primary" html-type="submit" :loading="submittingSelfReport">
+              提交申请
+            </a-button>
+          </a-form-item>
+        </a-form>
+      </template>
+
       <!-- 加班通知 Tab — 员工/劳工查看收到的加班通知，可确认或拒绝 -->
       <template v-if="activeTab === 'notifications'">
         <a-table
@@ -142,6 +181,90 @@
               </template>
               <span v-else class="text-muted">—</span>
             </template>
+          </template>
+        </a-table>
+      </template>
+
+      <!-- 发起通知 Tab — PM/CEO 创建加班通知 -->
+      <template v-if="activeTab === 'notify-create'">
+        <a-form
+          :model="notifyForm"
+          layout="vertical"
+          style="max-width: 480px"
+          @finish="submitNotification"
+        >
+          <a-form-item label="加班日期" name="overtimeDate" :rules="[{ required: true, message: '请选择日期' }]">
+            <a-date-picker v-model:value="notifyForm.overtimeDate" style="width: 100%" />
+          </a-form-item>
+          <a-form-item label="加班类型" name="overtimeType" :rules="[{ required: true, message: '请选择类型' }]">
+            <a-select v-model:value="notifyForm.overtimeType" placeholder="请选择">
+              <a-select-option value="WEEKDAY">工作日加班</a-select-option>
+              <a-select-option value="WEEKEND">周末加班</a-select-option>
+              <a-select-option value="HOLIDAY">节假日加班</a-select-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item label="通知内容" name="content" :rules="[{ required: true, message: '请填写通知内容' }]">
+            <a-textarea v-model:value="notifyForm.content" :rows="3" placeholder="说明加班安排、要求等" />
+          </a-form-item>
+          <a-form-item>
+            <a-button type="primary" html-type="submit" :loading="submittingNotification">
+              发送通知
+            </a-button>
+          </a-form-item>
+        </a-form>
+      </template>
+
+      <!-- 已发起 Tab — PM/CEO 查看自己发起的通知及响应情况 -->
+      <template v-if="activeTab === 'notify-initiated'">
+        <a-table
+          :columns="initiatedColumns"
+          :data-source="initiatedNotifs"
+          :loading="loadingInitiated"
+          :pagination="{ pageSize: 20 }"
+          row-key="notification.id"
+          size="small"
+          :expand-row-by-click="true"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'date'">
+              {{ record.notification.overtimeDate }}
+            </template>
+            <template v-if="column.key === 'type'">
+              {{ overtimeTypeLabel(record.notification.overtimeType) }}
+            </template>
+            <template v-if="column.key === 'content'">
+              {{ record.notification.content }}
+            </template>
+            <template v-if="column.key === 'status'">
+              <a-tag :color="notifStatusColor(record.notification.status)">
+                {{ notifStatusLabel(record.notification.status) }}
+              </a-tag>
+            </template>
+            <template v-if="column.key === 'responseCount'">
+              {{ record.responses.length }} 人响应
+            </template>
+          </template>
+          <template #expandedRowRender="{ record }">
+            <div v-if="record.responses.length === 0" class="no-response-tip">暂无响应</div>
+            <a-table
+              v-else
+              :columns="responseDetailColumns"
+              :data-source="record.responses"
+              :pagination="false"
+              row-key="id"
+              size="small"
+            >
+              <template #bodyCell="{ column: col, record: resp }">
+                <template v-if="col.key === 'accepted'">
+                  <a-tag :color="resp.accepted ? 'success' : 'error'">
+                    {{ resp.accepted ? '已确认' : '已拒绝' }}
+                  </a-tag>
+                </template>
+                <template v-if="col.key === 'rejectReason'">
+                  {{ resp.rejectReason || '—' }}
+                </template>
+              </template>
+            </a-table>
           </template>
         </a-table>
       </template>
@@ -183,8 +306,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { request } from '~/utils/http'
+import { useUserStore } from '~/stores/user'
 import type { Dayjs } from 'dayjs'
 
 interface OvertimeNotifRecord {
@@ -204,6 +328,25 @@ interface OvertimeNotifRecord {
   } | null
 }
 
+interface OvertimeResponse {
+  id: number
+  employeeId: number
+  accepted: boolean
+  rejectReason?: string
+  rejectApprovalStatus?: string
+}
+
+interface InitiatedNotifRecord {
+  notification: {
+    id: number
+    overtimeDate: string
+    overtimeType: string
+    content: string
+    status: string
+  }
+  responses: OvertimeResponse[]
+}
+
 interface FormRecord {
   id: number
   formType: string
@@ -214,11 +357,19 @@ interface FormRecord {
   remark?: string
 }
 
+const userStore = useUserStore()
+const isPmOrCeo = computed(() => {
+  const role = userStore.userInfo?.role ?? ''
+  return role === 'project_manager' || role === 'ceo'
+})
+
 const activeTab = ref('records')
 const loadingRecords = ref(false)
 const records = ref<FormRecord[]>([])
 const submittingLeave = ref(false)
 const submittingOvertime = ref(false)
+const submittingSelfReport = ref(false)
+const submittingNotification = ref(false)
 
 const leaveForm = ref<{
   leaveType: string | null
@@ -235,6 +386,20 @@ const overtimeForm = ref<{
   reason: string
 }>({ date: null, startTime: null, endTime: null, overtimeType: null, reason: '' })
 
+const selfReportForm = ref<{
+  date: Dayjs | null
+  startTime: Dayjs | null
+  endTime: Dayjs | null
+  overtimeType: string | null
+  reason: string
+}>({ date: null, startTime: null, endTime: null, overtimeType: null, reason: '' })
+
+const notifyForm = ref<{
+  overtimeDate: Dayjs | null
+  overtimeType: string | null
+  content: string
+}>({ overtimeDate: null, overtimeType: null, content: '' })
+
 const recordColumns = [
   { title: '日期', key: 'submitTime', width: 100 },
   { title: '类型', dataIndex: 'formTypeName', key: 'formTypeName', width: 90 },
@@ -246,7 +411,7 @@ const recordColumns = [
 const detailVisible = ref(false)
 const selectedRecord = ref<FormRecord | null>(null)
 
-// 加班通知
+// 加班通知（员工接收）
 const loadingNotifs = ref(false)
 const notifications = ref<OvertimeNotifRecord[]>([])
 const rejectModalVisible = ref(false)
@@ -261,13 +426,43 @@ const notifColumns = [
   { title: '操作', key: 'action', width: 130 }
 ]
 
+// 已发起通知（PM/CEO 视图）
+const loadingInitiated = ref(false)
+const initiatedNotifs = ref<InitiatedNotifRecord[]>([])
+
+const initiatedColumns = [
+  { title: '加班日期', key: 'date', width: 110 },
+  { title: '类型', key: 'type', width: 100 },
+  { title: '通知内容', key: 'content' },
+  { title: '状态', key: 'status', width: 90 },
+  { title: '响应', key: 'responseCount', width: 90 }
+]
+
+const responseDetailColumns = [
+  { title: '员工ID', dataIndex: 'employeeId', key: 'employeeId', width: 90 },
+  { title: '响应', key: 'accepted', width: 80 },
+  { title: '拒绝原因', key: 'rejectReason' }
+]
+
 function overtimeTypeLabel(t: string) {
   const map: Record<string, string> = { WEEKDAY: '工作日加班', WEEKEND: '周末加班', HOLIDAY: '节假日加班' }
   return map[t] ?? t
 }
 
+function notifStatusColor(s: string) {
+  if (s === 'ARCHIVED') return 'default'
+  if (s === 'NOTIFIED') return 'processing'
+  return 'default'
+}
+
+function notifStatusLabel(s: string) {
+  const map: Record<string, string> = { NOTIFIED: '待响应', ARCHIVED: '已归档' }
+  return map[s] ?? s
+}
+
 function onTabChange(key: string) {
   if (key === 'notifications') loadNotifications()
+  if (key === 'notify-initiated') loadInitiatedNotifs()
 }
 
 async function loadNotifications() {
@@ -279,6 +474,18 @@ async function loadNotifications() {
     notifications.value = []
   } finally {
     loadingNotifs.value = false
+  }
+}
+
+async function loadInitiatedNotifs() {
+  loadingInitiated.value = true
+  try {
+    const list = await request<InitiatedNotifRecord[]>({ url: '/overtime-notifications/initiated' })
+    initiatedNotifs.value = list ?? []
+  } catch {
+    initiatedNotifs.value = []
+  } finally {
+    loadingInitiated.value = false
   }
 }
 
@@ -422,6 +629,57 @@ async function submitOvertime() {
   }
 }
 
+async function submitSelfReport() {
+  submittingSelfReport.value = true
+  try {
+    await request({
+      url: '/attendance/overtime-self-report',
+      method: 'POST',
+      body: {
+        formType: 'OVERTIME',
+        formData: {
+          date: selfReportForm.value.date?.format('YYYY-MM-DD'),
+          startTime: selfReportForm.value.startTime?.format('HH:mm'),
+          endTime: selfReportForm.value.endTime?.format('HH:mm'),
+          overtimeType: selfReportForm.value.overtimeType
+        },
+        remark: selfReportForm.value.reason
+      }
+    })
+    selfReportForm.value = { date: null, startTime: null, endTime: null, overtimeType: null, reason: '' }
+    activeTab.value = 'records'
+    await loadRecords()
+  } catch (e: unknown) {
+    const msg = (e as Error).message ?? '提交失败'
+    alert(msg)
+  } finally {
+    submittingSelfReport.value = false
+  }
+}
+
+async function submitNotification() {
+  submittingNotification.value = true
+  try {
+    await request({
+      url: '/overtime-notifications',
+      method: 'POST',
+      body: {
+        overtimeDate: notifyForm.value.overtimeDate?.format('YYYY-MM-DD'),
+        overtimeType: notifyForm.value.overtimeType,
+        content: notifyForm.value.content
+      }
+    })
+    notifyForm.value = { overtimeDate: null, overtimeType: null, content: '' }
+    activeTab.value = 'notify-initiated'
+    await loadInitiatedNotifs()
+  } catch (e: unknown) {
+    const msg = (e as Error).message ?? '发送失败'
+    alert(msg)
+  } finally {
+    submittingNotification.value = false
+  }
+}
+
 onMounted(loadRecords)
 
 </script>
@@ -442,5 +700,11 @@ onMounted(loadRecords)
 
 .record-detail {
   padding: 4px 0;
+}
+
+.no-response-tip {
+  padding: 8px 16px;
+  color: #999;
+  font-size: 13px;
 }
 </style>

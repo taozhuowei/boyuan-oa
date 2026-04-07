@@ -94,8 +94,9 @@ public class FormService {
     public List<FormRecordResponse> getHistory(Long employeeId, String roleCode, List<String> formTypes) {
         List<FormRecord> records;
 
-        // 判断是否有查看全部权限（CEO 或 Finance）
-        if ("ceo".equalsIgnoreCase(roleCode) || "finance".equalsIgnoreCase(roleCode)) {
+        // 判断是否有查看全部权限（CEO、Finance 或 PM）
+        if ("ceo".equalsIgnoreCase(roleCode) || "finance".equalsIgnoreCase(roleCode)
+                || "project_manager".equalsIgnoreCase(roleCode)) {
             // CEO 和财务可以查看所有指定类型的表单
             records = formRecordMapper.selectList(
                     new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<FormRecord>()
