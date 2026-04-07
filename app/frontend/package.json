@@ -10,8 +10,6 @@
     "build:web": "uni build",
     "build:mp-weixin": "uni build --platform mp-weixin",
     "preview:mp-weixin": "echo '请使用微信开发者工具打开 dist/dev/mp-weixin 目录进行预览'",
-    "test:web": "vitest run --config vitest.config.ts",
-    "test:mp": "echo '小程序测试请在微信开发者工具中执行'",
     "type-check": "vue-tsc --noEmit"
   },
   "dependencies": {

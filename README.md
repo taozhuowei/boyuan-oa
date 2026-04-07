@@ -129,17 +129,15 @@ npm run build:mp          # 仅小程序
 
 > **生产构建保证**：`npm run build:h5` 启用 Terser 压缩混淆，自动 `drop_console`、`drop_debugger`，不输出 source map。Dev 快捷工具（`DevToolbar`）通过 `import.meta.env.DEV` 守门，production build 时被 Rollup dead-code-elimination 完整剔除。
 
-### 检查与测试
+### 类型检查
 
 | 脚本 | 说明 |
 |------|------|
 | `npm run type-check` | TypeScript 类型检查（`vue-tsc --noEmit`） |
-| `npm run test` | 前端单元测试（Vitest） |
 
 ```bash
 cd app
 npm run type-check        # 类型检查，CI 失败时退出码非零
-npm run test              # 单元测试
 ```
 
 ### 部署
