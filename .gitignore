@@ -1,18 +1,22 @@
-# dependencies
-app/node_modules/
-app/frontend/node_modules/
+# dependencies (Yarn workspace — hoisted to root node_modules/)
+node_modules/
 
 # build output
-app/frontend/dist/
-app/backend/target/
+app/dist/
+server/target/
 
 # logs and temp files
 *.log
-*.err.log
+*.err
+run.log
+run.err
 test_output.txt
 
 # local automation/browser traces
 .playwright-cli/
+
+# test coverage reports (generated artifacts)
+test/reports/
 
 # OS/editor noise
 .DS_Store

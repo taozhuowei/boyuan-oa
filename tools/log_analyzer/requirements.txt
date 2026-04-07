@@ -1,0 +1,5 @@
+# OA Log Analyzer — Python dependencies
+# Python 3.10+ required (uses built-in tkinter)
+
+# Drag-and-drop support (optional — install for DnD file drop, not required for paste/load)
+tkinterdnd2>=0.3.0
