@@ -146,7 +146,8 @@ export interface SessionUser {
 export const useUserStore = defineStore('user', () => {
   // 从本地存储恢复会话状态 - 使用函数调用而不是模块级别的值
   const storedToken = getStorage('oa-token')
-  const storedUser = getStorage('oa-user') as unknown as SessionUser | null
+  // getStorage 未命中时返回空字符串，需转为 null 避免 userInfo 初始值为 '' 而非 null
+  const storedUser = (getStorage('oa-user') || null) as unknown as SessionUser | null
 
   // 状态 (State)
   const token = ref(storedToken)
