@@ -164,6 +164,29 @@ public class AttendanceController {
     }
 
     /**
+     * 自补加班申请（补申报历史加班，走审批流）
+     * 与 POST /attendance/overtime 的区别：此接口明确表示为补申报，进入 OVERTIME 审批流
+     * 权限：员工、劳工
+     */
+    @PostMapping("/overtime-self-report")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER')")
+    public ResponseEntity<FormRecordResponse> submitOvertimeSelfReport(
+            @Valid @RequestBody FormSubmitRequest request,
+            Authentication authentication) {
+        Long submitterId = getCurrentEmployeeId(authentication);
+        if (submitterId == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        String formDataJson;
+        try {
+            formDataJson = objectMapper.writeValueAsString(request.formData());
+        } catch (JsonProcessingException e) {
+            return ResponseEntity.badRequest().build();
+        }
+        return ResponseEntity.ok(formService.submitForm(submitterId, "OVERTIME", formDataJson, request.remark()));
+    }
+
+    /**
      * 获取当前登录员工的 ID
      */
     private Long getCurrentEmployeeId(Authentication authentication) {
