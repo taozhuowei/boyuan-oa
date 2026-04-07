@@ -85,4 +85,10 @@ public interface ProjectService {
      * @param employeeId 员工ID
      */
     void removeMember(Long projectId, Long employeeId);
+
+    /**
+     * 直接更新项目实体（用于 config patch 等场景）
+     * @param project 项目实体
+     */
+    void updateById(Project project);
 }

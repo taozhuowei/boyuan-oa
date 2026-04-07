@@ -234,4 +234,10 @@ public class ProjectServiceImpl implements ProjectService {
         member.setUpdatedAt(LocalDateTime.now());
         projectMemberMapper.updateById(member);
     }
+
+    @Override
+    @Transactional
+    public void updateById(Project project) {
+        projectMapper.updateById(project);
+    }
 }
