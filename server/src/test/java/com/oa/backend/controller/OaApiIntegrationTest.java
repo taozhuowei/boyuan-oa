@@ -292,11 +292,11 @@ class OaApiIntegrationTest {
     class UnimplementedModules {
 
         @Test
-        @DisplayName("GET /payroll/cycles - 返回 501（M5 未实现）")
-        void payroll_cycles_returns501() throws Exception {
+        @DisplayName("GET /payroll/cycles - 返回 200（M5 已实现）")
+        void payroll_cycles_returns200() throws Exception {
             mockMvc.perform(get("/payroll/cycles")
                     .header("Authorization", "Bearer " + financeToken))
-                .andExpect(status().is(501));
+                .andExpect(status().isOk());
         }
 
         @Test
@@ -329,6 +329,217 @@ class OaApiIntegrationTest {
             mockMvc.perform(get("/retention/policies")
                     .header("Authorization", "Bearer " + ceoToken))
                 .andExpect(status().is(501));
+        }
+    }
+
+    // ─── M5 薪资模块 ────────────────────────────────────────────
+
+    @Nested
+    @DisplayName("M5 - 薪资模块")
+    class M5Payroll {
+
+        @Test
+        @DisplayName("TC1: Finance 创建工资周期 → 200，返回 period")
+        void finance_createCycle_returns200() throws Exception {
+            String body = "{\"period\": \"2099-01\"}";
+            MvcResult result = mockMvc.perform(post("/payroll/cycles")
+                            .header("Authorization", "Bearer " + financeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            String resp = result.getResponse().getContentAsString();
+            assert resp.contains("2099-01") : "响应中应包含 period";
+        }
+
+        @Test
+        @DisplayName("TC2: 重复创建同一 period → 400")
+        void finance_createDuplicateCycle_returns400() throws Exception {
+            String body = "{\"period\": \"2099-02\"}";
+            // 第一次创建
+            mockMvc.perform(post("/payroll/cycles")
+                            .header("Authorization", "Bearer " + financeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isOk());
+            // 第二次创建同一 period → 400
+            mockMvc.perform(post("/payroll/cycles")
+                            .header("Authorization", "Bearer " + financeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(body))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("TC3: Employee 无权访问 /payroll/cycles → 403")
+        void employee_listCycles_returns403() throws Exception {
+            mockMvc.perform(get("/payroll/cycles")
+                            .header("Authorization", "Bearer " + employeeToken))
+                    .andExpect(status().isForbidden());
+        }
+
+        @Test
+        @DisplayName("TC4: Finance 创建周期 → 开放窗口 → precheck → settle 完整流程")
+        void finance_fullSettlementFlow() throws Exception {
+            // 1. 创建周期
+            MvcResult createResult = mockMvc.perform(post("/payroll/cycles")
+                            .header("Authorization", "Bearer " + financeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"period\": \"2099-03\"}"))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            Long cycleId = objectMapper.readTree(
+                    createResult.getResponse().getContentAsString()).get("id").asLong();
+
+            // 2. 开放窗口
+            mockMvc.perform(post("/payroll/cycles/" + cycleId + "/open-window")
+                            .header("Authorization", "Bearer " + financeToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("WINDOW_OPEN"));
+
+            // 3. 预结算检查
+            MvcResult precheckResult = mockMvc.perform(post("/payroll/cycles/" + cycleId + "/precheck")
+                            .header("Authorization", "Bearer " + financeToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.pass").exists())
+                    .andReturn();
+            // 检查返回 items 数组
+            String precheckBody = precheckResult.getResponse().getContentAsString();
+            assert precheckBody.contains("items") : "预检结果应含 items";
+
+            // 4. 正式结算
+            mockMvc.perform(post("/payroll/cycles/" + cycleId + "/settle")
+                            .header("Authorization", "Bearer " + financeToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.status").value("SETTLED"));
+
+            // 5. Finance 查询该周期工资条
+            MvcResult slipsResult = mockMvc.perform(get("/payroll/slips")
+                            .header("Authorization", "Bearer " + financeToken)
+                            .param("cycleId", cycleId.toString()))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            // 应生成工资条（种子数据有 5 个活跃员工）
+            int slipCount = objectMapper.readTree(
+                    slipsResult.getResponse().getContentAsString()).size();
+            assert slipCount > 0 : "结算后应生成工资条，实际数量: " + slipCount;
+        }
+
+        @Test
+        @DisplayName("TC5: Employee 查看自己的工资条并确认")
+        void employee_viewAndConfirmSlip() throws Exception {
+            // 1. Finance 结算，生成工资条
+            MvcResult createResult = mockMvc.perform(post("/payroll/cycles")
+                            .header("Authorization", "Bearer " + financeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"period\": \"2099-04\"}"))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            Long cycleId = objectMapper.readTree(
+                    createResult.getResponse().getContentAsString()).get("id").asLong();
+            mockMvc.perform(post("/payroll/cycles/" + cycleId + "/settle")
+                            .header("Authorization", "Bearer " + financeToken))
+                    .andExpect(status().isOk());
+
+            // 2. Employee 查询自己的工资条
+            MvcResult slipsResult = mockMvc.perform(get("/payroll/slips")
+                            .header("Authorization", "Bearer " + employeeToken))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            long slipId = objectMapper.readTree(
+                    slipsResult.getResponse().getContentAsString()).get(0).get("id").asLong();
+
+            // 3. 查看工资条详情
+            mockMvc.perform(get("/payroll/slips/" + slipId)
+                            .header("Authorization", "Bearer " + employeeToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.slip").exists())
+                    .andExpect(jsonPath("$.items").isArray());
+
+            // 4. 确认工资条
+            mockMvc.perform(post("/payroll/slips/" + slipId + "/confirm")
+                            .header("Authorization", "Bearer " + employeeToken))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.slip.status").value("CONFIRMED"));
+
+            // 5. 重复确认 → 400（已非 PUBLISHED 状态）
+            mockMvc.perform(post("/payroll/slips/" + slipId + "/confirm")
+                            .header("Authorization", "Bearer " + employeeToken))
+                    .andExpect(status().isBadRequest());
+        }
+
+        @Test
+        @DisplayName("TC6: Employee 对工资条提出异议")
+        void employee_disputeSlip() throws Exception {
+            // Finance 结算
+            MvcResult createResult = mockMvc.perform(post("/payroll/cycles")
+                            .header("Authorization", "Bearer " + financeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"period\": \"2099-05\"}"))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            Long cycleId = objectMapper.readTree(
+                    createResult.getResponse().getContentAsString()).get("id").asLong();
+            mockMvc.perform(post("/payroll/cycles/" + cycleId + "/settle")
+                            .header("Authorization", "Bearer " + financeToken))
+                    .andExpect(status().isOk());
+
+            // Employee 查询自己工资条
+            MvcResult slipsResult = mockMvc.perform(get("/payroll/slips")
+                            .header("Authorization", "Bearer " + employeeToken))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            // 取最新一条 (index 0，按 created_at DESC)
+            long slipId = objectMapper.readTree(
+                    slipsResult.getResponse().getContentAsString()).get(0).get("id").asLong();
+
+            // 提出异议
+            mockMvc.perform(post("/payroll/slips/" + slipId + "/dispute")
+                            .header("Authorization", "Bearer " + employeeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"reason\": \"基本工资金额有误\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.slip.status").value("DISPUTED"));
+        }
+
+        @Test
+        @DisplayName("TC7: Employee 无权查看他人工资条 → 403")
+        void employee_cannotViewOthersSlip() throws Exception {
+            // Finance 结算
+            MvcResult createResult = mockMvc.perform(post("/payroll/cycles")
+                            .header("Authorization", "Bearer " + financeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"period\": \"2099-06\"}"))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            Long cycleId = objectMapper.readTree(
+                    createResult.getResponse().getContentAsString()).get("id").asLong();
+            mockMvc.perform(post("/payroll/cycles/" + cycleId + "/settle")
+                            .header("Authorization", "Bearer " + financeToken))
+                    .andExpect(status().isOk());
+
+            // Finance 查工资条，找到 worker 的工资条
+            MvcResult slipsResult = mockMvc.perform(get("/payroll/slips")
+                            .header("Authorization", "Bearer " + financeToken)
+                            .param("cycleId", cycleId.toString()))
+                    .andExpect(status().isOk())
+                    .andReturn();
+            // 用 employee 的 token 去查 worker 的工资条
+            var slipsNode = objectMapper.readTree(slipsResult.getResponse().getContentAsString());
+            // 找到 employeeId 不是当前 employee.demo 的那条
+            Long workerSlipId = null;
+            for (var node : slipsNode) {
+                // worker.demo 的 id 在 data.sql 中为 5
+                if (node.get("employeeId").asLong() == 5L) {
+                    workerSlipId = node.get("id").asLong();
+                    break;
+                }
+            }
+            if (workerSlipId != null) {
+                mockMvc.perform(get("/payroll/slips/" + workerSlipId)
+                                .header("Authorization", "Bearer " + employeeToken))
+                        .andExpect(status().isForbidden());
+            }
         }
     }
 
