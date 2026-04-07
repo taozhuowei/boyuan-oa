@@ -2,10 +2,15 @@
 # ============================================================
 #  博渊 OA — 完整测试套件一键运行（Unix/macOS）
 #
-#  包含：
-#    1. 后端单元测试 (mvn test)
-#    2. 前端单元测试 (vitest)
-#    3. 前后端集成测试 (vitest + fetch，服务未运行时自动跳过)
+#  三个测试层次：
+#    [1] 后端单元测试  server/src/test/         → mvn test
+#    [2] 前端单元测试  test/frontend/            → vitest (jsdom)
+#    [3] 前后端联调    test/integration/         → vitest (node, 需后端启动)
+#
+#  用例目录：
+#    后端：test/backend/README.md（指向 server/src/test/）
+#    前端：test/frontend/*.test.ts
+#    联调：test/integration/*.test.ts
 #
 #  使用：bash test/run-all.sh
 # ============================================================

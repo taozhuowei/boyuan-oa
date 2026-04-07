@@ -2,10 +2,15 @@
 REM ============================================================
 REM  博渊 OA — 完整测试套件一键运行（Windows）
 REM
-REM  包含：
-REM    1. 后端单元测试 (mvn test)         → target/surefire-reports/
-REM    2. 前端单元测试 (vitest)            → test/reports/frontend-coverage/
-REM    3. 前后端集成测试 (vitest + fetch)  → 需要后端服务运行，否则自动跳过
+REM  三个测试层次：
+REM    [1] 后端单元测试  server/src/test/         → mvn test
+REM    [2] 前端单元测试  test/frontend/            → vitest (jsdom)
+REM    [3] 前后端联调    test/integration/         → vitest (node, 需后端启动)
+REM
+REM  用例目录：
+REM    后端：test/backend/README.md（指向 server/src/test/）
+REM    前端：test/frontend/*.test.ts
+REM    联调：test/integration/*.test.ts
 REM
 REM  使用：在项目根目录执行  test\run-all.bat
 REM ============================================================
