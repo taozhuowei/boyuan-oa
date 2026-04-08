@@ -121,6 +121,8 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/projects', label: '项目管理', path: '/projects' },
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
+    { key: '/construction-log', label: '施工日志', path: '/construction-log' },
+    { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/retention', label: '数据保留', path: '/retention' },
     { key: '/settings', label: '系统设置', path: '/settings' }
   ],
@@ -129,16 +131,21 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/approval', label: '审批中心', path: '/approval' },
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
+    { key: '/injury', label: '工伤理赔', path: '/injury' },
     { key: '/directory', label: '通讯录导入', path: '/directory' }
   ],
   project_manager: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/approval', label: '审批中心', path: '/approval' },
     { key: '/projects', label: '项目管理', path: '/projects' },
+    { key: '/construction-log', label: '施工日志', path: '/construction-log' },
+    { key: '/construction-log/templates', label: '工作项模板', path: '/construction-log/templates' },
     { key: '/forms', label: '表单中心', path: '/forms' }
   ],
   worker: [
     { key: '/', label: '工作台', path: '/' },
+    { key: '/construction-log', label: '施工日志', path: '/construction-log' },
+    { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/forms', label: '表单中心', path: '/forms' },
     { key: '/payroll', label: '工资条', path: '/payroll/slips' }
   ],

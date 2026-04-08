@@ -1,0 +1,306 @@
+<template>
+  <!-- 工伤补偿申请页（劳工专用，含 PM 代录入口）
+       数据来源：POST /api/logs/injury（提交工伤申报）
+                GET  /api/logs/records（查看历史）
+                POST /api/injury-claims（财务录入理赔，仅 finance 角色可见） -->
+  <div class="injury-page">
+    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <h2 class="page-title" style="margin:0;">工伤补偿</h2>
+      <a-space>
+        <!-- 劳工/PM 均可发起（PM 代录使用下面的 proxyFor 字段） -->
+        <a-button type="primary" @click="openApply">+ 发起申报</a-button>
+        <!-- 财务：录入理赔按钮 -->
+        <a-button v-if="isFinance" @click="showClaimModal = true">录入理赔</a-button>
+      </a-space>
+    </div>
+
+    <!-- 历史记录 -->
+    <a-spin :spinning="loading">
+      <a-card v-if="records.length === 0 && !loading">
+        <a-empty description="暂无工伤申报记录" />
+      </a-card>
+      <a-list v-else :data-source="records" :bordered="false">
+        <template #renderItem="{ item }">
+          <a-list-item>
+            <a-list-item-meta
+              :title="`工伤申报 — ${item.formNo}`"
+              :description="`提交：${formatTime(item.createdAt)}${item.formData?.injuryDate ? ' | 受伤日期：' + item.formData.injuryDate : ''}`"
+            />
+            <a-tag :color="statusColor(item.status)">{{ statusLabel(item.status) }}</a-tag>
+          </a-list-item>
+        </template>
+      </a-list>
+    </a-spin>
+
+    <!-- 工伤申报弹窗（不含补偿金额） -->
+    <a-modal
+      v-model:open="showApplyModal"
+      title="发起工伤补偿申报"
+      @ok="doApply"
+      :confirm-loading="applying"
+      @cancel="resetApplyForm"
+      ok-text="提交"
+    >
+      <a-form :model="applyForm" layout="vertical">
+        <!-- PM 代录：选择受伤员工 -->
+        <a-form-item v-if="isPm" label="代录员工（留空则表示本人发起）">
+          <a-select
+            v-model:value="applyForm.proxyEmployeeId"
+            placeholder="选择被代录员工"
+            allow-clear
+            :options="workerOptions"
+            show-search
+            option-filter-prop="label"
+          />
+        </a-form-item>
+
+        <a-form-item label="受伤日期" required>
+          <a-date-picker v-model:value="applyForm.injuryDate" style="width:100%;" />
+        </a-form-item>
+
+        <a-form-item label="伤情描述" required>
+          <a-textarea
+            v-model:value="applyForm.description"
+            :rows="4"
+            placeholder="请描述受伤经过、部位及严重程度"
+          />
+        </a-form-item>
+
+        <a-form-item label="附件（受伤照片/医疗证明）">
+          <customized-file-upload
+            ref="injuryFileRef"
+            business-type="INJURY"
+            :max-count="5"
+            accept="image/*,.pdf"
+            hint="可上传照片或医疗证明，最多 5 个"
+            @change="onInjuryFilesChange"
+          />
+        </a-form-item>
+
+        <a-form-item label="备注">
+          <a-textarea v-model:value="applyForm.remark" :rows="2" placeholder="其他说明（可选）" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+
+    <!-- 财务录入理赔弹窗 -->
+    <a-modal
+      v-if="isFinance"
+      v-model:open="showClaimModal"
+      title="录入工伤理赔"
+      @ok="doCreateClaim"
+      :confirm-loading="claiming"
+      @cancel="resetClaimForm"
+      ok-text="提交理赔"
+    >
+      <a-form :model="claimForm" layout="vertical">
+        <a-form-item label="关联申报单 ID" required>
+          <a-input-number v-model:value="claimForm.formRecordId" placeholder="工伤申报单 ID" style="width:100%;" />
+        </a-form-item>
+        <a-form-item label="员工 ID" required>
+          <a-input-number v-model:value="claimForm.employeeId" placeholder="受伤员工 ID" style="width:100%;" />
+        </a-form-item>
+        <a-form-item label="受伤日期" required>
+          <a-date-picker v-model:value="claimForm.injuryDate" style="width:100%;" />
+        </a-form-item>
+        <a-form-item label="理赔金额（元）" required>
+          <a-input-number
+            v-model:value="claimForm.compensationAmount"
+            :min="0"
+            :precision="2"
+            style="width:100%;"
+            placeholder="0.00"
+          />
+        </a-form-item>
+        <a-form-item label="财务备注">
+          <a-textarea v-model:value="claimForm.financeNote" :rows="2" />
+        </a-form-item>
+      </a-form>
+    </a-modal>
+  </div>
+</template>
+
+<script setup lang="ts">
+/**
+ * 工伤补偿申请页 — injury/index.vue
+ * 劳工申报（不含金额）→ PM 初审 → CEO 终审；PM 可代录（触发 skipCondition）
+ * 财务角色可录入理赔（POST /injury-claims）
+ */
+import { ref, computed, onMounted } from 'vue'
+import { request } from '~/utils/http'
+import { useUserStore } from '~/stores/user'
+import { message } from 'ant-design-vue'
+import type { Dayjs } from 'dayjs'
+
+interface InjuryRecord {
+  id: number
+  formNo: string
+  formTypeName: string
+  status: string
+  createdAt: string
+  formData?: { injuryDate?: string; description?: string }
+}
+
+const userStore = useUserStore()
+const role = computed(() => userStore.userInfo?.role ?? '')
+const isFinance = computed(() => role.value === 'finance')
+const isPm = computed(() => role.value === 'project_manager')
+
+const loading = ref(false)
+const applying = ref(false)
+const claiming = ref(false)
+
+const records = ref<InjuryRecord[]>([])
+const workerOptions = ref<{ label: string; value: number }[]>([])
+
+const showApplyModal = ref(false)
+const showClaimModal = ref(false)
+const injuryFileRef = ref<{ clear: () => void } | null>(null)
+
+const applyForm = ref({
+  proxyEmployeeId: null as number | null,
+  injuryDate: null as Dayjs | null,
+  description: '',
+  remark: '',
+  attachmentIds: [] as number[]
+})
+
+const claimForm = ref({
+  formRecordId: null as number | null,
+  employeeId: null as number | null,
+  injuryDate: null as Dayjs | null,
+  compensationAmount: null as number | null,
+  financeNote: ''
+})
+
+function openApply() {
+  showApplyModal.value = true
+  if (isPm.value) loadWorkers()
+}
+
+async function loadWorkers() {
+  try {
+    const res = await request<{ content: { id: number; name: string }[] }>(
+      { url: '/employees?page=0&size=200', method: 'GET' }
+    )
+    workerOptions.value = (res.content || []).map((e: { id: number; name: string }) => ({ label: e.name, value: e.id }))
+  } catch { /* 加载失败不阻断流程 */ }
+}
+
+async function loadRecords() {
+  loading.value = true
+  try {
+    const res = await request<InjuryRecord[]>({ url: '/logs/records', method: 'GET' })
+    records.value = (res as InjuryRecord[]).filter((r: InjuryRecord) => r.formTypeName === '工伤补偿' || r.formNo?.startsWith('INJ'))
+  } catch {
+    message.error('加载记录失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+function onInjuryFilesChange(files: { attachmentId: number }[]) {
+  applyForm.value.attachmentIds = files.map(f => f.attachmentId)
+}
+
+async function doApply() {
+  if (!applyForm.value.injuryDate) {
+    message.warning('请选择受伤日期')
+    return
+  }
+  if (!applyForm.value.description.trim()) {
+    message.warning('请填写伤情描述')
+    return
+  }
+  applying.value = true
+  try {
+    const formData: Record<string, unknown> = {
+      injuryDate: applyForm.value.injuryDate.format('YYYY-MM-DD'),
+      description: applyForm.value.description,
+      attachmentIds: applyForm.value.attachmentIds
+    }
+    if (applyForm.value.proxyEmployeeId) {
+      formData.proxyEmployeeId = applyForm.value.proxyEmployeeId
+    }
+    await request({
+      url: '/logs/injury',
+      method: 'POST',
+      body: { formData, remark: applyForm.value.remark }
+    })
+    message.success('工伤申报已提交，等待审批')
+    showApplyModal.value = false
+    resetApplyForm()
+    await loadRecords()
+  } catch {
+    message.error('提交失败')
+  } finally {
+    applying.value = false
+  }
+}
+
+function resetApplyForm() {
+  applyForm.value = { proxyEmployeeId: null, injuryDate: null, description: '', remark: '', attachmentIds: [] }
+  injuryFileRef.value?.clear()
+}
+
+async function doCreateClaim() {
+  if (!claimForm.value.formRecordId || !claimForm.value.employeeId ||
+      !claimForm.value.injuryDate || !claimForm.value.compensationAmount) {
+    message.warning('请填写完整理赔信息')
+    return
+  }
+  claiming.value = true
+  try {
+    await request({
+      url: '/injury-claims',
+      method: 'POST',
+      body: {
+        formRecordId: claimForm.value.formRecordId,
+        employeeId: claimForm.value.employeeId,
+        injuryDate: claimForm.value.injuryDate.format('YYYY-MM-DD'),
+        compensationAmount: claimForm.value.compensationAmount,
+        financeNote: claimForm.value.financeNote
+      }
+    })
+    message.success('理赔已录入')
+    showClaimModal.value = false
+    resetClaimForm()
+  } catch {
+    message.error('录入失败')
+  } finally {
+    claiming.value = false
+  }
+}
+
+function resetClaimForm() {
+  claimForm.value = { formRecordId: null, employeeId: null, injuryDate: null, compensationAmount: null, financeNote: '' }
+}
+
+function statusLabel(status: string) {
+  const map: Record<string, string> = {
+    PENDING: '待审批', APPROVING: '审批中', APPROVED: '已通过', REJECTED: '已驳回'
+  }
+  return map[status] ?? status
+}
+
+function statusColor(status: string) {
+  const map: Record<string, string> = {
+    PENDING: 'orange', APPROVING: 'blue', APPROVED: 'green', REJECTED: 'red'
+  }
+  return map[status] ?? 'default'
+}
+
+function formatTime(t: string) {
+  return t ? t.substring(0, 16).replace('T', ' ') : ''
+}
+
+onMounted(() => loadRecords())
+</script>
+
+<style scoped>
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #003466;
+}
+</style>

@@ -7,6 +7,11 @@ spring:
   application:
     name: oa-backend
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
   datasource:
     url: jdbc:h2:mem:oa_db;DB_CLOSE_DELAY=-1;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;CASE_INSENSITIVE_IDENTIFIERS=TRUE
     driver-class-name: org.h2.Driver
@@ -41,6 +46,10 @@ spring:
     time-zone: GMT+8
     serialization:
       write-dates-as-timestamps: false
+
+# 附件上传目录（相对于服务启动目录）
+oa:
+  upload-dir: ./uploads
 
 # JWT 配置
 jwt:

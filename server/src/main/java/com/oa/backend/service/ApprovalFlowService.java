@@ -34,7 +34,7 @@ public class ApprovalFlowService {
 
     /**
      * 初始化审批流
-     * 加载激活的流程定义，确定第一个节点的审批人，设置表单状态为 PENDING
+     * 加载激活的流程定义，评估 skipCondition，设置第一个有效节点，设置表单状态为 PENDING
      */
     @Transactional
     public void initFlow(Long formRecordId, String formType, Long submitterId) {
@@ -44,14 +44,11 @@ public class ApprovalFlowService {
             throw new IllegalStateException("未找到业务类型 [" + formType + "] 的激活审批流定义");
         }
 
-        // 获取流程的第一个节点
+        // 获取流程所有节点（按 nodeOrder 升序）
         List<ApprovalFlowNode> nodes = approvalFlowNodeMapper.findByFlowId(flowDef.getId());
         if (nodes.isEmpty()) {
             throw new IllegalStateException("审批流定义 [" + flowDef.getId() + "] 没有配置节点");
         }
-
-        // 获取第一个节点
-        ApprovalFlowNode firstNode = nodes.get(0);
 
         // 更新表单状态
         FormRecord formRecord = formRecordMapper.selectById(formRecordId);
@@ -59,13 +56,75 @@ public class ApprovalFlowService {
             throw new IllegalStateException("表单记录 [" + formRecordId + "] 不存在");
         }
 
-        formRecord.setStatus("PENDING");
-        formRecord.setCurrentNodeOrder(firstNode.getNodeOrder());
+        // 获取提交人角色，用于 skipCondition 评估
+        String submitterRole = resolveSubmitterRole(submitterId);
+
+        // 从第一个节点开始，跳过满足 skipCondition 的节点
+        ApprovalFlowNode startNode = null;
+        for (ApprovalFlowNode node : nodes) {
+            if (!evaluateSkipCondition(node.getSkipCondition(), submitterRole)) {
+                startNode = node;
+                break;
+            }
+            // 满足 skipCondition，写入 SKIPPED 审批记录
+            ApprovalRecord skipped = new ApprovalRecord();
+            skipped.setFormId(formRecordId);
+            skipped.setNodeOrder(node.getNodeOrder());
+            skipped.setApproverId(null);
+            skipped.setAction("SKIP");
+            skipped.setComment("submitter role matched skipCondition: " + node.getSkipCondition());
+            skipped.setActedAt(LocalDateTime.now());
+            approvalRecordMapper.insert(skipped);
+            log.info("节点已跳过(skipCondition): formId={}, nodeOrder={}", formRecordId, node.getNodeOrder());
+        }
+
+        if (startNode == null) {
+            // 所有节点均被跳过 → 直接归档
+            formRecord.setStatus("APPROVED");
+            formRecord.setCurrentNodeOrder(0);
+        } else {
+            formRecord.setStatus("PENDING");
+            formRecord.setCurrentNodeOrder(startNode.getNodeOrder());
+        }
         formRecord.setUpdatedAt(LocalDateTime.now());
         formRecordMapper.updateById(formRecord);
 
-        log.info("审批流初始化完成: formId={}, formType={}, firstNodeOrder={}", 
-                formRecordId, formType, firstNode.getNodeOrder());
+        log.info("审批流初始化完成: formId={}, formType={}, startNodeOrder={}",
+                formRecordId, formType, startNode != null ? startNode.getNodeOrder() : "ALL_SKIPPED");
+    }
+
+    /**
+     * 评估节点跳过条件
+     * 格式：JSON {"role":"project_manager"} → 提交人角色匹配时跳过
+     *
+     * @param skipCondition 条件字符串
+     * @param submitterRole 提交人角色代码
+     * @return true 表示应跳过此节点
+     */
+    private boolean evaluateSkipCondition(String skipCondition, String submitterRole) {
+        if (skipCondition == null || skipCondition.isBlank()) {
+            return false;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> cond = objectMapper.readValue(skipCondition, Map.class);
+            Object roleVal = cond.get("role");
+            if (roleVal != null && submitterRole != null) {
+                return roleVal.toString().equalsIgnoreCase(submitterRole);
+            }
+        } catch (Exception e) {
+            log.warn("skipCondition 解析失败，跳过条件不生效: {}", skipCondition, e);
+        }
+        return false;
+    }
+
+    /**
+     * 解析提交人角色代码
+     */
+    private String resolveSubmitterRole(Long submitterId) {
+        if (submitterId == null) return null;
+        Employee emp = employeeMapper.selectById(submitterId);
+        return emp != null ? emp.getRoleCode() : null;
     }
 
     /**

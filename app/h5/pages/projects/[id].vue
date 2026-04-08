@@ -19,12 +19,13 @@
 
     <a-spin :spinning="loadingProject">
       <a-card>
-        <a-tabs v-model:activeKey="activeTab">
+        <a-tabs v-model:activeKey="activeTab" @change="onTabChange">
           <a-tab-pane key="info" tab="基本信息" />
           <a-tab-pane v-if="isPmOrCeo" key="milestones" tab="里程碑" />
           <a-tab-pane v-if="isPmOrCeo" key="progress" tab="进度记录" />
           <a-tab-pane key="dashboard" tab="Dashboard" />
           <a-tab-pane v-if="isPmOrCeo" key="summary" tab="汇总报告" />
+          <a-tab-pane v-if="isPmOrCeo" key="logs" tab="施工日志审批" />
         </a-tabs>
 
         <!-- ── Tab: 基本信息 ── -->
@@ -302,6 +303,60 @@
             </a-spin>
           </a-card>
         </template>
+
+        <!-- ── Tab: 施工日志审批 ── -->
+        <template v-if="activeTab === 'logs'">
+          <a-spin :spinning="loadingLogs">
+            <div style="margin-bottom: 12px;">
+              <a-button @click="loadLogs" :loading="loadingLogs">刷新</a-button>
+            </div>
+            <a-empty v-if="logRecords.length === 0" description="暂无施工日志" />
+            <a-list v-else :data-source="logRecords" :bordered="false">
+              <template #renderItem="{ item }">
+                <a-list-item>
+                  <a-list-item-meta
+                    :title="`${item.submitterName} — ${item.formNo}`"
+                    :description="`提交于 ${item.createdAt?.slice(0, 16).replace('T', ' ')}`"
+                  />
+                  <a-tag :color="item.status === 'PENDING' ? 'orange' : item.status === 'APPROVED' ? 'green' : 'red'">
+                    {{ { PENDING: '待审批', APPROVING: '审批中', APPROVED: '已通过', REJECTED: '已驳回', RECALLED: '已追溯' }[item.status] ?? item.status }}
+                  </a-tag>
+                  <a-space style="margin-left: 8px;">
+                    <a-button size="small" @click="openReviewModal(item)">批注</a-button>
+                    <template v-if="item.status === 'PENDING' || item.status === 'APPROVING'">
+                      <a-button type="primary" size="small" :loading="approveLoading" @click="doApproveLog(item.id)">通过</a-button>
+                      <a-button danger size="small" @click="openRejectLog(item)">驳回</a-button>
+                    </template>
+                    <a-popconfirm
+                      v-if="isCeo && item.status === 'APPROVED'"
+                      title="确认追溯驳回此施工日志？"
+                      @confirm="doRecallLog(item.id)"
+                    >
+                      <a-button size="small" danger>追溯驳回</a-button>
+                    </a-popconfirm>
+                  </a-space>
+                </a-list-item>
+              </template>
+            </a-list>
+          </a-spin>
+
+          <a-modal v-model:open="showReviewModal" title="PM 批注" @ok="doReviewLog" :confirm-loading="reviewLoading">
+            <a-form layout="vertical">
+              <a-form-item label="批注内容">
+                <a-textarea v-model:value="reviewNote" :rows="4" placeholder="输入批注（不影响审批状态）" />
+              </a-form-item>
+            </a-form>
+          </a-modal>
+
+          <a-modal v-model:open="showRejectLogModal" title="驳回施工日志" @ok="doRejectLog" :confirm-loading="approveLoading">
+            <a-form layout="vertical">
+              <a-form-item label="驳回原因">
+                <a-textarea v-model:value="rejectLogComment" :rows="3" />
+              </a-form-item>
+            </a-form>
+          </a-modal>
+        </template>
+
       </a-card>
     </a-spin>
   </div>
@@ -667,6 +722,114 @@ async function doCreateSummary() {
   } finally {
     summaryLoading.value = false
   }
+}
+
+// ── 施工日志审批 ──────────────────────────────────────
+interface LogRecord {
+  id: number
+  formNo: string
+  submitterName: string
+  status: string
+  createdAt: string
+}
+
+const loadingLogs = ref(false)
+const logRecords = ref<LogRecord[]>([])
+const approveLoading = ref(false)
+const showReviewModal = ref(false)
+const showRejectLogModal = ref(false)
+const reviewNote = ref('')
+const rejectLogComment = ref('')
+const reviewingLogId = ref<number | null>(null)
+const rejectingLogId = ref<number | null>(null)
+
+async function loadLogs() {
+  loadingLogs.value = true
+  try {
+    const res = await request<LogRecord[]>({ url: '/logs/records', method: 'GET' })
+    logRecords.value = (res as LogRecord[]).filter((r: LogRecord) => r.formNo?.startsWith('LOG'))
+  } catch {
+    message.error('加载施工日志失败')
+  } finally {
+    loadingLogs.value = false
+  }
+}
+
+function openReviewModal(item: LogRecord) {
+  reviewingLogId.value = item.id
+  reviewNote.value = ''
+  showReviewModal.value = true
+}
+
+function openRejectLog(item: LogRecord) {
+  rejectingLogId.value = item.id
+  rejectLogComment.value = ''
+  showRejectLogModal.value = true
+}
+
+async function doReviewLog() {
+  if (!reviewingLogId.value) return
+  try {
+    await request({
+      url: `/logs/construction-logs/${reviewingLogId.value}/review`,
+      method: 'PATCH',
+      body: { pmNote: reviewNote.value }
+    })
+    message.success('批注已保存')
+    showReviewModal.value = false
+  } catch {
+    message.error('保存失败')
+  }
+}
+
+async function doApproveLog(id: number) {
+  approveLoading.value = true
+  try {
+    await request({
+      url: `/logs/${id}/approve`,
+      method: 'POST',
+      body: { comment: '' }
+    })
+    message.success('已通过')
+    await loadLogs()
+  } catch {
+    message.error('操作失败')
+  } finally {
+    approveLoading.value = false
+  }
+}
+
+async function doRejectLog() {
+  if (!rejectingLogId.value) return
+  approveLoading.value = true
+  try {
+    await request({
+      url: `/logs/${rejectingLogId.value}/reject`,
+      method: 'POST',
+      body: { comment: rejectLogComment.value }
+    })
+    message.success('已驳回')
+    showRejectLogModal.value = false
+    await loadLogs()
+  } catch {
+    message.error('操作失败')
+  } finally {
+    approveLoading.value = false
+  }
+}
+
+async function doRecallLog(id: number) {
+  try {
+    await request({ url: `/logs/construction-logs/${id}/recall`, method: 'POST' })
+    message.success('已追溯驳回')
+    await loadLogs()
+  } catch {
+    message.error('操作失败')
+  }
+}
+
+function onTabChange(key: string) {
+  if (key === 'logs') loadLogs()
 }
 
 // ── 初始化 ────────────────────────────────────────────
