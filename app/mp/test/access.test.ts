@@ -1,5 +1,5 @@
 /**
- * utils/access.ts 单元测试
+ * MP utils/access.ts 单元测试
  *
  * 覆盖：loginWithAccount（参数校验、API 成功/失败/降级）、
  *       saveRole（字段归一化、本地存储回退）、

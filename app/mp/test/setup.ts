@@ -1,7 +1,7 @@
 import { beforeEach, vi } from 'vitest'
 
 /**
- * 前端单元测试全局 setup
+ * MP 单元测试全局 setup
  *
  * 职责：
  * 1. 提供最小化的 uni API mock（无 request 方法，确保 org.ts 走本地 fallback）

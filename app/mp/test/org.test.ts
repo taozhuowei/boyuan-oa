@@ -1,5 +1,5 @@
 /**
- * utils/org.ts 单元测试
+ * MP utils/org.ts 单元测试
  *
  * 覆盖：previewDirectoryImport 的本地 fallback 路径（即 buildPreviewResult 逻辑）
  *

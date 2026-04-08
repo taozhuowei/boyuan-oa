@@ -1,8 +1,11 @@
 /**
- * AppShell — 退出登录路由测试
+ * MP AppShell 路由逻辑单元测试
  *
  * 不挂载组件（uni-app 条件编译在 jsdom 中不生效，emoji icon 字符串会触发
  * InvalidCharacterError）。改为直接验证路由逻辑与 uni API 调用契约。
+ *
+ * 与 src/layouts/AppShell.vue 中 goTo / handleLogout 保持一致，
+ * 若源码中 TAB_PAGES 列表或跳转方式变更，须同步更新此处。
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 

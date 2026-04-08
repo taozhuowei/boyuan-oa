@@ -1,5 +1,5 @@
 /**
- * stores/user.ts 单元测试
+ * MP stores/user.ts 单元测试
  *
  * 覆盖：setSession、logout、setUserInfo、isLoggedIn 计算属性、
  *       localStorage 持久化与恢复

@@ -1,14 +1,14 @@
 /**
- * utils/forms.ts 单元测试
+ * shared/utils/forms.ts 单元测试
  *
  * 覆盖：getAvailableFormOptions（纯函数，按用户角色/类型返回可用表单列表）
+ *
+ * 该函数无任何平台依赖，可在 jsdom 或 node 环境中直接运行。
+ * 测试覆盖场景：未登录用户、OFFICE 员工、LABOR 员工、劳工角色、中文 employeeType。
  */
-import { describe, it, expect, vi } from 'vitest'
-
-vi.mock('@/utils/http', () => ({ request: vi.fn() }))
-
-import { getAvailableFormOptions } from '@/utils/forms'
-import type { SessionUser } from '@shared/types'
+import { describe, it, expect } from 'vitest'
+import { getAvailableFormOptions } from '../utils'
+import type { SessionUser } from '../types'
 
 // 辅助：构造最小 SessionUser
 function makeUser(overrides: Partial<SessionUser> = {}): SessionUser {
@@ -55,5 +55,25 @@ describe('getAvailableFormOptions', () => {
   it('employeeType=劳工（中文）用户返回 4 种表单', () => {
     const options = getAvailableFormOptions(makeUser({ role: 'employee', employeeType: '劳工' }))
     expect(options).toHaveLength(4)
+  })
+
+  it('每个选项均含 code / name / description / icon 字段', () => {
+    const options = getAvailableFormOptions(null)
+    for (const opt of options) {
+      expect(opt.code).toBeTruthy()
+      expect(opt.name).toBeTruthy()
+      expect(opt.description).toBeTruthy()
+      expect(opt.icon).toBeTruthy()
+    }
+  })
+
+  it('LEAVE 排在 OVERTIME 之前（顺序稳定）', () => {
+    const codes = getAvailableFormOptions(null).map((o) => o.code)
+    expect(codes.indexOf('LEAVE')).toBeLessThan(codes.indexOf('OVERTIME'))
+  })
+
+  it('劳工表单中 INJURY 排在 LOG 之前', () => {
+    const codes = getAvailableFormOptions(makeUser({ role: 'worker' })).map((o) => o.code)
+    expect(codes.indexOf('INJURY')).toBeLessThan(codes.indexOf('LOG'))
   })
 })
