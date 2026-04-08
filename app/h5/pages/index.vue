@@ -8,12 +8,45 @@
       <a-card class="stat-card">
         <a-statistic
           title="待审批事项"
-          :value="todoList.length"
+          :value="summary?.pendingApprovalCount ?? todoList.length"
           suffix="项"
         />
       </a-card>
       <a-card class="stat-card">
-        <a-statistic title="通知" :value="0" suffix="条未读" />
+        <a-statistic
+          title="通知"
+          :value="summary?.unreadNotificationCount ?? 0"
+          suffix="条未读"
+        />
+      </a-card>
+
+      <!-- Payroll cycle status card -->
+      <a-card v-if="summary?.payrollStatus != null" class="stat-card">
+        <div class="stat-label">薪资周期状态</div>
+        <a-tag :color="payrollStatusColor(summary.payrollStatus)">
+          {{ payrollStatusLabel(summary.payrollStatus) }}
+        </a-tag>
+      </a-card>
+
+      <!-- Active project count card -->
+      <a-card v-if="summary?.activeProjectCount != null" class="stat-card">
+        <a-statistic
+          title="进行中项目"
+          :value="summary.activeProjectCount"
+          suffix="个"
+        />
+      </a-card>
+
+      <!-- Retention alerts warning card -->
+      <a-card
+        v-if="summary?.retentionAlertCount != null && summary.retentionAlertCount > 0"
+        class="stat-card warning-card"
+      >
+        <div class="stat-label">
+          <warning-outlined class="warning-icon" />
+          留存预警
+        </div>
+        <div class="warning-value">{{ summary.retentionAlertCount }} 项</div>
       </a-card>
     </div>
 
@@ -45,6 +78,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { WarningOutlined } from '@ant-design/icons-vue'
 import { request } from '~/utils/http'
 
 interface FormRecord {
@@ -56,8 +90,17 @@ interface FormRecord {
   formData?: Record<string, unknown>
 }
 
+interface WorkbenchSummary {
+  unreadNotificationCount?: number
+  pendingApprovalCount?: number
+  payrollStatus?: 'OPEN' | 'WINDOW_OPEN' | 'WINDOW_CLOSED' | 'SETTLED' | 'LOCKED'
+  activeProjectCount?: number
+  retentionAlertCount?: number
+}
+
 const loading = ref(false)
 const todoList = ref<FormRecord[]>([])
+const summary = ref<WorkbenchSummary | null>(null)
 
 const todoColumns = [
   { title: '类型', dataIndex: 'formTypeName', key: 'formTypeName' },
@@ -66,18 +109,55 @@ const todoColumns = [
   { title: '操作', key: 'action', width: 80 }
 ]
 
-function formatTime(t: string | undefined) {
+/**
+ * Format timestamp for display
+ */
+function formatTime(t: string | undefined): string {
   if (!t) return '—'
   return t.replace('T', ' ').slice(0, 16)
+}
+
+/**
+ * Get Chinese label for payroll status
+ */
+function payrollStatusLabel(status: string): string {
+  const labels: Record<string, string> = {
+    OPEN: '待处理',
+    WINDOW_OPEN: '申报中',
+    WINDOW_CLOSED: '窗口已关闭',
+    SETTLED: '已结算',
+    LOCKED: '已锁定'
+  }
+  return labels[status] ?? status
+}
+
+/**
+ * Get color for payroll status tag
+ */
+function payrollStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    OPEN: 'default',
+    WINDOW_OPEN: 'blue',
+    WINDOW_CLOSED: 'orange',
+    SETTLED: 'green',
+    LOCKED: 'purple'
+  }
+  return colors[status] ?? 'default'
 }
 
 onMounted(async () => {
   loading.value = true
   try {
-    const list = await request<FormRecord[]>({ url: '/attendance/todo' })
+    // Load both todo list and summary in parallel
+    const [list, summaryData] = await Promise.all([
+      request<FormRecord[]>({ url: '/attendance/todo' }).catch(() => []),
+      request<WorkbenchSummary>({ url: '/workbench/summary' }).catch(() => null)
+    ])
     todoList.value = list ?? []
+    summary.value = summaryData
   } catch {
     todoList.value = []
+    summary.value = null
   } finally {
     loading.value = false
   }
@@ -107,6 +187,28 @@ onMounted(async () => {
 .stat-card {
   flex: 1;
   min-width: 160px;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.45);
+  margin-bottom: 4px;
+}
+
+.warning-card {
+  background-color: #fff2e8;
+  border-color: #ffbb96;
+}
+
+.warning-icon {
+  color: #ff4d4f;
+  margin-right: 4px;
+}
+
+.warning-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: #ff4d4f;
 }
 
 .section-card {

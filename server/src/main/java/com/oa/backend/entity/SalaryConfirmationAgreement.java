@@ -21,6 +21,9 @@ public class SalaryConfirmationAgreement {
     /** 协议文件存储路径 */
     private String filePath;
 
+    /** 协议内容（纯文本） */
+    private String content;
+
     /** 上传人 */
     private Long uploadedBy;
 

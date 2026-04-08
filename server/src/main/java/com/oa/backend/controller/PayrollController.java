@@ -5,6 +5,7 @@ import com.oa.backend.entity.*;
 import com.oa.backend.mapper.*;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.PayrollEngine;
+import com.oa.backend.service.SignatureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -41,6 +42,7 @@ public class PayrollController {
     private final PayrollSlipItemMapper slipItemMapper;
     private final PayrollItemDefMapper itemDefMapper;
     private final EmployeeMapper employeeMapper;
+    private final SignatureService signatureService;
 
     // ── 周期管理（Finance/CEO） ──────────────────────────────────────────────
 
@@ -190,25 +192,52 @@ public class PayrollController {
     }
 
     /**
-     * 员工确认工资条（无签名版，M5-P1 补充电子签名）。
+     * 员工确认工资条（电子签名版）。
+     * 需要验证 PIN 码，成功后生成存证链记录。
      * 仅 PUBLISHED 状态的工资条可被确认。
+     *
+     * @param id             工资条 ID
+     * @param request        确认请求 { "pin": "123456" }
+     * @param authentication 当前用户认证信息
+     * @return 确认结果，包含存证链 ID
      */
     @PostMapping("/slips/{id}/confirm")
     @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER')")
-    public ResponseEntity<?> confirmSlip(@PathVariable Long id, Authentication authentication) {
+    public ResponseEntity<?> confirmSlip(@PathVariable Long id,
+                                          @RequestBody ConfirmSlipRequest request,
+                                          Authentication authentication) {
         PayrollSlip slip = getOwnSlip(id, authentication);
         if (slip == null) {
             return ResponseEntity.status(403).body(Map.of("message", "无权操作此工资条"));
         }
-        if (!"PUBLISHED".equals(slip.getStatus())) {
-            return ResponseEntity.badRequest().body(Map.of(
-                    "message", "工资条状态为 [" + slip.getStatus() + "]，仅 PUBLISHED 状态可确认"));
+
+        Long employeeId = SecurityUtils.getCurrentEmployeeId(authentication);
+        if (employeeId == null) {
+            return ResponseEntity.status(403).body(Map.of("message", "无法识别当前用户"));
         }
 
-        slip.setStatus("CONFIRMED");
-        slip.setUpdatedAt(LocalDateTime.now());
-        slipMapper.updateById(slip);
-        return ResponseEntity.ok(Map.of("message", "已确认", "slip", slip));
+        // 验证是否已绑定签名
+        if (!signatureService.isBound(employeeId)) {
+            return ResponseEntity.badRequest().body(Map.of("message", "请先绑定电子签名"));
+        }
+
+        // 验证 PIN 码
+        if (request == null || request.pin() == null || request.pin().isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("message", "请输入 PIN 码"));
+        }
+
+        try {
+            Long evidenceId = signatureService.confirmPayrollSlip(employeeId, id, request.pin());
+            return ResponseEntity.ok(Map.of(
+                    "message", "已确认",
+                    "slipId", id,
+                    "evidenceId", evidenceId
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
     }
 
     /**
@@ -260,4 +289,7 @@ public class PayrollController {
 
     /** 异议请求 */
     public record DisputeRequest(String reason) {}
+
+    /** 确认工资条请求 */
+    public record ConfirmSlipRequest(String pin) {}
 }

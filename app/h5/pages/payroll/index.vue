@@ -190,6 +190,52 @@
       </a-form>
     </a-modal>
 
+    <!-- PIN 输入 Modal -->
+    <a-modal
+      v-model:open="showPinModal"
+      title="请输入 PIN 码确认"
+      :confirm-loading="confirmingSlip"
+      @ok="submitPinConfirm"
+      @cancel="closePinModal"
+    >
+      <a-form layout="vertical">
+        <a-form-item
+          label="PIN 码"
+          :validate-status="pinError ? 'error' : ''"
+          :help="pinError"
+        >
+          <a-input
+            v-model:value="pinInput"
+            type="password"
+            placeholder="请输入您的 PIN 码"
+            maxlength="6"
+            @press-enter="submitPinConfirm"
+          />
+        </a-form-item>
+      </a-form>
+      <p class="pin-hint">
+        首次确认工资条需要先
+        <a @click="goToSignatureBind">绑定签名</a>
+      </p>
+    </a-modal>
+
+    <!-- 签名绑定提示 Modal -->
+    <a-modal
+      v-model:open="showBindPromptModal"
+      title="需要绑定签名"
+      :footer="null"
+    >
+      <a-result status="warning" title="您尚未绑定签名">
+        <template #subtitle>
+          <p>确认工资条需要先绑定手写签名并设置 PIN 码</p>
+        </template>
+        <template #extra>
+          <a-button type="primary" @click="goToSignatureBind">去绑定签名</a-button>
+          <a-button @click="showBindPromptModal = false">稍后再说</a-button>
+        </template>
+      </a-result>
+    </a-modal>
+
     <!-- 工资条详情 Modal -->
     <a-modal
       v-model:open="showSlipDetail"
@@ -351,6 +397,14 @@ const confirmingSlip = ref(false)
 const disputingSlip = ref(false)
 const showDisputeInput = ref(false)
 const disputeReason = ref('')
+
+// PIN 确认相关
+const showPinModal = ref(false)
+const pinInput = ref('')
+const pinError = ref('')
+
+// 签名绑定提示
+const showBindPromptModal = ref(false)
 
 // ── 表格列定义 ─────────────────────────────────────────────
 
@@ -523,23 +577,94 @@ async function openSlipDetail(slip: PayrollSlip) {
   }
 }
 
+/**
+ * 处理确认工资条按钮点击
+ * 先检查签名绑定状态，再决定显示 PIN 输入框或绑定提示
+ */
 async function doConfirm() {
   if (!slipDetail.value) return
+
+  // 先检查签名绑定状态
+  try {
+    const statusRes = await request<{ bound: boolean }>({
+      url: '/signature/status',
+      method: 'GET',
+    })
+
+    if (!statusRes.bound) {
+      // 未绑定，显示绑定提示
+      showBindPromptModal.value = true
+      return
+    }
+
+    // 已绑定，显示 PIN 输入框
+    pinInput.value = ''
+    pinError.value = ''
+    showPinModal.value = true
+  } catch (e: unknown) {
+    const err = e as { data?: { message?: string } }
+    message.error(err.data?.message ?? '检查签名状态失败')
+  }
+}
+
+/**
+ * 提交 PIN 码确认工资条
+ * POST /payroll/slips/{id}/confirm
+ */
+async function submitPinConfirm() {
+  if (!slipDetail.value || !pinInput.value) {
+    pinError.value = '请输入 PIN 码'
+    return
+  }
+
   confirmingSlip.value = true
+  pinError.value = ''
+
   try {
     const res = await request<{ slip: PayrollSlip }>({
       url: `/payroll/slips/${slipDetail.value.slip.id}/confirm`,
       method: 'POST',
+      body: { pin: pinInput.value },
     })
     slipDetail.value.slip.status = res.slip.status
     message.success('工资条已确认')
+    showPinModal.value = false
     await loadMySlips()
   } catch (e: unknown) {
-    const err = e as { data?: { message?: string } }
-    message.error(err.data?.message ?? '确认失败')
+    const err = e as { data?: { message?: string }; statusCode?: number }
+
+    if (err.statusCode === 400) {
+      // PIN 码错误
+      pinError.value = err.data?.message ?? 'PIN 码错误'
+    } else if (err.statusCode === 403) {
+      // 未绑定签名
+      showPinModal.value = false
+      showBindPromptModal.value = true
+      message.error('您尚未绑定签名，请先绑定')
+    } else {
+      message.error(err.data?.message ?? '确认失败')
+    }
   } finally {
     confirmingSlip.value = false
   }
+}
+
+/**
+ * 关闭 PIN 输入框
+ */
+function closePinModal() {
+  showPinModal.value = false
+  pinInput.value = ''
+  pinError.value = ''
+}
+
+/**
+ * 跳转到签名绑定页面
+ */
+function goToSignatureBind() {
+  showBindPromptModal.value = false
+  showPinModal.value = false
+  navigateTo('/payroll/signature-bind')
 }
 
 async function doDispute() {
@@ -648,5 +773,17 @@ function slipStatusColor(status: string): string {
 .slip-total {
   font-weight: 600;
   font-size: 15px;
+}
+
+.pin-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+
+.pin-hint a {
+  color: #1890ff;
+  cursor: pointer;
 }
 </style>

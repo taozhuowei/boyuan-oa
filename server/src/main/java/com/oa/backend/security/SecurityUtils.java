@@ -13,6 +13,15 @@ import java.util.List;
  */
 public class SecurityUtils {
 
+    private static EmployeeMapper staticEmployeeMapper;
+
+    /**
+     * 设置静态 EmployeeMapper（由 Spring 注入）
+     */
+    public static void setEmployeeMapper(EmployeeMapper employeeMapper) {
+        staticEmployeeMapper = employeeMapper;
+    }
+
     private static final List<String> EMPLOYEE_ACCESS_ROLES = Arrays.asList(
             "ROLE_EMPLOYEE", "ROLE_FINANCE", "ROLE_PROJECT_MANAGER", "ROLE_CEO", "ROLE_WORKER"
     );
@@ -187,5 +196,19 @@ public class SecurityUtils {
                 .findFirst()
                 .map(authority -> authority.replace("ROLE_", ""))
                 .orElse(null);
+    }
+
+    /**
+     * 获取当前登录员工的 ID。
+     * 需要先通过 setEmployeeMapper 设置 EmployeeMapper。
+     *
+     * @param authentication 当前用户认证信息
+     * @return 员工 ID，未找到或无法识别返回 null
+     */
+    public static Long getCurrentEmployeeId(Authentication authentication) {
+        if (authentication == null || staticEmployeeMapper == null) {
+            return null;
+        }
+        return getEmployeeIdFromUsername(authentication.getName(), staticEmployeeMapper);
     }
 }

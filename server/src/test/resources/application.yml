@@ -32,6 +32,11 @@ jwt:
   expiration: 86400000
   issuer: oa-backend
 
+# 电子签名配置
+app:
+  signature:
+    aes-key: TestSignatureKey2024ForUnitTests32
+
 logging:
   level:
     com.oa: WARN

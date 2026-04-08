@@ -285,11 +285,11 @@ class OaApiIntegrationTest {
         }
     }
 
-    // ─── 501 占位端点验证（M5-M10 未实现模块） ────────────────
+    // ─── M9/M10 已实现模块端点验证 ────────────────────────────────
 
     @Nested
-    @DisplayName("未实现模块 - 返回 501")
-    class UnimplementedModules {
+    @DisplayName("M9/M10 - 已实现模块基本可达性")
+    class ImplementedModules {
 
         @Test
         @DisplayName("GET /payroll/cycles - 返回 200（M5 已实现）")
@@ -300,35 +300,35 @@ class OaApiIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /notifications - 返回 501（M7 未实现）")
-        void notifications_returns501() throws Exception {
+        @DisplayName("GET /notifications - 返回 200（M9 已实现）")
+        void notifications_returns200() throws Exception {
             mockMvc.perform(get("/notifications")
                     .header("Authorization", "Bearer " + employeeToken))
-                .andExpect(status().is(501));
+                .andExpect(status().isOk());
         }
 
         @Test
-        @DisplayName("GET /backup/tasks - 返回 501（M10 未实现）")
-        void backup_tasks_returns501() throws Exception {
-            mockMvc.perform(get("/backup/tasks")
+        @DisplayName("GET /export-tasks - 返回 200（M10 已实现）")
+        void export_tasks_returns200() throws Exception {
+            mockMvc.perform(get("/export-tasks")
                     .header("Authorization", "Bearer " + ceoToken))
-                .andExpect(status().is(501));
+                .andExpect(status().isOk());
         }
 
         @Test
-        @DisplayName("GET /cleanup/tasks - 返回 501（M10 未实现）")
-        void cleanup_tasks_returns501() throws Exception {
-            mockMvc.perform(get("/cleanup/tasks")
+        @DisplayName("GET /cleanup-tasks - 返回 200（M10 已实现）")
+        void cleanup_tasks_returns200() throws Exception {
+            mockMvc.perform(get("/cleanup-tasks")
                     .header("Authorization", "Bearer " + ceoToken))
-                .andExpect(status().is(501));
+                .andExpect(status().isOk());
         }
 
         @Test
-        @DisplayName("GET /retention/policies - 返回 501（M10 未实现）")
-        void retention_policies_returns501() throws Exception {
+        @DisplayName("GET /retention/policies - 返回 200（M10 已实现）")
+        void retention_policies_returns200() throws Exception {
             mockMvc.perform(get("/retention/policies")
                     .header("Authorization", "Bearer " + ceoToken))
-                .andExpect(status().is(501));
+                .andExpect(status().isOk());
         }
     }
 
@@ -456,15 +456,28 @@ class OaApiIntegrationTest {
                     .andExpect(jsonPath("$.slip").exists())
                     .andExpect(jsonPath("$.items").isArray());
 
-            // 4. 确认工资条
-            mockMvc.perform(post("/payroll/slips/" + slipId + "/confirm")
-                            .header("Authorization", "Bearer " + employeeToken))
-                    .andExpect(status().isOk())
-                    .andExpect(jsonPath("$.slip.status").value("CONFIRMED"));
+            // 4. 先绑定电子签名（电子签名是确认的必要条件）
+            String base64Signature = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg==";
+            mockMvc.perform(post("/signature/bind")
+                            .header("Authorization", "Bearer " + employeeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"signatureImage\": \"" + base64Signature + "\", \"pin\": \"123456\", \"confirmPin\": \"123456\"}"))
+                    .andExpect(status().isOk());
 
-            // 5. 重复确认 → 400（已非 PUBLISHED 状态）
+            // 5. 确认工资条（需要 PIN 码）
             mockMvc.perform(post("/payroll/slips/" + slipId + "/confirm")
-                            .header("Authorization", "Bearer " + employeeToken))
+                            .header("Authorization", "Bearer " + employeeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"pin\": \"123456\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.slipId").value(slipId))
+                    .andExpect(jsonPath("$.evidenceId").exists());
+
+            // 6. 重复确认 → 400（已非 PUBLISHED 状态）
+            mockMvc.perform(post("/payroll/slips/" + slipId + "/confirm")
+                            .header("Authorization", "Bearer " + employeeToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"pin\": \"123456\"}"))
                     .andExpect(status().isBadRequest());
         }
 
