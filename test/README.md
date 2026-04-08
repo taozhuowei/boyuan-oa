@@ -2,21 +2,13 @@
 
 测试代码和工具集合。
 
-## 目录结构
-
-| 目录 | 说明 |
-|------|------|
-| [frontend/](./frontend/) | 前端单元测试（Vitest） |
-| [backend/](./backend/) | 后端测试指引（测试代码在 server/ 目录） |
-| [integration/](./integration/) | 前后端集成测试 |
-
 ## 测试代码位置
 
-| 类型 | 实际位置 | 运行方式 |
-|------|----------|----------|
-| 前端单元测试 | `test/frontend/` | `cd app && vitest run` |
+| 类型 | 位置 | 运行方式 |
+|------|------|----------|
+| 前端单元测试 | `app/mp/src/test/` | `cd app/mp && npx vitest run` |
 | 后端单元测试 | `server/src/test/` | `cd server && mvn test` |
-| 集成测试 | `test/integration/` | `cd app && vitest run --config vitest.integration.config.ts` |
+| 集成测试 | `test/integration/` | `cd app/mp && npx vitest run --config vitest.integration.config.ts` |
 
 ## 一键运行
 
