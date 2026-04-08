@@ -2,10 +2,13 @@ package com.oa.backend.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 工资单实体类
+ * 工资条实体，对应 payroll_slip 表。
+ * 状态流转：DRAFT → PUBLISHED → CONFIRMED（员工电子签名后）；
+ * 异议后进入 DISPUTED；更正后旧版本变为 SUPERSEDED。
  */
 @Data
 @TableName("payroll_slip")
@@ -14,39 +17,26 @@ public class PayrollSlip {
     @TableId(type = IdType.AUTO)
     private Long id;
 
-    private String slipNo;
-
+    /** 所属周期 */
     private Long cycleId;
 
-    private String cycleNo;
-
+    /** 员工 ID */
     private Long employeeId;
 
-    private String employeeName;
-
-    private String department;
-
+    /** 版本号（更正后递增） */
     private Integer version;
 
+    /** 状态：DRAFT | PUBLISHED | CONFIRMED | DISPUTED | SUPERSEDED */
     private String status;
 
-    private String items;
+    /** 实发工资 */
+    private BigDecimal netPay;
 
-    private Double grossAmount;
+    @TableField("created_at")
+    private LocalDateTime createdAt;
 
-    private Double netAmount;
-
-    private LocalDateTime confirmTime;
-
-    private String confirmIp;
-
-    private String disputeReason;
-
-    @TableField(fill = FieldFill.INSERT)
-    private LocalDateTime createTime;
-
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    private LocalDateTime updateTime;
+    @TableField("updated_at")
+    private LocalDateTime updatedAt;
 
     @TableLogic
     private Integer deleted;

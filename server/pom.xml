@@ -92,6 +92,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Apache PDFBox — PDF 生成（工资条存证 PDF）-->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.2</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

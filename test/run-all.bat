@@ -38,7 +38,7 @@ echo.
 echo ================================================================
 echo  [2/3] 前端单元测试 (Vitest + jsdom)
 echo ================================================================
-cd /d "%ROOT%\app"
+cd /d "%ROOT%\app\mp"
 call "%ROOT%\node_modules\.bin\vitest" run --reporter=verbose
 if %errorlevel% == 0 (
   echo  结果：PASS
@@ -53,7 +53,7 @@ echo ================================================================
 echo  [3/3] 前后端集成测试 (需要后端服务在 localhost:8080 运行)
 echo        服务未运行时测试自动跳过，不计为失败
 echo ================================================================
-cd /d "%ROOT%\app"
+cd /d "%ROOT%\app\mp"
 call "%ROOT%\node_modules\.bin\vitest" run --config "vitest.integration.config.ts" --reporter=verbose
 echo  集成测试已完成（跳过=服务未启动，不影响整体结果）
 

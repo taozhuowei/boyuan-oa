@@ -3,22 +3,23 @@
   "version": "1.0.0",
   "private": true,
   "workspaces": [
-    "app",
+    "app/h5",
+    "app/mp",
     "server"
   ],
   "scripts": {
-    "dev:web": "yarn --cwd app dev:web",
-    "dev:mp-weixin": "yarn --cwd app dev:mp-weixin",
-    "preview:mp-weixin": "yarn --cwd app preview:mp-weixin",
-    "build:web": "yarn --cwd app build:web",
-    "build:mp-weixin": "yarn --cwd app build:mp-weixin",
-    "test": "cd test && run-all.bat",
-    "test:frontend": "yarn --cwd app exec vitest run --reporter=verbose",
-    "test:integration": "yarn --cwd app exec vitest run --config vitest.integration.config.ts --reporter=verbose",
-    "test:backend": "cd server && mvn test",
-    "install:all": "yarn install",
+    "dev": "concurrently \"yarn dev:backend\" \"yarn dev:h5\" \"yarn dev:mp\"",
+    "dev:h5": "wait-on tcp:8080 && nuxt dev --cwd app/h5",
+    "dev:mp": "wait-on tcp:8080 && cd app/mp && uni --platform mp-weixin",
     "dev:backend": "cd server && mvn spring-boot:run",
-    "build:backend": "cd server && mvn clean package",
-    "db:init": "psql -U postgres -f server/src/main/resources/db/schema.sql"
+    "build": "yarn build:backend && yarn build:h5 && yarn build:mp",
+    "build:h5": "nuxt build --cwd app/h5",
+    "build:mp": "cd app/mp && NODE_ENV=production uni build --platform mp-weixin",
+    "build:backend": "cd server && mvn clean package -DskipTests",
+    "start": "java -jar server/target/backend-*.jar"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
   }
 }
