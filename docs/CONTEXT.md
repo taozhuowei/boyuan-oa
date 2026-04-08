@@ -30,18 +30,32 @@
 
 继续 M3 剩余任务：`TraceIdFilter.java`、`OperationLogAspect.java`、WorkLogController 迁移到 FormService（参照 AttendanceController）、ApprovalFlowDef CRUD 接口。M3 检查点全过后进入 M4 前端接入。
 
+### 开发环境
+
+| 命令 | 说明 |
+|------|------|
+| `yarn dev` | 同时启动后端（8080）+ H5 + 小程序（需 Maven） |
+| `yarn build` | 顺序构建：后端 JAR → H5 → 小程序 |
+| `yarn start` | 启动生产 JAR |
+| `bash test/run-all.sh` | 三层测试一键运行（Windows：`test\run-all.bat`） |
+
+**测试三层**：
+1. 后端单元测试：`server/src/test/`，Maven 管理，73 个用例
+2. 前端单元测试：`test/frontend/`，Vitest + jsdom，37 个用例
+3. 前后端集成测试：`test/integration/`，Vitest + fetch，后端未启动时自动跳过
+
 ---
 
 ## 3. 文档地图
 
 | 文档 | 内容 |
 |------|------|
-| `tech_doc/architecture.md` | 系统架构图、实体字段表、API 规范、模块解耦（§12）、日志系统（§13） |
-| `tech_doc/backend_impl.md` | 包结构、MyBatis-Plus 约定、JWT、权限 AOP、引擎实现模式 |
-| `tech_doc/frontend_impl.md` | 适配层、useComponent、HTTP 层、CSS 变量 |
-| `tech_doc/todo.md` | **唯一进度入口**，M0–M12 任务和检查点 |
-| `test/test_design.md` | 测试策略、用例设计、Dev 快捷工具设计（§10） |
-| `design.md` | 角色/权限/审批流/薪资规则/数据保留（建筑工程版） |
+| `docs/ARCHITECTURE.md` | 系统架构图、实体字段表、API 规范、模块解耦（§12）、日志系统（§13） |
+| `docs/BACKEND_IMPL.md` | 包结构、MyBatis-Plus 约定、JWT、权限 AOP、引擎实现模式 |
+| `docs/FRONTEND_IMPL.md` | 适配层、useComponent、HTTP 层、CSS 变量 |
+| `docs/TODO.md` | **唯一进度入口**，M0–M12 任务和检查点 |
+| `docs/DESIGN.md` | 角色/权限/审批流/薪资规则/数据保留（建筑工程版） |
+| `test/TEST_DESIGN.md` | 测试策略、用例设计、Dev 快捷工具设计（§10） |
 
 ---
 
@@ -97,14 +111,13 @@
 
 | 文件 | 说明 |
 |------|------|
-| `app/frontend/src/utils/http.ts` | 唯一 HTTP 出口 |
-| `app/frontend/src/composables/useComponent.ts` | 跨端组件加载 |
-| `app/frontend/src/adapters/config/components.json` | H5↔MP 组件映射表 |
-| `app/frontend/src/stores/user.ts` | Pinia 用户状态（token + 员工信息） |
-| `app/backend/src/main/resources/db/schema.sql` | 35 张表 DDL |
-| `app/backend/src/main/resources/db/data.sql` | 5个测试账号 + 种子数据 |
-| `app/backend/.../service/ApprovalFlowService.java` | 审批流引擎核心，已真实实现 |
-| `app/backend/.../service/ApprovalFlowService.java` | 审批流引擎核心，已真实实现 |
+| `app/src/utils/http.ts` | 唯一 HTTP 出口 |
+| `app/src/composables/useComponent.ts` | 跨端组件加载 |
+| `app/src/adapters/config/components.json` | H5↔MP 组件映射表 |
+| `app/src/stores/user.ts` | Pinia 用户状态（token + 员工信息） |
+| `server/src/main/resources/db/schema.sql` | 35 张表 DDL |
+| `server/src/main/resources/db/data.sql` | 5个测试账号 + 种子数据 |
+| `server/src/main/java/com/oa/backend/service/ApprovalFlowService.java` | 审批流引擎核心，已真实实现 |
 
 ---
 
