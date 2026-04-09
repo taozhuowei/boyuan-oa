@@ -117,7 +117,7 @@ interface WorkbenchMenu {
 const ROLE_MENUS: Record<string, MenuItem[]> = {
   ceo: [
     { key: '/', label: '工作台', path: '/' },
-    { key: '/approval', label: '审批中心', path: '/approval' },
+    { key: '/todo', label: '审批中心', path: '/todo' },
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/projects', label: '项目管理', path: '/projects' },
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
@@ -128,7 +128,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
   ],
   finance: [
     { key: '/', label: '工作台', path: '/' },
-    { key: '/approval', label: '审批中心', path: '/approval' },
+    { key: '/todo', label: '审批中心', path: '/todo' },
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
     { key: '/injury', label: '工伤理赔', path: '/injury' },
@@ -136,7 +136,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
   ],
   project_manager: [
     { key: '/', label: '工作台', path: '/' },
-    { key: '/approval', label: '审批中心', path: '/approval' },
+    { key: '/todo', label: '审批中心', path: '/todo' },
     { key: '/projects', label: '项目管理', path: '/projects' },
     { key: '/construction-log', label: '施工日志', path: '/construction-log' },
     { key: '/construction-log/templates', label: '工作项模板', path: '/construction-log/templates' },
@@ -201,15 +201,20 @@ onMounted(async () => {
   const headers: Record<string, string> = { 'X-Client-Type': 'web' }
   if (token) headers['Authorization'] = 'Bearer ' + token
 
+  const role = userStore.userInfo?.role
+  const canAccessAttendanceTodo = role === 'ceo' || role === 'project_manager'
+
   await Promise.all([
-    $fetch<{ menus: WorkbenchMenu[] }>('http://localhost:8080/api/workbench/config', { headers })
+    $fetch<{ menus: WorkbenchMenu[] }>('/api/workbench/config', { headers })
       .then((data) => {
         if (data.menus?.length) apiMenus.value = buildMenuItems(data.menus)
       })
       .catch(() => {/* keep computed fallback */}),
-    $fetch<unknown[]>('http://localhost:8080/api/attendance/todo', { headers })
-      .then((list) => { todoCount.value = list?.length ?? 0 })
-      .catch(() => { todoCount.value = 0 })
+    canAccessAttendanceTodo
+      ? $fetch<unknown[]>('/api/attendance/todo', { headers })
+          .then((list) => { todoCount.value = list?.length ?? 0 })
+          .catch(() => { todoCount.value = 0 })
+      : Promise.resolve().then(() => { todoCount.value = 0 })
   ])
 })
 

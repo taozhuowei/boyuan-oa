@@ -5,7 +5,7 @@ import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   modules: ['@pinia/nuxt'],
-  css: ['ant-design-vue/dist/reset.css'],
+  css: ['~/assets/ant-reset.css'],  // Local copy avoids Vite @fs path issue on Windows with spaces in dir name
   alias: {
     '@shared': resolve(__dirname, '../shared'),
     '@': resolve(__dirname, '.')
@@ -21,5 +21,8 @@ export default defineNuxtConfig({
         resolvers: [AntDesignVueResolver({ importStyle: false })]
       })
     ]
+  },
+  routeRules: {
+    '/api/**': { proxy: 'http://localhost:8080/api/**' }
   }
 })

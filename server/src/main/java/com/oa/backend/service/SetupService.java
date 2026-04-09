@@ -139,6 +139,16 @@ public class SetupService {
     }
 
     /**
+     * Marks the system as initialized for development environment.
+     * Used when working with pre-seeded dev data without running the setup wizard.
+     * Sets the initialized flag to true without creating any accounts.
+     */
+    public void markInitializedForDev() {
+        systemConfigMapper.setValue(KEY_INITIALIZED, "true", "系统初始化状态");
+        log.info("Dev: system marked as initialized");
+    }
+
+    /**
      * 验证恢复码并轮换。
      * 验证提供的恢复码是否匹配存储的哈希值，如果匹配则生成新恢复码并更新存储。
      *

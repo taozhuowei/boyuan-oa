@@ -59,6 +59,8 @@ public class RetentionService {
     private final ConstructionLogSummaryMapper constructionLogMapper;
     private final InjuryClaimMapper injuryClaimMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final NotificationService notificationService;
+    private final EmployeeMapper employeeMapper;
 
     @Value("${oa.upload-dir:./uploads}")
     private String uploadDir;
@@ -576,6 +578,24 @@ public class RetentionService {
 
         // 发布事件
         eventPublisher.publishEvent(new RetentionExpiredEvent(this, policy, expectedDeleteDate, policy.getDataType()));
+
+        // 通知 CEO 员工
+        List<Employee> ceos = employeeMapper.selectList(
+                new LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getRoleCode, "ceo")
+                        .eq(Employee::getAccountStatus, "ACTIVE")
+                        .eq(Employee::getDeleted, 0)
+        );
+        for (Employee ceo : ceos) {
+            notificationService.send(
+                    ceo.getId(),
+                    "Data Retention Alert",
+                    "Data type " + policy.getDataType() + " will expire on " + expectedDeleteDate,
+                    "SYSTEM",
+                    "RETENTION_POLICY",
+                    policy.getId()
+            );
+        }
 
         log.info("创建保留提醒: policyId={}, dataType={}, expectedDeleteDate={}",
                 policy.getId(), policy.getDataType(), expectedDeleteDate);

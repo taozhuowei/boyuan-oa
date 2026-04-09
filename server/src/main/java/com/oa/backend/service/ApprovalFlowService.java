@@ -31,6 +31,7 @@ public class ApprovalFlowService {
     private final DepartmentMapper departmentMapper;
     private final OperationLogMapper operationLogMapper;
     private final ObjectMapper objectMapper;
+    private final NotificationService notificationService;
 
     /**
      * 初始化审批流
@@ -216,6 +217,15 @@ public class ApprovalFlowService {
             formRecord.setStatus("REJECTED");
             formRecord.setUpdatedAt(LocalDateTime.now());
             formRecordMapper.updateById(formRecord);
+            // 通知提交人
+            notificationService.send(
+                    formRecord.getSubmitterId(),
+                    "Your request has been rejected",
+                    "Your " + formRecord.getFormType() + " request has been rejected. Comment: " + (comment != null ? comment : ""),
+                    "APPROVAL",
+                    "FORM_RECORD",
+                    formRecordId
+            );
         } else if ("APPROVE".equals(action)) {
             // 获取所有节点判断是否为最后一个
             List<ApprovalFlowNode> allNodes = approvalFlowNodeMapper.findByFlowId(flowDef.getId());
@@ -235,6 +245,15 @@ public class ApprovalFlowService {
                 formRecord.setStatus("APPROVED");
                 formRecord.setUpdatedAt(LocalDateTime.now());
                 formRecordMapper.updateById(formRecord);
+                // 通知提交人
+                notificationService.send(
+                        formRecord.getSubmitterId(),
+                        "Your request has been approved",
+                        "Your " + formRecord.getFormType() + " request has been approved.",
+                        "APPROVAL",
+                        "FORM_RECORD",
+                        formRecordId
+                );
             }
         }
 

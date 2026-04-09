@@ -21,28 +21,27 @@ const ROLE_BLOCKED_ROUTES: Record<string, string[]> = {
   '/settings': ['finance', 'project_manager', 'employee', 'worker']
 }
 
-/** System initialization status cache */
-let initialized: boolean | null = null
-
 export default defineNuxtRouteMiddleware(async (to) => {
+  // Use Nuxt's useState for per-request initialization status (SSR-safe)
+  const initState = useState<boolean | null>('setup-initialized', () => null)
   // Public routes (no auth needed)
   const publicPaths = ['/login', '/auth/forgot_password', '/setup']
 
   // Check system initialization status
-  if (initialized === null) {
+  if (initState.value === null) {
     try {
       const response = await $fetch<{ initialized: boolean }>(
-        'http://localhost:8080/api/setup/status'
+        '/api/setup/status'
       )
-      initialized = response.initialized
+      initState.value = response.initialized
     } catch {
       // If API fails, assume system is initialized to avoid blocking
-      initialized = true
+      initState.value = true
     }
   }
 
   // Redirect to setup if not initialized
-  if (initialized === false && to.path !== '/setup') {
+  if (initState.value === false && to.path !== '/setup') {
     return navigateTo('/setup')
   }
 

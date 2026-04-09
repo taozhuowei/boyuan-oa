@@ -149,8 +149,12 @@ onMounted(async () => {
   loading.value = true
   try {
     // Load both todo list and summary in parallel
+    const role = useUserStore().userInfo?.role
+    const canAccessAttendanceTodo = role === 'ceo' || role === 'project_manager'
     const [list, summaryData] = await Promise.all([
-      request<FormRecord[]>({ url: '/attendance/todo' }).catch(() => []),
+      canAccessAttendanceTodo
+        ? request<FormRecord[]>({ url: '/attendance/todo' }).catch(() => [])
+        : Promise.resolve([]),
       request<WorkbenchSummary>({ url: '/workbench/summary' }).catch(() => null)
     ])
     todoList.value = list ?? []

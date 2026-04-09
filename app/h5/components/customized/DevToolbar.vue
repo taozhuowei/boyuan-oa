@@ -126,34 +126,23 @@ async function resetSetup() {
 async function skipSetup() {
   skipping.value = true
   try {
-    // First reset
-    const resetResponse = await fetch('/api/dev/reset-setup', {
+    const response = await fetch('/api/dev/skip-setup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     })
 
-    if (!resetResponse.ok) {
-      throw new Error(`Reset failed: HTTP ${resetResponse.status}`)
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
     }
 
-    // Then init with preset data
-    const initResponse = await fetch('/api/setup/init', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        companyName: 'Boyuan Construction',
-        ceoEmployeeNo: 'ceo.demo',
-        ceoPassword: '123456',
-        recoveryCode: null
-      })
-    })
+    // Update UI status message (optional feedback before reload)
+    errorMsg.value = 'Setup skipped successfully'
+    setTimeout(() => {
+      errorMsg.value = ''
+    }, 1500)
 
-    if (!initResponse.ok) {
-      throw new Error(`Init failed: HTTP ${initResponse.status}`)
-    }
-
-    // Navigate to login
-    await navigateTo('/login')
+    // Navigate to home
+    window.location.href = '/'
   } catch (error: any) {
     showError(error?.message || 'Skip setup failed')
   } finally {

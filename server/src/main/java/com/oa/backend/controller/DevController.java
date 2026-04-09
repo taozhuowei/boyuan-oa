@@ -46,4 +46,17 @@ public class DevController {
         setupService.resetForDev();
         return ResponseEntity.ok(Map.of("message", "reset ok"));
     }
+
+    /**
+     * Marks the system as initialized for development environment.
+     * Used when working with pre-seeded dev data without running the setup wizard.
+     * Sets the initialized flag to true without creating any accounts.
+     *
+     * @return operation result message
+     */
+    @PostMapping("/skip-setup")
+    public ResponseEntity<Map<String, String>> skipSetup() {
+        setupService.markInitializedForDev();
+        return ResponseEntity.ok(Map.of("message", "marked as initialized"));
+    }
 }
