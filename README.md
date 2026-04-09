@@ -1,13 +1,13 @@
 # 博渊 OA 工作台
 
-企业微信工作台小程序 + Web 管理后台，面向建筑与工程企业的内部办公协同系统。
+面向中小型建筑施工企业的内部办公协同系统，包含 H5 管理后台和微信小程序端。
 
 ## 核心架构
 
 ```
 ┌─────────────┐    ┌─────────────┐
-│   小程序端   │    │    H5 端    │
-│ (uni-app)   │    │ (uni-app)   │
+│  小程序端    │    │   H5 端     │
+│  (uni-app)  │    │  (Nuxt 3)   │
 └──────┬──────┘    └──────┬──────┘
        │                  │
        └────────┬─────────┘
@@ -23,26 +23,38 @@
 
 | 目录 | 说明 |
 |------|------|
-| [app/](./app/) | 前端应用 |
-| [server/](./server/) | 后端服务 |
+| [app/h5/](./app/h5/) | H5 前端（Nuxt 3 + Ant Design Vue） |
+| [app/mp/](./app/mp/) | 小程序前端（uni-app） |
+| [app/shared/](./app/shared/) | 前端共享类型和工具 |
+| [server/](./server/) | 后端服务（Spring Boot + MyBatis-Plus） |
 | [docs/](./docs/) | 技术文档 |
-| [test/](./test/) | 测试套件 |
+| [test/](./test/) | 测试设计文档和集成测试 |
+| [tools/](./tools/) | 部署脚本和运维工具 |
 
 ## 快速开始
 
 ```bash
-# 安装依赖
-yarn install
+# 后端
+cd server && mvn spring-boot:run
 
-# 启动开发环境（后端+H5+小程序）
-yarn dev
+# H5 前端
+cd app/h5 && npm run dev
 
-# 运行测试
-test/run-all.bat     # Windows
-bash test/run-all.sh # Unix/macOS
+# 小程序
+cd app/mp && npm run dev
+```
 
-# 构建生产包
-yarn build
+## 运行测试
+
+```bash
+# 后端单元测试 + 集成测试
+cd server && mvn test
+
+# H5 前端单元测试
+cd app/h5 && npm run test
+
+# 小程序单元测试
+cd app/mp && npm run test
 ```
 
 ## 声明

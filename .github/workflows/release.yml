@@ -1,0 +1,119 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('server/**/*.gradle*', 'server/**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Build backend JAR
+        working-directory: server
+        run: ./gradlew bootJar -x test --no-daemon
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-jar
+          path: server/build/libs/*.jar
+          retention-days: 30
+
+  build-frontend:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/h5/package-lock.json
+
+      - name: Install dependencies and build H5
+        working-directory: app/h5
+        run: |
+          npm install
+          npm run build
+
+      - name: Upload H5 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: h5-dist
+          path: app/h5/.output/public/
+          retention-days: 30
+
+  create-release:
+    name: Create Release
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download backend artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-jar
+          path: artifacts/backend
+
+      - name: Download H5 artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: h5-dist
+          path: artifacts/h5
+
+      - name: Summarize artifacts
+        run: |
+          echo "## Build Artifacts Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Backend JAR" >> $GITHUB_STEP_SUMMARY
+          ls -la artifacts/backend/ >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### H5 Distribution" >> $GITHUB_STEP_SUMMARY
+          ls -la artifacts/h5/ >> $GITHUB_STEP_SUMMARY
+
+      - name: Create GitHub Release (if tag starts with 'v')
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/backend/*.jar
+            artifacts/h5/**
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Log release skipped (non-tag push)
+        if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
+        run: |
+          echo "Push is not a version tag (does not start with 'v'). Skipping release creation."
+          echo "Artifacts have been built and uploaded as workflow artifacts."

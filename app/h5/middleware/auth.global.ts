@@ -1,6 +1,7 @@
 // Global route guard
-// 1. Redirect unauthenticated users to /login
-// 2. Enforce role-based route access (blocked routes per role)
+// 1. Check system initialization status, redirect to /setup if not initialized
+// 2. Redirect unauthenticated users to /login
+// 3. Enforce role-based route access (blocked routes per role)
 // Backend controls menu visibility; this guard blocks direct URL access for restricted pages.
 
 /** Routes that require specific roles (undefined = all authenticated users allowed) */
@@ -20,15 +21,38 @@ const ROLE_BLOCKED_ROUTES: Record<string, string[]> = {
   '/settings': ['finance', 'project_manager', 'employee', 'worker']
 }
 
-export default defineNuxtRouteMiddleware((to) => {
-  const tokenCookie = useCookie<string | null>('oa-token')
-  const userCookie = useCookie<{ role?: string } | null>('oa-user')
+/** System initialization status cache */
+let initialized: boolean | null = null
 
+export default defineNuxtRouteMiddleware(async (to) => {
   // Public routes (no auth needed)
-  const publicPaths = ['/login', '/auth/forgot_password']
+  const publicPaths = ['/login', '/auth/forgot_password', '/setup']
+
+  // Check system initialization status
+  if (initialized === null) {
+    try {
+      const response = await $fetch<{ initialized: boolean }>(
+        'http://localhost:8080/api/setup/status'
+      )
+      initialized = response.initialized
+    } catch {
+      // If API fails, assume system is initialized to avoid blocking
+      initialized = true
+    }
+  }
+
+  // Redirect to setup if not initialized
+  if (initialized === false && to.path !== '/setup') {
+    return navigateTo('/setup')
+  }
+
+  // Skip auth check for public paths
   if (publicPaths.includes(to.path)) {
     return
   }
+
+  const tokenCookie = useCookie<string | null>('oa-token')
+  const userCookie = useCookie<{ role?: string } | null>('oa-user')
 
   // Redirect unauthenticated users
   if (!tokenCookie.value) {

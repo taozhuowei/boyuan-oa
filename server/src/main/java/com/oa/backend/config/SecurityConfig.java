@@ -123,6 +123,8 @@ public class SecurityConfig {
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**", "/actuator/**", "/health", "/setup/status", "/h2-console/**", "/test/**").permitAll()
+                .requestMatchers("/setup/init", "/setup/reset-ceo-password").permitAll()
+                .requestMatchers("/dev/**").permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex
