@@ -4,6 +4,9 @@ node_modules/
 # build output
 app/dist/
 server/target/
+app/h5/.nuxt/
+app/h5/.output/
+app/h5/.data/
 
 # logs and temp files
 *.log

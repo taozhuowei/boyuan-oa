@@ -1,1 +1,0 @@
-import{d as t,B as s,C as o,A as n}from"./BkRwQCva.js";const a={class:"page-placeholder"},c=t({__name:"index",setup(l){return(r,e)=>(n(),s("div",a,[...e[0]||(e[0]=[o("h2",null,"系统配置",-1),o("p",{style:{color:"#999"}},"TODO: implement",-1)])]))}});export{c as default};
