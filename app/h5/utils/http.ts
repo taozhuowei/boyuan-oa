@@ -1,7 +1,7 @@
 // HTTP utility for H5 — wraps $fetch with auth header injection
 // Uses Nuxt's $fetch (ofetch) instead of uni.request
 
-const API_BASE = 'http://localhost:8080/api'
+const API_BASE = '/api'
 
 export interface RequestOptions {
   url: string

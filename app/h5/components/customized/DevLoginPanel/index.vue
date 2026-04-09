@@ -42,7 +42,7 @@ interface LoginResponse {
 async function quickLogin(user: QuickUser) {
   user.loading = true
   try {
-    const data = await $fetch<LoginResponse>('http://localhost:8080/api/auth/login', {
+    const data = await $fetch<LoginResponse>('/api/auth/login', {
       method: 'POST',
       body: {
         username: user.username,

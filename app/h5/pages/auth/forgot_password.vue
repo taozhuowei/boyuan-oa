@@ -125,7 +125,7 @@ const resetToken = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
 
-const API_BASE = 'http://localhost:8080/api'
+const API_BASE = '/api'
 
 async function doSendCode() {
   if (!phone.value.trim()) {
