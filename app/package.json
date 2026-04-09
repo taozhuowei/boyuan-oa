@@ -1,0 +1,20 @@
+{
+  "name": "oa-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": ["h5", "mp"],
+  "scripts": {
+    "dev": "concurrently -n frontend,backend -c cyan,yellow \"yarn --cwd h5 dev\" \"cd ../server && ./mvnw spring-boot:run\"",
+    "dev:web": "yarn --cwd h5 dev",
+    "dev:mp": "yarn --cwd mp dev:mp-weixin",
+    "build": "yarn type-check && yarn build:h5",
+    "build:h5": "yarn --cwd h5 build",
+    "build:mp": "yarn --cwd mp build:mp-weixin",
+    "type-check": "yarn --cwd h5 type-check",
+    "test": "yarn --cwd h5 test",
+    "preview": "yarn --cwd h5 preview"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}
