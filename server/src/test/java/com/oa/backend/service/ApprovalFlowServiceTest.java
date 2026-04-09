@@ -59,6 +59,9 @@ class ApprovalFlowServiceTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private NotificationService notificationService;
+
     private static final Long TEST_FORM_ID = 1L;
     private static final Long TEST_FLOW_DEF_ID = 100L;
     private static final Long TEST_SUBMITTER_ID = 10L;
