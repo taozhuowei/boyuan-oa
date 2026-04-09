@@ -19,8 +19,12 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.util.List;
 
+import org.mockito.quality.Strictness;
+import org.mockito.junit.jupiter.MockitoSettings;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
@@ -29,6 +33,7 @@ import static org.mockito.Mockito.*;
  * 覆盖：创建项目、状态变更、添加成员、不将 pmId 写入 project 表
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("M2 - ProjectServiceImpl")
 class ProjectServiceImplTest {
 
@@ -190,6 +195,226 @@ class ProjectServiceImplTest {
 
         assertThrows(IllegalArgumentException.class,
             () -> service.addMember(1L, new ProjectMemberRequest(99L, "MEMBER")));
+    }
+
+    // ─── getById additional tests ──────────────────────────
+
+    @Test
+    @DisplayName("getById：项目存在时返回项目")
+    void getById_found_returnsProject() {
+        Project project = activeProject(1L);
+        when(projectMapper.selectOne(any())).thenReturn(project);
+
+        Project result = service.getById(1L);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getId());
+        assertEquals("测试项目", result.getName());
+    }
+
+    // ─── getMembers ──────────────────────────────────────────
+
+    @Test
+    @DisplayName("getMembers：返回项目成员列表")
+    void getMembers_returnsMemberList() {
+        ProjectMember member1 = new ProjectMember();
+        member1.setId(1L);
+        member1.setProjectId(1L);
+        member1.setEmployeeId(101L);
+        member1.setRole("PM");
+
+        ProjectMember member2 = new ProjectMember();
+        member2.setId(2L);
+        member2.setProjectId(1L);
+        member2.setEmployeeId(102L);
+        member2.setRole("MEMBER");
+
+        when(projectMemberMapper.selectList(any())).thenReturn(List.of(member1, member2));
+
+        List<ProjectMember> result = service.getMembers(1L);
+
+        assertEquals(2, result.size());
+        assertEquals("PM", result.get(0).getRole());
+        assertEquals("MEMBER", result.get(1).getRole());
+    }
+
+    // ─── create success path ─────────────────────────────────
+
+    @Test
+    @DisplayName("create：成功创建项目，insert返回1，状态为ACTIVE")
+    void create_success_returnsProjectWithActiveStatus() {
+        when(projectMapper.insert(any())).thenReturn(1);
+        ProjectCreateRequest req = new ProjectCreateRequest("新项目", LocalDate.now(), 5);
+
+        Project result = service.create(req);
+
+        assertNotNull(result);
+        assertEquals("ACTIVE", result.getStatus());
+        assertEquals("新项目", result.getName());
+        assertEquals(5, result.getLogCycleDays());
+    }
+
+    // ─── update ──────────────────────────────────────────────
+
+    @Test
+    @DisplayName("update：项目不存在时抛出 IllegalArgumentException")
+    void update_notFound_throwsException() {
+        when(projectMapper.selectOne(any())).thenReturn(null);
+        ProjectUpdateRequest req = new ProjectUpdateRequest("新名称", null, null, null, null);
+
+        assertThrows(IllegalArgumentException.class, () -> service.update(99L, req));
+    }
+
+    @Test
+    @DisplayName("update：成功更新项目字段，调用updateById")
+    void update_success_updatesFieldsAndCallsUpdateById() {
+        Project project = activeProject(1L);
+        when(projectMapper.selectOne(any())).thenReturn(project);
+
+        ProjectUpdateRequest req = new ProjectUpdateRequest(
+            "更新后名称",
+            LocalDate.of(2024, 1, 1),
+            LocalDate.of(2024, 12, 31),
+            7,
+            3
+        );
+
+        service.update(1L, req);
+
+        ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+        verify(projectMapper).updateById(captor.capture());
+        Project updated = captor.getValue();
+        assertEquals("更新后名称", updated.getName());
+        assertEquals(LocalDate.of(2024, 1, 1), updated.getStartDate());
+        assertEquals(LocalDate.of(2024, 12, 31), updated.getActualEndDate());
+        assertEquals(7, updated.getLogCycleDays());
+        assertEquals(3, updated.getLogReportCycleDays());
+    }
+
+    // ─── closeProject additional tests ───────────────────────
+
+    @Test
+    @DisplayName("closeProject：成功关闭项目，调用updateById设置status=CLOSED")
+    void closeProject_success_callsUpdateByIdWithClosedStatus() {
+        Project project = activeProject(1L);
+        when(projectMapper.selectOne(any())).thenReturn(project);
+
+        service.closeProject(1L);
+
+        ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+        verify(projectMapper).updateById(captor.capture());
+        assertEquals("CLOSED", captor.getValue().getStatus());
+        assertNotNull(captor.getValue().getActualEndDate());
+    }
+
+    // ─── reopenProject additional tests ──────────────────────
+
+    @Test
+    @DisplayName("reopenProject：项目不存在时抛出 IllegalArgumentException")
+    void reopenProject_notFound_throwsException() {
+        when(projectMapper.selectOne(any())).thenReturn(null);
+        assertThrows(IllegalArgumentException.class, () -> service.reopenProject(99L));
+    }
+
+    @Test
+    @DisplayName("reopenProject：成功重启项目，调用updateById设置status=ACTIVE")
+    void reopenProject_success_callsUpdateByIdWithActiveStatus() {
+        Project project = activeProject(1L);
+        project.setStatus("CLOSED");
+        when(projectMapper.selectOne(any())).thenReturn(project);
+
+        service.reopenProject(1L);
+
+        ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+        verify(projectMapper).updateById(captor.capture());
+        assertEquals("ACTIVE", captor.getValue().getStatus());
+    }
+
+    // ─── delete additional tests ─────────────────────────────
+
+    @Test
+    @DisplayName("delete：项目不存在时抛出 IllegalArgumentException")
+    void delete_notFound_throwsException() {
+        when(projectMapper.selectOne(any())).thenReturn(null);
+        assertThrows(IllegalArgumentException.class, () -> service.delete(99L));
+    }
+
+    @Test
+    @DisplayName("delete：成功删除项目，调用updateById设置deleted=1")
+    void delete_success_callsUpdateByIdWithDeletedFlag() {
+        Project project = activeProject(1L);
+        when(projectMapper.selectOne(any())).thenReturn(project);
+
+        service.delete(1L);
+
+        ArgumentCaptor<Project> captor = ArgumentCaptor.forClass(Project.class);
+        verify(projectMapper).updateById(captor.capture());
+        assertEquals(1, captor.getValue().getDeleted());
+    }
+
+    // ─── addMember additional tests ──────────────────────────
+
+    @Test
+    @DisplayName("addMember：项目不存在时抛出 IllegalArgumentException")
+    void addMember_projectNotFound_throwsException() {
+        when(projectMapper.selectOne(any())).thenReturn(null);
+
+        assertThrows(IllegalArgumentException.class,
+            () -> service.addMember(99L, new ProjectMemberRequest(3L, "MEMBER")));
+    }
+
+    @Test
+    @DisplayName("addMember：成功添加新成员，执行insert操作")
+    void addMember_success_insertsNewMember() {
+        when(projectMapper.selectOne(any())).thenReturn(activeProject(1L));
+        when(employeeMapper.selectById(3L)).thenReturn(employee(3L));
+        when(projectMemberMapper.selectOne(any())).thenReturn(null);
+        when(projectMemberMapper.insert(any())).thenReturn(1);
+
+        ProjectMemberRequest req = new ProjectMemberRequest(3L, "MEMBER");
+        ProjectMember result = service.addMember(1L, req);
+
+        assertNotNull(result);
+        assertEquals(1L, result.getProjectId());
+        assertEquals(3L, result.getEmployeeId());
+        assertEquals("MEMBER", result.getRole());
+        verify(projectMemberMapper).insert(any());
+    }
+
+    // ─── removeMember ─────────────────────────────────────────
+
+    @Test
+    @DisplayName("removeMember：成员不存在时抛出 IllegalArgumentException")
+    void removeMember_notFound_throwsException() {
+        when(projectMemberMapper.selectOne(any())).thenReturn(null);
+        assertThrows(IllegalArgumentException.class, () -> service.removeMember(1L, 3L));
+    }
+
+    @Test
+    @DisplayName("removeMember：成功软删除成员，设置 deleted=1")
+    void removeMember_success_softDeletesMember() {
+        ProjectMember member = new ProjectMember();
+        member.setId(1L);
+        member.setDeleted(0);
+        when(projectMemberMapper.selectOne(any())).thenReturn(member);
+
+        service.removeMember(1L, 3L);
+
+        verify(projectMemberMapper).updateById(argThat(m -> m.getDeleted() == 1));
+    }
+
+    // ─── listProjects with pmEmployeeId filter ─────────────────
+
+    @Test
+    @DisplayName("listProjects：传入 pmEmployeeId 时过滤 PM 项目，无项目时返回空分页")
+    void listProjects_withPmFilter_noProjects_returnsEmptyPage() {
+        when(projectMemberMapper.selectList(any())).thenReturn(List.of());
+
+        var result = service.listProjects(1, 10, null, 5L);
+
+        assertNotNull(result);
+        assertEquals(0, result.getTotal());
+        verify(projectMapper, never()).selectPage(any(), any());
     }
 
     // ─── helpers ─────────────────────────────────────────────
