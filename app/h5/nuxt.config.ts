@@ -6,7 +6,10 @@ import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 export default defineNuxtConfig({
   ssr: false,  // SPA mode: eliminates FOUC caused by AntD CSS-in-JS not being available in SSR HTML
   modules: ['@pinia/nuxt'],
-  css: ['~/assets/ant-reset.css'],  // Local copy avoids Vite @fs path issue on Windows with spaces in dir name
+  css: [
+    '~/assets/ant-reset.css',      // Local copy avoids Vite @fs path issue on Windows with spaces in dir name
+    '~/assets/app-loading.css',    // CSS-only initial spinner — visible before JS executes
+  ],
   alias: {
     '@shared': resolve(__dirname, '../shared'),
     '@': resolve(__dirname, '.')
