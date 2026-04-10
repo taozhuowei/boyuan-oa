@@ -3,6 +3,7 @@ package com.oa.backend.controller;
 import com.oa.backend.service.SetupService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -15,14 +16,17 @@ import java.util.Map;
  * 提供开发调试用的辅助接口，仅在 'dev' 配置文件激活时加载。
  *
  * <p><strong>警告：</strong>此控制器包含危险操作（如重置系统初始化状态），
- * 绝对禁止在生产环境使用。必须通过 {@code @Profile("dev")} 确保仅在开发环境加载。
+ * 绝对禁止在生产环境使用。{@code @Profile("dev")} 确保仅在 dev profile 下加载，
+ * 生产环境此路由物理不存在。
  *
  * <p>可用端点：
  * <ul>
  *   <li>POST /dev/reset-setup - 重置系统初始化状态（允许重新执行初始化向导）</li>
+ *   <li>POST /dev/skip-setup  - 标记系统为已初始化（跳过向导直接进入登录）</li>
  * </ul>
  */
 @Slf4j
+@Profile("dev")
 @RestController
 @RequestMapping("/dev")
 @RequiredArgsConstructor

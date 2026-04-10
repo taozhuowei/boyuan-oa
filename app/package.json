@@ -12,7 +12,9 @@
     "build:mp": "yarn --cwd mp build:mp-weixin",
     "type-check": "yarn --cwd h5 type-check",
     "test": "yarn --cwd h5 test",
-    "preview": "yarn --cwd h5 preview"
+    "preview": "yarn --cwd h5 preview",
+    "deploy:h5": "yarn build:h5 && rsync -avz --delete h5/.output/public/ $OA_DEPLOY_HOST:$OA_DEPLOY_PATH",
+    "deploy:backend": "cd ../server && ./mvnw package -DskipTests && rsync -avz target/*.jar $OA_DEPLOY_HOST:$OA_DEPLOY_PATH/app-new.jar && ssh $OA_DEPLOY_HOST \"bash $OA_DEPLOY_PATH/update.sh\""
   },
   "devDependencies": {
     "concurrently": "^8.2.0"

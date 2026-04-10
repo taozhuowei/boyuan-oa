@@ -4,15 +4,14 @@ FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /build
 
-# Copy Gradle wrapper and build files
-COPY gradlew build.gradle settings.gradle ./
-COPY gradle/ ./gradle/
-
-# Copy source code
-COPY server/ ./server/
+# Copy Maven wrapper and source
+COPY server/pom.xml ./server/pom.xml
+COPY server/.mvn ./server/.mvn
+COPY server/mvnw ./server/mvnw
+COPY server/src ./server/src
 
 # Build the application (skip tests for faster build)
-RUN ./gradlew :server:bootJar -x test --no-daemon
+RUN ./server/mvnw -f server/pom.xml package -DskipTests --no-transfer-progress
 
 # Stage 2: Runtime image
 FROM eclipse-temurin:21-jre-alpine
@@ -23,7 +22,7 @@ WORKDIR /app
 RUN addgroup -S oa && adduser -S oa -G oa
 
 # Copy the built JAR from builder stage
-COPY --from=builder /build/server/build/libs/*.jar app.jar
+COPY --from=builder /build/server/target/*.jar app.jar
 
 # Change ownership to non-root user
 RUN chown -R oa:oa /app

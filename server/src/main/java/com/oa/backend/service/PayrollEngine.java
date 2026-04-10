@@ -38,6 +38,7 @@ public class PayrollEngine {
     private final EmployeeMapper employeeMapper;
     private final PositionMapper positionMapper;
     private final FormRecordMapper formRecordMapper;
+    private final SocialInsuranceItemMapper socialInsuranceItemMapper;
     private final ObjectMapper objectMapper;
 
     // ── 周期管理 ──────────────────────────────────────────────────────────
@@ -198,9 +199,12 @@ public class PayrollEngine {
         PayrollItemDef baseSalaryDef = findOrCreateItemDef("BASE_SALARY", "基本工资", "EARNING", 1);
         PayrollItemDef overtimeDef = findOrCreateItemDef("OVERTIME_PAY", "加班费", "EARNING", 2);
         PayrollItemDef leaveDeductDef = findOrCreateItemDef("LEAVE_DEDUCT", "请假扣款", "DEDUCTION", 3);
+        PayrollItemDef socialInsuranceDef = findOrCreateItemDef("SOCIAL_INSURANCE", "社会保险（个人）", "DEDUCTION", 4);
+        PayrollItemDef companyPaidSubsidyDef = findOrCreateItemDef("COMPANY_PAID_SUBSIDY", "社保补贴（公司代缴）", "EARNING", 5);
 
         for (Employee emp : employees) {
-            calculateAndSaveSlip(cycle, emp, baseSalaryDef, overtimeDef, leaveDeductDef);
+            calculateAndSaveSlip(cycle, emp, baseSalaryDef, overtimeDef, leaveDeductDef,
+                    socialInsuranceDef, companyPaidSubsidyDef);
         }
 
         // 锁定周期
@@ -217,15 +221,21 @@ public class PayrollEngine {
 
     /**
      * 计算并保存单个员工的工资条
+     *
+     * @param socialInsuranceDef   个人社保扣款项定义（MERGED 模式使用）
+     * @param companyPaidSubsidyDef 公司代缴补贴项定义（COMPANY_PAID 模式使用）
      */
     private void calculateAndSaveSlip(PayrollCycle cycle, Employee emp,
-                                       PayrollItemDef baseDef, PayrollItemDef overtimeDef, PayrollItemDef leaveDef) {
-        // 获取基本工资（从岗位配置读取）
+                                       PayrollItemDef baseDef, PayrollItemDef overtimeDef, PayrollItemDef leaveDef,
+                                       PayrollItemDef socialInsuranceDef, PayrollItemDef companyPaidSubsidyDef) {
+        // 获取基本工资及社保模式（从岗位配置读取）
         BigDecimal baseSalary = BigDecimal.ZERO;
+        String socialInsuranceMode = null;
         if (emp.getPositionId() != null) {
             Position pos = positionMapper.selectById(emp.getPositionId());
-            if (pos != null && pos.getBaseSalary() != null) {
-                baseSalary = pos.getBaseSalary();
+            if (pos != null) {
+                if (pos.getBaseSalary() != null) baseSalary = pos.getBaseSalary();
+                socialInsuranceMode = pos.getSocialInsuranceMode();
             }
         }
 
@@ -246,7 +256,16 @@ public class PayrollEngine {
         // 请假扣款（按实际时长扣，默认100%，即 hourlyRate * hours）
         BigDecimal leaveDeduct = hourlyRate.multiply(leaveHours).setScale(2, RoundingMode.HALF_UP);
 
-        BigDecimal netPay = baseSalary.add(overtimePay).subtract(leaveDeduct).max(BigDecimal.ZERO);
+        // 计算社保（根据岗位社保模式，null/empty 视为 MERGED）
+        BigDecimal socialInsuranceAmount = calculateSocialInsurance(emp.getPositionId(), baseSalary, socialInsuranceMode);
+        boolean isCompanyPaid = "COMPANY_PAID".equals(socialInsuranceMode);
+
+        // 净收入：MERGED 模式扣减个人社保；COMPANY_PAID 模式不扣
+        BigDecimal netPay = baseSalary.add(overtimePay).subtract(leaveDeduct);
+        if (!isCompanyPaid) {
+            netPay = netPay.subtract(socialInsuranceAmount);
+        }
+        netPay = netPay.max(BigDecimal.ZERO);
 
         // 保存工资条
         PayrollSlip slip = new PayrollSlip();
@@ -269,6 +288,16 @@ public class PayrollEngine {
         if (leaveDeduct.compareTo(BigDecimal.ZERO) > 0) {
             saveSlipItem(slip.getId(), leaveDef.getId(), leaveDeduct.negate(),
                     "请假扣款 " + leaveHours + " 小时 × " + hourlyRate);
+        }
+        // 社保明细：MERGED→扣款（负数），COMPANY_PAID→补贴（正数，仅记录）
+        if (socialInsuranceAmount.compareTo(BigDecimal.ZERO) > 0) {
+            if (isCompanyPaid) {
+                saveSlipItem(slip.getId(), companyPaidSubsidyDef.getId(), socialInsuranceAmount,
+                        "社保补贴（公司代缴，记录用）");
+            } else {
+                saveSlipItem(slip.getId(), socialInsuranceDef.getId(), socialInsuranceAmount.negate(),
+                        "社会保险个人部分");
+            }
         }
     }
 
@@ -361,12 +390,50 @@ public class PayrollEngine {
     }
 
     /**
+     * 计算员工社保金额。
+     *
+     * 数据来源：social_insurance_item 表按 position_id 过滤，以 employee_rate * baseSalary 累加。
+     * 若岗位无社保项，返回 ZERO。
+     *
+     * @param positionId  岗位 ID（可为 null）
+     * @param baseSalary  月基本工资，用作缴费基数
+     * @param mode        社保模式（"COMPANY_PAID" / null/"MERGED"）
+     * @return 社保金额（恒为非负数，由调用方决定正负方向）
+     */
+    private BigDecimal calculateSocialInsurance(Long positionId, BigDecimal baseSalary, String mode) {
+        if (positionId == null) return BigDecimal.ZERO;
+
+        List<SocialInsuranceItem> items = socialInsuranceItemMapper.selectList(
+                new LambdaQueryWrapper<SocialInsuranceItem>()
+                        .eq(SocialInsuranceItem::getPositionId, positionId)
+                        .eq(SocialInsuranceItem::getIsEnabled, true)
+                        .eq(SocialInsuranceItem::getDeleted, 0)
+        );
+
+        if (items.isEmpty()) return BigDecimal.ZERO;
+
+        // MERGED 模式：按 employee_rate 计算个人缴纳部分
+        // COMPANY_PAID 模式：按 employee_rate 计算公司代缴金额（记录用）
+        // 两种模式金额计算逻辑相同，区别由调用方处理（扣款 vs 补贴）
+        BigDecimal total = BigDecimal.ZERO;
+        for (SocialInsuranceItem item : items) {
+            if (item.getEmployeeRate() == null) continue;
+            BigDecimal contribution = baseSalary.multiply(item.getEmployeeRate())
+                    .setScale(2, RoundingMode.HALF_UP);
+            total = total.add(contribution);
+        }
+        return total;
+    }
+
+    /**
      * 初始化系统内置工资项定义（首次使用时自动创建）
      */
     private void initSystemItemDefs() {
         ensureItemDef("BASE_SALARY", "基本工资", "EARNING", 1, true);
         ensureItemDef("OVERTIME_PAY", "加班费", "EARNING", 2, true);
         ensureItemDef("LEAVE_DEDUCT", "请假扣款", "DEDUCTION", 3, true);
+        ensureItemDef("SOCIAL_INSURANCE", "社会保险（个人）", "DEDUCTION", 4, true);
+        ensureItemDef("COMPANY_PAID_SUBSIDY", "社保补贴（公司代缴）", "EARNING", 5, true);
     }
 
     private void ensureItemDef(String code, String name, String type, int order, boolean system) {

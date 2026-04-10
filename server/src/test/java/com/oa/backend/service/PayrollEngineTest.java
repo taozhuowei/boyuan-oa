@@ -62,6 +62,9 @@ class PayrollEngineTest {
     @Mock
     private ObjectMapper objectMapper;
 
+    @Mock
+    private com.oa.backend.mapper.SocialInsuranceItemMapper socialInsuranceItemMapper;
+
     private static final String TEST_PERIOD = "2026-04";
     private static final Long TEST_CYCLE_ID = 1L;
 

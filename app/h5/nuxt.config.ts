@@ -24,7 +24,18 @@ export default defineNuxtConfig({
       Components({
         resolvers: [AntDesignVueResolver({ importStyle: false })]
       })
-    ]
+    ],
+    build: {
+      sourcemap: false,
+      minify: 'terser',
+      terserOptions: {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+          pure_funcs: ['console.log', 'console.debug', 'console.info']
+        }
+      }
+    }
   },
   routeRules: {
     '/api/**': { proxy: 'http://localhost:8080/api/**' }
