@@ -1,24 +1,26 @@
 // Global route guard
 // 1. Check system initialization status, redirect to /setup if not initialized
 // 2. Redirect unauthenticated users to /login
-// 3. Enforce role-based route access (blocked routes per role)
+// 3. Enforce role-based route access (whitelist per page)
 // Backend controls menu visibility; this guard blocks direct URL access for restricted pages.
 
-/** Routes that require specific roles (undefined = all authenticated users allowed) */
-const ROLE_REQUIRED_ROUTES: Record<string, string[]> = {
-  '/role': ['ceo'],
-  '/org': ['ceo', 'project_manager', 'employee', 'finance', 'worker'], // accessible to all, but /role is ceo-only
-  '/config': ['ceo'],
-  '/retention': ['ceo'],
-  '/settings': ['ceo']
-}
-
-/** Routes that are blocked for specific roles */
-const ROLE_BLOCKED_ROUTES: Record<string, string[]> = {
-  '/role': ['finance', 'project_manager', 'employee', 'worker'],
-  '/config': ['finance', 'project_manager', 'employee', 'worker'],
-  '/retention': ['finance', 'project_manager', 'employee', 'worker'],
-  '/settings': ['finance', 'project_manager', 'employee', 'worker']
+/**
+ * Page access whitelist — maps each restricted route to the roles that MAY access it.
+ * Routes not listed here are accessible to all authenticated users (e.g. /todo, /).
+ * Uses role codes returned by the backend (e.g. 'ceo', 'hr', 'finance', 'project_manager', 'employee', 'worker').
+ */
+const PAGE_ACCESS: Record<string, string[]> = {
+  '/config':           ['ceo'],
+  '/org':              ['ceo', 'hr'],
+  '/role':             ['ceo', 'hr'],
+  '/employees':        ['ceo', 'hr'],
+  '/positions':        ['ceo'],
+  '/retention':        ['ceo'],
+  '/settings':         ['ceo'],
+  '/payroll':          ['ceo', 'hr', 'finance'],
+  '/projects':         ['ceo', 'finance', 'project_manager', 'employee'],
+  '/construction-log': ['ceo', 'project_manager', 'worker'],
+  '/injury':           ['ceo', 'hr'],
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -58,11 +60,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/login')
   }
 
-  // Role-based route blocking
+  // Role-based route access (whitelist check)
   const role = userCookie.value?.role ?? ''
-  const blockedRoles = ROLE_BLOCKED_ROUTES[to.path]
-  if (blockedRoles && blockedRoles.includes(role)) {
-    // Redirect to workbench with 403-style behavior
+  const allowedRoles = PAGE_ACCESS[to.path]
+  if (allowedRoles !== undefined && !allowedRoles.includes(role)) {
+    // Redirect to workbench — user lacks permission for this page
     return navigateTo('/')
   }
 })

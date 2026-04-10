@@ -62,6 +62,7 @@ public class DepartmentController {
         List<Map<String, Object>> countResult = employeeMapper.selectMaps(countWrapper);
         
         return countResult.stream()
+            .filter(m -> m.get("department_id") != null)
             .collect(Collectors.toMap(
                 m -> ((Number) m.get("department_id")).longValue(),
                 m -> ((Number) m.get("count")).intValue(),
