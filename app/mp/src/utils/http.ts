@@ -29,8 +29,9 @@ export function request<T>(options: RequestOptions): Promise<T> {
 
   const base = options.baseURL ?? API_BASE
 
-  // 请求去重检查
-  const requestKey = `${options.method ?? 'GET'}:${options.url}`
+  // 请求去重检查（含 body 摘要，避免不同参数的 POST 被误判为重复）
+  const bodyKey = options.data ? JSON.stringify(options.data) : ''
+  const requestKey = `${options.method ?? 'GET'}:${options.url}:${bodyKey}`
   if (pendingRequests.has(requestKey)) {
     return Promise.reject(new Error('请勿重复提交'))
   }
@@ -56,7 +57,7 @@ export function request<T>(options: RequestOptions): Promise<T> {
           pendingRequests.delete(requestKey)
           resolve(res.data as T)
         } else {
-          const msg = (res.data as any)?.message || 'Request failed'
+          const msg = (res.data as { message?: string })?.message || 'Request failed'
           uni.showToast({ title: msg, icon: 'none' })
           pendingRequests.delete(requestKey)
           reject(new Error(msg))

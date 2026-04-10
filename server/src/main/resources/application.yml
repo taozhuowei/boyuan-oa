@@ -23,7 +23,7 @@ spring:
       enabled: true
       path: /h2-console
       settings:
-        web-allow-others: true
+        web-allow-others: false
 
   jpa:
     hibernate:
@@ -56,11 +56,11 @@ app:
   signature:
     # AES-256 密钥，必须为 32 字符
     # 生产环境请务必修改此密钥
-    aes-key: __REDACTED_DEFAULT_AES_KEY__
+    aes-key: ${APP_SIGNATURE_AES_KEY:__REDACTED_DEFAULT_AES_KEY__}
 
 # JWT 配置
 jwt:
-  secret: __REDACTED_DEFAULT_JWT_SECRET__
+  secret: ${JWT_SECRET:__REDACTED_DEFAULT_JWT_SECRET__}
   expiration: 86400000  # 24小时
   issuer: oa-backend
 
@@ -68,7 +68,7 @@ jwt:
 logging:
   level:
     com.oa: DEBUG
-    org.springframework.security: DEBUG
+    org.springframework.security: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 

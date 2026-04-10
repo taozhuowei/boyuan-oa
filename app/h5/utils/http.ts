@@ -25,7 +25,7 @@ export async function request<T>(options: RequestOptions): Promise<T> {
     })
   } catch (err: unknown) {
     const status = (err as { statusCode?: number }).statusCode
-    if (status === 401 && !options.skipAuthRedirect) {
+    if (status === 401 && !options.skipAuthRedirect && import.meta.client) {
       const store = useUserStore()
       store.logout()
       await navigateTo('/login')

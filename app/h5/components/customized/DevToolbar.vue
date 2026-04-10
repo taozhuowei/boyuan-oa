@@ -119,8 +119,8 @@ async function resetSetup() {
 
     // Navigate to setup
     await navigateTo('/setup')
-  } catch (error: any) {
-    showError(error?.message || '重置失败')
+  } catch (error: unknown) {
+    showError((error as { message?: string })?.message || '重置失败')
   } finally {
     resetting.value = false
   }
@@ -146,8 +146,8 @@ async function skipSetup() {
 
     // Navigate to home
     window.location.href = '/'
-  } catch (error: any) {
-    showError(error?.message || '跳过失败')
+  } catch (error: unknown) {
+    showError((error as { message?: string })?.message || '跳过失败')
   } finally {
     skipping.value = false
   }
@@ -160,8 +160,8 @@ async function quickLogin(user: QuickUser) {
     const store = useUserStore()
     store.setSession(result.token, result.user)
     await navigateTo('/')
-  } catch (error: any) {
-    showError(error?.message || user.label + ' 登录失败')
+  } catch (error: unknown) {
+    showError((error as { message?: string })?.message || user.label + ' 登录失败')
   } finally {
     user.loading = false
   }

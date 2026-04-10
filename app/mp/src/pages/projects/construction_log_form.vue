@@ -392,13 +392,15 @@ function removePhoto(index: number) {
 // 获取项目列表
 async function fetchProjects() {
   try {
-    const res: any = await http.request({
+    type ProjectItem = { id: number; name: string }
+    type ProjectListRes = ProjectItem[] | { content: ProjectItem[] }
+    const res = await http.request<ProjectListRes>({
       url: '/projects?status=ACTIVE',
       method: 'GET'
     })
-    // 假设返回的是项目数组或包含content的分页对象
-    const projects = Array.isArray(res) ? res : (res.content || [])
-    projectList.value = projects.map((p: any) => ({ id: p.id, name: p.name }))
+    // Response is either a plain array or a paginated object with content field
+    const projects: ProjectItem[] = Array.isArray(res) ? res : ((res as { content: ProjectItem[] }).content || [])
+    projectList.value = projects.map(p => ({ id: p.id, name: p.name }))
   } catch (err) {
     uni.showToast({ title: '获取项目列表失败', icon: 'none' })
   }

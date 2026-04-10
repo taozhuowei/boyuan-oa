@@ -806,13 +806,14 @@ class ApprovalFlowServiceTest {
         record.setActedAt(LocalDateTime.now());
         when(approvalRecordMapper.findByFormId(TEST_FORM_ID)).thenReturn(Collections.singletonList(record));
         
-        // Approver name lookup
+        // Approver name lookup — getApprovalHistory now uses selectBatchIds (batch query)
         Employee approver = new Employee();
         approver.setId(1L);
         approver.setName(approverName);
         when(employeeMapper.selectById(1L)).thenReturn(approver);
         when(employeeMapper.selectById(TEST_APPROVER_ID)).thenReturn(approver);
         when(employeeMapper.selectById(TEST_SUBMITTER_ID)).thenReturn(approver);
+        when(employeeMapper.selectBatchIds(anyList())).thenReturn(Collections.singletonList(approver));
         
         FormRecordResponse result = service.advance(TEST_FORM_ID, TEST_APPROVER_ID, "APPROVE", "最终审批");
         

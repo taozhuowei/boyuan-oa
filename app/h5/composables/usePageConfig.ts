@@ -39,11 +39,9 @@ function getStorageKey(routeCode: string): string {
  * @throws Error if the request fails
  */
 async function fetchPageConfig(routeCode: string): Promise<PageConfig> {
+  // X-Client-Type: web is injected by default in http.ts
   return request<PageConfig>({
-    url: `/page-config/${routeCode}`,
-    headers: {
-      'X-Client-Type': 'web'
-    }
+    url: `/page-config/${routeCode}`
   })
 }
 

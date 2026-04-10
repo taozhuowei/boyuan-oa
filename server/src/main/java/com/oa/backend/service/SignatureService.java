@@ -18,7 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.crypto.Cipher;
+import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+import java.security.SecureRandom;
 import java.awt.Color;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -55,7 +57,9 @@ import java.util.List;
 public class SignatureService {
 
     private static final String AES_ALGORITHM = "AES";
-    private static final String AES_TRANSFORMATION = "AES/ECB/PKCS5Padding";
+    // CBC mode with random IV; IV (16 bytes) is prepended to the ciphertext before Base64 encoding
+    private static final String AES_TRANSFORMATION = "AES/CBC/PKCS5Padding";
+    private static final int AES_IV_LENGTH = 16;
     private static final String SHA_256 = "SHA-256";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final String COMPANY_NAME = "Boyuan OA";
@@ -596,25 +600,37 @@ public class SignatureService {
     }
 
     /**
-     * AES-256 加密。
+     * AES-256/CBC 加密。
+     * 随机生成 16 字节 IV，将 IV 拼接在密文前一起 Base64 编码输出。
      */
     private String encryptAes(String plainText) throws Exception {
+        byte[] iv = new byte[AES_IV_LENGTH];
+        new SecureRandom().nextBytes(iv);
         SecretKeySpec keySpec = new SecretKeySpec(getAesKeyBytes(), AES_ALGORITHM);
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
-        cipher.init(Cipher.ENCRYPT_MODE, keySpec);
+        cipher.init(Cipher.ENCRYPT_MODE, keySpec, new IvParameterSpec(iv));
         byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
-        return Base64.getEncoder().encodeToString(encrypted);
+        // Prepend IV to ciphertext so decryptAes can extract it
+        byte[] ivAndCipher = new byte[AES_IV_LENGTH + encrypted.length];
+        System.arraycopy(iv, 0, ivAndCipher, 0, AES_IV_LENGTH);
+        System.arraycopy(encrypted, 0, ivAndCipher, AES_IV_LENGTH, encrypted.length);
+        return Base64.getEncoder().encodeToString(ivAndCipher);
     }
 
     /**
-     * AES-256 解密。
+     * AES-256/CBC 解密。
+     * 从 Base64 解码后提取前 16 字节作为 IV，剩余字节为密文。
      */
     private String decryptAes(String encryptedText) throws Exception {
+        byte[] ivAndCipher = Base64.getDecoder().decode(encryptedText);
+        byte[] iv = new byte[AES_IV_LENGTH];
+        byte[] cipherBytes = new byte[ivAndCipher.length - AES_IV_LENGTH];
+        System.arraycopy(ivAndCipher, 0, iv, 0, AES_IV_LENGTH);
+        System.arraycopy(ivAndCipher, AES_IV_LENGTH, cipherBytes, 0, cipherBytes.length);
         SecretKeySpec keySpec = new SecretKeySpec(getAesKeyBytes(), AES_ALGORITHM);
         Cipher cipher = Cipher.getInstance(AES_TRANSFORMATION);
-        cipher.init(Cipher.DECRYPT_MODE, keySpec);
-        byte[] decoded = Base64.getDecoder().decode(encryptedText);
-        byte[] decrypted = cipher.doFinal(decoded);
+        cipher.init(Cipher.DECRYPT_MODE, keySpec, new IvParameterSpec(iv));
+        byte[] decrypted = cipher.doFinal(cipherBytes);
         return new String(decrypted, StandardCharsets.UTF_8);
     }
 

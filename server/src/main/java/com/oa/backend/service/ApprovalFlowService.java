@@ -217,15 +217,19 @@ public class ApprovalFlowService {
             formRecord.setStatus("REJECTED");
             formRecord.setUpdatedAt(LocalDateTime.now());
             formRecordMapper.updateById(formRecord);
-            // 通知提交人
-            notificationService.send(
-                    formRecord.getSubmitterId(),
-                    "Your request has been rejected",
-                    "Your " + formRecord.getFormType() + " request has been rejected. Comment: " + (comment != null ? comment : ""),
-                    "APPROVAL",
-                    "FORM_RECORD",
-                    formRecordId
-            );
+            // 通知提交人（非核心流程，异常不中断审批主流程）
+            try {
+                notificationService.send(
+                        formRecord.getSubmitterId(),
+                        "Your request has been rejected",
+                        "Your " + formRecord.getFormType() + " request has been rejected. Comment: " + (comment != null ? comment : ""),
+                        "APPROVAL",
+                        "FORM_RECORD",
+                        formRecordId
+                );
+            } catch (Exception e) {
+                log.warn("Failed to send rejection notification for formId={}: {}", formRecordId, e.getMessage());
+            }
         } else if ("APPROVE".equals(action)) {
             // 获取所有节点判断是否为最后一个
             List<ApprovalFlowNode> allNodes = approvalFlowNodeMapper.findByFlowId(flowDef.getId());
@@ -245,15 +249,19 @@ public class ApprovalFlowService {
                 formRecord.setStatus("APPROVED");
                 formRecord.setUpdatedAt(LocalDateTime.now());
                 formRecordMapper.updateById(formRecord);
-                // 通知提交人
-                notificationService.send(
-                        formRecord.getSubmitterId(),
-                        "Your request has been approved",
-                        "Your " + formRecord.getFormType() + " request has been approved.",
-                        "APPROVAL",
-                        "FORM_RECORD",
-                        formRecordId
-                );
+                // 通知提交人（非核心流程，异常不中断审批主流程）
+                try {
+                    notificationService.send(
+                            formRecord.getSubmitterId(),
+                            "Your request has been approved",
+                            "Your " + formRecord.getFormType() + " request has been approved.",
+                            "APPROVAL",
+                            "FORM_RECORD",
+                            formRecordId
+                    );
+                } catch (Exception e) {
+                    log.warn("Failed to send approval notification for formId={}: {}", formRecordId, e.getMessage());
+                }
             }
         }
 
@@ -425,18 +433,30 @@ public class ApprovalFlowService {
 
     /**
      * 获取审批历史记录
+     * 批量查询 approver 信息，避免循环内 selectById 导致 N+1 查询
      */
     private List<FormRecordResponse.ApprovalHistory> getApprovalHistory(Long formId) {
         List<ApprovalRecord> records = approvalRecordMapper.findByFormId(formId);
+        if (records.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // Batch-load all approvers in one query
+        List<Long> approverIds = records.stream()
+                .map(ApprovalRecord::getApproverId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, String> approverNames = approverIds.isEmpty()
+                ? Collections.emptyMap()
+                : employeeMapper.selectBatchIds(approverIds).stream()
+                        .collect(Collectors.toMap(Employee::getId, Employee::getName));
+
         return records.stream()
                 .map(r -> {
-                    String approverName = "";
-                    if (r.getApproverId() != null) {
-                        Employee approver = employeeMapper.selectById(r.getApproverId());
-                        if (approver != null) {
-                            approverName = approver.getName();
-                        }
-                    }
+                    String approverName = r.getApproverId() != null
+                            ? approverNames.getOrDefault(r.getApproverId(), "")
+                            : "";
                     return new FormRecordResponse.ApprovalHistory(
                             getNodeNameByOrder(formId, r.getNodeOrder()),
                             approverName,

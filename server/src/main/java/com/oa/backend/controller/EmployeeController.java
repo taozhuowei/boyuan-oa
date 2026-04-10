@@ -16,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -80,7 +81,7 @@ public class EmployeeController {
      */
     @PostMapping
     @PreAuthorize("hasRole('CEO')")
-    public ResponseEntity<EmployeeResponse> createEmployee(@RequestBody EmployeeCreateRequest request) {
+    public ResponseEntity<EmployeeResponse> createEmployee(@Valid @RequestBody EmployeeCreateRequest request) {
         Employee employee = employeeService.createEmployee(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(employee));
     }
