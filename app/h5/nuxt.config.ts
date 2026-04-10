@@ -4,6 +4,7 @@ import { AntDesignVueResolver } from 'unplugin-vue-components/resolvers'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
+  ssr: false,  // SPA mode: eliminates FOUC caused by AntD CSS-in-JS not being available in SSR HTML
   modules: ['@pinia/nuxt'],
   css: ['~/assets/ant-reset.css'],  // Local copy avoids Vite @fs path issue on Windows with spaces in dir name
   alias: {
