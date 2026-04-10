@@ -6,34 +6,34 @@
       class="dev-fab"
       @click="expanded = true"
     >
-      🛠️ Dev
+      🛠️ 调试
     </button>
 
     <!-- Expanded: Card panel -->
     <div v-else class="dev-panel">
       <div class="panel-header">
-        <span class="panel-title">Dev Tools</span>
+        <span class="panel-title">开发工具</span>
         <button class="close-btn" @click="expanded = false">×</button>
       </div>
 
       <div class="panel-content">
         <!-- Section 1: Setup -->
         <div class="dev-section">
-          <div class="section-title">Setup</div>
+          <div class="section-title">系统设置</div>
           <div class="btn-group">
             <button
               class="dev-btn"
               :disabled="resetting"
               @click="resetSetup"
             >
-              <span v-if="resetting">⏳</span> Reset Setup
+              <span v-if="resetting">⏳</span> 重置初始化
             </button>
             <button
               class="dev-btn"
               :disabled="skipping"
               @click="skipSetup"
             >
-              <span v-if="skipping">⏳</span> Skip Setup
+              <span v-if="skipping">⏳</span> 跳过初始化
             </button>
           </div>
         </div>
@@ -42,7 +42,7 @@
 
         <!-- Section 2: Quick Login -->
         <div class="dev-section">
-          <div class="section-title">Quick Login</div>
+          <div class="section-title">快速登录</div>
           <div class="btn-group login-group">
             <button
               v-for="user in quickUsers"
@@ -68,6 +68,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { loginWithAccount } from '~/utils/access'
+import { useUserStore } from '~/stores/user'
 
 // Top-level DEV guard - component is tree-shaken in production
 const isDev = import.meta.env.DEV
@@ -84,11 +86,12 @@ interface QuickUser {
 }
 
 const quickUsers = ref<QuickUser[]>([
-  { username: 'employee.demo', label: 'Employee', loading: false },
-  { username: 'finance.demo', label: 'Finance', loading: false },
-  { username: 'pm.demo', label: 'PM', loading: false },
+  { username: 'employee.demo', label: '员工', loading: false },
+  { username: 'finance.demo', label: '财务', loading: false },
+  { username: 'hr.demo', label: '人事', loading: false },
+  { username: 'pm.demo', label: '项目经理', loading: false },
   { username: 'ceo.demo', label: 'CEO', loading: false },
-  { username: 'worker.demo', label: 'Worker', loading: false }
+  { username: 'worker.demo', label: '劳工', loading: false }
 ])
 
 function showError(msg: string) {
@@ -117,7 +120,7 @@ async function resetSetup() {
     // Navigate to setup
     await navigateTo('/setup')
   } catch (error: any) {
-    showError(error?.message || 'Reset setup failed')
+    showError(error?.message || '重置失败')
   } finally {
     resetting.value = false
   }
@@ -136,7 +139,7 @@ async function skipSetup() {
     }
 
     // Update UI status message (optional feedback before reload)
-    errorMsg.value = 'Setup skipped successfully'
+    errorMsg.value = '已跳过初始化'
     setTimeout(() => {
       errorMsg.value = ''
     }, 1500)
@@ -144,42 +147,21 @@ async function skipSetup() {
     // Navigate to home
     window.location.href = '/'
   } catch (error: any) {
-    showError(error?.message || 'Skip setup failed')
+    showError(error?.message || '跳过失败')
   } finally {
     skipping.value = false
   }
 }
 
-interface LoginResponse {
-  token: string
-  user?: any
-}
-
 async function quickLogin(user: QuickUser) {
   user.loading = true
   try {
-    const response = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: user.username,
-        password: '123456'
-      })
-    })
-
-    if (!response.ok) {
-      throw new Error(`Login failed: HTTP ${response.status}`)
-    }
-
-    const data: LoginResponse = await response.json()
-
-    // Store token in localStorage
-    localStorage.setItem('token', data.token)
-
-    // Navigate to home
+    const result = await loginWithAccount({ identifier: user.username, password: '123456' })
+    const store = useUserStore()
+    store.setSession(result.token, result.user)
     await navigateTo('/')
   } catch (error: any) {
-    showError(error?.message || `${user.label} login failed`)
+    showError(error?.message || user.label + ' 登录失败')
   } finally {
     user.loading = false
   }
