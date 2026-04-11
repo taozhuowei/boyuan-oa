@@ -112,7 +112,7 @@ Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可
 - [ ] `[P1]` **PostgreSQL 迁移验证**：使用 PostgreSQL 启动后端（`-Dspring.profiles.active=prod`），Flyway V1+V2 迁移无报错，5个种子账号可登录
   > 验收：`docker compose up`（或等效）成功；ceo.demo 可登录
 
-- [ ] `[P1]` **前端生产构建**：`yarn build:h5` 无报错，`.output/` 目录生成，静态文件可被 Nginx 正常 serve
+- [x] `[P1]` **前端生产构建**：`yarn build:h5` 无报错，`.output/` 目录生成，静态文件可被 Nginx 正常 serve
   > 验收：`npx serve .output/public` 后浏览器可访问登录页
 
 - [ ] `[P2]` **版本号注入**：`git tag v1.0.0` → GitHub Actions release.yml 将版本号注入 JAR manifest + 前端 `VITE_APP_VERSION` 环境变量

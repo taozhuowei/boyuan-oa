@@ -302,7 +302,8 @@ public class WorkbenchController {
                     new WorkbenchConfigResponse.MenuItem("projects", "项目管理", "project", "/projects", true, null),
                     new WorkbenchConfigResponse.MenuItem("payroll", "薪资管理", "money", "/payroll", true, null),
                     new WorkbenchConfigResponse.MenuItem("retention", "数据保留", "safety", "/retention", true, null),
-                    new WorkbenchConfigResponse.MenuItem("settings", "系统设置", "setting", "/settings", true, null)
+                    new WorkbenchConfigResponse.MenuItem("operation-logs", "Operation Logs", "audit", "/operation-logs", true, null),
+                    new WorkbenchConfigResponse.MenuItem("settings", "System Config", "setting", "/config", true, null)
             );
             case "finance" -> Arrays.asList(
                     new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/workbench", true, null),
@@ -325,6 +326,13 @@ public class WorkbenchController {
                                     new WorkbenchConfigResponse.MenuItem("injury", "工伤补偿", "alert", "/forms/injury", true, null)
                             )),
                     new WorkbenchConfigResponse.MenuItem("payroll", "工资条", "money", "/payroll/slips", true, null)
+            );
+            case "hr" -> Arrays.asList(
+                    new WorkbenchConfigResponse.MenuItem("workbench", "Workbench", "dashboard", "/workbench", true, null),
+                    new WorkbenchConfigResponse.MenuItem("employees", "Employee Mgmt", "team", "/employees", true, null),
+                    new WorkbenchConfigResponse.MenuItem("org", "Org Chart", "apartment", "/org", true, null),
+                    new WorkbenchConfigResponse.MenuItem("positions", "Position Mgmt", "idcard", "/positions", true, null),
+                    new WorkbenchConfigResponse.MenuItem("attendance", "Attendance", "calendar", "/attendance", true, null)
             );
             default -> Arrays.asList(
                     new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/workbench", true, null),

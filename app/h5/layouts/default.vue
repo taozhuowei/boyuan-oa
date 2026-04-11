@@ -119,12 +119,16 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/', label: '工作台', path: '/' },
     { key: '/todo', label: '审批中心', path: '/todo' },
     { key: '/employees', label: '员工管理', path: '/employees' },
+    { key: '/org', label: '组织架构', path: '/org' },
+    { key: '/positions', label: '岗位管理', path: '/positions' },
+    { key: '/role', label: '角色管理', path: '/role' },
     { key: '/projects', label: '项目管理', path: '/projects' },
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
     { key: '/construction-log', label: '施工日志', path: '/construction-log' },
     { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/retention', label: '数据保留', path: '/retention' },
-    { key: '/settings', label: '系统设置', path: '/settings' }
+    { key: '/operation-logs', label: '操作日志', path: '/operation-logs' },
+    { key: '/config', label: '系统配置', path: '/config' }
   ],
   finance: [
     { key: '/', label: '工作台', path: '/' },
@@ -142,6 +146,19 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/construction-log/templates', label: '工作项模板', path: '/construction-log/templates' },
     { key: '/forms', label: '表单中心', path: '/forms' }
   ],
+  hr: [
+    { key: '/', label: '工作台', path: '/' },
+    { key: '/employees', label: '员工管理', path: '/employees' },
+    { key: '/org', label: '组织架构', path: '/org' },
+    { key: '/positions', label: '岗位管理', path: '/positions' },
+    { key: '/attendance', label: '考勤管理', path: '/attendance' }
+  ],
+  department_manager: [
+    { key: '/', label: '工作台', path: '/' },
+    { key: '/employees', label: '员工管理', path: '/employees' },
+    { key: '/attendance', label: '考勤管理', path: '/attendance' },
+    { key: '/todo', label: '审批中心', path: '/todo' }
+  ],
   worker: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/construction-log', label: '施工日志', path: '/construction-log' },
@@ -152,6 +169,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
   employee: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/forms', label: '表单中心', path: '/forms' },
+    { key: '/attendance', label: '考勤管理', path: '/attendance' },
     { key: '/payroll', label: '工资条', path: '/payroll/slips' }
   ]
 }
