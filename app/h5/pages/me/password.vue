@@ -91,7 +91,8 @@ const rules = {
 const handleSubmit = async () => {
   loading.value = true
   try {
-    await request('/auth/change-password', {
+    await request({
+      url: '/auth/change-password',
       method: 'POST',
       body: {
         currentPassword: formState.currentPassword,
