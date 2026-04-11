@@ -24,3 +24,5 @@ test/reports/
 # OS/editor noise
 .DS_Store
 Thumbs.db
+
+CLAUDE.md

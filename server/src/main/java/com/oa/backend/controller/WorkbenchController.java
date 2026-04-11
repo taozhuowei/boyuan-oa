@@ -344,13 +344,13 @@ public class WorkbenchController {
                 new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction-log", true, null),
                 new WorkbenchConfigResponse.MenuItem("injury", "\u5de5\u4f24\u8865\u507f", "alert", "/injury", true, null),
                 new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null),
-                new WorkbenchConfigResponse.MenuItem("payroll", "\u5de5\u8d44\u6761", "money", "/payroll/slips", true, null)
+                new WorkbenchConfigResponse.MenuItem("payroll", "\u5de5\u8d44\u6761", "money", "/payroll", true, null)
             );
             default -> Arrays.asList(
                 new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
                 new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null),
                 new WorkbenchConfigResponse.MenuItem("attendance", "\u8003\u52e4\u7ba1\u7406", "calendar", "/attendance", true, null),
-                new WorkbenchConfigResponse.MenuItem("payroll", "\u5de5\u8d44\u6761", "money", "/payroll/slips", true, null)
+                new WorkbenchConfigResponse.MenuItem("payroll", "\u5de5\u8d44\u6761", "money", "/payroll", true, null)
             );
         };
 

@@ -164,13 +164,13 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/construction-log', label: '施工日志', path: '/construction-log' },
     { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/forms', label: '表单中心', path: '/forms' },
-    { key: '/payroll', label: '工资条', path: '/payroll/slips' }
+    { key: '/payroll', label: '工资条', path: '/payroll' }
   ],
   employee: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/forms', label: '表单中心', path: '/forms' },
     { key: '/attendance', label: '考勤管理', path: '/attendance' },
-    { key: '/payroll', label: '工资条', path: '/payroll/slips' }
+    { key: '/payroll', label: '工资条', path: '/payroll' }
   ]
 }
 
