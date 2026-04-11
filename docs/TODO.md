@@ -71,8 +71,9 @@ Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可
 - [-] `[P1]` **操作日志页面 `/operation-logs`**（CEO 菜单）：展示操作人、操作类型、目标类型、时间；支持按时间范围筛选；调用 `GET /operation-logs`
   > 验收：CEO 登录后侧边栏可见"操作日志"；列表可分页查看
 
-- [-] `[P1]` **接入 `@OperationLogRecord` 注解到关键业务方法**：薪资结算（`PayrollEngine.settle`）、员工更新（`EmployeeController.updateEmployee`）、签名绑定（`SignatureController.bindSignature`）、审批操作（`ApprovalFlowService.advance`）
+- [x] `[P1]` **接入 `@OperationLogRecord` 注解到关键业务方法**：薪资结算（`PayrollEngine.settle`）、员工更新（`EmployeeController.updateEmployee`）、签名绑定（`SignatureController.bindSignature`）、审批操作（`ApprovalFlowService.advance`）
   > 验收：执行以上操作后，操作日志页出现对应记录
+  > ✅ 已验证：PM 审批 → operation_log 写入2条记录（AOP 记录 + 业务记录）
 
 ### A5 — 功能完整性补充
 
