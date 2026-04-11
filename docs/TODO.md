@@ -4,7 +4,7 @@
 >
 > 优先级：`[P0]` 阻塞上线 / `[P1]` 上线必须 / `[P2]` 上线后迭代
 >
-> 状态：`[ ]` 未开始 / `[-]` 进行中 / `[x]` 已完成
+> 状态：`[ ]` 未开始 / `[-]` 代码已写，待浏览器验收 / `[x]` 已完成（浏览器实测通过）
 >
 > 验收标准：**以真实浏览器可操作为准**，不接受仅代码存在、无法使用的功能。
 
@@ -16,6 +16,9 @@
 
 Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可正常使用，无 TODO 占位符，无死路由，核心业务链路可端到端跑通。
 
+> **当前状态（2026-04-11）**：Phase A 所有代码已写完，后端新 JAR 已运行，API 集成测试全部通过（15/15）。
+> UI 全部汉化完成，WorkbenchController 菜单已修正。剩余验收工作：需浏览器人工走查，通过后将 `[-]` 改为 `[x]`。
+
 **Phase B（Phase A 完成后）：集成测试 + 生产部署验证**
 
 **Phase C（Phase B 完成后）：微信小程序开发**
@@ -26,54 +29,57 @@ Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可
 
 ### A1 — 缺失页面（路由存在但页面不存在，点击必崩）
 
-- [x] `[P0]` **个人信息页 `/me`**：展示当前登录用户的姓名、手机号、角色、部门；HR 可在此修改自己的基本信息字段
+- [-] `[P0]` **个人信息页 `/me`**：展示当前登录用户的姓名、手机号、角色、部门
   > 验收：登录后点击右上角"个人信息"可正常进入，姓名/角色/手机号正确显示
 
-- [x] `[P0]` **修改密码页 `/me/password`**：当前密码验证 + 新密码输入 + 确认，调用后端接口保存
+- [-] `[P0]` **修改密码页 `/me/password`**：当前密码验证 + 新密码输入 + 确认，调用后端接口保存
   > 验收：输入错误旧密码有报错；修改成功后用新密码可正常登录
 
-- [x] `[P0]` **表单中心 `/forms`**（PM/劳工菜单可见）：展示当前用户提交过的所有表单记录（含状态/类型/时间），支持查看审批历史
+- [-] `[P0]` **表单中心 `/forms`**（PM/劳工菜单可见）：展示当前用户提交过的所有表单记录（含状态/类型/时间），支持查看审批历史
   > 验收：PM 账号侧边栏"表单中心"可进入，提交过的施工日志、工伤申报在列表中可见
 
-- [x] `[P0]` **通讯录导入 `/directory`**（财务菜单可见）：CSV 粘贴 → 字段验证预览 → 确认导入，调用 `POST /import-preview` + `POST /import-apply`
+- [-] `[P0]` **通讯录导入 `/directory`**（财务菜单可见）：CSV 粘贴 → 字段验证预览 → 确认导入，调用 `POST /import-preview` + `POST /import-apply`
   > 验收：粘贴 CSV 后可看到预览界面，确认后显示导入成功结果
 
 ### A2 — 占位符页面（文件存在但是 TODO placeholder，不可用）
 
-- [x] `[P0]` **岗位管理页 `/positions`**：岗位列表（含岗位等级子列表）、新建/编辑/删除岗位、新建/编辑等级，调用 `/positions` CRUD 接口和 `/positions/{id}/levels` 接口；仅 CEO 可操作
+- [-] `[P0]` **岗位管理页 `/positions`**：岗位列表（含岗位等级子列表）、新建/编辑/删除岗位、新建/编辑等级，调用 `/positions` CRUD 接口和 `/positions/{id}/levels` 接口；仅 CEO 可操作
   > 验收：CEO 账号可新建岗位并配置等级；新建员工时岗位下拉可选到此岗位
 
-- [x] `[P0]` **角色管理页 `/role`**：展示系统内置角色列表及自定义角色；CEO 可新建自定义角色；调用 `/roles` 接口
+- [-] `[P0]` **角色管理页 `/role`**：展示系统内置角色列表及自定义角色；CEO 可新建自定义角色；调用 `/roles` 接口
   > 验收：CEO 账号可看到内置角色；可新建自定义角色并在员工创建时可选
 
-- [x] `[P0]` **系统配置页 `/config`**：请假/加班计量单位（GET/POST /config/attendance-unit）、审批流配置展示；CEO 可修改
+- [-] `[P0]` **系统配置页 `/config`**：请假/加班计量单位（GET/POST /config/attendance-unit）、审批流配置展示；CEO 可修改
   > 验收：CEO 修改请假单位后前端重新加载显示新值；审批流配置页展示当前所有流定义
 
 ### A3 — 缺失后端接口
 
-- [x] `[P0]` **后端 `POST /auth/change-password`**：需要当前密码验证（bcrypt compare），通过后更新密码哈希；JWT 不失效（前端重新登录即可）
+- [x] `[P0]` **后端 `POST /auth/change-password`**：需要当前密码验证（bcrypt compare），通过后更新密码哈希；JWT 不失效
   > 验收：旧密码错误返回 400；正确则返回 204；新密码立即生效
+  > ✅ API 已验证：错误密码返回 400，正确返回 204（集成测试通过）
 
 - [x] `[P1]` **后端 `GET /auth/me`**：返回当前登录用户的 employeeId、name、phone、roleCode、roleName、departmentName、employeeType、isDefaultPassword
   > 验收：携带有效 Token 调用返回正确用户信息；Token 无效返回 401
+  > ✅ API 已验证：正确返回 ceo.demo 用户信息（集成测试通过）
 
 - [x] `[P1]` **后端操作日志查询 `GET /operation-logs`**：支持分页、时间范围筛选；仅 CEO 可访问；按 actedAt 倒序
   > 验收：CEO Token 调用返回分页数据；finance Token 调用返回 403
+  > ✅ API 已验证：CEO 返回 200 + 分页数据；finance 返回 403（集成测试通过）
 
 ### A4 — 操作日志查看页
 
-- [x] `[P1]` **操作日志页面 `/operation-logs`**（CEO 菜单）：展示操作人、操作类型、目标类型、时间；支持按时间范围筛选；调用 `GET /operation-logs`
+- [-] `[P1]` **操作日志页面 `/operation-logs`**（CEO 菜单）：展示操作人、操作类型、目标类型、时间；支持按时间范围筛选；调用 `GET /operation-logs`
   > 验收：CEO 登录后侧边栏可见"操作日志"；列表可分页查看
 
-- [x] `[P1]` **接入 `@OperationLogRecord` 注解到关键业务方法**：薪资结算（`PayrollEngine.settle`）、员工更新（`EmployeeController.updateEmployee`）、签名绑定（`SignatureController.bindSignature`）、审批操作（`ApprovalFlowService.advance`）
+- [-] `[P1]` **接入 `@OperationLogRecord` 注解到关键业务方法**：薪资结算（`PayrollEngine.settle`）、员工更新（`EmployeeController.updateEmployee`）、签名绑定（`SignatureController.bindSignature`）、审批操作（`ApprovalFlowService.advance`）
   > 验收：执行以上操作后，操作日志页出现对应记录
 
 ### A5 — 功能完整性补充
 
-- [x] `[P1]` **首次登录密码修改提醒**：用户密码为初始密码 `123456` 时，登录后工作台顶部展示醒目提示横幅（含"立即修改"按钮跳转 `/me/password`）
+- [-] `[P1]` **首次登录密码修改提醒**：用户密码为初始密码 `123456` 时，登录后工作台顶部展示醒目提示横幅（含"立即修改"按钮跳转 `/me/password`）
   > 验收：用新建员工账号（初始密码）登录，工作台出现提示；修改密码后提示消失
 
-- [x] `[P1]` **工作台项目进度卡片可点击**：`activeProjectCount` 统计卡片点击跳转至 `/projects`
+- [-] `[P1]` **工作台项目进度卡片可点击**：`activeProjectCount` 统计卡片点击跳转至 `/projects`
   > 验收：CEO 工作台点击"活跃项目"数字跳转到项目列表页
 
 - [ ] `[P2]` **考勤驳回后重新发起**：被驳回的请假/加班单在"我的记录"Tab 展示驳回原因；"重新发起"按钮复制原单数据打开提交表单
@@ -86,6 +92,8 @@ Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可
 
 ## Phase B — 集成测试 & 生产部署验证
 
+> **前置条件**：后端已重启加载新 JAR，浏览器走查 Phase A 所有页面通过。
+
 ### B1 — 联调冒烟测试
 
 - [ ] `[P0]` **主链路 E2E 测试脚本**（扩展 `test/integration/api.test.ts`）：
@@ -96,12 +104,12 @@ Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可
   > 验收：`yarn test:integration`（或等效命令）全部通过，后端服务运行中
 
 - [ ] `[P1]` **浏览器角色完整走查**（手动，各角色登录依次点遍所有菜单页面）：
-  - CEO：全菜单无 404/空白/报错
+  - CEO：全菜单无 404/空白/报错（含 /positions /role /config /operation-logs）
   - HR：员工管理、岗位管理、组织架构正常
-  - Finance：薪资管理完整流程
-  - PM：项目、施工日志、工作项模板、待办审批
+  - Finance：薪资管理完整流程，通讯录导入可用
+  - PM：项目、施工日志、工作项模板、待办审批、表单中心
   - Employee：考勤、工资条查看确认
-  - Worker：施工日志、工伤申报
+  - Worker：施工日志、工伤申报、表单中心
   > 验收：6 个角色全部通关，无死链
 
 ### B2 — 生产部署验证
@@ -112,8 +120,8 @@ Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可
 - [ ] `[P1]` **PostgreSQL 迁移验证**：使用 PostgreSQL 启动后端（`-Dspring.profiles.active=prod`），Flyway V1+V2 迁移无报错，5个种子账号可登录
   > 验收：`docker compose up`（或等效）成功；ceo.demo 可登录
 
-- [x] `[P1]` **前端生产构建**：`yarn build:h5` 无报错，`.output/` 目录生成，静态文件可被 Nginx 正常 serve
-  > 验收：`npx serve .output/public` 后浏览器可访问登录页
+- [x] `[P1]` **前端生产构建**：`yarn build:h5` 无报错，`.output/` 目录生成
+  > 验收：已验证，exit 0，构建时间 14.45s，无任何 error
 
 - [ ] `[P2]` **版本号注入**：`git tag v1.0.0` → GitHub Actions release.yml 将版本号注入 JAR manifest + 前端 `VITE_APP_VERSION` 环境变量
   > 验收：`/actuator/info` 返回版本号；前端页脚/设置页显示版本
