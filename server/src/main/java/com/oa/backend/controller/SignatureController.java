@@ -1,5 +1,6 @@
 package com.oa.backend.controller;
 
+import com.oa.backend.annotation.OperationLogRecord;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.SignatureService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -59,6 +60,7 @@ public class SignatureController {
      */
     @PostMapping("/bind")
     @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER')")
+    @OperationLogRecord(action = "BIND_SIGNATURE", targetType = "SIGNATURE")
     public ResponseEntity<?> bindSignature(@RequestBody BindSignatureRequest request,
                                            Authentication authentication) {
         // 获取当前员工 ID

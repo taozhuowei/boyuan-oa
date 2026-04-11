@@ -17,6 +17,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -394,5 +395,106 @@ public class AuthController {
         return jwtTokenService.verify(token)
             .map(decodedJWT -> decodedJWT.getClaim("userId").asLong())
             .orElse(null);
+    }
+
+    /**
+     * 职责：修改当前登录用户的密码
+     * 请求含义：提交当前密码和新密码进行密码修改
+     * 响应含义：密码修改成功返回 204 No Content
+     * 权限期望：已认证用户
+     */
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> changePassword(
+            @RequestHeader("Authorization") String authorization,
+            @RequestBody Map<String, String> request) {
+        Long userId = getCurrentUserId(authorization);
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "无法获取当前用户信息");
+        }
+
+        String currentPassword = request.get("currentPassword");
+        String newPassword = request.get("newPassword");
+
+        if (currentPassword == null || currentPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "当前密码不能为空");
+        }
+        if (newPassword == null || newPassword.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "新密码不能为空");
+        }
+        if (newPassword.length() < 6) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "新密码长度不能少于6位");
+        }
+
+        Employee employee = employeeService.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
+
+        if (!passwordEncoder.matches(currentPassword, employee.getPasswordHash())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is incorrect");
+        }
+
+        String newPasswordHash = passwordEncoder.encode(newPassword);
+        employeeService.updatePassword(employee.getId(), newPasswordHash, false);
+
+        return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * 职责：获取当前登录用户的基本信息
+     * 请求含义：获取当前登录用户的详细信息
+     * 响应含义：返回用户基本信息，包括员工ID、工号、姓名、手机号、角色、部门等
+     * 权限期望：已认证用户
+     */
+    @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Map<String, Object>> me(
+            @RequestHeader("Authorization") String authorization) {
+        Long userId = getCurrentUserId(authorization);
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "无法获取当前用户信息");
+        }
+
+        Employee employee = employeeService.findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
+
+        // 查询角色名称
+        String roleName = employee.getRoleCode();
+        try {
+            Role role = roleMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Role>()
+                    .eq("role_code", employee.getRoleCode())
+            );
+            if (role != null && role.getRoleName() != null) {
+                roleName = role.getRoleName();
+            }
+        } catch (Exception e) {
+            roleName = employee.getRoleCode();
+        }
+
+        // 查询部门名称
+        String departmentName = "";
+        if (employee.getDepartmentId() != null) {
+            try {
+                Department dept = departmentMapper.selectById(employee.getDepartmentId());
+                if (dept != null && dept.getName() != null) {
+                    departmentName = dept.getName();
+                }
+            } catch (Exception e) {
+                departmentName = "";
+            }
+        }
+
+        Map<String, Object> response = new java.util.HashMap<>();
+        response.put("employeeId", employee.getId());
+        response.put("employeeNo", employee.getEmployeeNo());
+        response.put("name", employee.getName());
+        response.put("phone", employee.getPhone());
+        response.put("roleCode", employee.getRoleCode());
+        response.put("roleName", roleName);
+        response.put("departmentName", departmentName);
+        response.put("employeeType", employee.getEmployeeType());
+        response.put("isDefaultPassword", employee.getIsDefaultPassword());
+
+        return ResponseEntity.ok(response);
     }
 }

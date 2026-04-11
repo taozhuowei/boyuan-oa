@@ -1,5 +1,6 @@
 package com.oa.backend.service;
 
+import com.oa.backend.annotation.OperationLogRecord;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oa.backend.dto.FormRecordResponse;
@@ -170,6 +171,7 @@ public class ApprovalFlowService {
      * @param comment 审批意见
      * @return 表单记录响应
      */
+    @OperationLogRecord(action = "APPROVAL_ACTION", targetType = "FORM_RECORD")
     @Transactional
     public FormRecordResponse advance(Long formRecordId, Long approverId, String action, String comment) {
         // 获取表单记录

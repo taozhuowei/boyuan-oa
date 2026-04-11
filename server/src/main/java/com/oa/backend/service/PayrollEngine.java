@@ -1,5 +1,6 @@
 package com.oa.backend.service;
 
+import com.oa.backend.annotation.OperationLogRecord;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -165,6 +166,7 @@ public class PayrollEngine {
      * @param cycleId 周期 ID
      * @return 结算后的周期
      */
+    @OperationLogRecord(action = "PAYROLL_SETTLE", targetType = "PAYROLL_CYCLE")
     @Transactional
     public PayrollCycle settle(Long cycleId) {
         PayrollCycle cycle = requireCycle(cycleId);

@@ -1,5 +1,6 @@
 package com.oa.backend.controller;
 
+import com.oa.backend.annotation.OperationLogRecord;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.oa.backend.dto.EmployeeCreateRequest;
 import com.oa.backend.dto.EmployeeResponse;
@@ -92,6 +93,7 @@ public class EmployeeController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('CEO')")
+    @OperationLogRecord(action = "UPDATE_EMPLOYEE", targetType = "EMPLOYEE")
     public ResponseEntity<EmployeeResponse> updateEmployee(
             @PathVariable Long id,
             @RequestBody EmployeeUpdateRequest request) {

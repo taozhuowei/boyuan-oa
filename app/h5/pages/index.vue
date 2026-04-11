@@ -3,6 +3,20 @@
   <div class="workbench-page">
     <h2 class="page-title">工作台</h2>
 
+    <!-- First-login warning banner -->
+    <a-alert
+      v-if="isDefaultPwd === true"
+      type="warning"
+      message="Your password is the default password (123456). Please change it immediately."
+      show-icon
+    >
+      <template #description>
+        <a-button type="link" size="small" @click="navigateTo('/me/password')">
+          去修改密码
+        </a-button>
+      </template>
+    </a-alert>
+
     <!-- KPI cards -->
     <div class="stat-cards">
       <a-card class="stat-card">
@@ -29,7 +43,11 @@
       </a-card>
 
       <!-- Active project count card -->
-      <a-card v-if="summary?.activeProjectCount != null" class="stat-card">
+      <a-card
+        v-if="summary?.activeProjectCount != null"
+        class="stat-card clickable-card"
+        @click="navigateTo('/projects')"
+      >
         <a-statistic
           title="进行中项目"
           :value="summary.activeProjectCount"
@@ -101,6 +119,7 @@ interface WorkbenchSummary {
 const loading = ref(false)
 const todoList = ref<FormRecord[]>([])
 const summary = ref<WorkbenchSummary | null>(null)
+const isDefaultPwd = ref<boolean | null>(null)
 
 const todoColumns = [
   { title: '类型', dataIndex: 'formTypeName', key: 'formTypeName' },
@@ -159,6 +178,13 @@ onMounted(async () => {
     ])
     todoList.value = list ?? []
     summary.value = summaryData
+
+    // Check default password status after summary is loaded and userInfo is available
+    const userStore = useUserStore()
+    if (userStore.userInfo) {
+      const authData = await request<{ isDefaultPassword?: boolean }>({ url: '/auth/me' }).catch(() => null)
+      isDefaultPwd.value = authData?.isDefaultPassword ?? false
+    }
   } catch {
     todoList.value = []
     summary.value = null
@@ -191,6 +217,10 @@ onMounted(async () => {
 .stat-card {
   flex: 1;
   min-width: 160px;
+}
+
+.clickable-card {
+  cursor: pointer;
 }
 
 .stat-label {

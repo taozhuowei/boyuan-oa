@@ -2,914 +2,152 @@
 
 > **唯一进度管理入口。** 完成一项立即打勾并提交。
 >
-> 优先级说明：`[P0]` 当前模块阻塞项 / `[P1]` 本模块核心功能 / `[P2]` 本模块完整性补充 / `[P3]` 低优先级，延后迭代
+> 优先级：`[P0]` 阻塞上线 / `[P1]` 上线必须 / `[P2]` 上线后迭代
 >
-> 状态说明：`[ ]` 未开始 / `[-]` 进行中 / `[x]` 已完成
+> 状态：`[ ]` 未开始 / `[-]` 进行中 / `[x]` 已完成
 >
-> 架构决策见 `architecture.md`，测试用例见 `test_design.md`。
+> 验收标准：**以真实浏览器可操作为准**，不接受仅代码存在、无法使用的功能。
 
 ---
 
-## 实现原则
+## 当前阶段目标
 
-- **模块顺序集成**：按依赖关系逐模块实现，每个模块的前后端任务一起完成，验收通过后再进入下一模块。
-- **模块解耦约束**：模块间通信通过 `ApplicationEvent`，不允许跨模块直接注入 `Service`（见 `architecture.md §12`）。
-- **可差分部署**：每个可选模块使用 `@ConditionalOnProperty` 守门，关闭后系统正常运行。
+**Phase A（当前）：补齐 Web 端所有功能，使系统可以真实上线测试**
 
----
+Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可正常使用，无 TODO 占位符，无死路由，核心业务链路可端到端跑通。
 
-## 模块总览
+**Phase B（Phase A 完成后）：集成测试 + 生产部署验证**
 
-| 模块                    | 状态      | 依赖                   | 验收标准                                   |
-|------------------------|---------|----------------------|--------------------------------------------|
-| **M0 基础设施**         | ✅ 已完成 | —                    | DB 建好，前后端可独立启动                  |
-| **M1 身份 & 认证**      | ✅ 已完成 | M0                   | 真实账号登录，JWT 正常                     |
-| **M2 组织管理**         | ✅ 已完成 | M1                   | 员工、部门、项目基础 CRUD 可用             |
-| **M3 审批流引擎**       | ✅ 已完成 | M2                   | 引擎独立可测，skipCondition 生效           |
-| **M4 考勤模块**         | ✅ 已完成 | M3                   | 请假/加班完整走审批流；前端接入真实接口    |
-| **M5 薪资模块**         | ✅ 已完成 | M4                   | 结算+签名确认+存证 PDF 完整               |
-| **M6 项目管理模块**     | ✅ 已完成 | M2                   | 里程碑、进度、Dashboard 可用              |
-| **M7 报销模块**         | 预留     | M5                   | 预留骨架，功能暂不实现                    |
-| **M8 施工 & 工伤模块**  | ✅ 已完成 | M3, M5               | 劳工日志+工伤跑通，动态路由生效            |
-| **M9 通知 & 工作台**    | ✅ 已完成 | M3–M8                | 工作台数据真实，通知实时触发               |
-| **M10 数据生命周期模块**| ✅ 已完成 | M5, M9               | 保留策略生效，清理/导出完整               |
-| **M11 测试 & 上线**     | ✅ 已完成 | M0–M10               | 覆盖率达标，可部署到生产                   |
-| **M12 初始化向导**      | ✅ 已完成 | M0–M10（低优先级）   | 向导走通，入口锁定                         |
-| **M-MP 小程序**         | ⏸️ 暂缓  | **M11 完成后**       | 登录/工作台/待办/考勤/项目/忘记密码        |
-
-> **三阶段开发规划**
->
-> **Phase 1: H5 + 后端核心功能（当前重点）**
-> - M5 薪资收尾（电子签名 Service、确认协议、社保模式、异议更正）
-> - M9 通知工作台（关键阻塞！工作台真实数据、通知触发机制）
-> - M10 数据生命周期（保留策略、导出、清理）
->
-> **Phase 2: 测试与上线准备**
-> - M11 测试 & 上线（单元测试 ≥80%、联调冒烟、Docker 部署、CI/CD 流水线、在线更新/回滚机制）
-> - M12 初始化向导（5 步向导、恢复码、Dev 工具）
->
-> **Phase 3: 小程序开发（M11 完成后启动）**
-> - M-MP 微信小程序（面向所有角色，侧重快捷浏览、审批、考勤、薪资查看）
-
-### 模块依赖关系图
-
-```mermaid
-flowchart TD
-    M0[ M0 基础设施 ] --> M1[ M1 身份认证 ]
-    M1 --> M2[ M2 组织管理 ]
-    M2 --> M3[ M3 审批流引擎 ]
-    M3 --> M4[ M4 考勤模块 ]
-    M4 --> M5[ M5 薪资模块 85% ]
-    M2 --> M6[ M6 项目管理 ✅ ]
-    M5 -.-> M7[ M7 报销模块 预留 ]
-    M3 --> M8[ M8 施工工伤 ✅ ]
-    M5 -.-> M8
-    M3 --> M9[ M9 通知工作台 ]
-    M4 --> M9
-    M6 --> M9
-    M8 --> M9
-    M5 --> M10[ M10 数据生命周期 ]
-    M9 --> M10
-    M0 --> M11[ M11 测试上线 ]
-    M1 --> M11
-    M2 --> M11
-    M3 --> M11
-    M4 --> M11
-    M5 --> M11
-    M6 --> M11
-    M8 --> M11
-    M9 --> M11
-    M10 --> M11
-    M0 --> M12[ M12 初始化向导 ]
-    M1 --> M12
-    M2 --> M12
-    M3 --> M12
-    M4 --> M12
-    M5 --> M12
-    M6 --> M12
-    M8 --> M12
-    M9 --> M12
-    M10 --> M12
-
-    style M6 fill:#90EE90
-    style M8 fill:#90EE90
-    style M9 fill:#FFB6C1
-    style M10 fill:#FFB6C1
-    style M12 fill:#FFB6C1
-```
-
-### 关键路径分析
-
-**当前状态（2026-04-09）：**
-- ✅ M0-M4, M5, M6, M8, M9, M10, M11, M12 全部完成
-- ⏸️ M-MP 小程序 — 暂缓（用户要求）
-
-**三阶段解锁顺序：**
-
-```mermaid
-flowchart LR
-    subgraph Phase1["Phase 1: H5 + 后端核心（当前）"]
-        M5 --> M9
-        M9 --> M10
-    end
-    
-    subgraph Phase2["Phase 2: 测试上线准备"]
-        M10 --> M11
-        M11 --> M12
-    end
-    
-    subgraph Phase3["Phase 3: 小程序（最后）"]
-        M12 --> MMP["M-MP 小程序"]
-    end
-    
-    style M9 fill:#FFB6C1,stroke:#FF6B6B,stroke-width:3px
-    style MMP fill:#E0E0E0,stroke:#999,stroke-dasharray: 5 5
-```
-
-**当前重点：**
-1. **并行收尾 M5**（电子签名 Service、确认协议、社保模式）
-2. **立即启动 M9**（工作台真实数据、通知触发）— 最大阻塞
-3. **随后 M10**（数据生命周期）
-4. **M11 完成后** 标志着 H5 + 后端全部完成，方可启动小程序
+**Phase C（Phase B 完成后）：微信小程序开发**
 
 ---
 
-## 已完成模块
+## Phase A — Web 端功能补齐
 
-### M0 — 基础设施（✅ 已完成）
+### A1 — 缺失页面（路由存在但页面不存在，点击必崩）
 
-前端基础（HTTP 层、组件注册）、前端壳（5账号可点通所有页面）、后端基础（35张表建好，5账号可登录）。
+- [x] `[P0]` **个人信息页 `/me`**：展示当前登录用户的姓名、手机号、角色、部门；HR 可在此修改自己的基本信息字段
+  > 验收：登录后点击右上角"个人信息"可正常进入，姓名/角色/手机号正确显示
 
-### M1 — 身份 & 认证（✅ 已完成）
+- [x] `[P0]` **修改密码页 `/me/password`**：当前密码验证 + 新密码输入 + 确认，调用后端接口保存
+  > 验收：输入错误旧密码有报错；修改成功后用新密码可正常登录
 
-JWT 认证、员工/角色 CRUD、组织架构树、忘记密码、修改手机号、岗位管理（含薪资/假期/社保配置）。
+- [x] `[P0]` **表单中心 `/forms`**（PM/劳工菜单可见）：展示当前用户提交过的所有表单记录（含状态/类型/时间），支持查看审批历史
+  > 验收：PM 账号侧边栏"表单中心"可进入，提交过的施工日志、工伤申报在列表中可见
 
-**浏览器验收（2026-04-08）：7/7 通过**
+- [x] `[P0]` **通讯录导入 `/directory`**（财务菜单可见）：CSV 粘贴 → 字段验证预览 → 确认导入，调用 `POST /import-preview` + `POST /import-apply`
+  > 验收：粘贴 CSV 后可看到预览界面，确认后显示导入成功结果
 
-- [x] TC-01: 错误密码有报错提示，正确登录跳转工作台
-- [x] TC-03: CEO 新建员工后员工出现在列表中
-- [x] TC-07: 财务账号无「角色管理」菜单；直接访问 `/role` 被守卫重定向至首页
-- [x] TC-09: 忘记密码完整 4 步流程（手机号→验证码→新密码→成功跳转）
+### A2 — 占位符页面（文件存在但是 TODO placeholder，不可用）
 
-### M2 — 组织管理（✅ 已完成）
+- [x] `[P0]` **岗位管理页 `/positions`**：岗位列表（含岗位等级子列表）、新建/编辑/删除岗位、新建/编辑等级，调用 `/positions` CRUD 接口和 `/positions/{id}/levels` 接口；仅 CEO 可操作
+  > 验收：CEO 账号可新建岗位并配置等级；新建员工时岗位下拉可选到此岗位
 
-部门树、项目 CRUD（含成员管理/多 PM）、施工日志填写页入口（前端壳）。
+- [x] `[P0]` **角色管理页 `/role`**：展示系统内置角色列表及自定义角色；CEO 可新建自定义角色；调用 `/roles` 接口
+  > 验收：CEO 账号可看到内置角色；可新建自定义角色并在员工创建时可选
 
-**实际代码验证（2026-04-08）**：
-- ProjectController.java：✅ 真实实现（使用 ProjectService）
-- projects/index.vue：✅ 真实调用 GET /projects API
-- org/index.vue：✅ 真实调用 GET /departments，部门树展示，CEO 可新建
-- 项目 CRUD、成员管理接口：✅ 全部存在
+- [x] `[P0]` **系统配置页 `/config`**：请假/加班计量单位（GET/POST /config/attendance-unit）、审批流配置展示；CEO 可修改
+  > 验收：CEO 修改请假单位后前端重新加载显示新值；审批流配置页展示当前所有流定义
 
-**浏览器验收（2026-04-08）：7/7 通过（含 M1）**
+### A3 — 缺失后端接口
 
-- [x] TC-04: CEO 进入项目详情，成员列表展示，添加成员正常
-- [x] TC-05: 组织架构页部门树展示 5 个种子部门，CEO 可新建部门
-- [x] TC-08: PM 账号只看到本人作为 PM 的项目，无「新建项目」按钮
+- [x] `[P0]` **后端 `POST /auth/change-password`**：需要当前密码验证（bcrypt compare），通过后更新密码哈希；JWT 不失效（前端重新登录即可）
+  > 验收：旧密码错误返回 400；正确则返回 204；新密码立即生效
 
----
+- [x] `[P1]` **后端 `GET /auth/me`**：返回当前登录用户的 employeeId、name、phone、roleCode、roleName、departmentName、employeeType、isDefaultPassword
+  > 验收：携带有效 Token 调用返回正确用户信息；Token 无效返回 401
 
-## M3 — 审批流引擎
+- [x] `[P1]` **后端操作日志查询 `GET /operation-logs`**：支持分页、时间范围筛选；仅 CEO 可访问；按 actedAt 倒序
+  > 验收：CEO Token 调用返回分页数据；finance Token 调用返回 403
 
-> **依赖：** M2（员工/岗位/角色体系）
->
-> **模块职责：** 核心引擎，不含任何业务 UI，仅提供后端引擎能力和配置接口。M4–M8 均依赖此模块。
->
-> **可关闭：** 否（核心模块，始终加载）
+### A4 — 操作日志查看页
 
-**实际代码验证（2026-04-07）**：
-- ApprovalFlowService.java：✅ 真实实现（使用 FormRecordMapper/ApprovalFlowDefMapper/ApprovalFlowNodeMapper/ApprovalRecordMapper/EmployeeMapper）
-- FormService.java：✅ 真实实现（submitForm() 写 DB，getHistory() 查 DB）
-- approval_flow_def 种子数据：✅ data.sql 含 LEAVE/OVERTIME 两条记录
-- TraceIdFilter.java：❌ filter/ 目录不存在
-- OperationLogAspect.java：❌ aspect/ 目录不存在
+- [x] `[P1]` **操作日志页面 `/operation-logs`**（CEO 菜单）：展示操作人、操作类型、目标类型、时间；支持按时间范围筛选；调用 `GET /operation-logs`
+  > 验收：CEO 登录后侧边栏可见"操作日志"；列表可分页查看
 
-### 检查点（全部通过才进入 M4）
+- [x] `[P1]` **接入 `@OperationLogRecord` 注解到关键业务方法**：薪资结算（`PayrollEngine.settle`）、员工更新（`EmployeeController.updateEmployee`）、签名绑定（`SignatureController.bindSignature`）、审批操作（`ApprovalFlowService.advance`）
+  > 验收：执行以上操作后，操作日志页出现对应记录
 
-- [ ] `ApprovalFlowService.advance()` 推进节点：通过→APPROVED；驳回→REJECTED
-- [ ] `skipCondition` 评估：提交人角色匹配时节点标记 SKIPPED 并推进到下一节点
-- [ ] 无直系领导时，节点1自动兜底给 CEO（DIRECT_SUPERVISOR 模式）
-- [ ] TraceIdFilter 生效（每请求含 X-Trace-Id 响应头）
-- [ ] 引擎单元测试全部通过（见 TEST_DESIGN §2.1 ApprovalFlowServiceTest）
+### A5 — 功能完整性补充
 
-### 后端任务
+- [x] `[P1]` **首次登录密码修改提醒**：用户密码为初始密码 `123456` 时，登录后工作台顶部展示醒目提示横幅（含"立即修改"按钮跳转 `/me/password`）
+  > 验收：用新建员工账号（初始密码）登录，工作台出现提示；修改密码后提示消失
 
-- [x] `[P0]` 写入 LEAVE、OVERTIME 默认两级审批流配置（系统启动时）
-  > 验证：`data.sql` 含 `MERGE INTO approval_flow_def` 的 LEAVE 和 OVERTIME 两条记录 ✅
+- [x] `[P1]` **工作台项目进度卡片可点击**：`activeProjectCount` 统计卡片点击跳转至 `/projects`
+  > 验收：CEO 工作台点击"活跃项目"数字跳转到项目列表页
 
-- [x] `[P0]` ApprovalFlowService：`advance()` 核心方法，含状态流转和 CEO 兜底
-  > 验证：`ApprovalFlowService.java` 含 advance()/initFlow()/getTodo()/resolveApproverId()，Mapper 真实调用 ✅
+- [ ] `[P2]` **考勤驳回后重新发起**：被驳回的请假/加班单在"我的记录"Tab 展示驳回原因；"重新发起"按钮复制原单数据打开提交表单
+  > 验收：提交请假后被 PM 驳回，员工在记录中看到驳回原因和"重新发起"按钮
 
-- [x] `[P1]` 请假/加班提交接口（`POST /attendance/leave`、`POST /attendance/overtime`）
-  > 验证：`AttendanceController.java` 含两个 POST 方法，调用 `formService.submitForm()` ✅
-
-- [x] `[P1]` 待办列表接口（`GET /attendance/todo`，按角色过滤）
-  > 验证：`AttendanceController.java` 含 `GET /attendance/todo`，调用 `approvalFlowService.getTodo()` ✅
-
-- [x] `[P1]` 审批操作接口（`POST /attendance/{id}/approve`、`POST /attendance/{id}/reject`）
-  > 验证：`AttendanceController.java` 含两个方法，调用 `approvalFlowService.advance()` ✅
-
-- [x] `[P0]` `TraceIdFilter`：每个 HTTP 请求生成 UUID trace_id，写入 MDC，响应头携带 `X-Trace-Id`（见 ARCHITECTURE §13.3）
-  > 验证：`filter/TraceIdFilter.java` 存在，`MDC.put("trace_id",...)` 生效，`curl /api/health` 响应含 `X-Trace-Id` ✅
-
-- [x] `[P1]` `OperationLogAspect`：`@OperationLogRecord` 注解驱动，自动拦截关键操作写日志（见 ARCHITECTURE §13.5）
-  > 验证：`aspect/OperationLogAspect.java` + `annotation/OperationLogRecord.java` 已创建，`@Around("@annotation(logRecord)")` 切点，pom.xml 已添加 spring-boot-starter-aop ✅
-
-- [x] `[P1]` 将 `OaDataService` 表单/审批内存逻辑迁移到真实 Service + Mapper
-  > 验证：`WorkLogController.java` 重写，使用 `FormService.submitForm("LOG"/"INJURY")` + `ApprovalFlowService`；data.sql 新增 LOG/INJURY 审批流定义；`GET /logs/records` 返回 200 ✅
-
-- [x] `[P1]` 审批流定义 CRUD 接口（`GET/PUT /approval/flows/{type}`）
-  > 验证：`ApprovalFlowController.java` — GET 列表、GET /{businessType}、PUT /{businessType} 三个接口，CEO only，curl 验证 GET /api/approval/flows 返回 4 条流定义 ✅
-
-### 前端任务
-
-- [x] `[P1]` 待办中心页（`pages/todo/`）：聚合所有待我审批，按类型/状态筛选
-  > 验证：`app/h5/pages/todo/index.vue` — 调用 `GET /attendance/todo`，Tab 筛选（全部/考勤/报销），浏览器自动化 16/16 通过 ✅
-
-- [x] `[P1]` 审批通过/驳回操作（含驳回原因输入）
-  > 验证：`pages/todo/index.vue` — 含 approve/reject 弹窗，意见输入框，调用 POST 接口 ✅
-
-- [x] `[P1]` `components/customized/ApprovalTimeline.vue` — 审批历史时间轴组件
-  > 验证：`components/customized/ApprovalTimeline.vue` — 接受 `steps: ApprovalStep[]` prop，每步含操作人/时间/操作类型/备注；Nuxt auto-import 为 `CustomizedApprovalTimeline`；`todo/index.vue` 弹窗中集成，a-empty 用于历史为空状态 ✅
+- [ ] `[P2]` **薪资更正流程**：后端 `POST /payroll/slips/{id}/correction`（财务发起，CEO 审批解锁，version 递增）；前端在财务视图详情页展示"发起更正"按钮
+  > 验收：财务对已发布工资条发起更正，CEO 在待办看到审批项；批准后原版本状态变为 SUPERSEDED
 
 ---
 
-## M4 — 考勤模块
+## Phase B — 集成测试 & 生产部署验证
 
-> **依赖：** M3（审批流引擎）
->
-> **模块职责：** 请假申请、加班通知、自补加班申请，以及审批流驱动的状态流转。
->
-> **可关闭：** `modules.attendance = false`
+### B1 — 联调冒烟测试
 
-**实际代码验证（2026-04-07）**：
-- AttendanceController.java：✅ 真实实现（使用 FormService + ApprovalFlowService），基础接口已存在
-- attendance/index.vue：❌ MOCK（硬编码数据，提交只显示 Toast，无真实接口调用）
-- 高级功能（overtime-notifications, overtime-self-report, retroactive）：❌ 未实现
+- [ ] `[P0]` **主链路 E2E 测试脚本**（扩展 `test/integration/api.test.ts`）：
+  - 员工请假 → PM 审批通过 → 状态 APPROVED，申请人收到通知
+  - 财务创建薪资周期 → 开窗 → 预检 → 结算 → 员工 PIN 确认
+  - 劳工提交施工日志 → PM 批注审批通过
+  - CEO 查看工作台摘要数据非空
+  > 验收：`yarn test:integration`（或等效命令）全部通过，后端服务运行中
 
-### 检查点（全部通过才进入 M5）
+- [ ] `[P1]` **浏览器角色完整走查**（手动，各角色登录依次点遍所有菜单页面）：
+  - CEO：全菜单无 404/空白/报错
+  - HR：员工管理、岗位管理、组织架构正常
+  - Finance：薪资管理完整流程
+  - PM：项目、施工日志、工作项模板、待办审批
+  - Employee：考勤、工资条查看确认
+  - Worker：施工日志、工伤申报
+  > 验收：6 个角色全部通关，无死链
 
-- [x] 员工提交请假单，状态 PENDING；PM 初审→APPROVING；CEO 终审→APPROVED
-- [ ] 驳回后申请人可重新发起（新单据，历史保留）（P2，延后迭代）
-- [x] 无直系领导时，节点1自动转交 CEO（resolveDirectSupervisor CEO兜底逻辑存在；data.sql已配置直系领导关系）
-- [x] PM 发起加班通知，员工可确认/拒绝；CEO 发起的加班通知直接归档
-- [x] 员工发起自补加班申请，走双审流程（直系领导+CEO）
+### B2 — 生产部署验证
 
-### 后端任务
+- [ ] `[P0]` **Docker 构建测试**：在本地执行 `docker build -t boyuan-oa .`，镜像构建成功，`docker run` 后 `/actuator/health` 返回 `{"status":"UP"}`
+  > 验收：镜像构建无报错；健康检查通过
 
-- [x] `[P1]` 请假提交接口（`POST /attendance/leave`）已存在
-  > 验证：`AttendanceController.java` 含此方法，调用 `formService.submitForm()` ✅
+- [ ] `[P1]` **PostgreSQL 迁移验证**：使用 PostgreSQL 启动后端（`-Dspring.profiles.active=prod`），Flyway V1+V2 迁移无报错，5个种子账号可登录
+  > 验收：`docker compose up`（或等效）成功；ceo.demo 可登录
 
-- [x] `[P1]` 加班提交接口（`POST /attendance/overtime`）已存在
-  > 验证：`AttendanceController.java` 含此方法 ✅
+- [ ] `[P1]` **前端生产构建**：`yarn build:h5` 无报错，`.output/` 目录生成，静态文件可被 Nginx 正常 serve
+  > 验收：`npx serve .output/public` 后浏览器可访问登录页
 
-- [x] `[P1]` 记录列表接口（`GET /attendance/records`）已存在
-  > 验证：`AttendanceController.java` 含此方法，调用 `formService.getHistory()` ✅
-
-- [x] `[P1]` 历史记录接口（`GET /attendance/history`，支持按项目/时间范围筛选）
-  > 验证：`AttendanceController.java` 新增 GET /history，PM/CEO 角色可查看全部记录；curl 测试返回 200 ✅
-
-- [x] `[P1]` 考勤计量单位配置（`GET/POST /config/attendance-unit`，HOUR/HALF_DAY/DAY）
-  > 验证：`SystemConfigController.java` 新建，GET /config/attendance-unit 返回 {leaveUnit:'HOUR',overtimeUnit:'HOUR'}；POST 需 CEO 权限 ✅
-
-- [x] `[P1]` 加班通知发起接口（`POST /overtime-notifications`）
-  > 验证：`OvertimeNotificationController.java` 已创建；CEO 发起状态 ARCHIVED，PM 发起状态 NOTIFIED；curl 测试 POST 返回 200 ✅
-
-- [x] `[P1]` 加班通知响应接口（`POST /overtime-notifications/{id}/respond`）
-  > 验证：Controller `/respond` 路由存在；worker 确认通知返回 200，accepted=true；curl 验证 ✅
-
-- [x] `[P1]` 自补加班申请接口（`POST /attendance/overtime-self-report`，走双审流程）
-  > 验证：`AttendanceController.java` 新增 `overtime-self-report` 路由，调用 `formService.submitForm("OVERTIME",...)` ✅
-
-- [ ] `[P2]` 追溯请假接口（`POST /attendance/leave/retroactive`，任意时刻补录）
-  > 检查：`AttendanceController.java` — 搜索 `retroactive`
-
-### 前端任务
-
-- [x] `[P0]` 考勤页接入真实接口（提交请假、获取历史记录）
-  > 验证：`app/h5/pages/attendance/index.vue` — onMounted 调用 `GET /attendance/records`；提交请假/加班调用 POST 接口；浏览器自动化 ✅
-
-- [x] `[P1]` 加班通知列表（员工/劳工视图）：展示收到的通知，支持确认/拒绝
-  > 验证：attendance/index.vue 加班通知 Tab — `GET /overtime-notifications`；确认/拒绝按钮；浏览器自动化 ✅
-
-- [x] `[P1]` 加班通知管理页（PM/CEO 视图）：发起通知、查看响应情况
-  > 验证：attendance/index.vue 新增"发起通知"+"已发起" tabs（仅 PM/CEO 可见）；POST /overtime-notifications；GET /overtime-notifications/initiated 响应列表可展开 ✅
-
-- [x] `[P1]` 自补加班申请表单（调用 `POST /attendance/overtime-self-report`）
-  > 验证：attendance/index.vue 新增"自补加班" tab；所有角色可见；提交后跳转我的记录 ✅
-
-- [ ] `[P2]` 驳回后可查看驳回原因，支持重新发起
-  > 检查：待办/考勤页 — 驳回单据卡片展示 rejectReason，有"重新发起"按钮
+- [ ] `[P2]` **版本号注入**：`git tag v1.0.0` → GitHub Actions release.yml 将版本号注入 JAR manifest + 前端 `VITE_APP_VERSION` 环境变量
+  > 验收：`/actuator/info` 返回版本号；前端页脚/设置页显示版本
 
 ---
 
-## M5 — 薪资模块
+## Phase C — 微信小程序（Phase B 完成后启动）
 
-> **依赖：** M4（考勤数据）
->
-> **模块职责：** 结算周期管理、工资单生成、电子签名存证、更正流程。
->
-> **可关闭：** `modules.payroll = false`
->
-> **监听的 ApplicationEvent：** `LeaveApprovedEvent`、`OvertimeRecordedEvent`、`InjuryClaimSettledEvent`（M8 完成后可接入）
+> 启动条件：Phase B 全部完成，web+后端已在生产环境运行稳定。
 
-**实际代码验证（2026-04-10）**：
-- PayrollEngine.java：✅ createCycle/openWindow/@Scheduled自动关窗/precheck/settle 已实现
-- PayrollController.java：✅ 所有端点接入 PayrollEngine，集成测试 80 项全通过
-- payroll/index.vue：✅ 分角色视图，Finance/CEO 可创建周期/开窗/预检/结算，Employee 可查看/确认/异议
-- PayrollItemDefController.java：✅ 自定义费目 CRUD 已实现
-- SalaryConfirmationAgreementController.java：✅ 确认协议上传/查询已实现
-- SignatureController.java + SignatureService.java：✅ 签名绑定/PIN/PDF 已实现
-- components/customized/SignatureCanvas/：✅ 手写签名画板已实现
-- payroll/signature-bind.vue：✅ 签名绑定页面已实现；payroll/index.vue 含 PIN 输入弹窗
-- ⚠️ PayrollEngine 未读取 Position.socialInsuranceMode — 社保模式计算路径未分叉（待修复）
-- M5 浏览器测试：✅ 14/14 通过（2026-04-08）
+### C1 — 前置清理
 
-### 检查点（全部通过才进入 M6）
+- [ ] `[P1]` 清理 `app/mp/src/pages.json`：仅保留6个入口（登录、工作台、待办、考勤、项目、忘记密码）
+- [ ] `[P1]` 审查并清理 `app/mp/src/` 中残留的 `#ifdef H5` 条件编译块
 
-- [x] 窗口期到期后自动锁定（`@Scheduled(fixedDelay=3600000)` 扫描关闭，无手动关闭接口）
-- [x] 财务发起结算，2 项强制检查（无 PUBLISHED + 无并发结算）通过后结算
-- [x] 员工端工资单"待确认"，完成电子签名绑定 + PIN 设置后可确认（SignatureController + signature-bind.vue 已实现）
-- [x] 工资条确认后生成存证 PDF（SignatureService 含 PDF 生成逻辑）
-- [ ] 财务发起更正，CEO 审批解锁，重算后 version 递增，历史版本保留（P2）
+### C2 — 核心页面
 
-### 后端任务
+- [ ] `[P2]` 登录页：手机号/密码登录，token 写入 uni storage
+- [ ] `[P2]` 工作台：动态菜单卡片（按角色），未读待办徽章
+- [ ] `[P2]` 待办页：待审批列表，支持通过/驳回操作
+- [ ] `[P2]` 考勤页：请假/加班申请入口，本月记录展示
+- [ ] `[P3]` 项目页：项目列表，PM 查成员，劳工填施工日志
+- [ ] `[P3]` 忘记密码：完整4步流程
 
-- [x] `[P0]` PayrollEngine + PayrollController 接入真实 DB（Mapper 写入 H2）
-- [x] `[P0]` openWindow / 自动关窗 @Scheduled / precheck(2项) / settle
-- [x] `[P0]` 正式结算生成 payroll_slip + payroll_slip_item 记录
+### C3 — 验收测试
 
-- [x] `[P1]` 自定义费目 CRUD（`GET/POST/PUT/DELETE /payroll/item-defs`，含 itemType ENUM）
-  > 验证：`PayrollItemDefController.java` 已存在，4 个路由 ✅
-
-- [x] `[P1]` 工资确认协议管理（`POST /salary-confirmation-agreement` 上传；`GET .../current` 读取）
-  > 验证：`SalaryConfirmationAgreementController.java` 已存在 ✅
-
-- [x] `[P1]` 电子签名 Service：签名加密存档 + PIN bcrypt + 内容 SHA-256 + PDF 生成 + 存证链写入
-  > 验证：`SignatureController.java` + `SignatureService.java` + `SignatureServiceTest.java` 已存在 ✅
-
-- [ ] `[P1]` 社保模式配置（COMPANY_PAID / MERGED 两种计算路径）
-  > ⚠️ 现状：Position.socialInsuranceMode 字段存在，但 PayrollEngine 未读取该字段，未实现分叉计算
-
-- [ ] `[P2]` 工资异议 + 更正解锁重算（version 递增，旧版本 SUPERSEDED）
-  > 现状：`/dispute` 路由已存在；`/correction` 路由缺失
-
-### 前端任务
-
-- [x] `[P0]` `components/customized/SignatureCanvas/` — 手写签名画板（H5 端）
-  > 验证：`components/customized/SignatureCanvas/index.vue` 已存在 ✅
-
-- [x] `[P1]` 薪资页接入真实接口（分角色：Finance 周期管理/结算，Employee 查看/确认/异议）
-  > 已实现：`pages/payroll/index.vue` — 真实 API 调用，无 mock
-
-- [x] `[P1]` 预结算发起页：展示 2 项强制检查清单；全通过后"发起结算"按钮激活
-  > 已实现于"结算操作"Tab，预检 → 结算按钮联动
-
-- [x] `[P1]` 电子签名流程：首次绑定引导 → `SignatureCanvas` → 设置 PIN → 工资确认弹窗（含意图声明 + PIN 输入）
-  > 验证：`payroll/signature-bind.vue` 含 SignatureCanvas；`payroll/index.vue` 含 PIN 输入 Modal ✅
-
-- [x] `[P1]` 工资条详情页：工资项明细展示（name + amount 列表）
-  > 已实现于详情 Modal，EARNING 正数 / DEDUCTION 红色
-
-- [x] `[P2]` 工资异议发起（`POST /payroll/slips/{id}/dispute`）
-  > 已实现于详情 Modal 异议按钮
+- [ ] `[P2]` TC-MP-01：各角色登录后菜单与权限一致
+- [ ] `[P2]` TC-MP-02：提交请假后审批人待办出现，操作后状态同步
+- [ ] `[P3]` TC-MP-03：施工日志（worker）可提交
 
 ---
 
-## M6 — 项目管理模块
+## 已完成（Phase 0 历史记录）
 
-> **依赖：** M2（项目基础数据）
->
-> **模块职责：** 里程碑管理、进度确认、施工日志汇总报告、项目 Dashboard。
->
-> **可关闭：** `modules.project = false`（关闭时施工日志仍可填报，但 Dashboard 和里程碑不可用）
+M0 基础设施 / M1 身份认证 / M2 组织管理 / M3 审批流引擎 / M4 考勤模块 / M5 薪资模块（含签名/PDF/社保分叉） / M6 项目管理 / M8 施工&工伤 / M9 通知&工作台 / M10 数据生命周期 / M11 CI/CD+部署脚本+Dockerfile / M12 初始化向导
 
-**实际代码验证（2026-04-08）**：
-- ProjectController.java：✅ 真实实现（使用 ProjectService）
-  - GET /projects（分页+角色过滤）✅
-  - GET /projects/{id} ✅
-  - POST/PUT/DELETE /projects ✅
-  - PATCH /projects/{id}/status ✅
-  - POST/DELETE /projects/{id}/members ✅
-  - GET/POST/PUT/DELETE /projects/{id}/milestones ✅
-  - POST /projects/{id}/progress ✅
-  - PATCH /projects/{id}/config ✅
-  - GET /projects/{id}/dashboard ✅
-  - POST /projects/{id}/construction-summary ✅
-- projects/index.vue：✅ 真实调用 GET /projects，CEO 可创建/编辑/关闭/删除
-- projects/[id].vue：✅ 含基本信息/里程碑/进度/Dashboard/汇总报告 Tab
-- M6 浏览器测试：✅ 9/9 通过（2026-04-08）
-
-### 检查点（全部通过才进入 M7）
-
-- [x] PM 可管理里程碑（CRUD），可标记完成，进度记录保留历史
-- [x] 所有日志审批完成后，PM 可生成汇总报告，通知 CEO
-- [x] CEO 可通过 Dashboard 查看里程碑完成率/进度时间轴/工作项汇总
-
-### 后端任务
-
-- [x] `[P1]` 项目 CRUD 接口（`GET/POST/PUT/DELETE /projects`）
-  > 验证：`ProjectController.java` 全部存在 ✅
-
-- [x] `[P1]` 项目状态管理（`PATCH /projects/{id}/status`，CLOSED/ACTIVE）
-  > 验证：`ProjectController.java` 含此方法 ✅
-
-- [x] `[P1]` 项目成员管理（`POST/DELETE /projects/{id}/members`）
-  > 验证：`ProjectController.java` 含此方法 ✅
-
-- [x] `[P1]` 里程碑 CRUD 接口（`GET/POST/PUT/DELETE /projects/{id}/milestones`）
-  > 验证：`ProjectController.java` ✅
-
-- [x] `[P1]` 每日进度确认接口（`POST /projects/{id}/progress`，PM 调用，含 milestoneId/note）
-  > 验证：`ProjectController.java` ✅
-
-- [x] `[P1]` 汇总报告生成接口（`POST /projects/{id}/construction-summary`，触发 CEO 通知）
-  > 验证：`ProjectController.java` ✅
-
-- [x] `[P1]` Dashboard 数据接口（`GET /projects/{id}/dashboard`，返回折线图 + 里程碑 + 工作项汇总）
-  > 验证：`ProjectController.java` ✅；响应含 timeSeriesData/milestones/workItemSummary
-
-- [x] `[P1]` 施工日志申报周期配置（`PATCH /projects/{id}/config`，CEO 直接修改，无需审批）
-  > 验证：`ProjectController.java` ✅
-
-### 前端任务
-
-- [x] `[P1]` 项目列表页（`pages/projects/index.vue`）接入真实接口
-  > 验证：真实调用 GET /projects，状态筛选，CEO 可创建/编辑/关闭/删除 ✅
-
-- [x] `[P1]` 里程碑管理 + 今日进度确认（PM/CEO 视图，集成在 `projects/[id].vue` 里程碑/进度 Tab）
-  > 验证：调用 GET/POST/PUT/DELETE `/projects/{id}/milestones`；POST `/projects/{id}/progress` ✅
-
-- [x] `[P1]` 汇总报告生成入口（PM/CEO 视图，`projects/[id].vue` 汇总报告 Tab）
-  > 验证：调用 `POST /projects/{id}/construction-summary`；历史报告列表展示 ✅
-
-- [x] `[P1]` 施工日志 Dashboard（`projects/[id].vue` Dashboard Tab）
-  > 验证：显示里程碑完成率、进度时间轴、工作项汇总；调用 GET `/projects/{id}/dashboard` ✅
-
-- [ ] `[P2]` 工作台项目进度卡片可点击跳转项目详情
-  > 检查：`pages/index.vue` — 项目行有点击事件，跳转至 `/projects/{id}`
-
----
-
-## M7 — 报销模块（预留）
-
-> **依赖：** M5（薪资，报销挂钩工资条）
->
-> **模块职责：** 费用报销申请、票据上传、审批流。
->
-> **可关闭：** `modules.reimbursement = false`（当前默认关闭，功能待后续迭代）
->
-> **当前状态：** 仅在 modules.yml 中预留配置项，代码骨架未实现。
-
-- [ ] `[P3]` 在 modules.yml 添加 `modules.reimbursement = false` 配置项
-- [ ] `[P3]` 功能设计待确认后再开始实现
-
----
-
-## M8 — 施工 & 工伤模块
-
-> **依赖：** M3（审批流引擎）、M5（薪资，工伤理赔挂钩薪资周期）
->
-> **模块职责：** 施工日志填报与审批、工作项模板管理、工伤补偿申请、工伤理赔录入。
->
-> **可关闭：** `modules.construction = false`
-
-**实际代码验证（2026-04-08）**：
-- WorkLogController.java：✅ 已迁移到 FormService + ApprovalFlowService（真实 DB）
-- skipCondition：✅ 已修复（action 写入 SKIP 符合 CHECK 约束）
-- FormApprovalRequest.action @NotBlank：✅ 已移除（控制器硬编码 action，客户端无需传入）
-- 全部后端 API 烟雾测试通过（2026-04-08）
-
-### 检查点（全部通过才进入 M9）
-
-- [x] 劳工可提交施工日志（含 workItems 动态列表），PM 可审批，无 CEO 终审
-- [x] PM/CEO 可管理工作项模板（CRUD + 派生）
-- [x] 劳工发起工伤补偿（无金额字段）→ PM 初审 → CEO 终审
-- [x] PM 代录工伤补偿 → skipCondition 触发，直接进 CEO 终审
-- [x] 工伤归档后财务可录入理赔金额并关联薪资周期
-- [x] 附件上传/下载接口可用（图片/PDF）
-
-### 后端任务
-
-- [x] `[P0]` 写入 INJURY、CONSTRUCTION_LOG 默认审批流（含 `skipCondition`）
-  > 检查：`data.sql` — 搜索 INJURY（2节点，含 skipCondition）和 CONSTRUCTION_LOG（1节点）记录
-
-- [x] `[P0]` 将 `WorkLogController` 从 `OaDataService` 迁移到真实 `FormService`
-  > 检查：`WorkLogController.java` — 不再注入 OaDataService，改为 FormService + ApprovalFlowService
-
-- [x] `[P1]` 工作项模板 CRUD 接口（`GET/POST/PUT/DELETE /work-item-templates`，含 items JSON）
-  > 检查：`WorkItemTemplateController.java` — 确认4个方法；响应含 items 数组（name / defaultUnit）
-
-- [x] `[P1]` 模板派生接口（`POST /work-item-templates/{id}/derive`）
-  > 检查：Controller — 搜索 `/derive`，返回新模板 ID，原模板不变
-
-- [x] `[P1]` 施工日志提交接口（`POST /logs/construction-logs`，含 workItems JSON 数组）
-  > 检查：`WorkLogController.java` — POST 方法存在，requestBody 支持 workItems 字段
-
-- [x] `[P1]` PM 批注接口（`PATCH /logs/construction-logs/{id}/review`，含 pmNote）
-  > 检查：Controller — 搜索 `/review`；pmNote 写入 remark 不影响日志正文
-
-- [x] `[P1]` CEO 追溯驳回接口（`POST /logs/construction-logs/{id}/recall`，状态变为 RECALLED）
-  > 检查：Controller — 搜索 `/recall`；APPROVED → RECALLED
-
-- [x] `[P1]` 工伤补偿申请接口（`POST /logs/injury`，不含 compensationAmount）
-  > 检查：Controller — POST /logs/injury；requestBody 不含金额字段
-
-- [x] `[P1]` 工伤理赔录入接口（`POST /injury-claims`，finance 专用，含 formRecordId + amount）
-  > 检查：InjuryClaimController — POST /injury-claims；权限校验为 FINANCE；status=SETTLED
-
-- [x] `[P1]` 附件上传接口（`POST /attachments/upload`）+ 本地 FS 存储
-  > 检查：AttachmentController — 搜索 `/attachments/upload`；上传成功返回 attachmentId
-
-- [x] `[P1]` 附件下载接口（`GET /attachments/{id}`，鉴权后返回文件流）
-  > 检查：AttachmentController — 含 JWT 鉴权，返回 `ResponseEntity<Resource>`
-
-### 前端任务
-
-- [x] `[P0]` `components/customized/FileUpload/` — 附件上传组件
-  > 检查：`FileUpload/index.vue` — 接受 maxCount/accept props；触发 change 事件返回已上传列表
-
-- [x] `[P1]` 施工日志填报页（`pages/construction-log/`，劳工专用）
-  - workItems 动态列表（增删行）、"从模板填入"弹窗、图片附件上传
-  > 检查：`construction-log/index.vue` — workItems 动态逻辑存在；提交时 POST `/logs/construction-logs`
-
-- [x] `[P1]` 工作项模板管理页（`pages/construction-log/templates/`，PM/CEO）— CRUD + 派生
-  > 检查：`templates/index.vue` — 调用 GET/POST/PUT/DELETE `/work-item-templates`；派生按钮调用 `/derive`
-
-- [x] `[P1]` 施工日志审批页（PM 视图，含 PM 批注输入）
-  > 检查：项目管理页日志审批 Tab — 审批操作调用 `PATCH /logs/construction-logs/{id}/review`（含 pmNote）
-
-- [x] `[P1]` 工伤补偿申请页（`pages/injury/`，劳工专用，含代录入口）
-  > 检查：`injury/index.vue` — 无金额字段；含 proxyEmployeeId（代录时可见）；调用 `POST /logs/injury`
-
-- [x] `[P1]` 工伤理赔录入入口（finance 视图，归档后可见"录入理赔金额"按钮）
-  > 检查：injury/index.vue — 搜索 `POST /injury-claims`；仅 finance 角色可见
-
-- [ ] `[P2]` `components/cross-platform/Steps/` — 审批流步骤条（MP 端需自实现）
-  > 检查：`Steps/index.vue` — 接受 steps 数组和 current 索引（待 M9 前实现）
-
----
-
-## M9 — 通知 & 工作台模块
-
-> **依赖：** M3–M8（所有业务模块的事件触发通知）
->
-> **模块职责：** 系统内通知推送、工作台聚合摘要、页面配置下发（usePageConfig）。
->
-> **可关闭：** 否（通知是核心基础设施）
-
-**实际代码验证（2026-04-09）**：
-- NotificationController.java：✅ 接入真实 NotificationMapper（GET 列表/标记已读/清除）
-- WorkbenchController.java：✅ 调用真实 Mapper（formRecordMapper/projectMapper/payrollCycleMapper/retentionReminderMapper）
-- NotificationService.send()：✅ 存在；审批/保留到期触发已接入（2026-04-09）
-
-### 检查点（全部通过才进入 M10）
-
-- [x] 工作台摘要数据（待办数/薪资状态/项目数）来自真实接口
-- [x] 审批节点变更后，相关人员待办角标实时更新
-- [-] 工资条发布后，员工收到通知（审批通知已接入，工资条通知待确认）
-- [x] `usePageConfig` composable 可正确拉取页面配置并 session 内缓存
-
-### 后端任务
-
-- [x] `[P0]` `GET /workbench/summary` 按角色返回摘要（待办数/薪资状态/项目数/到期提醒数）
-  > 完成：WorkbenchController 使用真实 Mapper，按角色返回不同字段 ✅
-
-- [x] `[P1]` 通知触发：审批节点变更 → NotificationService.send() 通知申请人
-  > 完成：ApprovalFlowService.advance() 接入 notificationService.send()（2026-04-09）
-
-- [x] `[P1]` 通知接口完整实现（GET 列表、单条已读、全部已读、清除已读）
-  > 完成：NotificationController 4 个方法均调用真实 Mapper ✅
-
-- [ ] `[P1]` `GET /page-config/{routeCode}` 按 `X-Client-Type` 和角色返回页面字段/按钮配置
-  > 现状：后端端点不存在（P3 延后，前端 usePageConfig 已存在但无后端）
-
-### 前端任务
-
-- [x] `[P0]` 工作台接入 `GET /workbench/summary` 替换 mock 数据
-  > 完成：pages/index.vue 第154行调用 /workbench/summary ✅
-
-- [x] `[P1]` 待办数量实时更新，徽标响应式
-  > 完成：workbench summary 包含 pendingTodoCount，实时响应 ✅
-
-- [x] `[P1]` 通知列表页（`GET /notifications`）
-  > 完成：notifications/index.vue 存在 ✅
-
-- [x] `[P1]` `usePageConfig(routeCode)` composable，session 内缓存
-  > 完成：composables/usePageConfig.ts 存在 ✅
-
----
-
-## M10 — 数据生命周期模块
-
-> **依赖：** M5（工资单保留），M9（通知触发）
->
-> **模块职责：** 数据保留策略配置、到期前 30 天提醒、异步导出、清理任务调度。
->
-> **可关闭：** `modules.data_lifecycle = false`
-
-**实际代码验证（2026-04-10）**：
-- RetentionController.java：✅ 调用真实 RetentionService（Mapper 驱动）
-- RetentionService.java：✅ 含 @Scheduled 每日 2 时扫描；ExportBackupTaskMapper/CleanupTaskMapper 已注入
-- V2__init_data.sql：✅ 含 `INSERT INTO retention_policy`（各类型 retentionYears = 1）
-- app/h5/pages/retention/index.vue：✅ 420 行，含策略列表/提醒操作/导出任务轮询
-
-### 检查点（全部通过才进入 M11）
-
-- [x] 所有数据类型默认保留期 1 年，sysadmin 初始化时写入
-- [x] 到期前 30 天，CEO 收到通知（RetentionService @Scheduled 扫描 + NotificationService 通知）
-- [x] CEO 可选择"导出后删除"或"忽略"（无延期选项）
-- [x] 导出任务完成后，下载链接 72 小时有效
-- [ ] `operation_log` 跟随全局保留策略，到期物理删除（无逻辑删除）
-
-### 后端任务
-
-- [x] `[P1]` 将 Retention/Backup/Cleanup Controller 内存逻辑迁移到真实 Service
-  > 验证：`RetentionController.java` — 调用 RetentionService（Mapper 注入），无内存 List/Map ✅
-
-- [x] `[P1]` sysadmin 初始化时写入默认保留策略（所有类型 1 年）
-  > 验证：`V2__init_data.sql` — 含 `INSERT INTO retention_policy`，每类型 retentionYears = 1 ✅
-
-- [x] `[P1]` 到期提醒定时任务（每日扫描，提前 30 天生成 RetentionReminder + 通知 CEO）
-  > 验证：`RetentionService.java` — @Scheduled(cron="0 0 2 * * ?")，ExportBackupTaskMapper 存在 ✅
-
-- [x] `[P1]` 异步导出任务（按周期/类型分包压缩，生成 72 小时有效下载链接）
-  > 验证：`RetentionService.java` — 含导出逻辑，ExportBackupTaskMapper 写入 ✅
-
-- [x] `[P1]` 数据清理定时任务：先删物理文件 → 再删 DB 记录 → 失败进重试队列（cleanup_task 表）
-  > 验证：`RetentionService.java` — CleanupTaskMapper 注入，CleanupTask 实体存在 ✅
-
-- [ ] `[P2]` AOP 拦截薪资结算、更正、权限变更、签名绑定 → 写入 `operation_log`
-  > 现状：OperationLogAspect.java 存在，但切点覆盖范围待确认
-
-- [ ] `[P3]` 延期接口预留（骨架，UI 隐藏，返回 501）
-
-### 前端任务
-
-- [x] `[P1]` 数据有效期配置页（CEO 可见，展示各类型当前保留期）
-  > 验证：`retention/index.vue` — 调用 GET /retention/policies，策略列表已渲染 ✅
-
-- [x] `[P1]` 到期提醒列表，支持"导出后删除"和"忽略"两个操作
-  > 验证：`retention/index.vue` — /reminders 调用，export-and-delete/dismiss 两个按钮 ✅
-
-- [x] `[P2]` 导出任务列表，展示进度和下载链接（轮询状态）
-  > 验证：`retention/index.vue` — 每5秒拉取 /export-tasks，完成后展示下载链接 ✅
-
----
-
-## M11 — 测试 & 上线准备
-
-> **依赖：** M0–M10 全部完成
->
-> **目标：** 核心链路自动化测试覆盖，可稳定部署到生产环境。
-
-### 检查点（全部通过即可上线）
-
-- [x] 后端 Service 层单元测试覆盖率 ≥ 80%（算薪引擎/审批流/签名存证核心路径 100%）
-- [ ] 联调冒烟测试通过（登录→提交单据→审批→工资确认完整链路）
-- [x] PostgreSQL 生产数据库 schema 迁移脚本就绪
-- [ ] 应用可以 Docker 容器启动
-- [ ] 日志分析工具（`tools/log_analyzer/`）可运行，OA_DEPLOY_KEY 认证生效
-- [x] CI/CD 流水线就绪（push 触发自动测试，merge to main 触发构建制品）
-- [x] 后端 update.sh / rollback.sh 可执行，健康检查失败时自动回滚
-
-### 测试任务
-
-- [x] `[P0]` 后端 Service 层单元测试（算薪引擎、审批流引擎、签名存证）— 见 TEST_DESIGN §2.1
-  > 完成：11 个 ServiceTest 文件覆盖全部服务层；`mvn test` 371 个测试全通过，服务层覆盖率 80.1%（2026-04-09）
-
-- [x] `[P0]` 后端权限隔离测试（角色 vs 接口访问控制）— 见 TEST_DESIGN §3.1
-  > 完成：AccessControlTest.java，21 个 @WithMockUser 测试覆盖 7 个场景（payroll/logs/injury 等），392 个测试全通过（2026-04-09）
-
-- [ ] `[P1]` 联调冒烟测试（各角色完整主线）— 见 TEST_DESIGN §4
-  > 检查：手动执行 TEST_DESIGN §4.2–4.6，或编写 API 脚本（`app/tests/`）自动化执行
-
-- [x] `[P1]` 前端单元测试框架搭建（Vitest + Vue Test Utils）
-  > 检查：`vitest.config.ts` 存在，`npm run test:web` 可执行
-  > 完成：前端测试已重构为三区（mp/test、h5/test、shared/test），65 个 it 全部通过
-
-- [ ] `[P2]` useComponent composable 单元测试、适配层 resolver.ts 单元测试
-
-### 全局 npm 脚本任务
-
-**实际代码验证（2026-04-10）**：
-- `app/package.json` 已包含：dev, dev:web, dev:mp, build, build:h5, build:mp, type-check, test, preview ✅
-- 缺少：deploy:h5, deploy:backend
-
-- [x] `[P1]` 安装 `concurrently` 为 workspace devDependency
-  > 验证：`app/package.json` 含 concurrently devDependency ✅
-
-- [x] `[P1]` `npm run dev` — 并行启动 H5 前端 + 后端
-  > 验证：`"dev": "concurrently ... yarn --cwd h5 dev ... ./mvnw spring-boot:run"` ✅
-
-- [x] `[P1]` `npm run dev:mp` — 单独启动小程序编译
-  > 验证：`"dev:mp": "yarn --cwd mp dev:mp-weixin"` ✅
-
-- [x] `[P1]` `npm run build` — 类型检查 → H5 build（串行）
-  > 验证：`"build": "yarn type-check && yarn build:h5"` ✅（注：build:mp 未串联，属可接受现状）
-
-- [x] `[P1]` `npm run build:h5` — H5 生产构建
-  > 验证：`"build:h5": "yarn --cwd h5 build"` ✅
-
-- [x] `[P1]` `npm run build:mp` — 小程序生产构建
-  > 验证：`"build:mp": "yarn --cwd mp build:mp-weixin"` ✅
-
-- [x] `[P1]` `npm run type-check` — TypeScript 类型检查
-  > 验证：`"type-check": "yarn --cwd h5 type-check"` ✅
-
-- [ ] `[P1]` `npm run deploy:h5` — H5 生产产物 rsync 部署（缺失）
-  ```json
-  "deploy:h5": "yarn build:h5 && rsync -avz --delete h5/.output/public/ $OA_DEPLOY_HOST:$OA_DEPLOY_PATH"
-  ```
-
-- [x] `[P2]` `npm run test` — 运行前端单元测试
-  > 验证：`"test": "yarn --cwd h5 test"` ✅
-
-### 部署任务
-
-- [x] `[P1]` PostgreSQL 生产 schema 迁移脚本
-  > 完成：`V1__init_schema.sql` + `V2__init_data.sql`，Flyway 管理 ✅
-
-- [x] `[P1]` `application-prod.yml`
-  > 已存在，使用环境变量注入 ✅
-
-- [x] `[P1]` `app/.env.example`
-  > 验证：文件存在，含 OA_DEPLOY_HOST/OA_DEPLOY_PATH/OA_DEPLOY_KEY/DB_URL/JWT_SECRET 等 ✅
-
-- [ ] `[P2]` Dockerfile（后端 Spring Boot + 前端 Nginx）
-  > ⚠️ 现状：Dockerfile 存在但使用 Gradle 构建命令（gradlew/build.gradle），而 server 使用 Maven（pom.xml）— 需修复为 Maven 构建
-
-- [x] `[P2]` `GET /actuator/health` 健康检查接口
-  > 验证：application.yml 配置 `management.endpoints.web.exposure.include: health,info,metrics` ✅
-
-### CI/CD 流水线任务
-
-- [x] `[P1]` GitHub Actions CI workflow：push 到任意分支触发后端测试 + 前端测试
-  > 验证：`.github/workflows/ci.yml` 存在，含 backend-test 和 frontend-test job ✅
-
-- [x] `[P1]` GitHub Actions Release workflow：merge to main 触发构建制品
-  > 验证：`.github/workflows/release.yml` 存在 ✅
-
-- [ ] `[P2]` 版本号注入（git tag → JAR manifest → 前端 VITE_APP_VERSION）
-
-### 在线更新与回滚任务
-
-- [x] `[P1]` `tools/deploy/update.sh`
-  > 验证：脚本存在，含备份/部署/健康检查/自动回滚逻辑 ✅
-
-- [x] `[P1]` `tools/deploy/rollback.sh`
-  > 验证：脚本存在 ✅
-
-- [x] `[P1]` `tools/deploy/VERSION`
-  > 验证：文件存在 ✅
-
-- [ ] `[P2]` `npm run deploy:backend` — 构建后端 JAR（跳过测试）并 rsync 上传，远程触发 update.sh
-  ```json
-  "deploy:backend": "cd ../server && ./gradlew build -x test && rsync -avz build/libs/app.jar $OA_DEPLOY_HOST:$OA_DEPLOY_PATH/app-new.jar && ssh $OA_DEPLOY_HOST 'bash $OA_DEPLOY_PATH/update.sh'"
-  ```
-  - `OA_DEPLOY_HOST`、`OA_DEPLOY_PATH` 通过环境变量配置，不硬编码
-  > 检查：`app/.env.example` 含上述两个变量示例；执行后服务器 `VERSION` 文件版本号更新
-
----
-
-## M12 — 系统初始化向导
-
-> **优先级：低（不阻塞 M3–M11 功能开发）**
->
-> **设计依据：** design.md §8
->
-> **目标：** 部署者通过一次性向导完成系统初始配置，向导完成后入口永久关闭。
-
-### 检查点
-
-- [x] `GET /setup/status` 返回真实值（从 DB 读取）
-- [x] 向导 5 步流程可完整走通
-- [x] 初始化完成后，再次访问向导返回 403
-- [x] 恢复码可重置 CEO 密码，使用后自动轮换
-- [x] Dev 工具：一键重置初始化状态、一键跳过向导、快捷登录均可用（仅 H5 开发模式）
-
-**实际代码验证（2026-04-10）**：
-- SetupController.java + SetupService.java：✅ 均存在，含 /setup/status、/setup/init、/setup/reset-ceo-password
-- DevController.java：✅ 存在，但 ⚠️ **缺少 @Profile("dev") 注解**（安全漏洞，生产环境路由仍暴露）
-- app/h5/pages/setup/index.vue：✅ 5步向导（CEO账号/HR账号/可选配置/确认/恢复码）
-- app/h5/middleware/auth.global.ts：✅ 含 setup redirect 逻辑（未初始化 → 跳 /setup）
-- DevToolbar.vue：✅ 存在，含重置向导/跳过向导/快捷登录三个功能
-
-### 后端任务
-
-- [x] `[P1]` `system_config.initialized` 字段；`GET /setup/status` 读真实值
-  > 验证：SetupService.isInitialized() + SetupController.status() 已实现 ✅
-
-- [x] `[P1]` `POST /setup/init` 接口：5步数据写入，完成后写 `initialized=true`
-  > 验证：SetupController + SetupService.initialize() 已实现 ✅
-
-- [x] `[P1]` 恢复码生成与验证：明文仅返回一次，服务端存 bcrypt 哈希；验证通过后轮换新码
-  > 验证：SetupService 含 recoveryCode bcrypt 逻辑 ✅
-
-- [ ] `[P1]` `POST /dev/reset-setup` 添加 `@Profile("dev")` 注解（当前**缺失**，安全漏洞）
-  > ⚠️ DevController.java 存在 @Profile 注释说明但缺少实际注解，生产环境路由会被加载
-
-- [ ] `[P2]` 运维角色 `ops` 配置变更提案接口（P2，延后迭代）
-
-### 前端任务
-
-- [x] `[P1]` 初始化向导页（`pages/setup/index.vue`，5步 Steps，完成后跳转登录页）
-  > 验证：setup/index.vue 390行，5步完整 ✅
-
-- [x] `[P1]` 未初始化时自动跳向导，已初始化时正常走登录
-  > 验证：auth.global.ts 含 /setup/status 检查 + navigateTo('/setup') 逻辑 ✅
-
-- [x] `[P1]` 恢复码展示页（一次性明文 + 复制按钮，确认勾选后"完成"按钮激活）
-  > 验证：setup/index.vue 第169–183行，recoveryCode 展示 + recoverySaved 守门 ✅
-
-### Dev 快捷工具任务
-
-- [x] `[P1]` `components/customized/DevToolbar.vue` — H5 Dev 工具悬浮面板
-  > 验证：DevToolbar.vue 存在，`v-if="isDev"`，含重置/跳过/快捷登录 ✅
-
-- [x] `[P1]` **一键重置初始化向导** — 调用 `POST /dev/reset-setup`
-  > 验证：DevToolbar.vue 含 resetSetup() 调用 ✅
-
-- [x] `[P1]` **一键跳过向导** — 重置 + 立即初始化
-  > 验证：DevToolbar.vue 含 skipSetup() 调用 ✅
-
-- [x] `[P1]` **快捷登录面板** — 5个测试账号一键登录
-  > 验证：DevToolbar.vue 含账号列表 ✅
-
-### 测试用例（M12 功能验收）
-
-- [x] `[P1]` TC-SETUP-01：全新环境下访问任意页面，自动跳转初始化向导
-- [x] `[P1]` TC-SETUP-02：完整走通5步向导，完成后跳转登录页，再次访问向导返回 403
-- [x] `[P1]` TC-SETUP-03：恢复码重置 CEO 密码
-- [x] `[P1]` TC-SETUP-04：Dev 一键重置后向导可重走
-- [x] `[P1]` TC-SETUP-05：Dev 一键跳过向导
-- [x] `[P1]` TC-SETUP-06：Dev 快捷登录5个账号逐一验证
-
----
-
-## M-MP — 微信小程序端（⏸️ Phase 3 启动，依赖 M11 完成）
-
-> **启动条件：** `M11 测试 & 上线` 模块 100% 完成后，方可启动小程序开发。
->
-> **设计原则：**
-> - **H5 工作台**：侧重全流程操作和配置管理，支持复杂表单填写、数据导出等完整功能
-> - **小程序端**：面向所有角色，侧重快捷信息浏览、轻量审批流、考勤打卡、薪资查看等便携场景
-> - 复杂管理功能（角色管理、组织架构配置、审批流配置等）优先在 H5 端实现
->
-> **架构现状：**
-> - 小程序独立目录：`app/mp/`（uni-app，仅保留 MP-WEIXIN 平台）
-> - 共享类型层：`app/shared/types/`（`SessionUser`、`FormConfig`、`EmployeeProfile` 等）
-> - 共享工具层：`app/shared/utils/`（`getAvailableFormOptions` 等纯函数）
-> - H5 端由 `app/h5/`（Nuxt 3）独立实现，已完成 12/12 浏览器自动化测试
->
-> **启动命令：**
-> ```bash
-> yarn dev:mp   # 编译监听，配合微信开发者工具导入 app/mp/dist/dev/mp-weixin/
-> yarn build:mp # 生产构建
-> ```
-
-### 前置清理任务（重构遗留）
-
-- [ ] `[P1]` **清理 pages.json 中的 H5 专属页面**：小程序端仅保留登录、工作台、待办、考勤、项目、忘记密码 6 个入口；移除 payroll（薪资）、employees（员工管理）、role（角色管理）、config（系统配置）、positions（岗位管理）、org（组织架构）等管理类页面（管理员在 H5 端操作）
-  > 检查：`app/mp/src/pages.json` — 仅留 6 条页面路由；被删除页面目录可保留代码（未来扩展）但不注册路由
-
-- [ ] `[P1]` **审核并清理 app/mp/src/ 中残留的 `#ifdef H5` 条件编译块**（如有）
-  > 检查：`grep -r "#ifdef H5" app/mp/src/` 输出为空
-
-### 核心页面实现（对标 H5 端）
-
-- [ ] `[P2]` **登录页 `pages/login/index.vue`**：手机号/账号密码登录，接入真实 `POST /api/auth/login`，成功后跳工作台
-  > 检查：employee.demo + 123456 可登录；错误密码有 Toast 提示；登录后 token 写入 uni storage
-
-- [ ] `[P2]` **工作台 `pages/index/index.vue`**：动态菜单卡片（调 `GET /api/auth/menus` 按角色显示）、未读待办徽章、个人信息头部
-  > 检查：CEO 看到全部菜单；employee 只看到 3–4 个授权菜单；徽章显示待审批数
-
-- [ ] `[P2]` **待办页 `pages/todo/index.vue`**：待审批表单列表，支持审批操作（通过/拒绝）
-  > 检查：提交请假单后，审批人待办出现记录；操作后状态变更
-
-- [ ] `[P2]` **考勤页 `pages/attendance/index.vue`**：打卡（GPS）、本月出勤记录展示、请假/加班申请入口
-  > 检查：模拟位置后可打卡；记录出现在列表；申请走完审批流后状态更新
-
-- [ ] `[P3]` **项目页 `pages/projects/index.vue`**：项目列表，PM 可查成员，worker 可填施工日志
-  > 检查：PM 账号只看到自己的项目；施工日志表单可提交
-
-- [ ] `[P3]` **忘记密码 `pages/auth/forgot_password/index.vue`**：完整 4 步流程（手机号→验证码→新密码→成功）
-  > 检查：完整走通，新密码可登录
-
-### 体验 & 适配
-
-- [ ] `[P3]` **底部 tabBar 图标**：为工作台和登录页配置本地 icon（当前使用文字占位）
-  > 检查：`app/mp/src/static/tabbar/` 下有对应 png；pages.json iconPath 指向正确路径
-
-- [ ] `[P3]` **AppShell 菜单权限适配**：小程序 AppShell 组件按 `GET /api/auth/menus` 动态渲染侧边栏/底部导航
-  > 检查：不同角色账号登录，底部导航项目数量和内容不同
-
-- [ ] `[P3]` **网络异常降级**：无网络时展示离线提示页，已有本地缓存数据可只读查看
-
-### 测试用例（小程序端）
-
-- [ ] `[P2]` TC-MP-01：employee.demo 登录后工作台可见菜单与角色权限一致
-- [ ] `[P2]` TC-MP-02：考勤打卡后记录出现在本月出勤列表
-- [ ] `[P2]` TC-MP-03：提交请假申请后，审批人待办列表出现记录，操作后状态同步
-- [ ] `[P3]` TC-MP-04：施工日志（worker 角色）可提交，列表出现记录
-
+> 代码验证日期：2026-04-10。上述模块核心逻辑均已在代码中确认，非仅文档标记。

@@ -1,10 +1,224 @@
 <template>
-  <div class="page-placeholder">
-    <h2>系统配置</h2>
-    <p style="color:#999">TODO: implement</p>
+  <div class="config-page">
+    <h2 class="page-title">System Config</h2>
+
+    <div class="cards-container">
+      <!-- Section 1: Attendance Unit Config -->
+      <a-card title="Attendance Unit Config" class="config-card">
+        <a-spin :spinning="attendanceLoading">
+          <div class="form-row">
+            <span class="form-label">Leave Unit:</span>
+            <template v-if="isCEO">
+              <a-select
+                v-model:value="leaveUnit"
+                style="width: 160px"
+                :options="unitOptions"
+                placeholder="Select unit"
+              />
+            </template>
+            <template v-else>
+              <span class="readonly-value">{{ getUnitLabel(leaveUnit) }}</span>
+            </template>
+          </div>
+
+          <div class="form-row">
+            <span class="form-label">Overtime Unit:</span>
+            <template v-if="isCEO">
+              <a-select
+                v-model:value="overtimeUnit"
+                style="width: 160px"
+                :options="unitOptions"
+                placeholder="Select unit"
+              />
+            </template>
+            <template v-else>
+              <span class="readonly-value">{{ getUnitLabel(overtimeUnit) }}</span>
+            </template>
+          </div>
+
+          <div v-if="isCEO" class="form-actions">
+            <a-button type="primary" :loading="saving" @click="saveAttendanceConfig">
+              Save
+            </a-button>
+          </div>
+        </a-spin>
+      </a-card>
+
+      <!-- Section 2: Approval Flow Config -->
+      <a-card title="Approval Flow Config" class="config-card">
+        <a-spin :spinning="flowsLoading">
+          <a-table
+            :columns="flowColumns"
+            :data-source="approvalFlows"
+            :pagination="false"
+            row-key="id"
+            size="small"
+          >
+            <template #emptyText>
+              <span v-if="flowsError">Unable to load approval flows</span>
+              <span v-else>No approval flows found</span>
+            </template>
+          </a-table>
+        </a-spin>
+      </a-card>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-// TODO: implement 系统配置 page
+import { ref, computed, onMounted } from 'vue'
+import { message } from 'ant-design-vue'
+import { request } from '~/utils/http'
+import { useUserStore } from '~/stores/user'
+
+// User store for role checking
+const userStore = useUserStore()
+const isCEO = computed(() => userStore.userInfo?.role === 'ceo')
+
+// Attendance Unit Config
+interface AttendanceConfig {
+  leaveUnit: string
+  overtimeUnit: string
+}
+
+const attendanceLoading = ref(false)
+const saving = ref(false)
+const leaveUnit = ref<string>('')
+const overtimeUnit = ref<string>('')
+
+const unitOptions = [
+  { value: 'HOUR', label: 'Hour' },
+  { value: 'HALF_DAY', label: 'Half Day' },
+  { value: 'DAY', label: 'Full Day' }
+]
+
+function getUnitLabel(value: string): string {
+  const option = unitOptions.find(opt => opt.value === value)
+  return option?.label ?? value ?? '—'
+}
+
+async function loadAttendanceConfig() {
+  attendanceLoading.value = true
+  try {
+    const data = await request<AttendanceConfig>({
+      url: '/config/attendance-unit'
+    })
+    leaveUnit.value = data.leaveUnit ?? ''
+    overtimeUnit.value = data.overtimeUnit ?? ''
+  } catch {
+    message.warning('Failed to load attendance config')
+  } finally {
+    attendanceLoading.value = false
+  }
+}
+
+async function saveAttendanceConfig() {
+  if (!isCEO.value) return
+
+  saving.value = true
+  try {
+    await request({
+      url: '/config/attendance-unit',
+      method: 'POST',
+      body: {
+        leaveUnit: leaveUnit.value,
+        overtimeUnit: overtimeUnit.value
+      }
+    })
+    message.success('Attendance config saved successfully')
+  } catch {
+    message.error('Failed to save attendance config')
+  } finally {
+    saving.value = false
+  }
+}
+
+// Approval Flow Config
+interface ApprovalFlow {
+  id: string | number
+  name?: string
+  flowName?: string
+  status?: string
+  [key: string]: any
+}
+
+const flowsLoading = ref(false)
+const flowsError = ref(false)
+const approvalFlows = ref<ApprovalFlow[]>([])
+
+const flowColumns = [
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
+  { title: 'Name', key: 'name' },
+  { title: 'Status', dataIndex: 'status', key: 'status', width: 100 }
+]
+
+async function loadApprovalFlows() {
+  flowsLoading.value = true
+  flowsError.value = false
+  try {
+    const data = await request<ApprovalFlow[]>({
+      url: '/approval/flows'
+    })
+    approvalFlows.value = Array.isArray(data) ? data : []
+  } catch {
+    approvalFlows.value = []
+    flowsError.value = true
+  } finally {
+    flowsLoading.value = false
+  }
+}
+
+// Load data on mount
+onMounted(() => {
+  loadAttendanceConfig()
+  loadApprovalFlows()
+})
 </script>
+
+<style scoped>
+.config-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: #003466;
+}
+
+.cards-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.config-card {
+  flex: 1;
+  min-width: 320px;
+  min-height: 200px;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-label {
+  width: 100px;
+  color: #666;
+}
+
+.readonly-value {
+  color: #333;
+  font-weight: 500;
+}
+
+.form-actions {
+  margin-top: 24px;
+}
+</style>
