@@ -21,34 +21,34 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 21 (Temurin)
+      - name: Setup Java 17 (Temurin)
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
 
-      - name: Cache Gradle dependencies
+      - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('server/**/*.gradle*', 'server/**/gradle-wrapper.properties') }}
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            ${{ runner.os }}-maven-
 
       - name: Run backend tests
         working-directory: server
-        run: ./gradlew test --no-daemon
+        run: mvn test
 
       - name: Upload test reports on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: backend-test-reports
-          path: server/build/reports/tests/
+          path: server/target/surefire-reports/
           retention-days: 7
 
-  frontend-test:
-    name: Frontend Tests
+  frontend-h5-test:
+    name: Frontend H5 Tests
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -61,15 +61,29 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: |
-            app/h5/package-lock.json
-            app/mp/package-lock.json
+          cache-dependency-path: app/h5/package.json
 
       - name: Install dependencies and run H5 tests
         working-directory: app/h5
         run: |
           npm install
           npm run test
+
+  frontend-mp-test:
+    name: Frontend MP Tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: app/mp/package.json
 
       - name: Install dependencies and run MP tests
         working-directory: app/mp

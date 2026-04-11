@@ -18,29 +18,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 21 (Temurin)
+      - name: Setup Java 17 (Temurin)
         uses: actions/setup-java@v4
         with:
-          java-version: '21'
+          java-version: '17'
           distribution: 'temurin'
 
-      - name: Cache Gradle dependencies
+      - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.gradle/caches
-          key: ${{ runner.os }}-gradle-${{ hashFiles('server/**/*.gradle*', 'server/**/gradle-wrapper.properties') }}
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
           restore-keys: |
-            ${{ runner.os }}-gradle-
+            ${{ runner.os }}-maven-
 
       - name: Build backend JAR
         working-directory: server
-        run: ./gradlew bootJar -x test --no-daemon
+        run: mvn package -DskipTests
 
       - name: Upload backend artifact
         uses: actions/upload-artifact@v4
         with:
           name: backend-jar
-          path: server/build/libs/*.jar
+          path: server/target/*.jar
           retention-days: 30
 
   build-frontend:
@@ -57,7 +57,7 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: app/h5/package-lock.json
+          cache-dependency-path: app/h5/package.json
 
       - name: Install dependencies and build H5
         working-directory: app/h5
