@@ -1,19 +1,19 @@
 <template>
   <div class="config-page">
-    <h2 class="page-title">System Config</h2>
+    <h2 class="page-title">系统配置</h2>
 
     <div class="cards-container">
       <!-- Section 1: Attendance Unit Config -->
-      <a-card title="Attendance Unit Config" class="config-card">
+      <a-card title="考勤计量单位" class="config-card">
         <a-spin :spinning="attendanceLoading">
           <div class="form-row">
-            <span class="form-label">Leave Unit:</span>
+            <span class="form-label">请假单位：</span>
             <template v-if="isCEO">
               <a-select
                 v-model:value="leaveUnit"
                 style="width: 160px"
                 :options="unitOptions"
-                placeholder="Select unit"
+                placeholder="请选择单位"
               />
             </template>
             <template v-else>
@@ -22,13 +22,13 @@
           </div>
 
           <div class="form-row">
-            <span class="form-label">Overtime Unit:</span>
+            <span class="form-label">加班单位：</span>
             <template v-if="isCEO">
               <a-select
                 v-model:value="overtimeUnit"
                 style="width: 160px"
                 :options="unitOptions"
-                placeholder="Select unit"
+                placeholder="请选择单位"
               />
             </template>
             <template v-else>
@@ -38,14 +38,14 @@
 
           <div v-if="isCEO" class="form-actions">
             <a-button type="primary" :loading="saving" @click="saveAttendanceConfig">
-              Save
+              保存
             </a-button>
           </div>
         </a-spin>
       </a-card>
 
       <!-- Section 2: Approval Flow Config -->
-      <a-card title="Approval Flow Config" class="config-card">
+      <a-card title="审批流配置" class="config-card">
         <a-spin :spinning="flowsLoading">
           <a-table
             :columns="flowColumns"
@@ -55,8 +55,8 @@
             size="small"
           >
             <template #emptyText>
-              <span v-if="flowsError">Unable to load approval flows</span>
-              <span v-else>No approval flows found</span>
+              <span v-if="flowsError">无法加载审批流配置</span>
+              <span v-else>暂无审批流配置</span>
             </template>
           </a-table>
         </a-spin>
@@ -87,9 +87,9 @@ const leaveUnit = ref<string>('')
 const overtimeUnit = ref<string>('')
 
 const unitOptions = [
-  { value: 'HOUR', label: 'Hour' },
-  { value: 'HALF_DAY', label: 'Half Day' },
-  { value: 'DAY', label: 'Full Day' }
+  { value: 'HOUR', label: '小时' },
+  { value: 'HALF_DAY', label: '半天' },
+  { value: 'DAY', label: '天' }
 ]
 
 function getUnitLabel(value: string): string {
@@ -106,7 +106,7 @@ async function loadAttendanceConfig() {
     leaveUnit.value = data.leaveUnit ?? ''
     overtimeUnit.value = data.overtimeUnit ?? ''
   } catch {
-    message.warning('Failed to load attendance config')
+    message.warning('加载考勤配置失败')
   } finally {
     attendanceLoading.value = false
   }
@@ -125,9 +125,9 @@ async function saveAttendanceConfig() {
         overtimeUnit: overtimeUnit.value
       }
     })
-    message.success('Attendance config saved successfully')
+    message.success('保存成功')
   } catch {
-    message.error('Failed to save attendance config')
+    message.error('保存失败')
   } finally {
     saving.value = false
   }
@@ -148,8 +148,8 @@ const approvalFlows = ref<ApprovalFlow[]>([])
 
 const flowColumns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: 'Name', key: 'name' },
-  { title: 'Status', dataIndex: 'status', key: 'status', width: 100 }
+  { title: '名称', key: 'name' },
+  { title: '状态', dataIndex: 'status', key: 'status', width: 100 }
 ]
 
 async function loadApprovalFlows() {

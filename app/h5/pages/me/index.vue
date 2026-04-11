@@ -1,7 +1,7 @@
 <template>
   <!-- Personal profile page -->
   <div class="profile-page">
-    <h2 class="page-title">My Profile</h2>
+    <h2 class="page-title">个人信息</h2>
 
     <a-card>
       <a-spin :spinning="loading">
@@ -10,43 +10,43 @@
           v-if="userInfo?.isDefaultPassword"
           type="warning"
           show-icon
-          :message="'Your password is the default (123456). Please change it immediately.'"
+          :message="'当前密码为初始密码（123456），请立即修改。'"
           class="password-alert"
         >
           <template #action>
             <a-button type="primary" size="small" @click="navigateTo('/me/password')">
-              Change Now
+              立即修改
             </a-button>
           </template>
         </a-alert>
 
         <a-descriptions bordered :column="1">
-          <a-descriptions-item label="Name">
+          <a-descriptions-item label="姓名">
             {{ userInfo?.name }}
           </a-descriptions-item>
-          <a-descriptions-item label="Employee No">
+          <a-descriptions-item label="工号">
             {{ userInfo?.employeeNo }}
           </a-descriptions-item>
-          <a-descriptions-item label="Phone">
+          <a-descriptions-item label="手机号">
             {{ userInfo?.phone ?? '-' }}
           </a-descriptions-item>
-          <a-descriptions-item label="Role">
+          <a-descriptions-item label="角色">
             {{ userInfo?.roleName }}
           </a-descriptions-item>
-          <a-descriptions-item label="Department">
+          <a-descriptions-item label="部门">
             {{ userInfo?.departmentName ?? '-' }}
           </a-descriptions-item>
-          <a-descriptions-item label="Employee Type">
+          <a-descriptions-item label="员工类型">
             {{ formatEmployeeType(userInfo?.employeeType) }}
           </a-descriptions-item>
-          <a-descriptions-item label="Account Status">
-            Active
+          <a-descriptions-item label="账号状态">
+            正常
           </a-descriptions-item>
         </a-descriptions>
 
         <div class="actions">
           <a-button type="primary" @click="navigateTo('/me/password')">
-            Change Password
+            修改密码
           </a-button>
         </div>
       </a-spin>
@@ -74,8 +74,8 @@ const loading = ref(false)
 const userInfo = ref<UserInfo | null>(null)
 
 function formatEmployeeType(type: string | undefined): string {
-  if (type === 'OFFICE') return 'Office'
-  if (type === 'LABOR') return 'Labor'
+  if (type === 'OFFICE') return '正式员工'
+  if (type === 'LABOR') return '劳工'
   return type ?? '-'
 }
 

@@ -1,6 +1,6 @@
 <template>
   <div class="password-page">
-    <h2 class="page-title">Change Password</h2>
+    <h2 class="page-title">修改密码</h2>
     <a-card class="password-card">
       <a-form
         :model="formState"
@@ -8,33 +8,33 @@
         layout="vertical"
         @finish="handleSubmit"
       >
-        <a-form-item label="Current Password" name="currentPassword">
+        <a-form-item label="当前密码" name="currentPassword">
           <a-input-password
             v-model:value="formState.currentPassword"
-            placeholder="Enter current password"
+            placeholder="请输入当前密码"
           />
         </a-form-item>
 
-        <a-form-item label="New Password" name="newPassword">
+        <a-form-item label="新密码" name="newPassword">
           <a-input-password
             v-model:value="formState.newPassword"
-            placeholder="Enter new password"
+            placeholder="请输入新密码"
           />
         </a-form-item>
 
-        <a-form-item label="Confirm New Password" name="confirmPassword">
+        <a-form-item label="确认新密码" name="confirmPassword">
           <a-input-password
             v-model:value="formState.confirmPassword"
-            placeholder="Confirm new password"
+            placeholder="请再次输入新密码"
           />
         </a-form-item>
 
         <a-form-item>
           <a-space>
             <a-button type="primary" html-type="submit" :loading="loading">
-              Save
+              保存
             </a-button>
-            <a-button @click="handleCancel">Cancel</a-button>
+            <a-button @click="handleCancel">取消</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -67,21 +67,21 @@ const loading = ref(false)
 
 const validateConfirmPassword = (_rule: unknown, value: string) => {
   if (!value) {
-    return Promise.reject(new Error('Please confirm your new password'))
+    return Promise.reject(new Error('请确认新密码'))
   }
   if (value !== formState.newPassword) {
-    return Promise.reject(new Error('Passwords do not match'))
+    return Promise.reject(new Error('两次输入的密码不一致'))
   }
   return Promise.resolve()
 }
 
 const rules = {
   currentPassword: [
-    { required: true, message: 'Please enter your current password', trigger: 'blur' }
+    { required: true, message: '请输入当前密码', trigger: 'blur' }
   ],
   newPassword: [
-    { required: true, message: 'Please enter your new password', trigger: 'blur' },
-    { min: 6, message: 'Password must be at least 6 characters', trigger: 'blur' }
+    { required: true, message: '请输入新密码', trigger: 'blur' },
+    { min: 6, message: '密码长度至少6位', trigger: 'blur' }
   ],
   confirmPassword: [
     { required: true, validator: validateConfirmPassword, trigger: 'blur' }
@@ -99,12 +99,12 @@ const handleSubmit = async () => {
         newPassword: formState.newPassword
       }
     })
-    message.success('Password changed successfully')
+    message.success('密码修改成功')
     setTimeout(() => {
       navigateTo('/me')
     }, 1500)
   } catch (error: any) {
-    const errorMessage = error?.data?.message || error?.message || 'Failed to change password'
+    const errorMessage = error?.data?.message || error?.message || '密码修改失败'
     message.error(errorMessage)
   } finally {
     loading.value = false

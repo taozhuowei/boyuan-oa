@@ -1,12 +1,12 @@
 <template>
   <div class="directory-import-page">
-    <h2 class="page-title">Directory Import</h2>
+    <h2 class="page-title">通讯录导入</h2>
 
     <a-card>
       <a-steps :current="currentStep" class="steps">
-        <a-step title="Upload" />
-        <a-step title="Preview" />
-        <a-step title="Done" />
+        <a-step title="上传数据" />
+        <a-step title="预览确认" />
+        <a-step title="导入完成" />
       </a-steps>
 
       <!-- Step 1: Upload -->
@@ -14,11 +14,11 @@
         <a-textarea
           v-model:value="csvInput"
           :rows="10"
-          placeholder="Paste CSV data here (one per line: name,phone,department)&#10;Example:&#10;John Doe,13800138000,Engineering&#10;Jane Smith,13900139000,HR"
+          placeholder="在此粘贴 CSV 数据，每行一条，格式：姓名,手机号,部门&#10;示例：&#10;张三,13800138000,工程部&#10;李四,13900139000,财务部"
         />
         <div class="step-actions">
           <a-button type="primary" :loading="previewLoading" @click="handlePreview">
-            Next
+            下一步
           </a-button>
         </div>
       </div>
@@ -27,16 +27,16 @@
       <div v-if="currentStep === 1" class="step-content">
         <div class="statistics">
           <a-card class="stat-card">
-            <a-statistic title="Total" :value="previewData?.total ?? 0" />
+            <a-statistic title="共计" :value="previewData?.totalCount ?? 0" />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="Valid" :value="previewData?.valid ?? 0" value-style="color: #52c41a" />
+            <a-statistic title="有效" :value="previewData?.validCount ?? 0" value-style="color: #52c41a" />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="Invalid" :value="previewData?.invalid ?? 0" value-style="color: #ff4d4f" />
+            <a-statistic title="无效" :value="previewData?.invalidCount ?? 0" value-style="color: #ff4d4f" />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="Duplicate" :value="previewData?.duplicate ?? 0" value-style="color: #fa8c16" />
+            <a-statistic title="重复" :value="previewData?.duplicateCount ?? 0" value-style="color: #fa8c16" />
           </a-card>
         </div>
 
@@ -59,19 +59,19 @@
         </a-table>
 
         <div class="step-actions">
-          <a-button @click="handleBack">Back</a-button>
+          <a-button @click="handleBack">上一步</a-button>
           <a-button type="primary" :loading="importLoading" @click="handleImport">
-            Confirm Import
+            确认导入
           </a-button>
         </div>
       </div>
 
       <!-- Step 3: Done -->
       <div v-if="currentStep === 2" class="step-content">
-        <a-result status="success" title="Import Successful" :sub-title="importMessage">
+        <a-result status="success" title="导入成功" :sub-title="importMessage">
           <template #extra>
             <a-button type="primary" @click="handleReset">
-              Import Again
+              再次导入
             </a-button>
           </template>
         </a-result>
@@ -101,10 +101,10 @@ interface PreviewItem {
 }
 
 interface PreviewResponse {
-  total: number
-  valid: number
-  invalid: number
-  duplicate: number
+  totalCount: number
+  validCount: number
+  invalidCount: number
+  duplicateCount: number
   items: PreviewItem[]
 }
 
@@ -117,11 +117,11 @@ const selectedRowKeys = ref<number[]>([])
 const importMessage = ref('')
 
 const columns = [
-  { title: 'Name', dataIndex: 'name', key: 'name' },
-  { title: 'Phone', dataIndex: 'phone', key: 'phone' },
-  { title: 'Department', dataIndex: 'department', key: 'department' },
-  { title: 'Status', key: 'status', width: 100 },
-  { title: 'Message', dataIndex: 'message', key: 'message', ellipsis: true }
+  { title: '姓名', dataIndex: 'name', key: 'name' },
+  { title: '手机号', dataIndex: 'phone', key: 'phone' },
+  { title: '部门', dataIndex: 'department', key: 'department' },
+  { title: '状态', key: 'status', width: 80 },
+  { title: '说明', dataIndex: 'message', key: 'message', ellipsis: true }
 ]
 
 const rowSelection = computed(() => ({
@@ -170,13 +170,13 @@ function parseCsvInput(input: string): DirectoryRecord[] {
 
 async function handlePreview() {
   if (!csvInput.value.trim()) {
-    message.warning('Please enter CSV data')
+    message.warning('请输入 CSV 数据')
     return
   }
 
   const records = parseCsvInput(csvInput.value)
   if (records.length === 0) {
-    message.warning('No valid records found. Please check your input format.')
+    message.warning('未找到有效数据，请检查输入格式')
     return
   }
 
@@ -196,7 +196,7 @@ async function handlePreview() {
 
     currentStep.value = 1
   } catch {
-    message.error('Failed to preview import data')
+    message.error('预览失败，请重试')
   } finally {
     previewLoading.value = false
   }
@@ -204,7 +204,7 @@ async function handlePreview() {
 
 async function handleImport() {
   if (selectedRowKeys.value.length === 0) {
-    message.warning('Please select at least one record to import')
+    message.warning('请至少选择一条记录进行导入')
     return
   }
 
@@ -218,7 +218,7 @@ async function handleImport() {
     importMessage.value = result
     currentStep.value = 2
   } catch {
-    message.error('Failed to import records')
+    message.error('导入失败，请重试')
   } finally {
     importLoading.value = false
   }

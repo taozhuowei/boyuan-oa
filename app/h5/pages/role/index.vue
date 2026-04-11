@@ -1,13 +1,13 @@
 <template>
   <div class="roles-page">
-    <h2 class="page-title">Role Management</h2>
+    <h2 class="page-title">角色管理</h2>
 
     <a-card>
       <!-- Top actions bar -->
       <div class="search-bar">
         <div />
         <a-button v-if="isCEO" type="primary" @click="openCreateModal">
-          Add Role
+          新增角色
         </a-button>
       </div>
 
@@ -21,27 +21,27 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'isSystem'">
             <a-tag :color="record.isSystem ? 'blue' : 'default'">
-              {{ record.isSystem ? 'System' : 'Custom' }}
+              {{ record.isSystem ? '系统' : '自定义' }}
             </a-tag>
           </template>
           <template v-if="column.key === 'status'">
             <a-tag :color="record.status === 1 ? 'success' : 'default'">
-              {{ record.status === 1 ? 'Enabled' : 'Disabled' }}
+              {{ record.status === 1 ? '启用' : '禁用' }}
             </a-tag>
           </template>
           <template v-if="column.key === 'action'">
             <template v-if="isCEO && !record.isSystem">
               <a-button type="link" size="small" @click="openEditModal(record)">
-                Edit
+                编辑
               </a-button>
               <a-popconfirm
-                title="Are you sure you want to delete this role?"
-                ok-text="Yes"
-                cancel-text="No"
+                title="确定删除该角色吗？"
+                ok-text="确定"
+                cancel-text="取消"
                 @confirm="handleDelete(record.id)"
               >
                 <a-button type="link" size="small" danger>
-                  Delete
+                  删除
                 </a-button>
               </a-popconfirm>
             </template>
@@ -56,8 +56,8 @@
     <!-- Create/Edit Modal -->
     <a-modal
       v-model:open="modalVisible"
-      :title="isEditMode ? 'Edit Role' : 'Add Role'"
-      ok-text="Save"
+      :title="isEditMode ? '编辑角色' : '新增角色'"
+      ok-text="保存"
       @ok="handleModalOk"
       @cancel="closeModal"
     >
@@ -67,27 +67,27 @@
         ref="formRef"
         layout="vertical"
       >
-        <a-form-item label="Role Code" name="roleCode">
+        <a-form-item label="角色编码" name="roleCode">
           <a-input
             v-model:value="formState.roleCode"
-            placeholder="Enter role code"
+            placeholder="请输入角色编码"
             :disabled="isEditMode"
           />
         </a-form-item>
-        <a-form-item label="Role Name" name="roleName">
+        <a-form-item label="角色名称" name="roleName">
           <a-input
             v-model:value="formState.roleName"
-            placeholder="Enter role name"
+            placeholder="请输入角色名称"
           />
         </a-form-item>
-        <a-form-item label="Description" name="description">
+        <a-form-item label="描述" name="description">
           <a-textarea
             v-model:value="formState.description"
-            placeholder="Enter description"
+            placeholder="请输入描述"
             :rows="3"
           />
         </a-form-item>
-        <a-form-item label="Status" name="status">
+        <a-form-item label="状态" name="status">
           <a-select v-model:value="formState.status" :options="statusOptions" />
         </a-form-item>
       </a-form>
@@ -138,22 +138,22 @@ const formState = reactive<FormState>({
 })
 
 const statusOptions = [
-  { value: 1, label: 'Enabled' },
-  { value: 0, label: 'Disabled' }
+  { value: 1, label: '启用' },
+  { value: 0, label: '禁用' }
 ]
 
 const columns = [
-  { title: 'Role Name', dataIndex: 'roleName', key: 'roleName' },
-  { title: 'Role Code', dataIndex: 'roleCode', key: 'roleCode' },
-  { title: 'Description', dataIndex: 'description', key: 'description' },
-  { title: 'Type', key: 'isSystem', width: 100 },
-  { title: 'Status', key: 'status', width: 100 },
-  { title: 'Action', key: 'action', width: 120 }
+  { title: '角色名称', dataIndex: 'roleName', key: 'roleName' },
+  { title: '角色编码', dataIndex: 'roleCode', key: 'roleCode' },
+  { title: '描述', dataIndex: 'description', key: 'description' },
+  { title: '类型', key: 'isSystem', width: 100 },
+  { title: '状态', key: 'status', width: 100 },
+  { title: '操作', key: 'action', width: 120 }
 ]
 
 const rules = {
-  roleCode: [{ required: true, message: 'Role code is required', trigger: 'blur' }],
-  roleName: [{ required: true, message: 'Role name is required', trigger: 'blur' }]
+  roleCode: [{ required: true, message: '角色编码不能为空', trigger: 'blur' }],
+  roleName: [{ required: true, message: '角色名称不能为空', trigger: 'blur' }]
 }
 
 async function loadRoles() {
@@ -221,14 +221,14 @@ async function handleModalOk() {
         method: 'PUT',
         body: payload
       })
-      message.success('Role updated successfully')
+      message.success('角色更新成功')
     } else {
       await request({
         url: '/roles',
         method: 'POST',
         body: payload
       })
-      message.success('Role created successfully')
+      message.success('角色创建成功')
     }
     closeModal()
     await loadRoles()
@@ -243,13 +243,13 @@ async function handleDelete(id: number) {
       url: `/roles/${id}`,
       method: 'DELETE'
     })
-    message.success('Role deleted successfully')
+    message.success('角色删除成功')
     await loadRoles()
   } catch (err: unknown) {
     const status = (err as { statusCode?: number }).statusCode
     const messageText = (err as { message?: string }).message
     if (status === 400) {
-      message.error(messageText || 'Cannot delete system role')
+      message.error(messageText || '不能删除系统角色')
     }
   }
 }

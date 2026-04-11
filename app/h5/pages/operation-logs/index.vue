@@ -1,7 +1,7 @@
 <template>
   <!-- Operation log viewer page (CEO only) -->
   <div class="operation-logs-page">
-    <h2 class="page-title">Operation Logs</h2>
+    <h2 class="page-title">操作日志</h2>
 
     <a-card>
       <!-- Filter bar -->
@@ -9,10 +9,10 @@
         <a-range-picker
           v-model:value="dateRange"
           value-format="YYYY-MM-DD"
-          placeholder="['Start Date', 'End Date']"
+          :placeholder="['开始日期', '结束日期']"
         />
-        <a-button type="primary" @click="onSearch">Search</a-button>
-        <a-button @click="onReset">Reset</a-button>
+        <a-button type="primary" @click="onSearch">搜索</a-button>
+        <a-button @click="onReset">重置</a-button>
       </div>
 
       <a-table
@@ -23,7 +23,7 @@
           current: page + 1,
           pageSize: pageSize,
           total: total,
-          showTotal: (t: number) => `Total: ${t}`,
+          showTotal: (t: number) => `共 ${t} 条`,
           onChange: onPageChange
         }"
         row-key="id"
@@ -72,11 +72,11 @@ const total = ref(0)
 
 const columns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: 'Operator', dataIndex: 'operatorName', key: 'operatorName' },
-  { title: 'Action', dataIndex: 'action', key: 'action' },
-  { title: 'Target Type', dataIndex: 'targetType', key: 'targetType' },
-  { title: 'Detail', dataIndex: 'detail', key: 'detail', ellipsis: true },
-  { title: 'Time', dataIndex: 'actedAt', key: 'actedAt', width: 180 }
+  { title: '操作人', dataIndex: 'operatorName', key: 'operatorName' },
+  { title: '操作类型', dataIndex: 'action', key: 'action' },
+  { title: '目标类型', dataIndex: 'targetType', key: 'targetType' },
+  { title: '详情', dataIndex: 'detail', key: 'detail', ellipsis: true },
+  { title: '时间', dataIndex: 'actedAt', key: 'actedAt', width: 180 }
 ]
 
 function truncate(text: string, maxLength: number): string {

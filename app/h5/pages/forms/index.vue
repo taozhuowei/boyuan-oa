@@ -1,12 +1,12 @@
 <template>
   <!-- Form Center — record center for form submissions and approvals -->
   <div class="forms-page">
-    <h2 class="page-title">Form Center</h2>
+    <h2 class="page-title">表单中心</h2>
 
     <a-card>
       <a-tabs v-model:active-key="activeTab">
         <!-- Tab 1: My Submissions -->
-        <a-tab-pane key="submissions" tab="My Submissions">
+        <a-tab-pane key="submissions" tab="我的提交">
           <a-table
             :columns="columns"
             :data-source="submissions"
@@ -26,7 +26,7 @@
               </template>
               <template v-if="column.key === 'action'">
                 <a-button type="link" size="small" @click="openDetail(record)">
-                  Detail
+                  查看
                 </a-button>
               </template>
             </template>
@@ -34,7 +34,7 @@
         </a-tab-pane>
 
         <!-- Tab 2: Approval History -->
-        <a-tab-pane key="approvals" tab="Approval History">
+        <a-tab-pane key="approvals" tab="审批历史">
           <a-table
             :columns="columns"
             :data-source="approvals"
@@ -54,7 +54,7 @@
               </template>
               <template v-if="column.key === 'action'">
                 <a-button type="link" size="small" @click="openDetail(record)">
-                  Detail
+                  查看
                 </a-button>
               </template>
             </template>
@@ -66,47 +66,47 @@
     <!-- Detail Drawer -->
     <a-drawer
       v-model:open="drawerOpen"
-      title="Form Detail"
+      title="表单详情"
       placement="right"
       width="520"
     >
       <template v-if="selectedForm">
         <div class="detail-section">
           <div class="detail-row">
-            <span class="detail-label">Form No:</span>
+            <span class="detail-label">表单编号：</span>
             <span class="detail-value">{{ selectedForm.formNo }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Form Type:</span>
+            <span class="detail-label">表单类型：</span>
             <span class="detail-value">{{ selectedForm.formTypeName }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Submitter:</span>
+            <span class="detail-label">提交人：</span>
             <span class="detail-value">{{ selectedForm.submitter }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Department:</span>
+            <span class="detail-label">部门：</span>
             <span class="detail-value">{{ selectedForm.department }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Submit Time:</span>
+            <span class="detail-label">提交时间：</span>
             <span class="detail-value">{{ formatDateTime(selectedForm.submitTime) }}</span>
           </div>
           <div class="detail-row">
-            <span class="detail-label">Status:</span>
+            <span class="detail-label">状态：</span>
             <a-tag :color="getStatusColor(selectedForm.status)">
               {{ selectedForm.status }}
             </a-tag>
           </div>
           <div v-if="selectedForm.remark" class="detail-row">
-            <span class="detail-label">Remark:</span>
+            <span class="detail-label">备注：</span>
             <span class="detail-value">{{ selectedForm.remark }}</span>
           </div>
         </div>
 
         <!-- Form Data -->
         <div v-if="selectedForm.formData && Object.keys(selectedForm.formData).length > 0" class="detail-section">
-          <h4 class="section-title">Form Data</h4>
+          <h4 class="section-title">表单数据</h4>
           <div class="detail-row" v-for="[key, value] in Object.entries(selectedForm.formData)" :key="key">
             <span class="detail-label">{{ formatKey(key) }}:</span>
             <span class="detail-value">{{ formatValue(value) }}</span>
@@ -115,14 +115,14 @@
 
         <!-- Approval History Timeline -->
         <div v-if="selectedForm.history && selectedForm.history.length > 0" class="detail-section">
-          <h4 class="section-title">Approval History</h4>
+          <h4 class="section-title">审批历史</h4>
           <a-timeline>
             <a-timeline-item v-for="(item, index) in selectedForm.history" :key="index">
               <div class="timeline-item">
                 <div class="timeline-node">{{ item.nodeName }}</div>
-                <div class="timeline-approver">Approver: {{ item.approver }}</div>
-                <div class="timeline-action">Action: {{ item.action }}</div>
-                <div v-if="item.comment" class="timeline-comment">Comment: {{ item.comment }}</div>
+                <div class="timeline-approver">审批人：{{ item.approver }}</div>
+                <div class="timeline-action">操作：{{ item.action }}</div>
+                <div v-if="item.comment" class="timeline-comment">意见：{{ item.comment }}</div>
                 <div class="timeline-time">{{ formatDateTime(item.time) }}</div>
               </div>
             </a-timeline-item>
@@ -171,17 +171,17 @@ const selectedForm = ref<FormRecord | null>(null)
 
 const pagination = {
   showSizeChanger: false,
-  showTotal: (total: number) => `Total ${total} records`,
+  showTotal: (total: number) => `共 ${total} 条`,
   pageSize: 20
 }
 
 const columns = [
-  { title: 'Form No', dataIndex: 'formNo', key: 'formNo' },
-  { title: 'Form Type', dataIndex: 'formTypeName', key: 'formTypeName' },
-  { title: 'Submitter', dataIndex: 'submitter', key: 'submitter' },
-  { title: 'Submit Time', key: 'submitTime' },
-  { title: 'Status', key: 'status', width: 100 },
-  { title: 'Action', key: 'action', width: 100 }
+  { title: '表单编号', dataIndex: 'formNo', key: 'formNo' },
+  { title: '表单类型', dataIndex: 'formTypeName', key: 'formTypeName' },
+  { title: '提交人', dataIndex: 'submitter', key: 'submitter' },
+  { title: '提交时间', key: 'submitTime' },
+  { title: '状态', key: 'status', width: 100 },
+  { title: '操作', key: 'action', width: 100 }
 ]
 
 // Methods

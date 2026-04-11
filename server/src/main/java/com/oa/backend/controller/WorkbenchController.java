@@ -296,48 +296,61 @@ public class WorkbenchController {
     private WorkbenchConfigResponse buildWorkbenchConfig(String role) {
         List<WorkbenchConfigResponse.MenuItem> menus = switch (role) {
             case "ceo" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("approval", "审批中心", "check-circle", "/approval", true, null),
-                    new WorkbenchConfigResponse.MenuItem("employees", "员工管理", "team", "/employees", true, null),
-                    new WorkbenchConfigResponse.MenuItem("projects", "项目管理", "project", "/projects", true, null),
-                    new WorkbenchConfigResponse.MenuItem("payroll", "薪资管理", "money", "/payroll", true, null),
-                    new WorkbenchConfigResponse.MenuItem("retention", "数据保留", "safety", "/retention", true, null),
-                    new WorkbenchConfigResponse.MenuItem("operation-logs", "Operation Logs", "audit", "/operation-logs", true, null),
-                    new WorkbenchConfigResponse.MenuItem("settings", "System Config", "setting", "/config", true, null)
+                new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
+                new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
+                new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "team", "/employees", true, null),
+                new WorkbenchConfigResponse.MenuItem("org", "\u7ec4\u7ec7\u67b6\u6784", "apartment", "/org", true, null),
+                new WorkbenchConfigResponse.MenuItem("positions", "\u5c97\u4f4d\u7ba1\u7406", "idcard", "/positions", true, null),
+                new WorkbenchConfigResponse.MenuItem("role", "\u89d2\u8272\u7ba1\u7406", "user-switch", "/role", true, null),
+                new WorkbenchConfigResponse.MenuItem("projects", "\u9879\u76ee\u7ba1\u7406", "project", "/projects", true, null),
+                new WorkbenchConfigResponse.MenuItem("payroll", "\u85aa\u8d44\u7ba1\u7406", "money", "/payroll", true, null),
+                new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction-log", true, null),
+                new WorkbenchConfigResponse.MenuItem("injury", "\u5de5\u4f24\u8865\u507f", "alert", "/injury", true, null),
+                new WorkbenchConfigResponse.MenuItem("retention", "\u6570\u636e\u4fdd\u7559", "safety", "/retention", true, null),
+                new WorkbenchConfigResponse.MenuItem("operation-logs", "\u64cd\u4f5c\u65e5\u5fd7", "audit", "/operation-logs", true, null),
+                new WorkbenchConfigResponse.MenuItem("config", "\u7cfb\u7edf\u914d\u7f6e", "setting", "/config", true, null)
             );
             case "finance" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("approval", "审批中心", "check-circle", "/approval", true, null),
-                    new WorkbenchConfigResponse.MenuItem("employees", "员工管理", "team", "/employees", true, null),
-                    new WorkbenchConfigResponse.MenuItem("payroll", "薪资管理", "money", "/payroll", true, null),
-                    new WorkbenchConfigResponse.MenuItem("directory", "通讯录导入", "import", "/directory", true, null)
+                new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
+                new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
+                new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "team", "/employees", true, null),
+                new WorkbenchConfigResponse.MenuItem("payroll", "\u85aa\u8d44\u7ba1\u7406", "money", "/payroll", true, null),
+                new WorkbenchConfigResponse.MenuItem("injury", "\u5de5\u4f24\u7406\u8d54", "alert", "/injury", true, null),
+                new WorkbenchConfigResponse.MenuItem("directory", "\u901a\u8baf\u5f55\u5bfc\u5165", "import", "/directory", true, null)
             );
             case "project_manager" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("approval", "审批中心", "check-circle", "/approval", true, null),
-                    new WorkbenchConfigResponse.MenuItem("projects", "项目管理", "project", "/projects", true, null),
-                    new WorkbenchConfigResponse.MenuItem("forms", "表单中心", "form", "/forms", true, null)
-            );
-            case "worker" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("forms", "表单中心", "form", "/forms", true,
-                            Arrays.asList(
-                                    new WorkbenchConfigResponse.MenuItem("log", "施工日志", "file", "/forms/log", true, null),
-                                    new WorkbenchConfigResponse.MenuItem("injury", "工伤补偿", "alert", "/forms/injury", true, null)
-                            )),
-                    new WorkbenchConfigResponse.MenuItem("payroll", "工资条", "money", "/payroll/slips", true, null)
+                new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
+                new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
+                new WorkbenchConfigResponse.MenuItem("projects", "\u9879\u76ee\u7ba1\u7406", "project", "/projects", true, null),
+                new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction-log", true, null),
+                new WorkbenchConfigResponse.MenuItem("templates", "\u5de5\u4f5c\u9879\u6a21\u677f", "form", "/construction-log/templates", true, null),
+                new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null)
             );
             case "hr" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "Workbench", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("employees", "Employee Mgmt", "team", "/employees", true, null),
-                    new WorkbenchConfigResponse.MenuItem("org", "Org Chart", "apartment", "/org", true, null),
-                    new WorkbenchConfigResponse.MenuItem("positions", "Position Mgmt", "idcard", "/positions", true, null),
-                    new WorkbenchConfigResponse.MenuItem("attendance", "Attendance", "calendar", "/attendance", true, null)
+                new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
+                new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "team", "/employees", true, null),
+                new WorkbenchConfigResponse.MenuItem("org", "\u7ec4\u7ec7\u67b6\u6784", "apartment", "/org", true, null),
+                new WorkbenchConfigResponse.MenuItem("positions", "\u5c97\u4f4d\u7ba1\u7406", "idcard", "/positions", true, null),
+                new WorkbenchConfigResponse.MenuItem("attendance", "\u8003\u52e4\u7ba1\u7406", "calendar", "/attendance", true, null)
+            );
+            case "department_manager" -> Arrays.asList(
+                new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
+                new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "team", "/employees", true, null),
+                new WorkbenchConfigResponse.MenuItem("attendance", "\u8003\u52e4\u7ba1\u7406", "calendar", "/attendance", true, null),
+                new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null)
+            );
+            case "worker" -> Arrays.asList(
+                new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
+                new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction-log", true, null),
+                new WorkbenchConfigResponse.MenuItem("injury", "\u5de5\u4f24\u8865\u507f", "alert", "/injury", true, null),
+                new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null),
+                new WorkbenchConfigResponse.MenuItem("payroll", "\u5de5\u8d44\u6761", "money", "/payroll/slips", true, null)
             );
             default -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("forms", "表单中心", "form", "/forms", true, null),
-                    new WorkbenchConfigResponse.MenuItem("payroll", "工资条", "money", "/payroll/slips", true, null)
+                new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
+                new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null),
+                new WorkbenchConfigResponse.MenuItem("attendance", "\u8003\u52e4\u7ba1\u7406", "calendar", "/attendance", true, null),
+                new WorkbenchConfigResponse.MenuItem("payroll", "\u5de5\u8d44\u6761", "money", "/payroll/slips", true, null)
             );
         };
 
