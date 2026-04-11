@@ -80,7 +80,7 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'role'">
-                <a-tag :color="record.role === 'PM' ? 'blue' : 'default'">{{ record.role }}</a-tag>
+                <a-tag :color="record.role === 'PM' ? 'blue' : 'default'">{{ record.role === 'PM' ? '项目经理' : '成员' }}</a-tag>
               </template>
               <template v-if="column.key === 'action' && isCeo">
                 <a-popconfirm title="确认移除该成员？" @confirm="doRemoveMember(record.employeeId)">

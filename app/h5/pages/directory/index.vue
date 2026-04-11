@@ -52,7 +52,7 @@
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'status'">
               <a-tag :color="getStatusColor(record.status)">
-                {{ record.status }}
+                {{ getStatusLabel(record.status) }}
               </a-tag>
             </template>
           </template>
@@ -133,6 +133,16 @@ const rowSelection = computed(() => ({
     disabled: record.status === 'INVALID'
   })
 }))
+
+const STATUS_LABELS: Record<string, string> = {
+  VALID: '有效',
+  INVALID: '无效',
+  DUPLICATE: '重复'
+}
+
+function getStatusLabel(status: string): string {
+  return STATUS_LABELS[status] ?? status
+}
 
 function getStatusColor(status: string): string {
   switch (status) {

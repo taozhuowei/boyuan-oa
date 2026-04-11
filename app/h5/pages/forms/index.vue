@@ -21,7 +21,7 @@
               </template>
               <template v-if="column.key === 'status'">
                 <a-tag :color="getStatusColor(record.status)">
-                  {{ record.status }}
+                  {{ getStatusLabel(record.status) }}
                 </a-tag>
               </template>
               <template v-if="column.key === 'action'">
@@ -49,7 +49,7 @@
               </template>
               <template v-if="column.key === 'status'">
                 <a-tag :color="getStatusColor(record.status)">
-                  {{ record.status }}
+                  {{ getStatusLabel(record.status) }}
                 </a-tag>
               </template>
               <template v-if="column.key === 'action'">
@@ -95,7 +95,7 @@
           <div class="detail-row">
             <span class="detail-label">状态：</span>
             <a-tag :color="getStatusColor(selectedForm.status)">
-              {{ selectedForm.status }}
+              {{ getStatusLabel(selectedForm.status) }}
             </a-tag>
           </div>
           <div v-if="selectedForm.remark" class="detail-row">
@@ -121,7 +121,7 @@
               <div class="timeline-item">
                 <div class="timeline-node">{{ item.nodeName }}</div>
                 <div class="timeline-approver">审批人：{{ item.approver }}</div>
-                <div class="timeline-action">操作：{{ item.action }}</div>
+                <div class="timeline-action">操作：{{ getHistoryActionLabel(item.action) }}</div>
                 <div v-if="item.comment" class="timeline-comment">意见：{{ item.comment }}</div>
                 <div class="timeline-time">{{ formatDateTime(item.time) }}</div>
               </div>
@@ -185,6 +185,31 @@ const columns = [
 ]
 
 // Methods
+const STATUS_LABELS: Record<string, string> = {
+  PENDING: '待审批',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
+  CANCELLED: '已取消'
+}
+
+function getStatusLabel(status: string): string {
+  return STATUS_LABELS[status] ?? status
+}
+
+const HISTORY_ACTION_LABELS: Record<string, string> = {
+  APPROVE: '审批通过',
+  APPROVED: '审批通过',
+  REJECT: '驳回',
+  REJECTED: '驳回',
+  SKIP: '跳过',
+  SUBMIT: '提交',
+  RECALL: '撤回'
+}
+
+function getHistoryActionLabel(action: string): string {
+  return HISTORY_ACTION_LABELS[action] ?? action
+}
+
 function getStatusColor(status: string): string {
   const colorMap: Record<string, string> = {
     PENDING: 'blue',
@@ -214,7 +239,7 @@ function formatKey(key: string): string {
 
 function formatValue(value: unknown): string {
   if (value === null || value === undefined) return '—'
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No'
+  if (typeof value === 'boolean') return value ? '是' : '否'
   return String(value)
 }
 

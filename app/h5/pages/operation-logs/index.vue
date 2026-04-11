@@ -33,6 +33,12 @@
           <template v-if="column.key === 'operatorName'">
             {{ record.operatorName ?? '—' }}
           </template>
+          <template v-if="column.key === 'action'">
+            {{ ACTION_LABELS[record.action] ?? record.action }}
+          </template>
+          <template v-if="column.key === 'targetType'">
+            {{ TARGET_TYPE_LABELS[record.targetType] ?? record.targetType }}
+          </template>
           <template v-if="column.key === 'detail'">
             <a-tooltip :title="record.detail">
               {{ truncate(record.detail, 60) }}
@@ -51,6 +57,20 @@
 import { ref, onMounted } from 'vue'
 import { request } from '~/utils/http'
 import dayjs from 'dayjs'
+
+const ACTION_LABELS: Record<string, string> = {
+  UPDATE_EMPLOYEE: '更新员工',
+  BIND_SIGNATURE: '绑定签名',
+  APPROVAL_ACTION: '审批操作',
+  PAYROLL_SETTLE: '薪资结算'
+}
+
+const TARGET_TYPE_LABELS: Record<string, string> = {
+  EMPLOYEE: '员工',
+  SIGNATURE: '签名',
+  FORM_RECORD: '表单',
+  PAYROLL_CYCLE: '薪资周期'
+}
 
 interface OperationLog {
   id: number
