@@ -133,33 +133,47 @@ async function saveAttendanceConfig() {
   }
 }
 
-// Approval Flow Config
-interface ApprovalFlow {
-  id: string | number
-  name?: string
-  flowName?: string
-  status?: string
-  [key: string]: any
+// Approval Flow Config — API returns [{flow:{...}, nodes:[...]}]
+interface ApprovalFlowItem {
+  id: number
+  businessType: string
+  isActive: boolean
+  nodeCount: number
 }
 
 const flowsLoading = ref(false)
 const flowsError = ref(false)
-const approvalFlows = ref<ApprovalFlow[]>([])
+const approvalFlows = ref<ApprovalFlowItem[]>([])
+
+const BUSINESS_TYPE_LABELS: Record<string, string> = {
+  LEAVE: '请假',
+  OVERTIME: '加班',
+  LOG: '施工日志',
+  INJURY: '工伤'
+}
 
 const flowColumns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: '名称', key: 'name' },
-  { title: '状态', dataIndex: 'status', key: 'status', width: 100 }
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
+  { title: '业务类型', dataIndex: 'businessType', key: 'businessType',
+    customRender: ({ text }: { text: string }) => BUSINESS_TYPE_LABELS[text] ?? text },
+  { title: '审批节点数', dataIndex: 'nodeCount', key: 'nodeCount', width: 110 },
+  { title: '状态', dataIndex: 'isActive', key: 'isActive', width: 80,
+    customRender: ({ text }: { text: boolean }) => text ? '启用' : '禁用' }
 ]
 
 async function loadApprovalFlows() {
   flowsLoading.value = true
   flowsError.value = false
   try {
-    const data = await request<ApprovalFlow[]>({
+    const data = await request<Array<{ flow: { id: number; businessType: string; isActive: boolean }; nodes: unknown[] }>>({
       url: '/approval/flows'
     })
-    approvalFlows.value = Array.isArray(data) ? data : []
+    approvalFlows.value = (data ?? []).map(item => ({
+      id: item.flow.id,
+      businessType: item.flow.businessType,
+      isActive: item.flow.isActive,
+      nodeCount: item.nodes?.length ?? 0
+    }))
   } catch {
     approvalFlows.value = []
     flowsError.value = true
