@@ -12,15 +12,19 @@
 const PAGE_ACCESS: Record<string, string[]> = {
   '/config':           ['ceo'],
   '/org':              ['ceo', 'hr'],
-  '/role':             ['ceo', 'hr'],
-  '/employees':        ['ceo', 'hr'],
-  '/positions':        ['ceo'],
+  '/role':             ['ceo'],
+  // employees: CEO/HR manage; finance/PM/dept-manager also have it in their menus
+  '/employees':        ['ceo', 'hr', 'finance', 'project_manager', 'department_manager'],
+  // positions: CEO manages structure; HR manages assignments
+  '/positions':        ['ceo', 'hr'],
   '/retention':        ['ceo'],
-  '/settings':         ['ceo'],
-  '/payroll':          ['ceo', 'hr', 'finance'],
+  '/operation-logs':   ['ceo'],
+  // payroll: finance/CEO manage cycles; worker/employee view their own slips
+  '/payroll':          ['ceo', 'finance', 'worker', 'employee'],
   '/projects':         ['ceo', 'finance', 'project_manager', 'employee'],
   '/construction-log': ['ceo', 'project_manager', 'worker'],
-  '/injury':           ['ceo', 'hr'],
+  // injury: finance records claims; worker submits reports; CEO oversees
+  '/injury':           ['ceo', 'finance', 'worker'],
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {

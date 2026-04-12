@@ -40,11 +40,39 @@
             </a-tag>
           </template>
           <template v-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="navigateTo(`/employees/${record.id}`)">详情</a-button>
+            <a-button type="link" size="small" @click="openDetail(record as Employee)">详情</a-button>
           </template>
         </template>
       </a-table>
     </a-card>
+
+    <!-- 员工详情弹窗 — 使用列表已加载的数据，无需额外 API 请求 -->
+    <a-modal
+      v-model:open="showDetail"
+      :title="`员工详情 — ${detailRecord?.name ?? ''}`"
+      :footer="null"
+      width="480px"
+    >
+      <a-descriptions
+        v-if="detailRecord"
+        bordered
+        size="small"
+        :column="1"
+      >
+        <a-descriptions-item label="姓名">{{ detailRecord.name }}</a-descriptions-item>
+        <a-descriptions-item label="部门">{{ detailRecord.departmentName ?? '—' }}</a-descriptions-item>
+        <a-descriptions-item label="角色">{{ detailRecord.roleName ?? '—' }}</a-descriptions-item>
+        <a-descriptions-item label="员工类型">
+          {{ detailRecord.employeeType === 'LABOR' ? '劳工' : '正式员工' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="入职日期">{{ detailRecord.entryDate ?? '—' }}</a-descriptions-item>
+        <a-descriptions-item label="账号状态">
+          <a-tag :color="detailRecord.accountStatus === 'ACTIVE' ? 'success' : 'default'">
+            {{ detailRecord.accountStatus === 'ACTIVE' ? '在职' : '停用' }}
+          </a-tag>
+        </a-descriptions-item>
+      </a-descriptions>
+    </a-modal>
   </div>
 </template>
 
@@ -68,6 +96,15 @@ const keyword = ref('')
 const page = ref(0)
 const pageSize = ref(20)
 const totalElements = ref(0)
+
+// 员工详情弹窗 — 使用列表数据，避免跳转到不存在的详情页
+const showDetail = ref(false)
+const detailRecord = ref<Employee | null>(null)
+
+function openDetail(record: Employee) {
+  detailRecord.value = record
+  showDetail.value = true
+}
 
 const columns = [
   { title: '姓名', dataIndex: 'name', key: 'name' },
@@ -116,15 +153,13 @@ onMounted(loadEmployees)
 
 <style scoped>
 .employees-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 
 .page-title {
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 16px 0;
   color: #003466;
 }
 
