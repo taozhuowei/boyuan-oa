@@ -39,7 +39,7 @@
     >
       <a-form :model="form" layout="vertical">
         <a-form-item label="日志日期" required>
-          <a-date-picker v-model:value="form.logDate" style="width:100%;" />
+          <a-date-picker v-model:value="form.logDate" style="width:100%;" placeholder="请选择日期" />
         </a-form-item>
 
         <!-- workItems 动态列表 -->
@@ -276,9 +276,16 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.construction-log-page {
+  /* Flow layout: natural top-to-bottom content flow */
+}
+
 .page-title {
   font-size: 20px;
   font-weight: 600;
   color: #003466;
+  margin: 0 0 16px 0;
 }
+
+/* Removed flex constraints to allow natural content flow */
 </style>

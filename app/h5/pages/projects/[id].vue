@@ -146,7 +146,7 @@
                 <a-input-number v-model:value="milestoneForm.sort" :min="0" style="width: 100%;" />
               </a-form-item>
               <a-form-item label="实际完成日期（可选）">
-                <a-date-picker v-model:value="milestoneForm.actualCompletionDate" style="width: 100%;" value-format="YYYY-MM-DD" />
+                <a-date-picker v-model:value="milestoneForm.actualCompletionDate" style="width: 100%;" value-format="YYYY-MM-DD" placeholder="请选择日期" />
               </a-form-item>
             </a-form>
           </a-modal>
@@ -266,12 +266,12 @@
           <a-card title="生成汇总报告" style="margin-bottom: 16px;">
             <a-form :model="summaryForm" layout="vertical">
               <a-form-item label="统计起始日期" required>
-                <a-date-picker v-model:value="summaryForm.periodStart" style="width: 100%;" value-format="YYYY-MM-DD" />
+                <a-date-picker v-model:value="summaryForm.periodStart" style="width: 100%;" value-format="YYYY-MM-DD" placeholder="请选择日期" />
               </a-form-item>
               <a-form-item label="统计截止日期" required>
-                <a-date-picker v-model:value="summaryForm.periodEnd" style="width: 100%;" value-format="YYYY-MM-DD" />
+                <a-date-picker v-model:value="summaryForm.periodEnd" style="width: 100%;" value-format="YYYY-MM-DD" placeholder="请选择日期" />
               </a-form-item>
-              <a-form-item label="PM 备注">
+              <a-form-item label="项目经理备注">
                 <a-textarea v-model:value="summaryForm.pmNote" :rows="3" />
               </a-form-item>
               <a-form-item>
@@ -340,7 +340,7 @@
             </a-list>
           </a-spin>
 
-          <a-modal v-model:open="showReviewModal" title="PM 批注" @ok="doReviewLog" :confirm-loading="reviewLoading">
+          <a-modal v-model:open="showReviewModal" title="批注" @ok="doReviewLog" :confirm-loading="reviewLoading">
             <a-form layout="vertical">
               <a-form-item label="批注内容">
                 <a-textarea v-model:value="reviewNote" :rows="4" placeholder="输入批注（不影响审批状态）" />
@@ -693,8 +693,8 @@ const summaryLoading = ref(false)
 const summaryColumns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
   { title: '统计区间', key: 'period', width: 200 },
-  { title: 'CEO 通知', key: 'notified', width: 100 },
-  { title: 'PM 备注', dataIndex: 'pmNote', key: 'pmNote' },
+  { title: '已通知CEO', key: 'notified', width: 100 },
+  { title: '项目经理备注', dataIndex: 'pmNote', key: 'pmNote' },
   { title: '生成时间', dataIndex: 'createdAt', key: 'createdAt', width: 180 }
 ]
 
@@ -841,3 +841,11 @@ onMounted(async () => {
   ])
 })
 </script>
+
+<style scoped>
+.project-detail-page {
+  /* Flow layout: natural top-to-bottom content flow */
+}
+
+/* Removed flex constraints to allow natural content flow */
+</style>

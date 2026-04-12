@@ -21,6 +21,10 @@ test_output.txt
 # test coverage reports (generated artifacts)
 test/reports/
 
+# local env overrides (never commit real values)
+.env
+.env.local
+
 # OS/editor noise
 .DS_Store
 Thumbs.db

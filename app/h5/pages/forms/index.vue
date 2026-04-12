@@ -109,7 +109,7 @@
           <h4 class="section-title">表单数据</h4>
           <div class="detail-row" v-for="[key, value] in Object.entries(selectedForm.formData)" :key="key">
             <span class="detail-label">{{ formatKey(key) }}:</span>
-            <span class="detail-value">{{ formatValue(value) }}</span>
+            <span class="detail-value">{{ formatValue(value, key) }}</span>
           </div>
         </div>
 
@@ -136,6 +136,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { request } from '~/utils/http'
+import { getFieldLabel, getLeaveTypeLabel, getOvertimeTypeLabel, formatFormSummary } from '../../../shared/utils/formLabels'
 
 // Types
 interface HistoryItem {
@@ -230,14 +231,19 @@ function formatDateTime(datetime: string): string {
 }
 
 function formatKey(key: string): string {
-  // Convert camelCase to Title Case with spaces
-  return key
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/^./, (str) => str.toUpperCase())
-    .trim()
+  // 使用字段标签映射获取中文标签
+  return getFieldLabel(key)
 }
 
-function formatValue(value: unknown): string {
+function formatValue(value: unknown, fieldKey?: string): string {
+  // 对于请假类型字段，转换为中文
+  if (fieldKey === 'leaveType' && typeof value === 'string') {
+    return getLeaveTypeLabel(value) || String(value)
+  }
+  // 对于加班类型字段，转换为中文
+  if (fieldKey === 'overtimeType' && typeof value === 'string') {
+    return getOvertimeTypeLabel(value) || String(value)
+  }
   if (value === null || value === undefined) return '—'
   if (typeof value === 'boolean') return value ? '是' : '否'
   return String(value)
@@ -270,17 +276,17 @@ onMounted(loadForms)
 
 <style scoped>
 .forms-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 
 .page-title {
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 16px 0;
   color: #003466;
 }
+
+/* Removed flex constraints to allow natural content flow */
 
 .detail-section {
   margin-bottom: 24px;

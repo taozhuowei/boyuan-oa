@@ -228,10 +228,12 @@ public class PayrollController {
 
         try {
             Long evidenceId = signatureService.confirmPayrollSlip(employeeId, id, request.pin());
+            PayrollSlip confirmed = slipMapper.selectById(id);
             return ResponseEntity.ok(Map.of(
                     "message", "已确认",
                     "slipId", id,
-                    "evidenceId", evidenceId
+                    "evidenceId", evidenceId,
+                    "slip", confirmed
             ));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));

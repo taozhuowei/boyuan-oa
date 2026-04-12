@@ -38,6 +38,6 @@ export default defineNuxtConfig({
     }
   },
   routeRules: {
-    '/api/**': { proxy: 'http://localhost:8080/api/**' }
+    '/api/**': { proxy: `http://localhost:${process.env.SERVER_PORT ?? '8080'}/api/**` }
   }
 })

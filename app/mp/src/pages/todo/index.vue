@@ -324,12 +324,12 @@ const rejectItem = () => {
 <style lang="scss" scoped>
 .page-content {
   height: 100%;
-  overflow-y: auto;
-  padding: 24px;
+  overflow: hidden;
+  padding: 16px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .page-header {

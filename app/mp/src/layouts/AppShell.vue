@@ -91,8 +91,11 @@ function handleLogout() {
 <style lang="scss" scoped>
 // ── MP Shell 样式 ────────────────────────────────────────────────────────
 .mp-shell {
-  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
+  overflow: hidden;
 
   .mp-topbar {
     height: 44px;
@@ -128,6 +131,12 @@ function handleLogout() {
     .mp-actions {
       font-size: 18px;
     }
+  }
+
+  .mp-content {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
   }
 }
 </style>

@@ -191,15 +191,13 @@ onMounted(() => {
 
 <style scoped>
 .config-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 
 .page-title {
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 16px 0;
   color: #003466;
 }
 

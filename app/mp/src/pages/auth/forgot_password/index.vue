@@ -320,12 +320,13 @@ onUnmounted(() => {
 
 <style lang="scss" scoped>
 .forgot-page {
-  min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(160deg, #003466 0%, #1a4b84 45%, #f0f2f5 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
+  overflow: hidden;
 }
 
 .forgot-container {

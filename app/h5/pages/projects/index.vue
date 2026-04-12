@@ -92,7 +92,7 @@
           <a-input v-model:value="createForm.name" placeholder="请输入项目名称" />
         </a-form-item>
         <a-form-item label="开始日期">
-          <a-date-picker v-model:value="createForm.startDateStr" style="width: 100%;" value-format="YYYY-MM-DD" />
+          <a-date-picker v-model:value="createForm.startDateStr" style="width: 100%;" value-format="YYYY-MM-DD" placeholder="请选择日期" />
         </a-form-item>
         <a-form-item label="日志申报周期（天）">
           <a-input-number v-model:value="createForm.logCycleDays" :min="1" :max="30" style="width: 100%;" />
@@ -112,7 +112,7 @@
           <a-input v-model:value="editForm.name" />
         </a-form-item>
         <a-form-item label="开始日期">
-          <a-date-picker v-model:value="editForm.startDateStr" style="width: 100%;" value-format="YYYY-MM-DD" />
+          <a-date-picker v-model:value="editForm.startDateStr" style="width: 100%;" value-format="YYYY-MM-DD" placeholder="请选择日期" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -272,3 +272,17 @@ async function doDeleteProject(id: number) {
 
 onMounted(() => loadProjects())
 </script>
+
+<style scoped>
+.projects-page {
+  /* Flow layout: natural top-to-bottom content flow */
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: #003466;
+}
+
+/* Removed flex constraints to allow natural content flow */
+</style>

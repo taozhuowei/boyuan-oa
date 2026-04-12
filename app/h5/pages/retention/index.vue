@@ -410,11 +410,11 @@ function handleDownload(token: string) {
 
 <style scoped>
 .retention-page {
-  padding: 16px;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 .page-title {
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin: 0 0 16px 0;
 }
 </style>

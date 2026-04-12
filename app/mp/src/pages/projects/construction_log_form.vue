@@ -481,13 +481,12 @@ onMounted(() => {
 <style lang="scss" scoped>
 .page-content {
   height: 100%;
-  overflow-y: auto;
-  padding: 24px;
-  padding-bottom: 80px; // 为底部按钮留出空间
+  overflow: hidden;
+  padding: 16px;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
 
 .page-header {

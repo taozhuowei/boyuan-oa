@@ -34,7 +34,7 @@ defineProps<{ records: ApprovalRecord[] }>()
 
 const { Timeline, TimelineItem } = useComponent(['Timeline', 'TimelineItem'])
 
-const labelMap: Record<string,string> = { approve:'Approved', reject:'Rejected', submit:'Submitted', pending:'Pending' }
+const labelMap: Record<string,string> = { approve:'已通过', reject:'已驳回', submit:'已提交', pending:'待处理' }
 const colorMap: Record<string,string> = { approve:'#52c41a', reject:'#f5222d', submit:'#003466', pending:'#d9d9d9' }
 </script>
 

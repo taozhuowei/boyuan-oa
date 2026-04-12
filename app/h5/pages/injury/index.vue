@@ -55,7 +55,7 @@
         </a-form-item>
 
         <a-form-item label="受伤日期" required>
-          <a-date-picker v-model:value="applyForm.injuryDate" style="width:100%;" />
+          <a-date-picker v-model:value="applyForm.injuryDate" style="width:100%;" placeholder="请选择日期" />
         </a-form-item>
 
         <a-form-item label="伤情描述" required>
@@ -101,7 +101,7 @@
           <a-input-number v-model:value="claimForm.employeeId" placeholder="受伤员工 ID" style="width:100%;" />
         </a-form-item>
         <a-form-item label="受伤日期" required>
-          <a-date-picker v-model:value="claimForm.injuryDate" style="width:100%;" />
+          <a-date-picker v-model:value="claimForm.injuryDate" style="width:100%;" placeholder="请选择日期" />
         </a-form-item>
         <a-form-item label="理赔金额（元）" required>
           <a-input-number
@@ -298,9 +298,16 @@ onMounted(() => loadRecords())
 </script>
 
 <style scoped>
+.injury-page {
+  /* Flow layout: natural top-to-bottom content flow */
+}
+
 .page-title {
   font-size: 20px;
   font-weight: 600;
   color: #003466;
+  margin: 0 0 16px 0;
 }
+
+/* Removed flex constraints to allow natural content flow */
 </style>

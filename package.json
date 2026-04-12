@@ -8,8 +8,8 @@
     "server"
   ],
   "scripts": {
-    "dev": "concurrently \"yarn dev:backend\" \"yarn dev:h5\" \"yarn dev:mp\"",
-    "dev:h5": "wait-on tcp:8080 && nuxt dev --cwd app/h5",
+    "dev": "dotenv -e .env -- concurrently \"yarn dev:backend\" \"yarn dev:h5\" \"yarn dev:mp\"",
+    "dev:h5": "wait-on tcp:8080 && nuxt dev --cwd app/h5 --dotenv ../../.env",
     "dev:mp": "wait-on tcp:8080 && cd app/mp && uni --platform mp-weixin",
     "dev:backend": "cd server && mvn spring-boot:run",
     "build": "yarn build:backend && yarn build:h5 && yarn build:mp",
@@ -20,6 +20,7 @@
   },
   "devDependencies": {
     "concurrently": "^8.2.2",
+    "dotenv-cli": "^7.4.4",
     "wait-on": "^7.2.0"
   },
   "dependencies": {

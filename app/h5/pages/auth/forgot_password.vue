@@ -4,6 +4,7 @@
        Step 2: 输入验证码 → POST /auth/verify-reset-code → 返回 resetToken
        Step 3: 输入新密码 → POST /auth/reset-password
        Step 4: 成功提示 → 跳转登录页 -->
+  <a-config-provider :locale="zhCN">
   <div class="forgot-page">
     <div class="forgot-card">
       <h2 class="forgot-title">重置密码</h2>
@@ -103,6 +104,7 @@
       </div>
     </div>
   </div>
+  </a-config-provider>
 </template>
 
 <script setup lang="ts">
@@ -113,6 +115,7 @@
  */
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
+import zhCN from 'ant-design-vue/es/locale/zh_CN'
 
 definePageMeta({ layout: false })
 
@@ -198,7 +201,8 @@ async function doResetPassword() {
 
 <style scoped>
 .forgot-page {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;

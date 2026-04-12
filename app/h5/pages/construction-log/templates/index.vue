@@ -211,9 +211,16 @@ onMounted(() => loadTemplates())
 </script>
 
 <style scoped>
+.templates-page {
+  /* Flow layout: natural top-to-bottom content flow */
+}
+
 .page-title {
   font-size: 20px;
   font-weight: 600;
   color: #003466;
+  margin: 0 0 16px 0;
 }
+
+/* Removed flex constraints to allow natural content flow */
 </style>

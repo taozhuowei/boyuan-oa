@@ -65,6 +65,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { request } from '~/utils/http'
 import type { ApprovalStep } from '~/types/approval'
+import { formatFormSummary } from '../../../shared/utils/formLabels'
 
 interface FormRecord {
   id: number
@@ -111,14 +112,7 @@ function formatTime(t: string | undefined) {
 }
 
 function getSummary(record: FormRecord): string {
-  const d = record.formData ?? {}
-  if (record.formType === 'LEAVE') {
-    return `${d.leaveType ?? ''} ${d.days ?? ''}天`
-  }
-  if (record.formType === 'OVERTIME') {
-    return `${d.overtimeType ?? ''} ${d.hours ?? ''}小时`
-  }
-  return record.formTypeName
+  return formatFormSummary(record.formType, record.formData) || record.formTypeName
 }
 
 function onTabChange(key: string) {
@@ -188,15 +182,13 @@ onMounted(loadTodo)
 
 <style scoped>
 .todo-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 
 .page-title {
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 16px 0;
   color: #003466;
 }
 
@@ -211,4 +203,6 @@ onMounted(loadTodo)
   justify-content: flex-end;
   padding-top: 8px;
 }
+
+/* Removed flex constraints to allow natural content flow */
 </style>

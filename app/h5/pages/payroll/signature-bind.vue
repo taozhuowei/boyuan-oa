@@ -321,6 +321,9 @@ async function handleSubmit(): Promise<void> {
   padding: 16px;
   max-width: 800px;
   margin: 0 auto;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .page-title {

@@ -1,4 +1,5 @@
 <template>
+  <a-config-provider :locale="zhCN">
   <div class="login-page">
     <div class="login-container">
       <!-- Company header -->
@@ -51,10 +52,12 @@
 
     <span class="powered-by">Powered by 博渊</span>
   </div>
+  </a-config-provider>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
+import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import { loginWithAccount } from '~/utils/access'
 import { useUserStore } from '~/stores/user'
 
@@ -87,6 +90,7 @@ async function handleLogin() {
 <style scoped>
 .login-page {
   min-height: 100vh;
+  width: 100%;
   background: linear-gradient(160deg, #003466 0%, #1a4b84 45%, #f0f2f5 100%);
   display: flex;
   align-items: center;

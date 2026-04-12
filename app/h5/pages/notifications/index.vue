@@ -303,9 +303,7 @@ onUnmounted(() => {
 
 <style scoped>
 .notifications-page {
-  padding: 16px;
-  max-width: 800px;
-  margin: 0 auto;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 
 .page-header {

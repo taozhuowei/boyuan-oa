@@ -58,7 +58,7 @@
     </view>
 
     <!-- Powered by -->
-    <text class="powered-by">Powered by 博渊</text>
+    <text class="powered-by">技术支持：博渊</text>
   </view>
 </template>
 
@@ -113,12 +113,13 @@ const handleLogin = async () => {
 
 <style lang="scss" scoped>
 .login-page {
-  min-height: 100vh;
+  height: 100vh;
   background: linear-gradient(160deg, #003466 0%, #1a4b84 45%, #f0f2f5 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
+  overflow: hidden;
 }
 
 .login-container {

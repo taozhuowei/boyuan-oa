@@ -751,13 +751,16 @@ function slipStatusColor(status: string): string {
 
 <style scoped>
 .payroll-page {
-  padding: 16px;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 .page-title {
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin: 0 0 16px 0;
+  color: #003466;
 }
+
+/* Removed flex constraints to allow natural content flow */
 .slip-item-row {
   display: flex;
   justify-content: space-between;

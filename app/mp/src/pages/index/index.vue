@@ -257,12 +257,12 @@ function goTo(path: string) {
 // ── 工作台容器：填满 shell-main，固定视口不产生外层滚动 ─────────────────
 .workbench {
   height: 100%;
-  overflow: hidden;       // 阻止内容撑出 shell-main
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px;          // shell-main 已去除 padding，在此补回
-  box-sizing: border-box; // 使 height:100% 包含 padding
+  gap: 12px;
+  padding: 16px;
+  box-sizing: border-box;
 }
 
 // ── ROW 1: 横向信息条（上下两行） ────────────────────────────────────────

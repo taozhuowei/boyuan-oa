@@ -1,6 +1,6 @@
 <template>
   <!-- a-config-provider: disable AntD's auto space insertion between Chinese characters in buttons -->
-  <a-config-provider :auto-insert-space-in-button="false">
+  <a-config-provider :auto-insert-space-in-button="false" :locale="zhCN">
   <a-layout class="app-shell">
     <!-- Left sidebar navigation — menus fetched from /workbench/config (role-based) -->
     <a-layout-sider v-model:collapsed="collapsed" collapsible width="220" theme="dark">
@@ -26,7 +26,7 @@
       </a-menu>
     </a-layout-sider>
 
-    <a-layout>
+    <a-layout style="overflow: hidden;">
       <!-- Top bar: 博渊 OA · [角色] [姓名]  [⚙系统]  [🔔通知 N]  [📋待办 N]  [●]▼ -->
       <a-layout-header class="app-header">
         <div class="header-brand">
@@ -93,6 +93,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useUserStore } from '~/stores/user'
+import zhCN from 'ant-design-vue/es/locale/zh_CN'
 
 interface MenuItem {
   key: string
@@ -254,7 +255,8 @@ async function onAvatarMenuClick({ key }: { key: string }) {
 
 <style scoped>
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .logo {
@@ -282,6 +284,7 @@ async function onAvatarMenuClick({ key }: { key: string }) {
   align-items: center;
   justify-content: space-between;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  flex-shrink: 0;
 }
 
 .header-brand {
@@ -333,10 +336,11 @@ async function onAvatarMenuClick({ key }: { key: string }) {
 }
 
 .app-content {
-  margin: 24px;
-  padding: 24px;
+  margin: 16px;
+  padding: 16px;
   background: #fff;
   border-radius: 8px;
-  min-height: calc(100vh - 64px - 48px);
+  height: calc(100vh - 64px - 32px); /* 减去头部高度 64px 和 margin 16px * 2 */
+  overflow-y: auto;
 }
 </style>

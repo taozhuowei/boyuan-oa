@@ -118,12 +118,16 @@ const handleCancel = () => {
 
 <style scoped>
 .password-page {
-  padding: 24px;
+  padding: 16px;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .page-title {
   text-align: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
 }
 
 .password-card {

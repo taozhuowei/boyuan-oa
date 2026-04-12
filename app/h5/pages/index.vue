@@ -7,7 +7,7 @@
     <a-alert
       v-if="isDefaultPwd === true"
       type="warning"
-      message="Your password is the default password (123456). Please change it immediately."
+      message="当前密码为初始密码（123456），请立即修改以确保账户安全"
       show-icon
     >
       <template #description>
@@ -35,7 +35,11 @@
       </a-card>
 
       <!-- Payroll cycle status card -->
-      <a-card v-if="summary?.payrollStatus != null" class="stat-card">
+      <a-card
+        v-if="summary?.payrollStatus != null"
+        class="stat-card clickable-card"
+        @click="navigateTo('/payroll')"
+      >
         <div class="stat-label">薪资周期状态</div>
         <a-tag :color="payrollStatusColor(summary.payrollStatus)">
           {{ payrollStatusLabel(summary.payrollStatus) }}
@@ -196,22 +200,21 @@ onMounted(async () => {
 
 <style scoped>
 .workbench-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 
 .page-title {
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 16px 0;
   color: #003466;
 }
 
 .stat-cards {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
 .stat-card {
@@ -246,7 +249,7 @@ onMounted(async () => {
 }
 
 .section-card {
-  flex: 1;
+  /* Natural flow, no flex constraints */
 }
 
 .empty-tip {

@@ -58,10 +58,10 @@
             </a-select>
           </a-form-item>
           <a-form-item label="开始日期" name="startDate" :rules="[{ required: true, message: '请选择开始日期' }]">
-            <a-date-picker v-model:value="leaveForm.startDate" style="width: 100%" />
+            <a-date-picker v-model:value="leaveForm.startDate" style="width: 100%" placeholder="请选择日期" />
           </a-form-item>
           <a-form-item label="结束日期" name="endDate" :rules="[{ required: true, message: '请选择结束日期' }]">
-            <a-date-picker v-model:value="leaveForm.endDate" style="width: 100%" />
+            <a-date-picker v-model:value="leaveForm.endDate" style="width: 100%" placeholder="请选择日期" />
           </a-form-item>
           <a-form-item label="请假原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
             <a-textarea v-model:value="leaveForm.reason" :rows="3" />
@@ -83,7 +83,7 @@
           @finish="submitOvertime"
         >
           <a-form-item label="加班日期" name="date" :rules="[{ required: true, message: '请选择日期' }]">
-            <a-date-picker v-model:value="overtimeForm.date" style="width: 100%" />
+            <a-date-picker v-model:value="overtimeForm.date" style="width: 100%" placeholder="请选择日期" />
           </a-form-item>
           <a-form-item label="开始时间" name="startTime" :rules="[{ required: true, message: '请选择开始时间' }]">
             <a-time-picker v-model:value="overtimeForm.startTime" format="HH:mm" style="width: 100%" />
@@ -118,7 +118,7 @@
           @finish="submitSelfReport"
         >
           <a-form-item label="加班日期" name="date" :rules="[{ required: true, message: '请选择日期' }]">
-            <a-date-picker v-model:value="selfReportForm.date" style="width: 100%" />
+            <a-date-picker v-model:value="selfReportForm.date" style="width: 100%" placeholder="请选择日期" />
           </a-form-item>
           <a-form-item label="开始时间" name="startTime" :rules="[{ required: true, message: '请选择开始时间' }]">
             <a-time-picker v-model:value="selfReportForm.startTime" format="HH:mm" style="width: 100%" />
@@ -194,7 +194,7 @@
           @finish="submitNotification"
         >
           <a-form-item label="加班日期" name="overtimeDate" :rules="[{ required: true, message: '请选择日期' }]">
-            <a-date-picker v-model:value="notifyForm.overtimeDate" style="width: 100%" />
+            <a-date-picker v-model:value="notifyForm.overtimeDate" style="width: 100%" placeholder="请选择日期" />
           </a-form-item>
           <a-form-item label="加班类型" name="overtimeType" :rules="[{ required: true, message: '请选择类型' }]">
             <a-select v-model:value="notifyForm.overtimeType" placeholder="请选择">
@@ -296,7 +296,9 @@
           </a-descriptions-item>
           <a-descriptions-item label="提交时间" :span="2">{{ formatDate(selectedRecord.submitTime) }}</a-descriptions-item>
           <template v-for="(val, key) in selectedRecord.formData" :key="key">
-            <a-descriptions-item :label="String(key)" :span="2">{{ String(val ?? '—') }}</a-descriptions-item>
+            <a-descriptions-item :label="getFieldLabel(String(key))" :span="2">
+              {{ formatFormValue(key as string, val) }}
+            </a-descriptions-item>
           </template>
           <a-descriptions-item v-if="selectedRecord.remark" label="备注" :span="2">{{ selectedRecord.remark }}</a-descriptions-item>
         </a-descriptions>
@@ -310,6 +312,12 @@ import { ref, computed, onMounted } from 'vue'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 import type { Dayjs } from 'dayjs'
+import {
+  getFieldLabel,
+  getLeaveTypeLabel,
+  getOvertimeTypeLabel,
+  formatFormSummary
+} from '../../../shared/utils/formLabels'
 
 interface OvertimeNotifRecord {
   notification: {
@@ -525,14 +533,21 @@ function formatDate(t: string | undefined) {
 
 /** 生成摘要文字 */
 function getSummary(record: FormRecord): string {
-  const d = (record.formData ?? {}) as Record<string, unknown>
-  if (record.formType === 'LEAVE') {
-    return `${d.leaveType ?? ''} ${d.days ?? ''}天`
+  return formatFormSummary(record.formType, record.formData) || record.formTypeName || ''
+}
+
+/** 格式化表单字段值（将枚举值转换为中文） */
+function formatFormValue(key: string, value: unknown): string {
+  if (value === null || value === undefined) return '—'
+  // 请假类型转换为中文
+  if (key === 'leaveType') {
+    return getLeaveTypeLabel(String(value)) || String(value)
   }
-  if (record.formType === 'OVERTIME') {
-    return `${d.overtimeType ?? ''} ${d.startTime ?? ''}~${d.endTime ?? ''}`
+  // 加班类型转换为中文
+  if (key === 'overtimeType') {
+    return getOvertimeTypeLabel(String(value)) || String(value)
   }
-  return record.formTypeName ?? ''
+  return String(value)
 }
 
 function statusColor(status: string) {
@@ -686,15 +701,13 @@ onMounted(loadRecords)
 
 <style scoped>
 .attendance-page {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 
 .page-title {
   font-size: 20px;
   font-weight: 600;
-  margin: 0 0 4px;
+  margin: 0 0 16px 0;
   color: #003466;
 }
 
@@ -707,4 +720,6 @@ onMounted(loadRecords)
   color: #999;
   font-size: 13px;
 }
+
+/* Removed flex constraints to allow natural content flow */
 </style>

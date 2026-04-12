@@ -332,8 +332,9 @@ function finishSetup() {
 <style scoped>
 .setup-page {
   min-height: 100vh;
-  padding: 24px;
+  padding: 16px;
   background: #f0f2f5;
+  /* Flow layout: natural top-to-bottom content flow */
 }
 
 .setup-card {
