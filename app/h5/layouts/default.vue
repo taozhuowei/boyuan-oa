@@ -127,6 +127,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
     { key: '/construction-log', label: '施工日志', path: '/construction-log' },
     { key: '/injury', label: '工伤补偿', path: '/injury' },
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
     { key: '/retention', label: '数据保留', path: '/retention' },
     { key: '/operation-logs', label: '操作日志', path: '/operation-logs' },
     { key: '/config', label: '系统配置', path: '/config' }
@@ -137,6 +138,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
     { key: '/injury', label: '工伤理赔', path: '/injury' },
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
     { key: '/directory', label: '通讯录导入', path: '/directory' }
   ],
   project_manager: [
@@ -145,33 +147,38 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/projects', label: '项目管理', path: '/projects' },
     { key: '/construction-log', label: '施工日志', path: '/construction-log' },
     { key: '/construction-log/templates', label: '工作项模板', path: '/construction-log/templates' },
-    { key: '/forms', label: '表单中心', path: '/forms' }
+    { key: '/forms', label: '表单中心', path: '/forms' },
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
   ],
   hr: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/org', label: '组织架构', path: '/org' },
     { key: '/positions', label: '岗位管理', path: '/positions' },
-    { key: '/attendance', label: '考勤管理', path: '/attendance' }
+    { key: '/attendance', label: '考勤管理', path: '/attendance' },
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
   ],
   department_manager: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/attendance', label: '考勤管理', path: '/attendance' },
-    { key: '/todo', label: '审批中心', path: '/todo' }
+    { key: '/todo', label: '审批中心', path: '/todo' },
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
   ],
   worker: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/construction-log', label: '施工日志', path: '/construction-log' },
     { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/forms', label: '表单中心', path: '/forms' },
-    { key: '/payroll', label: '工资条', path: '/payroll' }
+    { key: '/payroll', label: '工资条', path: '/payroll' },
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
   ],
   employee: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/forms', label: '表单中心', path: '/forms' },
     { key: '/attendance', label: '考勤管理', path: '/attendance' },
-    { key: '/payroll', label: '工资条', path: '/payroll' }
+    { key: '/payroll', label: '工资条', path: '/payroll' },
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
   ]
 }
 

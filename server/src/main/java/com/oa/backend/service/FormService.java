@@ -302,6 +302,7 @@ public class FormService {
             case "OVERTIME" -> "OT";
             case "INJURY" -> "INJ";
             case "LOG" -> "LOG";
+            case "EXPENSE" -> "EXP";
             default -> "F";
         };
         return prefix + LocalDateTime.now().toLocalDate().toString().replace("-", "")
@@ -317,6 +318,7 @@ public class FormService {
             case "OVERTIME" -> "加班申请";
             case "INJURY" -> "工伤补偿";
             case "LOG" -> "施工日志";
+            case "EXPENSE" -> "费用报销";
             default -> formType;
         };
     }

@@ -136,7 +136,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { request } from '~/utils/http'
-import { getFieldLabel, getLeaveTypeLabel, getOvertimeTypeLabel, formatFormSummary } from '../../../shared/utils/formLabels'
+import { getFieldLabel, getLeaveTypeLabel, getOvertimeTypeLabel, getExpenseTypeLabel, formatFormSummary } from '../../../shared/utils/formLabels'
 
 // Types
 interface HistoryItem {
@@ -244,6 +244,10 @@ function formatValue(value: unknown, fieldKey?: string): string {
   if (fieldKey === 'overtimeType' && typeof value === 'string') {
     return getOvertimeTypeLabel(value) || String(value)
   }
+  // 对于报销类型字段，转换为中文
+  if (fieldKey === 'expenseType' && typeof value === 'string') {
+    return getExpenseTypeLabel(value) || String(value)
+  }
   if (value === null || value === undefined) return '—'
   if (typeof value === 'boolean') return value ? '是' : '否'
   return String(value)
@@ -258,7 +262,7 @@ async function loadForms() {
   loading.value = true
   try {
     const data = await request<FormRecord[]>({
-      url: '/forms/history?formTypes=LEAVE,OVERTIME'
+      url: '/forms/history?formTypes=LEAVE,OVERTIME,EXPENSE'
     })
     // For now, backend filters by role; we assign to both tabs
     submissions.value = data ?? []

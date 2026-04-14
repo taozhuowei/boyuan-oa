@@ -24,6 +24,14 @@ export const FIELD_LABELS: Record<string, string> = {
   remark: '备注',
   submitTime: '提交时间',
   status: '状态',
+  // 报销相关
+  expenseType: '报销类型',
+  tripStartDate: '出差开始日期',
+  tripEndDate: '出差结束日期',
+  tripDestination: '出差目的地',
+  tripPurpose: '出差事由',
+  totalAmount: '报销总金额',
+  invoicesJson: '发票信息',
   // 工伤相关
   injuryDate: '受伤日期',
   injuryLocation: '受伤地点',
@@ -139,5 +147,37 @@ export function formatFormSummary(
     return typeLabel
   }
 
+  if (formType === 'EXPENSE') {
+    const typeLabel = EXPENSE_TYPE_LABELS[String(d.expenseType || '')] || String(d.expenseType || '')
+    const amount = d.totalAmount ?? ''
+    return `${typeLabel} ¥${amount}`.trim()
+  }
+
   return ''
+}
+
+/** 报销类型枚举值到中文的映射 */
+export const EXPENSE_TYPE_LABELS: Record<string, string> = {
+  TRAVEL: '差旅费',
+  travel: '差旅费',
+  MEAL: '餐饮费',
+  meal: '餐饮费',
+  ACCOMMODATION: '住宿费',
+  accommodation: '住宿费',
+  TRANSPORT: '交通费',
+  transport: '交通费',
+  OFFICE: '办公用品',
+  office: '办公用品',
+  OTHER: '其他',
+  other: '其他',
+}
+
+/**
+ * 获取报销类型的中文描述
+ * @param value 报销类型值（如 TRAVEL）
+ * @returns 中文描述（如 "差旅费"），未找到时返回原值
+ */
+export function getExpenseTypeLabel(value: string | undefined | null): string {
+  if (!value) return ''
+  return EXPENSE_TYPE_LABELS[value] || value
 }

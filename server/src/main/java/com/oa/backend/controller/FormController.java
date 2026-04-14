@@ -32,10 +32,10 @@ public class FormController {
 
     /**
      * 获取待审批列表
-     * 权限：项目经理、CEO
+     * 权限：项目经理、CEO、财务（各类表单审批流的不同节点审批人）
      */
     @GetMapping("/todo")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE')")
     public ResponseEntity<List<FormRecordResponse>> getTodoList(Authentication authentication) {
         Long currentEmployeeId = getCurrentEmployeeId(authentication);
         if (currentEmployeeId == null) {
@@ -46,10 +46,10 @@ public class FormController {
 
     /**
      * 审批通过
-     * 权限：项目经理、CEO
+     * 权限：项目经理、CEO、财务
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE')")
     public ResponseEntity<FormRecordResponse> approve(
             @PathVariable Long id,
             @Valid @RequestBody FormApprovalRequest request,
@@ -65,10 +65,10 @@ public class FormController {
 
     /**
      * 审批驳回
-     * 权限：项目经理、CEO
+     * 权限：项目经理、CEO、财务
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE')")
     public ResponseEntity<FormRecordResponse> reject(
             @PathVariable Long id,
             @Valid @RequestBody FormApprovalRequest request,
@@ -101,10 +101,10 @@ public class FormController {
         // 获取当前用户角色
         String roleCode = getCurrentRoleCode(authentication);
 
-        // 默认查询请假和加班类型
-        List<String> types = formTypes != null && !formTypes.isEmpty() 
-                ? formTypes 
-                : Arrays.asList("LEAVE", "OVERTIME");
+        // 默认查询请假、加班和报销类型
+        List<String> types = formTypes != null && !formTypes.isEmpty()
+                ? formTypes
+                : Arrays.asList("LEAVE", "OVERTIME", "EXPENSE");
 
         return ResponseEntity.ok(formService.getHistory(currentEmployeeId, roleCode, types));
     }

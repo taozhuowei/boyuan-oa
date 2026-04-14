@@ -1,0 +1,271 @@
+<template>
+  <div class="expense-apply-page">
+    <h2 class="page-title">费用报销申请</h2>
+
+    <a-card>
+      <a-form
+        :model="formState"
+        layout="vertical"
+        style="max-width: 600px"
+        @finish="submitExpense"
+      >
+        <!-- 基本信息 -->
+        <a-divider orientation="left">基本信息</a-divider>
+
+        <a-form-item label="报销类型" name="expenseType" :rules="[{ required: true, message: '请选择报销类型' }]">
+          <a-select v-model:value="formState.expenseType" placeholder="请选择报销类型">
+            <a-select-option v-for="t in expenseTypes" :key="t.code" :value="t.code">
+              {{ t.name }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+
+        <!-- 出差信息（可选） -->
+        <a-form-item label="出差开始日期" name="tripStartDate">
+          <a-date-picker v-model:value="formState.tripStartDate" style="width: 100%" placeholder="请选择出差开始日期" />
+        </a-form-item>
+
+        <a-form-item label="出差结束日期" name="tripEndDate">
+          <a-date-picker v-model:value="formState.tripEndDate" style="width: 100%" placeholder="请选择出差结束日期" />
+        </a-form-item>
+
+        <a-form-item label="出差目的地" name="tripDestination">
+          <a-input v-model:value="formState.tripDestination" placeholder="请输入出差目的地" />
+        </a-form-item>
+
+        <a-form-item label="出差事由" name="tripPurpose">
+          <a-textarea v-model:value="formState.tripPurpose" :rows="2" placeholder="请输入出差事由" />
+        </a-form-item>
+
+        <!-- 报销明细 -->
+        <a-divider orientation="left">报销明细</a-divider>
+
+        <div v-for="(item, index) in formState.items" :key="index" class="expense-item">
+          <a-row :gutter="16">
+            <a-col :span="6">
+              <a-form-item :name="['items', index, 'itemType']" :rules="[{ required: true, message: '请选择类型' }]">
+                <a-select v-model:value="item.itemType" placeholder="费用类型">
+                  <a-select-option value="MEAL">餐饮费</a-select-option>
+                  <a-select-option value="TRANSPORT">交通费</a-select-option>
+                  <a-select-option value="ACCOMMODATION">住宿费</a-select-option>
+                  <a-select-option value="OFFICE">办公用品</a-select-option>
+                  <a-select-option value="OTHER">其他</a-select-option>
+                </a-select>
+              </a-form-item>
+            </a-col>
+            <a-col :span="6">
+              <a-form-item :name="['items', index, 'expenseDate']" :rules="[{ required: true, message: '请选择日期' }]">
+                <a-date-picker v-model:value="item.expenseDate" style="width: 100%" placeholder="日期" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="5">
+              <a-form-item :name="['items', index, 'amount']" :rules="[{ required: true, message: '请输入金额' }]">
+                <a-input-number v-model:value="item.amount" style="width: 100%" :min="0" :precision="2" placeholder="金额" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="5">
+              <a-form-item :name="['items', index, 'invoiceNo']">
+                <a-input v-model:value="item.invoiceNo" placeholder="发票号可选" />
+              </a-form-item>
+            </a-col>
+            <a-col :span="2">
+              <a-button danger type="link" @click="removeItem(index)">删除</a-button>
+            </a-col>
+          </a-row>
+          <a-form-item :name="['items', index, 'description']">
+            <a-textarea v-model:value="item.description" :rows="1" placeholder="费用说明（可选）" />
+          </a-form-item>
+        </div>
+
+        <a-button type="dashed" block @click="addItem" style="margin-bottom: 24px">
+          + 添加明细
+        </a-button>
+
+        <!-- 合计金额 -->
+        <a-form-item label="报销总金额" name="totalAmount" :rules="[{ required: true, message: '请输入总金额' }]">
+          <a-input-number v-model:value="formState.totalAmount" style="width: 100%" :min="0" :precision="2" :disabled="true" placeholder="自动计算（明细金额之和）" />
+        </a-form-item>
+
+        <a-form-item label="备注说明" name="remark">
+          <a-textarea v-model:value="formState.remark" :rows="3" placeholder="请输入备注说明（可选）" />
+        </a-form-item>
+
+        <a-form-item>
+          <a-space>
+            <a-button type="primary" html-type="submit" :loading="submitting">
+              提交申请
+            </a-button>
+            <a-button @click="resetForm">重置</a-button>
+            <a-button type="link" @click="goToRecords">查看我的报销记录</a-button>
+          </a-space>
+        </a-form-item>
+      </a-form>
+    </a-card>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, reactive, watch, computed, onMounted } from 'vue'
+import { request } from '~/utils/http'
+import type { Dayjs } from 'dayjs'
+import dayjs from 'dayjs'
+
+interface ExpenseItem {
+  itemType: string | null
+  expenseDate: Dayjs | null
+  amount: number | null
+  invoiceNo: string
+  description: string
+  attachmentId: number | null
+}
+
+interface ExpenseType {
+  id: number
+  code: string
+  name: string
+  description: string
+  requireInvoice: boolean
+  dailyLimit: number
+}
+
+const formState = reactive({
+  expenseType: null as string | null,
+  tripStartDate: null as Dayjs | null,
+  tripEndDate: null as Dayjs | null,
+  tripDestination: '',
+  tripPurpose: '',
+  totalAmount: null as number | null,
+  remark: '',
+  items: [] as ExpenseItem[]
+})
+
+const expenseTypes = ref<ExpenseType[]>([])
+const submitting = ref(false)
+
+// 计算总金额
+const calculatedTotal = computed(() => {
+  return formState.items.reduce((sum, item) => {
+    return sum + (item.amount || 0)
+  }, 0)
+})
+
+// 监听明细变化，自动更新总金额
+watch(calculatedTotal, (newVal) => {
+  formState.totalAmount = newVal > 0 ? newVal : null
+})
+
+function addItem() {
+  formState.items.push({
+    itemType: null,
+    expenseDate: null,
+    amount: null,
+    invoiceNo: '',
+    description: '',
+    attachmentId: null
+  })
+}
+
+function removeItem(index: number) {
+  formState.items.splice(index, 1)
+}
+
+function resetForm() {
+  formState.expenseType = null
+  formState.tripStartDate = null
+  formState.tripEndDate = null
+  formState.tripDestination = ''
+  formState.tripPurpose = ''
+  formState.totalAmount = null
+  formState.remark = ''
+  formState.items = []
+}
+
+function goToRecords() {
+  navigateTo('/expense/records')
+}
+
+async function submitExpense() {
+  if (formState.items.length === 0) {
+    alert('请至少添加一条报销明细')
+    return
+  }
+
+  submitting.value = true
+  try {
+    const body = {
+      expenseType: formState.expenseType,
+      tripStartDate: formState.tripStartDate?.format('YYYY-MM-DD'),
+      tripEndDate: formState.tripEndDate?.format('YYYY-MM-DD'),
+      tripDestination: formState.tripDestination || null,
+      tripPurpose: formState.tripPurpose || null,
+      totalAmount: formState.totalAmount,
+      remark: formState.remark || null,
+      items: formState.items.map(item => ({
+        itemType: item.itemType,
+        expenseDate: item.expenseDate?.format('YYYY-MM-DD'),
+        amount: item.amount,
+        invoiceNo: item.invoiceNo || null,
+        description: item.description || null,
+        attachmentId: item.attachmentId
+      }))
+    }
+
+    await request({
+      url: '/expense',
+      method: 'POST',
+      body
+    })
+
+    alert('报销申请提交成功')
+    resetForm()
+    goToRecords()
+  } catch (e: unknown) {
+    const msg = (e as Error).message ?? '提交失败'
+    alert(msg)
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function loadExpenseTypes() {
+  try {
+    const types = await request<ExpenseType[]>({ url: '/expense/types' })
+    expenseTypes.value = types ?? []
+  } catch {
+    // 默认类型
+    expenseTypes.value = [
+      { id: 1, code: 'TRAVEL', name: '差旅费', description: '', requireInvoice: true, dailyLimit: 0 },
+      { id: 2, code: 'MEAL', name: '餐饮费', description: '', requireInvoice: true, dailyLimit: 0 },
+      { id: 3, code: 'ACCOMMODATION', name: '住宿费', description: '', requireInvoice: true, dailyLimit: 0 },
+      { id: 4, code: 'TRANSPORT', name: '交通费', description: '', requireInvoice: true, dailyLimit: 0 },
+      { id: 5, code: 'OFFICE', name: '办公用品', description: '', requireInvoice: true, dailyLimit: 0 },
+      { id: 6, code: 'OTHER', name: '其他', description: '', requireInvoice: false, dailyLimit: 0 }
+    ]
+  }
+}
+
+onMounted(() => {
+  loadExpenseTypes()
+  addItem() // 默认添加一条明细
+})
+</script>
+
+<style scoped>
+.expense-apply-page {
+  /* Page container */
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+  color: #003466;
+}
+
+.expense-item {
+  background: #f5f5f5;
+  padding: 16px;
+  margin-bottom: 16px;
+  border-radius: 4px;
+}
+</style>

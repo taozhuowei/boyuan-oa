@@ -1,0 +1,28 @@
+import type { TestCase } from '../../../tools/autotest/runner/types';
+
+const tc: TestCase = {
+  id: 'TC-OT-07',
+  title: '申报时间与已有申报重叠时提示冲突或拒绝',
+  module: 'attendance_overtime',
+  priority: 'P2',
+  credentials: { username: 'employee.demo', password: '123456' },
+  steps: [
+    { id: 1, desc: '导航到登录页', action: 'navigate', to: '/login' },
+    { id: 2, desc: '输入用户名', action: 'fill', locator: { by: 'placeholder', value: '用户名' }, value: '{{credentials.username}}' },
+    { id: 3, desc: '输入密码', action: 'fill', locator: { by: 'placeholder', value: '密码' }, value: '{{credentials.password}}' },
+    { id: 4, desc: '点击登录按钮', action: 'click', locator: { by: 'role', role: 'button', name: '登录' } },
+    { id: 5, desc: '等待跳转', action: 'wait', ms: 1500 },
+    { id: 6, desc: '导航到加班申报页', action: 'navigate', to: '/attendance/overtime' },
+    { id: 7, desc: '等待页面加载', action: 'wait', ms: 1500 },
+    { id: 8, desc: '点击新增加班', action: 'click', locator: { by: 'role', role: 'button', name: '新增加班' } },
+    { id: 9, desc: '选择加班类型', action: 'click', locator: { by: 'label', value: '加班类型' } },
+    { id: 10, desc: '选择工作日加班', action: 'click', locator: { by: 'text', value: '工作日加班' } },
+    { id: 11, desc: '输入重叠开始时间', action: 'fill', locator: { by: 'placeholder', value: '开始时间' }, value: '2026-04-15 18:30' },
+    { id: 12, desc: '输入重叠结束时间', action: 'fill', locator: { by: 'placeholder', value: '结束时间' }, value: '2026-04-15 20:00' },
+    { id: 13, desc: '点击提交按钮', action: 'click', locator: { by: 'role', role: 'button', name: '提交' } },
+    { id: 14, desc: '断言重叠提示', action: 'assert', check: { type: 'text_visible', value: '重叠' } },
+  ],
+  expect: { result: 'pass' },
+};
+
+export default tc;

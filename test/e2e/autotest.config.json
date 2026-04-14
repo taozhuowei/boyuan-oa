@@ -1,0 +1,8 @@
+{
+  "name": "boyuan-oa",
+  "base_url": "http://localhost:3000",
+  "cases_dir": "./cases",
+  "concurrency": 1,
+  "step_timeout": 30000,
+  "screenshot_on_step": true
+}

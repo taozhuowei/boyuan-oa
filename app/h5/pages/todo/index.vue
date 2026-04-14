@@ -126,8 +126,8 @@ async function viewApproval(record: FormRecord) {
   modalVisible.value = true
   // Load approval history (best-effort; not blocking modal open)
   try {
-    const history = await request<ApprovalStep[]>({ url: `/attendance/${record.id}/history` })
-    approvalHistory.value = history ?? []
+    const detail = await request<{ history: ApprovalStep[] }>({ url: `/forms/${record.id}` })
+    approvalHistory.value = detail?.history ?? []
   } catch {
     approvalHistory.value = []
   }
@@ -137,7 +137,7 @@ async function handleApprove() {
   if (!selectedRecord.value) return
   try {
     await request({
-      url: `/attendance/${selectedRecord.value.id}/approve`,
+      url: `/forms/${selectedRecord.value.id}/approve`,
       method: 'POST',
       body: { action: 'APPROVE', comment: approvalComment.value }
     })
@@ -153,7 +153,7 @@ async function handleReject() {
   if (!selectedRecord.value) return
   try {
     await request({
-      url: `/attendance/${selectedRecord.value.id}/reject`,
+      url: `/forms/${selectedRecord.value.id}/reject`,
       method: 'POST',
       body: { action: 'REJECT', comment: approvalComment.value }
     })
@@ -168,7 +168,7 @@ async function handleReject() {
 async function loadTodo() {
   loading.value = true
   try {
-    const list = await request<FormRecord[]>({ url: '/attendance/todo' })
+    const list = await request<FormRecord[]>({ url: '/forms/todo' })
     todoList.value = list ?? []
   } catch {
     todoList.value = []
