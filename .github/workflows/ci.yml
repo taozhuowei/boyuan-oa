@@ -61,13 +61,15 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: app/h5/package.json
+          cache-dependency-path: app/package-lock.json
 
-      - name: Install dependencies and run H5 tests
+      - name: Install dependencies (workspace)
+        working-directory: app
+        run: npm ci
+
+      - name: Run H5 tests
         working-directory: app/h5
-        run: |
-          npm install
-          npm run test
+        run: npm run test
 
   frontend-mp-test:
     name: Frontend MP Tests
@@ -83,10 +85,12 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: app/mp/package.json
+          cache-dependency-path: app/package-lock.json
 
-      - name: Install dependencies and run MP tests
+      - name: Install dependencies (workspace)
+        working-directory: app
+        run: npm ci
+
+      - name: Run MP tests
         working-directory: app/mp
-        run: |
-          npm install
-          npm run test
+        run: npm run test
