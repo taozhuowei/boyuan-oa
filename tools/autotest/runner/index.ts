@@ -4,7 +4,8 @@
  * Supports both CLI mode and Electron module mode.
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
+import { promises as fsPromises } from 'fs';
 import { resolve as resolvePath, join, dirname } from 'path';
 import { pathToFileURL } from 'url';
 import { ipcServer, createElectronIPC } from './ipc.js';
@@ -20,7 +21,7 @@ interface CliArgs {
   baseUrl?: string;
   configPath: string;
   mode: 'case-confirm' | 'full-auto';
-  cdpEndpoint?: string;  // CDP WebSocket endpoint for connecting to existing browser
+  cdpEndpoint?: string;
 }
 
 function parseCliArgs(): CliArgs {
@@ -96,13 +97,38 @@ async function loadCases(casesDir: string): Promise<TestCase[]> {
   const cases: TestCase[] = [];
 
   try {
-    // Import index.ts from cases directory
+    // Mode A: Import index.ts from cases directory if it exists
     const indexPath = join(casesDir, 'index.ts');
     if (existsSync(indexPath)) {
       const module = await import(pathToFileURL(indexPath).href);
       if (module.default && Array.isArray(module.default)) {
         cases.push(...module.default);
       }
+    } else {
+      // Mode B: Recursively scan for all *.ts files and collect default exports
+      const scanDir = async (dir: string): Promise<void> => {
+        const entries = await fsPromises.readdir(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = join(dir, entry.name);
+          if (entry.isDirectory()) {
+            await scanDir(fullPath);
+          } else if (entry.isFile() && entry.name.endsWith('.ts') && entry.name !== 'index.ts') {
+            try {
+              const mod = await import(pathToFileURL(fullPath).href);
+              if (mod.default) {
+                if (Array.isArray(mod.default)) {
+                  cases.push(...mod.default);
+                } else {
+                  cases.push(mod.default);
+                }
+              }
+            } catch (e) {
+              console.warn(`[Warn] Failed to import ${fullPath}:`, e);
+            }
+          }
+        }
+      };
+      await scanDir(casesDir);
     }
   } catch (err) {
     console.error('[Error] Failed to load test cases:', err);
