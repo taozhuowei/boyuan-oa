@@ -1,100 +1,117 @@
-<!-- BrowserToolbar: 40px bar above browser area with navigation and devtools toggle -->
 <template>
   <div class="browser-toolbar">
-    <n-button text size="small" @click="goBack">
-      <template #icon>
-        <n-icon><ArrowBackOutline /></n-icon>
-      </template>
-    </n-button>
-    <n-button text size="small" @click="goForward">
-      <template #icon>
-        <n-icon><ArrowForwardOutline /></n-icon>
-      </template>
-    </n-button>
-    <n-button text size="small" @click="reload">
-      <template #icon>
-        <n-icon><ReloadOutline /></n-icon>
-      </template>
-    </n-button>
+    <div class="button-group">
+      <n-button text @click="goBack" :disabled="!runnerStore.browser.can_go_back">
+        <template #icon>
+          <n-icon><ArrowBackOutline /></n-icon>
+        </template>
+      </n-button>
+      <n-button text @click="goForward" :disabled="!runnerStore.browser.can_go_forward">
+        <template #icon>
+          <n-icon><ArrowForwardOutline /></n-icon>
+        </template>
+      </n-button>
+      <n-button text @click="reload">
+        <template #icon>
+          <n-icon><ReloadOutline /></n-icon>
+        </template>
+      </n-button>
+      <n-button text @click="forceReload">
+        <template #icon>
+          <n-icon><RefreshCircleOutline /></n-icon>
+        </template>
+      </n-button>
+    </div>
+
     <n-input
       v-model:value="url"
-      size="small"
       class="url-input"
-      placeholder="输入 URL 后回车跳转"
+      clearable
+      placeholder="输入地址后回车跳转"
       @keydown.enter="navigate"
     />
-    <div class="devtools-toggle">
-      <span class="toggle-label">DevTools</span>
-      <n-switch size="small" @update:value="toggleDevtools" />
-    </div>
+
+    <n-button text @click="toggleDevtools">
+      <template #icon>
+        <n-icon><CodeSlashOutline /></n-icon>
+      </template>
+    </n-button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
-import { NButton, NIcon, NInput, NSwitch } from 'naive-ui'
-import { ArrowBackOutline, ArrowForwardOutline, ReloadOutline } from '@vicons/ionicons5'
+import { computed, ref, watch } from 'vue'
+import { NButton, NIcon, NInput } from 'naive-ui'
+import {
+  ArrowBackOutline,
+  ArrowForwardOutline,
+  ReloadOutline,
+  RefreshCircleOutline,
+  CodeSlashOutline,
+} from '@vicons/ionicons5'
+import { useRunnerStore } from '../stores/runner'
 
+const runnerStore = useRunnerStore()
 const url = ref('')
 
-async function goBack() {
-  if (window.electronAPI?.browserBack) {
-    await window.electronAPI.browserBack()
+watch(
+  () => runnerStore.browser.current_url,
+  (value) => {
+    url.value = value
+  },
+  { immediate: true }
+)
+
+const targetUrl = computed(() => url.value.trim())
+
+async function navigate(): Promise<void> {
+  if (!targetUrl.value) {
+    return
   }
+  await window.electronAPI.browserNavigate(targetUrl.value)
 }
 
-async function goForward() {
-  if (window.electronAPI?.browserForward) {
-    await window.electronAPI.browserForward()
-  }
+async function goBack(): Promise<void> {
+  await window.electronAPI.browserBack()
 }
 
-async function reload() {
-  if (window.electronAPI?.browserReload) {
-    await window.electronAPI.browserReload()
-  }
+async function goForward(): Promise<void> {
+  await window.electronAPI.browserForward()
 }
 
-async function navigate() {
-  if (window.electronAPI?.browserNavigate && url.value) {
-    await window.electronAPI.browserNavigate(url.value)
-  }
+async function reload(): Promise<void> {
+  await window.electronAPI.browserReload()
 }
 
-async function toggleDevtools() {
-  if (window.electronAPI?.devtoolsToggle) {
-    await window.electronAPI.devtoolsToggle()
-  }
+async function forceReload(): Promise<void> {
+  await window.electronAPI.browserForceReload()
+}
+
+async function toggleDevtools(): Promise<void> {
+  await window.electronAPI.devtoolsToggle()
 }
 </script>
 
 <style scoped>
 .browser-toolbar {
+  height: 48px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 40px;
-  padding: 0 10px;
-  background: var(--bg-1);
+  gap: 10px;
+  padding: 0 12px;
+  background: rgba(21, 24, 29, 0.92);
+  border-inline: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+}
+
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
 }
 
 .url-input {
   flex: 1;
   font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
-}
-
-.devtools-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-left: 8px;
-  border-left: 1px solid var(--line);
-}
-
-.toggle-label {
-  font-size: 11px;
-  color: var(--text-2);
-  white-space: nowrap;
 }
 </style>

@@ -1,100 +1,146 @@
-# AutoTest - 可视化浏览器自动化测试工具
+# AutoTest
 
-面向 Web 应用的通用桌面端端到端（E2E）自动化测试工具。基于 Electron + Vue 3 构建，通过 Playwright 驱动 Chromium 浏览器，采用单窗口内嵌布局设计，无需 AI 依赖，适用于任何 Web 项目的自动化测试。
+面向通用 Web 项目的桌面端可视化自动测试工具。技术栈为 `Electron + Vue 3 + Playwright`，核心目标是把“项目选择、项目启动、浏览器预览、人工确认、失败报告”放进同一个工作台。
 
----
+## 当前实现
 
-## 架构概览
+AutoTest 采用三栏布局：
 
-AutoTest 采用单窗口内嵌式设计：
+- 左栏：全盘目录树（过滤隐藏文件和系统目录），顶部提供搜索框、搜索按钮、确认选择按钮
+- 中栏：真实 Chromium 预览区，顶部为浏览器工具栏，支持后退、前进、刷新、强制刷新、地址栏跳转、DevTools 开关
+- 右栏：测试用例列表，当前用例自动滚动到中部；底部提供开始测试、停止、重置，以及“自动测试”配置
 
-| 区域 | 技术栈 | 功能描述 |
-|------|--------|----------|
-| 左侧浏览区 | Electron WebContentsView | 内嵌的 Chromium 浏览器，实时展示操作过程 |
-| 右侧控制台 | Vue 3 + Electron 渲染进程 | 用例树、步骤详情、操作控制、Console 日志 |
+执行语义：
 
-**通信机制**：
-```
-Playwright <--> Electron Main (BrowserView) <--> Vue UI (IPC)
-```
+- 每条用例执行完成后都必须人工确认
+- `自动测试 = 是`：确认当前用例后自动进入下一条
+- `自动测试 = 否`：确认当前用例后，需要手动点击“继续测试”
+- 失败用例会采集截图、当前 URL、页面标题、定位器、控制台尾部、网络请求尾部和人工备注
 
----
+报告输出：
 
-## 环境要求
+- `JSON`：AI 友好结构化报告
+- `HTML`：人读版报告
+- `Markdown`：可直接粘贴给 AI 的摘要
 
-| 依赖 | 版本 | 说明 |
-|------|------|------|
-| Node.js | >= 20 | Playwright + Electron 运行时依赖 |
-| Playwright | 随 npm install 安装 | Chromium 浏览器自动安装 |
-| Electron | ^30 | 内嵌浏览器和桌面框架 |
-
----
-
-## 快速开始
+## 启动
 
 ```bash
 cd tools/autotest
 npm install
 npx playwright install chromium
-npm run dev
+npm run electron:dev
 ```
 
-启动后会打开单个窗口：左侧为浏览器区域，右侧为控制面板。
+构建：
 
----
+```bash
+cd tools/autotest
+npm run build
+npx vite build --mode electron
+```
 
-## 使用方式
+## 使用流程
 
-1. **启动工具**：运行 `npm run tauri:dev`，双窗口自动并排显示
-2. **加载配置**：点击控制面板上的「加载配置」按钮，选择目标项目的 `autotest.config.json` 文件
-3. **选择模式**：
-   - 「逐用例确认模式」（默认）：每执行完一个用例后暂停，等待人工确认
-   - 「全量运行模式」：连续执行所有用例，不暂停
-4. **开始运行**：点击「运行全部」，观察左侧浏览器自动执行
-5. **人工确认**：逐用例模式下，每个用例执行完成后在右侧面板点击 **通过 / 失败 / 跳过**，可附加备注
-6. **查看报告**：所有用例执行完成后，HTML 报告自动生成在 `reports/` 目录
+1. 启动 AutoTest。
+2. 在左栏目录树中定位目标项目目录。
+3. 如目录层级较深，可先用搜索框按文件名或目录名搜索。
+4. 选中项目目录后点击“确认选择”。
+5. 工具会递归查找 `autotest.config.json`，读取配置，扫描用例，并按配置自动启动项目。
+6. 中栏浏览器自动加载预览地址，右栏显示用例列表。
+7. 点击“开始测试”开始执行；每条用例结束后在当前卡片上点“通过 / 不通过”。
+8. 测试结束后，报告输出到配置中的 `report.output_dir`。
 
----
+## 配置协议
 
-## 两种执行模式
+配置文件名默认是 `autotest.config.json`。建议放在：
 
-| 模式 | 说明 | 适用场景 |
-|------|------|----------|
-| 逐用例确认模式 (case-confirm) | 自动执行单个用例的所有步骤，执行完毕后暂停等待人工 PASS/FAIL/SKIP 确认，确认后继续下一个用例 | 需要人工验证结果的复杂业务场景，默认模式 |
-| 全量运行模式 (full-auto) | 连续执行所有用例不暂停，根据断言自动判定结果，生成报告后人工审阅 | 回归测试、冒烟测试、CI 集成 |
+- `<project>/autotest.config.json`
+- `<project>/test/autotest/autotest.config.json`
+- `<project>/tests/autotest/autotest.config.json`
 
-切换方式：在控制面板勾选「全量运行」开关，或通过快捷键 `Ctrl+M` 切换。
-
----
-
-## 元素定位策略（无 AI）
-
-AutoTest 采用 Playwright 内置的定位策略，按优先级排序：
-
-| 优先级 | 策略 | 方法 | 说明 |
-|--------|------|------|------|
-| 1 | role | `getByRole()` | **首选**，基于 ARIA role 和可访问名称，语义化、稳定、符合无障碍标准 |
-| 2 | label | `getByLabel()` | 通过关联的 label 文本定位表单元素 |
-| 3 | text | `getByText()` | 通过可见文本内容定位 |
-| 4 | placeholder | `getByPlaceholder()` | 通过 placeholder 属性定位输入框 |
-| 5 | testid | `getByTestId()` | 通过 `data-testid` 属性定位，适合测试专用标记 |
-| 6 | css | CSS 选择器 | 最后的备选方案，脆弱，尽量避免 |
-
-**推荐原则**：优先使用 role 和 label，它们与 DOM 结构解耦，界面重构时更稳定。
-
----
-
-## 接入新项目（通用）
-
-任何 Web 项目均可按以下步骤接入 AutoTest：
-
-### 1. 创建配置文件
-
-在目标项目测试目录下创建 `test/autotest/autotest.config.json`：
+推荐结构：
 
 ```json
 {
-  "name": "My Project",
+  "schema_version": "2.0",
+  "name": "my-web-project",
+  "project_root": "../..",
+  "preview": {
+    "base_url": "http://127.0.0.1:3000",
+    "entry_url": "http://127.0.0.1:3000/login",
+    "healthcheck_url": "http://127.0.0.1:3000/login"
+  },
+  "cases": {
+    "root_dir": "./cases",
+    "include": ["**/*.ts"],
+    "exclude": ["**/_*.ts", "**/*.d.ts", "**/dist/**"]
+  },
+  "execution": {
+    "concurrency": 1,
+    "step_timeout": 30000,
+    "screenshot_on_step": true,
+    "auto_advance": true
+  },
+  "report": {
+    "output_dir": "./reports",
+    "formats": ["json", "html", "markdown"]
+  },
+  "launch": {
+    "commands": [
+      {
+        "name": "frontend",
+        "command": "pnpm dev",
+        "cwd": ".",
+        "ready": {
+          "type": "http",
+          "url": "http://127.0.0.1:3000",
+          "timeout_ms": 120000,
+          "interval_ms": 1000
+        }
+      }
+    ]
+  }
+}
+```
+
+### 字段说明
+
+| 字段 | 必填 | 说明 |
+|---|---|---|
+| `schema_version` | 否 | 配置协议版本，当前为 `2.0` |
+| `name` | 是 | 项目名称 |
+| `project_root` | 否 | 项目根目录，相对配置文件解析 |
+| `preview.base_url` | 是 | 被测站点的基准地址，`navigate` 等相对路径基于它拼接 |
+| `preview.entry_url` | 否 | 选中项目后浏览器默认打开的地址 |
+| `preview.healthcheck_url` | 否 | 启动检测地址；`launch.commands` 的 http 就绪检测通常也指向这里 |
+| `cases.root_dir` | 是 | 用例根目录 |
+| `cases.include` | 否 | 用例文件 glob，社区通用风格 |
+| `cases.exclude` | 否 | 排除 glob |
+| `execution.concurrency` | 否 | 预留字段，当前实现固定顺序执行 |
+| `execution.step_timeout` | 否 | 单步超时 |
+| `execution.screenshot_on_step` | 否 | 每步后是否截图 |
+| `execution.auto_advance` | 否 | 默认是否自动进入下一条 |
+| `report.output_dir` | 否 | 报告输出目录 |
+| `report.formats` | 否 | 输出格式，当前支持 `json/html/markdown` |
+| `launch.commands` | 否 | 项目启动命令列表，按顺序执行 |
+| `launch.commands[].name` | 是 | 进程名称，用于日志和生命周期管理 |
+| `launch.commands[].command` | 是 | 启动命令 |
+| `launch.commands[].cwd` | 否 | 命令工作目录，相对 `project_root` |
+| `launch.commands[].ready` | 否 | 就绪检测，支持 `http` 和 `tcp` |
+| `launch.commands[].ready.type` | 否 | `http` 或 `tcp` |
+| `launch.commands[].ready.url` | 否 | `http` 检测地址 |
+| `launch.commands[].ready.port` | 否 | `tcp` 检测端口 |
+| `launch.commands[].ready.timeout_ms` | 否 | 最大等待时长 |
+| `launch.commands[].ready.interval_ms` | 否 | 轮询间隔 |
+
+## 兼容旧配置
+
+旧格式仍兼容：
+
+```json
+{
+  "name": "legacy-project",
   "base_url": "http://localhost:3000",
   "cases_dir": "./cases",
   "concurrency": 1,
@@ -103,304 +149,72 @@ AutoTest 采用 Playwright 内置的定位策略，按优先级排序：
 }
 ```
 
-**字段说明**：
+运行时会自动映射到新协议：
 
-| 字段 | 类型 | 必填 | 默认值 | 说明 |
-|------|------|------|--------|------|
-| name | string | 是 | - | 项目名称，用于报告标题 |
-| base_url | string | 是 | - | 被测应用的基础 URL |
-| cases_dir | string | 是 | - | 用例文件存放目录（相对配置文件的目录） |
-| concurrency | number | 否 | 1 | 并发执行数 |
-| step_timeout | number | 否 | 30000 | 单步超时（毫秒） |
-| screenshot_on_step | boolean | 否 | true | 每步是否自动截图 |
+- `base_url` → `preview.base_url`
+- `cases_dir` → `cases.root_dir`
+- `concurrency / step_timeout / screenshot_on_step` → `execution.*`
 
-### 2. 创建用例目录结构
+## 其他项目如何接入
 
-```
-test/autotest/
-├── autotest.config.json
-├── cases/
-│   ├── auth/
-│   │   ├── index.ts
-│   │   ├── tc_auth_01_login_success.ts
-│   │   └── tc_auth_02_wrong_password.ts
-│   └── dashboard/
-│       ├── index.ts
-│       └── tc_dash_01_view_stats.ts
-└── reports/          # 报告自动生成
-```
+最少需要做三件事：
 
-### 3. 启动 AutoTest 并加载配置
+1. 在项目内放置 `autotest.config.json`。
+2. 在 `cases.root_dir` 下提供可被 AutoTest 导入的 TypeScript 用例文件。
+3. 确保 `launch.commands` 能把项目启动起来，或者至少保证 `preview.base_url` 已经可访问。
 
-```bash
-cd tools/autotest
-npm run tauri:dev
-```
+推荐接入方式：
 
-在控制面板点击「加载配置」，选择项目的 `autotest.config.json` 即可。
+1. 明确项目根目录。
+2. 明确前端预览地址和健康检查地址。
+3. 明确测试用例目录，并用 `include / exclude` 控制扫描范围。
+4. 如果是单服务项目，只配一个前端命令。
+5. 如果是前后端联动项目，按顺序配置多个命令，并分别配置 `ready`。
 
----
+## 用例格式
 
-## 编写测试用例
+每个用例文件默认导出一个 `TestCase` 或 `TestCase[]`。如果 `cases.root_dir` 下存在根级 `index.ts`，工具优先导入这个聚合入口。
 
-### 用例文件格式 (TestCase)
+示例：
 
-每个用例是一个导出 `TestCase` 对象的 TypeScript 文件：
-
-```typescript
-// test/autotest/cases/auth/tc_auth_01_login_success.ts
-import type { TestCase } from '../../../../../tools/autotest/runner/types.js'
+```ts
+import type { TestCase } from '../../../../tools/autotest/runner/types.js'
 
 export default {
   id: 'TC-AUTH-01',
   title: '正确账号密码登录成功',
-  module: '认证',
+  description: '角色：CEO。路径：登录页 → 输入账号密码 → 点击登录。期望：进入工作台。',
+  module: 'auth',
   priority: 'P0',
-  tags: ['smoke', 'auth'],
-
-  // 登录凭据
-  credentials: {
-    username: 'ceo.demo',
-    password: '123456',
-  },
-
   steps: [
-    {
-      id: 1,
-      desc: '打开登录页',
-      action: 'navigate',
-      to: '/login',
-    },
+    { id: 1, desc: '打开登录页', action: 'navigate', to: '/login' },
     {
       id: 2,
-      desc: '输入用户名',
-      action: 'fill',
-      locator: { by: 'label', value: '用户名', exact: true },
-      value: '{{credentials.username}}',
-    },
-    {
-      id: 3,
-      desc: '输入密码',
-      action: 'fill',
-      locator: { by: 'label', value: '密码', exact: true },
-      value: '{{credentials.password}}',
-    },
-    {
-      id: 4,
       desc: '点击登录按钮',
       action: 'click',
-      locator: { by: 'role', role: 'button', name: '登录', exact: true },
-    },
-    {
-      id: 5,
-      desc: '验证跳转到工作台',
-      action: 'assert',
-      check: { type: 'url_contains', value: '/dashboard' },
-    },
-    {
-      id: 6,
-      desc: '验证页面显示欢迎信息',
-      action: 'assert',
-      check: { type: 'text_visible', value: '欢迎' },
-    },
+      locator: { by: 'role', role: 'button', name: '登录', exact: true }
+    }
   ],
-
-  expect: {
-    result: 'pass',
-    url: '/dashboard',
-  },
+  expect: { result: 'pass' }
 } satisfies TestCase
 ```
 
-**TestCase 字段说明**：
+## 当前限制
 
-| 字段 | 类型 | 必填 | 说明 |
-|------|------|------|------|
-| id | string | 是 | 用例唯一标识（如 TC-AUTH-01） |
-| title | string | 是 | 用例标题 |
-| module | string | 是 | 所属模块 |
-| priority | 'P0' \| 'P1' \| 'P2' | 是 | 优先级，P0 为最高 |
-| tags | string[] | 否 | 标签数组，用于筛选 |
-| credentials | object | 否 | 登录凭据，username 和 password |
-| steps | TestStep[] | 是 | 测试步骤数组 |
-| expect | object | 是 | 期望结果，包含 result 和 url |
+- 目录树当前按 Unix 风格全盘扫描优化，Windows 驱动器枚举尚未单独适配
+- `execution.concurrency` 目前保留但未启用，当前仍为串行执行
+- 搜索为文件系统扫描，项目很多时首次搜索会比纯项目内搜索更慢
+- 报告当前聚焦失败上下文，不会导出完整 HAR
 
----
+## OA 示例
 
-### 操作类型（action）
+博渊 OA 的配置文件位于：
 
-| 操作 | 说明 | 必填字段 |
-|------|------|----------|
-| `navigate` | 跳转 URL（支持相对路径，基于 base_url） | `to: string` |
-| `click` | 点击元素 | `locator: LocatorDef` |
-| `fill` | 在输入框中填充文本 | `locator: LocatorDef`, `value: string` |
-| `select` | 从下拉框选择选项 | `locator: LocatorDef`, `value: string` |
-| `check` | 勾选复选框 | `locator: LocatorDef` |
-| `uncheck` | 取消勾选复选框 | `locator: LocatorDef` |
-| `wait` | 等待指定毫秒数 | `ms: number` |
-| `wait_for` | 等待元素可见 | `locator: LocatorDef` |
-| `assert` | 断言检查 | `check: AssertCheck` |
-| `screenshot` | 截图并附加到报告 | `label?: string`（可选） |
-| `api_call` | 发送 HTTP 请求（绕过 UI） | `method: string`, `endpoint: string`, `body?: object` |
-| `parallel` | 并行执行多组步骤（并发测试） | `contexts: TestStep[][]` |
-| `rapid` | 快速重复执行某步骤（压力测试） | `repeat: number`, `interval: number`, `step: TestStep` |
+- [`test/autotest/autotest.config.json`](/home/tzw/projects/boyuan-oa/test/autotest/autotest.config.json)
 
----
+这个配置展示了多进程启动的典型写法：
 
-### 断言类型（assert type）
-
-| 类型 | 验证内容 |
-|------|----------|
-| `url_contains` | 当前 URL 包含指定字符串 |
-| `url_equals` | 当前 URL 完全匹配 |
-| `text_visible` | 页面可见文本包含指定内容 |
-| `text_absent` | 页面不包含指定文本 |
-| `element_visible` | 指定定位器的元素可见 |
-| `element_hidden` | 指定定位器的元素不可见 |
-| `toast_contains` | 出现包含指定文本的 Toast 提示（5 秒等待） |
-| `http_status` | 最近一次 API 响应状态码匹配 |
-| `title_contains` | 页面标题包含指定字符串 |
-
----
-
-### Locator 示例
-
-```typescript
-// 1. role - 最推荐，语义化
-{ by: 'role', role: 'button', name: '提交', exact: true }
-{ by: 'role', role: 'textbox', name: '邮箱' }
-{ by: 'role', role: 'link', name: '忘记密码' }
-
-// 2. label - 表单元素
-{ by: 'label', value: '用户名', exact: true }
-{ by: 'label', value: '搜索', exact: false }
-
-// 3. text - 可见文本
-{ by: 'text', value: '欢迎使用', exact: false }
-{ by: 'text', value: '确认删除', exact: true }
-
-// 4. placeholder - 占位符
-{ by: 'placeholder', value: '请输入手机号' }
-
-// 5. testid - 测试专用标识
-{ by: 'testid', value: 'user-menu-trigger' }
-{ by: 'testid', value: 'submit-btn' }
-
-// 6. css - 最后的备选
-{ by: 'css', value: '.header .nav-item:first-child' }
-{ by: 'css', value: '[data-testid="modal"] button.primary' }
-```
-
----
-
-### 用例文件组织
-
-**目录命名**：`cases/<module>/tc_<module>_<nn>_<description>.ts`
-
-**示例**：
-```
-cases/
-├── auth/
-│   ├── index.ts                    # 导出本模块所有用例
-│   ├── tc_auth_01_login_success.ts
-│   ├── tc_auth_02_wrong_password.ts
-│   └── tc_auth_03_logout.ts
-├── dashboard/
-│   ├── index.ts
-│   ├── tc_dash_01_view_stats.ts
-│   └── tc_dash_02_search_order.ts
-└── order/
-    ├── index.ts
-    └── tc_order_01_create_order.ts
-```
-
-**模块索引文件** (`cases/<module>/index.ts`)：
-
-```typescript
-import tc01 from './tc_auth_01_login_success.js'
-import tc02 from './tc_auth_02_wrong_password.js'
-import tc03 from './tc_auth_03_logout.js'
-
-export default [tc01, tc02, tc03]
-```
-
----
-
-### 覆盖范围要求
-
-完整测试用例应覆盖以下场景：
-
-| 类型 | 说明 | 示例 |
-|------|------|------|
-| 正向操作 | 标准业务流程，预期成功 | 正确登录、正常下单 |
-| 异常操作 | 错误输入、边界条件 | 密码错误、必填项为空 |
-| 并发操作 | 使用 `parallel` action | 多用户同时登录、并发下单 |
-| 快速操作 | 使用 `rapid` action | 快速重复提交、按钮连点 |
-
----
-
-## 测试报告
-
-报告自动生成在配置文件中 `cases_dir` 同级目录的 `reports/` 文件夹下：
-
-| 文件 | 说明 |
-|------|------|
-| `report_<timestamp>.html` | 交互式 HTML 报告，可在浏览器中查看 |
-| `report_<timestamp>.json` | 机器可读 JSON 格式，供 CI 集成 |
-
-**报告内容包括**：
-- 测试环境信息（项目名、基础 URL、运行时间、总耗时）
-- 汇总统计（总数、通过、失败、跳过）
-- 用例详情表格（编号、标题、优先级、状态、步骤数、耗时）
-- 每个步骤的执行状态、截图、错误信息、人工备注
-- 可点击查看大图截图
-
----
-
-## 键盘快捷键
-
-| 按键 | 操作 |
-|------|------|
-| `空格` | 暂停 / 继续 |
-| `F5` | 重启当前套件 |
-| `F10` | 单步执行（逐步骤调试模式） |
-| `Esc` | 停止运行 |
-| `Ctrl+M` | 切换执行模式（逐用例确认 / 全量运行） |
-| `Ctrl+R` | 导出报告 |
-
----
-
-## 目录结构
-
-```
-tools/autotest/
-├── electron/                  # Electron 主进程
-│   ├── main.ts               # 主进程入口，窗口管理
-│   ├── preload.ts            # 预加载脚本（IPC 安全桥接）
-│   └── browser-view.ts       # BrowserView 管理器
-├── src/                       # Vue 3 前端（控制面板 UI）
-│   ├── components/
-│   │   ├── CaseTree.vue      # 用例树形列表
-│   │   ├── StepList.vue      # 步骤详情列表
-│   │   ├── ControlBar.vue    # 控制按钮栏
-│   │   ├── ConfirmBar.vue    # 人工确认按钮
-│   │   ├── ConsolePanel.vue  # 浏览器 Console 面板
-│   │   └── ConsoleLog.vue    # 系统日志面板
-│   ├── stores/
-│   │   ├── runner.ts       # Pinia：运行状态管理
-│   │   └── results.ts      # Pinia：用例结果管理
-│   ├── App.vue               # 主布局
-│   ├── main.ts               # Vue 入口
-│   └── style.css             # 全局样式
-├── runner/                    # Node.js Playwright 引擎
-│   ├── index.ts              # 运行器入口
-│   ├── engine.ts             # 核心：用例加载、步骤执行
-│   ├── locator.ts            # 元素定位策略实现
-│   ├── ipc.ts                # IPC 通信桥接
-│   ├── reporter.ts           # HTML/JSON 报告生成
-│   └── types.ts              # TypeScript 类型定义
-├── package.json             # Node.js 依赖配置
-├── tsconfig.json            # TypeScript 配置
-├── vite.config.ts           # Vite 构建配置
-└── README.md                # 本文档
-```
+- `backend`：`yarn dev:backend`
+- `frontend`：`yarn dev:h5`
+- 用例目录：`test/autotest/cases`
+- 报告目录：`test/autotest/reports`

@@ -1,126 +1,87 @@
-<!-- ActionPanel: bottom fixed panel for mode toggle, run controls, and human confirmation -->
 <template>
-  <div class="action-panel">
-    <div class="row">
-      <n-button
-        size="small"
-        :type="runnerStore.mode === 'full-auto' ? 'primary' : 'default'"
-        @click="runnerStore.toggleMode"
-      >
-        {{ runnerStore.mode === 'full-auto' ? '全自动' : '单步' }}
-      </n-button>
+  <section class="action-panel">
+    <div class="panel-block">
+      <span class="block-title">操作区</span>
+      <div class="button-row">
+        <n-button type="primary" @click="runnerStore.startOrContinue()">
+          {{ runnerStore.status === 'waiting_confirm' ? '继续测试' : '开始测试' }}
+        </n-button>
+        <n-button @click="runnerStore.stop()">停止</n-button>
+        <n-button @click="runnerStore.reset()">重置</n-button>
+      </div>
     </div>
-    <div class="row">
-      <n-button type="primary" size="small" @click="runNext">
-        <template #icon>
-          <n-icon><PlayOutline /></n-icon>
-        </template>
-        执行下一个
-      </n-button>
-      <n-button size="small" @click="pause">
-        <template #icon>
-          <n-icon><PauseOutline /></n-icon>
-        </template>
-        暂停
-      </n-button>
-      <n-button type="error" size="small" @click="stop">
-        <template #icon>
-          <n-icon><StopOutline /></n-icon>
-        </template>
-        停止
-      </n-button>
+
+    <div class="panel-block">
+      <span class="block-title">配置区</span>
+      <n-checkbox :checked="runnerStore.mode === 'auto'" @update:checked="toggleAuto">
+        自动测试
+      </n-checkbox>
+      <p class="config-tip">
+        是：人工确认当前用例后自动进入下一条。否：人工确认后，需要手动点击“继续测试”。
+      </p>
     </div>
-    <div v-if="runnerStore.isPaused && selectedCaseId" class="row confirm-row">
-      <n-button type="success" size="small" @click="confirm('pass')">
-        <template #icon>
-          <n-icon><CheckmarkOutline /></n-icon>
-        </template>
-        通过
-      </n-button>
-      <n-button type="error" size="small" @click="confirm('fail')">
-        <template #icon>
-          <n-icon><CloseOutline /></n-icon>
-        </template>
-        失败
-      </n-button>
-      <n-button size="small" @click="confirm('skip')">
-        <template #icon>
-          <n-icon><ArrowRedoOutline /></n-icon>
-        </template>
-        跳过
-      </n-button>
-      <n-input
-        v-model:value="note"
-        size="small"
-        placeholder="备注"
-        class="note-input"
-      />
+
+    <div class="panel-block report-block">
+      <span class="block-title">报告输出</span>
+      <span class="report-path">{{ runnerStore.latestReportPaths?.json || '测试结束后生成 JSON / HTML / Markdown 报告' }}</span>
     </div>
-  </div>
+  </section>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { NButton, NIcon, NInput } from 'naive-ui'
-import { PlayOutline, PauseOutline, StopOutline, CheckmarkOutline, CloseOutline, ArrowRedoOutline } from '@vicons/ionicons5'
+import { NButton, NCheckbox } from 'naive-ui'
 import { useRunnerStore } from '../stores/runner'
-import { useResultsStore } from '../stores/results'
 
 const runnerStore = useRunnerStore()
-const resultsStore = useResultsStore()
 
-const note = ref('')
-
-const selectedCaseId = computed(() => resultsStore.selectedCaseId)
-
-function runNext() {
-  runnerStore.sendControl({ type: 'next-step' })
-  runnerStore.setStatus('running')
-}
-
-function pause() {
-  runnerStore.setStatus('paused')
-}
-
-function stop() {
-  runnerStore.stop()
-}
-
-function confirm(result: 'pass' | 'fail' | 'skip') {
-  const caseId = selectedCaseId.value
-  if (!caseId) return
-  resultsStore.confirmCase(caseId, result, note.value)
-  runnerStore.sendControl({ type: 'confirm', caseId, result, note: note.value })
-  note.value = ''
-  runnerStore.setStatus('running')
+function toggleAuto(checked: boolean): void {
+  runnerStore.setMode(checked ? 'auto' : 'manual')
 }
 </script>
 
 <style scoped>
 .action-panel {
-  width: 320px;
-  height: 140px;
-  padding: 10px;
-  background: var(--bg-1);
-  border-left: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 14px;
   border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+  background: rgba(21, 24, 29, 0.98);
+}
+
+.panel-block {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.row {
+.block-title {
+  color: var(--text-3);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+}
+
+.button-row {
   display: flex;
-  align-items: center;
   gap: 8px;
 }
 
-.confirm-row {
-  padding-top: 6px;
+.config-tip,
+.report-path {
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.report-block {
+  padding-top: 12px;
   border-top: 1px solid var(--line);
 }
 
-.note-input {
-  flex: 1;
+.report-path {
+  word-break: break-all;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
 }
 </style>

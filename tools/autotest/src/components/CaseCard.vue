@@ -1,135 +1,152 @@
-<!-- CaseCard: single test case card with status border and expandable description -->
 <template>
-  <div
-    class="case-card"
-    :class="[statusClass, { selected }]"
-    @click="$emit('click')"
-  >
-    <div class="top-row">
+  <article class="case-card" :class="[statusClass, { selected }]" @click="$emit('select', caseData.id)">
+    <div class="card-top">
       <span class="case-id">{{ caseData.id }}</span>
-      <n-tag :type="priorityType" size="small" round>{{ caseData.priority }}</n-tag>
+      <n-tag size="small" round :type="priorityType">{{ caseData.priority }}</n-tag>
     </div>
-    <div class="title">{{ caseData.title }}</div>
-    <div class="description" :class="{ expanded: selected }">
-      {{ caseData.description }}
+
+    <div class="card-title">{{ caseData.title }}</div>
+    <div class="card-desc" :class="{ expanded: selected }">{{ caseData.description }}</div>
+
+    <div v-if="selected && status === 'waiting_confirm'" class="confirm-box" @click.stop>
+      <n-input
+        :value="confirmNote"
+        size="small"
+        placeholder="补充观察备注，便于生成失败报告"
+        @update:value="(value) => $emit('update-note', value)"
+      />
+      <div class="confirm-actions">
+        <n-button size="small" type="success" @click="$emit('confirm', 'pass')">通过</n-button>
+        <n-button size="small" type="error" @click="$emit('confirm', 'fail')">不通过</n-button>
+      </div>
     </div>
-  </div>
+  </article>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NTag } from 'naive-ui'
+import { NButton, NInput, NTag } from 'naive-ui'
 import type { TestCase } from '../../runner/types'
-
-type CaseStatusUI = 'pending' | 'running' | 'pass' | 'fail' | 'skip' | 'waiting_confirm'
 
 const props = defineProps<{
   caseData: TestCase
-  status: CaseStatusUI
+  status: 'pending' | 'running' | 'pass' | 'fail' | 'skip' | 'waiting_confirm'
   selected: boolean
+  confirmNote: string
 }>()
 
 defineEmits<{
-  click: []
+  select: [caseId: string]
+  confirm: [result: 'pass' | 'fail']
+  'update-note': [value: string]
 }>()
 
 const statusClass = computed(() => `status-${props.status}`)
-
 const priorityType = computed(() => {
-  const map: Record<string, 'error' | 'warning' | 'default'> = {
-    P0: 'error',
-    P1: 'warning',
-    P2: 'default',
+  if (props.caseData.priority === 'P0') {
+    return 'error'
   }
-  return map[props.caseData.priority] ?? 'default'
+  if (props.caseData.priority === 'P1') {
+    return 'warning'
+  }
+  return 'default'
 })
 </script>
 
 <style scoped>
 .case-card {
-  padding: 10px 12px;
-  background: var(--bg-2);
+  padding: 12px;
+  border-radius: 12px;
   border: 2px solid var(--line);
-  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(28, 32, 39, 0.88), rgba(21, 24, 29, 0.98));
   cursor: pointer;
-  transition: border-width 200ms, border-color 200ms, background 150ms ease-out;
+  transition: border-color 160ms ease, transform 160ms ease, background 160ms ease;
 }
 
 .case-card:hover {
-  background: #232830;
+  transform: translateY(-1px);
 }
 
 .case-card.selected {
-  border-width: 3px;
+  background: linear-gradient(180deg, rgba(34, 40, 48, 0.96), rgba(21, 24, 29, 1));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
 }
 
-.case-card.status-pending {
+.status-pending {
   border-color: var(--line);
 }
 
-.case-card.status-pass {
-  border-color: var(--pass);
-}
-
-.case-card.status-fail {
-  border-color: var(--fail);
-}
-
-.case-card.status-skip {
-  border-color: var(--text-3);
-}
-
-.case-card.status-waiting_confirm {
-  border-color: var(--pending);
-}
-
-.case-card.status-running {
+.status-running {
   border-color: var(--running);
   animation: pulse 1.2s ease-in-out infinite;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(94, 184, 255, 0.25);
-  }
-  50% {
-    box-shadow: 0 0 0 6px rgba(94, 184, 255, 0);
-  }
+.status-pass {
+  border-color: var(--pass);
 }
 
-.top-row {
+.status-fail {
+  border-color: var(--fail);
+}
+
+.status-waiting_confirm {
+  border-color: var(--pending);
+}
+
+.card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
+  gap: 8px;
 }
 
 .case-id {
+  color: var(--text-2);
   font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
-  font-size: 12px;
-  color: var(--text-2);
+  font-size: 11px;
 }
 
-.title {
+.card-title {
+  margin-top: 10px;
   font-size: 14px;
-  font-weight: 600;
-  color: var(--text-1);
-  margin-bottom: 4px;
-  line-height: 1.3;
+  font-weight: 700;
+  line-height: 1.35;
 }
 
-.description {
-  font-size: 12px;
+.card-desc {
+  margin-top: 6px;
   color: var(--text-2);
-  line-height: 1.4;
+  font-size: 12px;
+  line-height: 1.5;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.description.expanded {
+.card-desc.expanded {
   white-space: pre-line;
-  overflow: visible;
-  text-overflow: clip;
+}
+
+.confirm-box {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 181, 71, 0.24);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(94, 184, 255, 0.18);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(94, 184, 255, 0);
+  }
 }
 </style>

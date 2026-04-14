@@ -1,145 +1,169 @@
-<!-- DirectoryTree: left 260px column with scan root input, file tree, and scan button -->
 <template>
   <div class="directory-tree">
-    <div class="header">
+    <div class="toolbar">
       <n-input
-        v-model:value="scanRoot"
+        v-model:value="keyword"
         size="small"
-        placeholder="输入扫描根目录"
-        @keydown.enter="loadTree"
+        placeholder="输入目录名或文件名"
+        @keydown.enter="search"
       />
+      <n-button size="small" @click="search">搜索</n-button>
+      <n-button type="primary" size="small" :disabled="!selectedDirectoryPath" @click="confirmSelection">
+        确认选择
+      </n-button>
     </div>
-    <div class="tree-wrap">
+
+    <div class="project-tip">
+      <span>{{ selectedDirectoryPath || '请选择项目目录' }}</span>
+    </div>
+
+    <n-scrollbar class="tree-scroll">
       <n-tree
         v-if="treeData.length"
-        v-model:checked-keys="checkedKeys"
         :data="treeData"
+        block-line
+        expand-on-click
+        selectable
         key-field="key"
         label-field="label"
         children-field="children"
-        checkable
-        expand-on-click
-        selectable
-        :default-expand-all="false"
+        :selected-keys="selectedKeys"
+        :on-load="handleLoad"
+        @update:selected-keys="handleSelect"
       />
-      <div v-else class="empty">请输入目录并加载</div>
-    </div>
-    <div class="footer">
-      <n-button type="primary" size="small" block @click="handleScan">
-        扫描用例
-      </n-button>
-    </div>
+      <div v-else class="empty">目录树加载中</div>
+    </n-scrollbar>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { NTree, NInput, NButton } from 'naive-ui'
+import { computed, onMounted, ref } from 'vue'
+import { NButton, NInput, NScrollbar, NTree, useMessage } from 'naive-ui'
 import type { TreeOption } from 'naive-ui'
-import { useResultsStore } from '../stores/results'
+import type { TreeNode } from '../../runner/types'
+import { useRunnerStore } from '../stores/runner'
 
-const resultsStore = useResultsStore()
-
-const scanRoot = ref('/home/tzw/projects/boyuan-oa/test/autotest')
-const treeData = ref<TreeOption[]>([])
-const checkedKeys = ref<string[]>([])
-
-function buildTreeData(nodes: any[]): TreeOption[] {
-  const out: TreeOption[] = []
-  for (const node of nodes) {
-    if (node.type === 'dir') {
-      out.push({
-        key: node.path,
-        label: node.name,
-        children: node.children ? buildTreeData(node.children) : undefined,
-      })
-    } else if (node.type === 'file' && node.name.endsWith('.ts')) {
-      out.push({
-        key: node.path,
-        label: node.name,
-      })
-    }
-  }
-  return out
+interface DirectoryTreeOption extends TreeOption {
+  key: string
+  label: string
+  nodeType: 'file' | 'dir'
+  path: string
+  isLeaf?: boolean
+  children?: DirectoryTreeOption[]
 }
 
-async function loadTree() {
-  if (!window.electronAPI?.scanDir) {
-    return
-  }
-  try {
-    const result = await window.electronAPI.scanDir(scanRoot.value)
-    if (result?.success && Array.isArray(result.tree)) {
-      treeData.value = buildTreeData(result.tree)
-    } else {
-      console.error('scanDir failed', result?.error)
-    }
-  } catch (e) {
-    console.error('scanDir failed', e)
+const runnerStore = useRunnerStore()
+const message = useMessage()
+const keyword = ref('')
+const treeData = ref<DirectoryTreeOption[]>([])
+const selectedKeys = ref<string[]>([])
+
+const selectedDirectoryPath = computed(() => selectedKeys.value[0] || '')
+
+function mapTree(nodes: TreeNode[]): DirectoryTreeOption[] {
+  return nodes.map((node) => ({
+    key: node.path,
+    label: node.name,
+    nodeType: node.type,
+    path: node.path,
+    isLeaf: node.type === 'file' || !node.has_children,
+    children: node.children ? mapTree(node.children) : undefined,
+  }))
+}
+
+async function loadRoot(): Promise<void> {
+  const result = await window.electronAPI.scanDir('/')
+  if (result.success) {
+    treeData.value = mapTree(result.tree)
   }
 }
 
-async function handleScan() {
-  if (!window.electronAPI?.scanCases) {
+async function handleLoad(option: TreeOption): Promise<void> {
+  const tree_option = option as DirectoryTreeOption
+  if (tree_option.nodeType !== 'dir') {
     return
   }
-  // Collect checked keys; if none, use the current root
-  const keys = checkedKeys.value.length ? checkedKeys.value : [scanRoot.value]
-  try {
-    const result = await window.electronAPI.scanCases(keys)
-    const cases = result?.success ? result.cases : []
-    const testCases = cases.map((c: any) => ({
-      id: c.id,
-      title: c.title,
-      description: c.description ?? '',
-      module: c.module,
-      priority: c.priority,
-      roles: c.roles,
-      tags: c.tags || [],
-      steps: c.steps || [],
-      expect: { result: 'pass' as const },
-    }))
-    resultsStore.setCases(testCases)
-  } catch (e) {
-    console.error('scanCases failed', e)
+
+  const result = await window.electronAPI.scanDir(tree_option.path)
+  if (result.success) {
+    tree_option.children = mapTree(result.tree)
+  }
+}
+
+async function search(): Promise<void> {
+  if (!keyword.value.trim()) {
+    await loadRoot()
+    return
+  }
+
+  const result = await window.electronAPI.searchFileSystem(keyword.value.trim())
+  if (result.success) {
+    treeData.value = mapTree(result.tree)
+  }
+}
+
+function handleSelect(keys: Array<string | number>, options: Array<TreeOption | null>): void {
+  selectedKeys.value = keys.map(String)
+  const selected = options[0] as DirectoryTreeOption | null
+  if (selected?.nodeType === 'file') {
+    selectedKeys.value = []
+    message.warning('请选择目录，不要选择文件')
+  }
+}
+
+async function confirmSelection(): Promise<void> {
+  if (!selectedDirectoryPath.value) {
+    return
+  }
+
+  const success = await runnerStore.selectProject(selectedDirectoryPath.value)
+  if (success) {
+    message.success('项目已加载并启动预览')
+  } else {
+    message.error('项目加载失败，请查看右侧日志')
   }
 }
 
 onMounted(() => {
-  loadTree()
+  void loadRoot()
 })
 </script>
 
 <style scoped>
 .directory-tree {
+  height: 100%;
   display: flex;
   flex-direction: column;
-  width: 260px;
-  height: 100%;
-  background: var(--bg-1);
+  background: rgba(21, 24, 29, 0.94);
   border-right: 1px solid var(--line);
 }
 
-.header {
-  padding: 8px;
+.toolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+  padding: 12px;
   border-bottom: 1px solid var(--line);
 }
 
-.tree-wrap {
+.project-tip {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-2);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  word-break: break-all;
+}
+
+.tree-scroll {
   flex: 1;
-  overflow: auto;
+  min-height: 0;
   padding: 8px;
 }
 
 .empty {
-  padding: 16px;
-  text-align: center;
+  padding: 18px;
   color: var(--text-3);
-  font-size: 12px;
-}
-
-.footer {
-  padding: 8px;
-  border-top: 1px solid var(--line);
+  text-align: center;
 }
 </style>

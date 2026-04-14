@@ -1,268 +1,249 @@
 /**
- * Runner Entry Point - Node.js Playwright runner process
- *
- * Supports both CLI mode and Electron module mode.
+ * Runner entry.
+ * Purpose: load config, discover test cases, run Playwright automation, and emit IPC events.
  */
 
-import { readFileSync, existsSync, readdirSync, statSync } from 'fs';
-import { promises as fsPromises } from 'fs';
-import { resolve as resolvePath, join, dirname } from 'path';
-import { pathToFileURL } from 'url';
-import { ipcServer, createElectronIPC } from './ipc.js';
-import { TestEngine } from './engine.js';
-import type { AutotestConfig, TestCase, ControlMessage } from './types.js';
-
-// =============================================================================
-// CLI Argument Parsing
-// =============================================================================
+import { existsSync, readFileSync } from 'fs'
+import { promises as fsPromises } from 'fs'
+import { dirname, join, relative, resolve as resolvePath } from 'path'
+import { pathToFileURL } from 'url'
+import { createElectronIPC, ipcServer } from './ipc.js'
+import { normalizeAutotestConfig, isCaseFileIncluded } from './config.js'
+import { TestEngine } from './engine.js'
+import type {
+  AutotestConfig,
+  ControlMessage,
+  ResolvedAutotestConfig,
+  RunnerMode,
+  TestCase,
+} from './types.js'
 
 interface CliArgs {
-  casesDir: string;
-  baseUrl?: string;
-  configPath: string;
-  mode: 'case-confirm' | 'full-auto';
-  cdpEndpoint?: string;
-  scanOnly?: boolean;
+  configPath?: string
+  casesDir?: string
+  mode: RunnerMode
+  cdpEndpoint?: string
+  scanOnly?: boolean
 }
 
 function parseCliArgs(): CliArgs {
-  const args = process.argv.slice(2);
-  const parsed: Partial<CliArgs> = {};
+  const args = process.argv.slice(2)
+  const parsed: Partial<CliArgs> = {}
 
-  for (let i = 0; i < args.length; i++) {
-    const arg = args[i];
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index]
+
     switch (arg) {
       case '--cases-dir':
-        parsed.casesDir = args[++i];
-        break;
-      case '--base-url':
-        parsed.baseUrl = args[++i];
-        break;
+        parsed.casesDir = args[index + 1]
+        index += 1
+        break
       case '--config':
-        parsed.configPath = args[++i];
-        break;
-      case '--mode':
-        const mode = args[++i];
-        if (mode !== 'case-confirm' && mode !== 'full-auto') {
-          console.error(`[Error] Invalid mode: ${mode}`);
-          process.exit(1);
+        parsed.configPath = args[index + 1]
+        index += 1
+        break
+      case '--mode': {
+        const mode = args[index + 1]
+        if (mode !== 'auto' && mode !== 'manual') {
+          throw new Error(`Invalid runner mode: ${mode}`)
         }
-        parsed.mode = mode;
-        break;
+        parsed.mode = mode
+        index += 1
+        break
+      }
       case '--cdp-endpoint':
-        parsed.cdpEndpoint = args[++i];
-        break;
+        parsed.cdpEndpoint = args[index + 1]
+        index += 1
+        break
       case '--scan-only':
-        parsed.scanOnly = true;
-        break;
+        parsed.scanOnly = true
+        break
+      default:
+        break
     }
   }
 
-  if (!parsed.casesDir) {
-    console.error('[Error] --cases-dir is required');
-    process.exit(1);
-  }
-
-  const casesDir = resolvePath(parsed.casesDir);
-  const defaultConfigPath = join(dirname(casesDir), 'autotest.config.json');
-
   return {
-    casesDir,
-    baseUrl: parsed.baseUrl,
-    configPath: parsed.configPath ? resolvePath(parsed.configPath) : defaultConfigPath,
-    mode: parsed.mode || 'case-confirm',
+    configPath: parsed.configPath,
+    casesDir: parsed.casesDir,
+    mode: parsed.mode || 'auto',
     cdpEndpoint: parsed.cdpEndpoint,
     scanOnly: parsed.scanOnly,
-  };
+  }
 }
 
-function lightCase(c: TestCase) {
+function loadRawConfig(config_path: string): AutotestConfig {
+  if (!existsSync(config_path)) {
+    throw new Error(`Config file not found: ${config_path}`)
+  }
+
+  try {
+    return JSON.parse(readFileSync(config_path, 'utf-8')) as AutotestConfig
+  } catch (error) {
+    throw new Error(`Failed to parse config ${config_path}: ${error instanceof Error ? error.message : String(error)}`)
+  }
+}
+
+function resolveRunnerConfig(args: CliArgs): ResolvedAutotestConfig {
+  if (!args.configPath) {
+    throw new Error('--config is required')
+  }
+
+  const config_path = resolvePath(args.configPath)
+  const raw_config = loadRawConfig(config_path)
+  const normalized = normalizeAutotestConfig(raw_config, config_path)
+
+  if (args.casesDir) {
+    normalized.cases.root_dir = resolvePath(args.casesDir)
+  }
+
+  return normalized
+}
+
+function lightCase(test_case: TestCase) {
   return {
-    id: c.id,
-    title: c.title,
-    description: c.description,
-    module: c.module,
-    priority: c.priority,
-    roles: c.roles,
-    tags: c.tags,
-    steps: c.steps.map(s => ({ id: s.id, desc: s.desc, action: s.action })),
-  };
-}
-
-// =============================================================================
-// Config Loading
-// =============================================================================
-
-function loadConfig(configPath: string): AutotestConfig {
-  if (!existsSync(configPath)) {
-    console.error(`[Error] Config file not found: ${configPath}`);
-    process.exit(1);
-  }
-
-  try {
-    const configText = readFileSync(configPath, 'utf-8');
-    return JSON.parse(configText) as AutotestConfig;
-  } catch (err) {
-    console.error(`[Error] Failed to parse config: ${err instanceof Error ? err.message : String(err)}`);
-    process.exit(1);
+    id: test_case.id,
+    title: test_case.title,
+    description: test_case.description,
+    module: test_case.module,
+    priority: test_case.priority,
+    roles: test_case.roles,
+    tags: test_case.tags,
+    steps: test_case.steps.map((step) => ({
+      id: step.id,
+      desc: step.desc,
+      action: step.action,
+    })),
   }
 }
 
-// =============================================================================
-// Test Case Loading
-// =============================================================================
+async function importCaseModule(file_path: string): Promise<TestCase[]> {
+  const imported = await import(pathToFileURL(file_path).href)
+  if (!imported.default) {
+    return []
+  }
 
-async function loadCases(casesDir: string): Promise<TestCase[]> {
-  const cases: TestCase[] = [];
+  if (Array.isArray(imported.default)) {
+    return imported.default as TestCase[]
+  }
 
-  try {
-    // Mode A: Import index.ts from cases directory if it exists
-    const indexPath = join(casesDir, 'index.ts');
-    if (existsSync(indexPath)) {
-      const module = await import(pathToFileURL(indexPath).href);
-      if (module.default && Array.isArray(module.default)) {
-        cases.push(...module.default);
+  return [imported.default as TestCase]
+}
+
+async function loadCases(config: ResolvedAutotestConfig): Promise<TestCase[]> {
+  const cases_root_dir = config.cases.root_dir
+  const cases: TestCase[] = []
+  const root_index_path = join(cases_root_dir, 'index.ts')
+
+  if (existsSync(root_index_path)) {
+    return importCaseModule(root_index_path)
+  }
+
+  const scan_dir = async (dir_path: string): Promise<void> => {
+    const entries = await fsPromises.readdir(dir_path, { withFileTypes: true })
+
+    for (const entry of entries) {
+      const full_path = join(dir_path, entry.name)
+      if (entry.isDirectory()) {
+        await scan_dir(full_path)
+        continue
       }
-    } else {
-      // Mode B: Recursively scan for all *.ts files and collect default exports
-      const scanDir = async (dir: string): Promise<void> => {
-        const entries = await fsPromises.readdir(dir, { withFileTypes: true });
-        for (const entry of entries) {
-          const fullPath = join(dir, entry.name);
-          if (entry.isDirectory()) {
-            await scanDir(fullPath);
-          } else if (entry.isFile() && entry.name.endsWith('.ts') && entry.name !== 'index.ts') {
-            try {
-              const mod = await import(pathToFileURL(fullPath).href);
-              if (mod.default) {
-                if (Array.isArray(mod.default)) {
-                  cases.push(...mod.default);
-                } else {
-                  cases.push(mod.default);
-                }
-              }
-            } catch (e) {
-              console.warn(`[Warn] Failed to import ${fullPath}:`, e);
-            }
-          }
-        }
-      };
-      await scanDir(casesDir);
+
+      if (!entry.isFile() || !entry.name.endsWith('.ts')) {
+        continue
+      }
+
+      const relative_path = relative(cases_root_dir, full_path).replace(/\\/g, '/')
+      if (!isCaseFileIncluded(relative_path, config.cases.include, config.cases.exclude)) {
+        continue
+      }
+
+      const imported_cases = await importCaseModule(full_path)
+      cases.push(...imported_cases)
     }
-  } catch (err) {
-    console.error('[Error] Failed to load test cases:', err);
   }
 
-  return cases;
+  await scan_dir(cases_root_dir)
+  return cases
 }
 
-// =============================================================================
-// Main Execution
-// =============================================================================
+let engine: TestEngine | null = null
 
-let engine: TestEngine | null = null;
+async function runCli(args: CliArgs): Promise<void> {
+  const config = resolveRunnerConfig(args)
+  const cases = await loadCases(config)
 
-async function run(args: CliArgs): Promise<void> {
-  // Load config
-  const config = loadConfig(args.configPath);
-  if (args.baseUrl) {
-    config.base_url = args.baseUrl;
+  if (!cases.length) {
+    throw new Error(`No test cases found in ${config.cases.root_dir}`)
   }
 
-  // Load test cases
-  const cases = await loadCases(args.casesDir);
-  if (cases.length === 0) {
-    console.error('[Error] No test cases found');
-    process.exit(1);
-  }
+  engine = new TestEngine(config, args.cdpEndpoint)
+  engine.setMode(args.mode)
 
-  // Create and configure engine
-  engine = new TestEngine(config, args.cdpEndpoint);
-  engine.setMode(args.mode);
+  ipcServer.onControl((message: ControlMessage) => {
+    engine?.handleControl(message)
+  })
 
-  // Handle control messages
-  ipcServer.onControl((msg: ControlMessage) => {
-    engine?.handleControl(msg);
-  });
-
-  // Send cases-loaded event
   ipcServer.send({
     type: 'cases-loaded',
     cases: cases.map(lightCase),
-  });
+  })
 
-  // Run all cases
-  await engine.run(cases);
-
-  // Send completion
-  ipcServer.send({
-    type: 'all-done',
-    summary: { total: cases.length, pass: 0, fail: 0, skip: 0 }
-  });
+  await engine.run(cases)
 }
-
-// =============================================================================
-// Electron Mode
-// =============================================================================
 
 export async function startRunner(
-  electronIPC: any,
-  config: AutotestConfig,
+  electron_ipc: any,
+  config: ResolvedAutotestConfig,
   cases: TestCase[],
-  cdpEndpoint?: string
+  cdp_endpoint?: string
 ): Promise<void> {
-  // Initialize IPC with Electron
-  ipcServer.initElectron(electronIPC);
+  ipcServer.initElectron(electron_ipc)
 
-  // Create engine with CDP endpoint
-  engine = new TestEngine(config, cdpEndpoint);
+  engine = new TestEngine(config, cdp_endpoint)
+  engine.setMode(config.execution.auto_advance ? 'auto' : 'manual')
 
-  // Handle control messages
-  ipcServer.onControl((msg: ControlMessage) => {
-    engine?.handleControl(msg);
-  });
+  ipcServer.onControl((message: ControlMessage) => {
+    engine?.handleControl(message)
+  })
 
-  // Send cases-loaded
   ipcServer.send({
     type: 'cases-loaded',
     cases: cases.map(lightCase),
-  });
+  })
 
-  // Run
-  await engine.run(cases);
-
-  ipcServer.send({
-    type: 'all-done',
-    summary: { total: cases.length, pass: 0, fail: 0, skip: 0 }
-  });
+  await engine.run(cases)
 }
 
 export function stopRunner(): void {
-  engine?.stop();
+  void engine?.stop()
 }
 
-export { createElectronIPC, ipcServer };
-
-// =============================================================================
-// CLI Entry Point
-// =============================================================================
+export { createElectronIPC, ipcServer }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const args = parseCliArgs();
+  const args = parseCliArgs()
+
   if (args.scanOnly) {
-    loadCases(args.casesDir)
-      .then(cases => {
-        process.send?.({ type: 'cases-scanned', cases: cases.map(lightCase) });
-        process.exit(0);
-      })
-      .catch(err => {
-        process.send?.({ type: 'cases-scan-error', error: String(err) });
-        process.exit(1);
-      });
+    try {
+      const config = resolveRunnerConfig(args)
+      loadCases(config)
+        .then((cases) => {
+          process.send?.({ type: 'cases-scanned', cases: cases.map(lightCase) })
+          process.exit(0)
+        })
+        .catch((error) => {
+          process.send?.({ type: 'cases-scan-error', error: String(error) })
+          process.exit(1)
+        })
+    } catch (error) {
+      process.send?.({ type: 'cases-scan-error', error: String(error) })
+      process.exit(1)
+    }
   } else {
-    run(args).catch(err => {
-      console.error('[Fatal]', err);
-      process.exit(1);
-    });
+    runCli(args).catch((error) => {
+      console.error('[Runner Fatal]', error)
+      process.exit(1)
+    })
   }
 }

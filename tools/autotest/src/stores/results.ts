@@ -1,164 +1,139 @@
-/**
- * Results Store - Manages test case results and step data
- */
-import { ref, computed } from 'vue'
+import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { TestCase, CaseResult, CaseStatus, StepResult, StepStatus } from '../../runner/types'
-
-export { type CaseStatus, type StepStatus }
+import type { CaseResult, CaseStatus, StepResult, TestCase } from '../../runner/types'
 
 export interface CaseWithStatus extends TestCase {
   status: CaseStatus
 }
 
 export const useResultsStore = defineStore('results', () => {
-  // State
   const cases = ref<TestCase[]>([])
   const results = ref<Map<string, CaseResult>>(new Map())
   const selectedCaseId = ref<string | null>(null)
   const screenshots = ref<Map<string, string>>(new Map())
 
-  // Getters
-  const modules = computed(() => {
-    const moduleMap = new Map<string, CaseWithStatus[]>()
-    for (const testCase of cases.value) {
-      const caseResult = results.value.get(testCase.id)
-      const status = caseResult?.status ?? 'pending'
-      const caseWithStatus: CaseWithStatus = { ...testCase, status }
-      
-      if (!moduleMap.has(testCase.module)) {
-        moduleMap.set(testCase.module, [])
-      }
-      moduleMap.get(testCase.module)!.push(caseWithStatus)
-    }
-    return moduleMap
-  })
-
-  const moduleStats = computed(() => {
-    const stats = new Map<string, { total: number; pass: number; fail: number; skip: number }>()
-    for (const [moduleName, moduleCases] of modules.value) {
-      const total = moduleCases.length
-      const pass = moduleCases.filter((c) => c.status === 'pass').length
-      const fail = moduleCases.filter((c) => c.status === 'fail').length
-      const skip = moduleCases.filter((c) => c.status === 'skip').length
-      stats.set(moduleName, { total, pass, fail, skip })
-    }
-    return stats
-  })
-
-  const overallStats = computed(() => {
-    const total = cases.value.length
-    const pass = Array.from(results.value.values()).filter((r) => r.status === 'pass').length
-    const fail = Array.from(results.value.values()).filter((r) => r.status === 'fail').length
-    const skip = Array.from(results.value.values()).filter((r) => r.status === 'skip').length
-    const waiting = Array.from(results.value.values()).filter((r) => r.status === 'waiting_confirm').length
-    return { total, pass, fail, skip, waiting }
-  })
-
   const selectedCase = computed(() => {
-    if (!selectedCaseId.value) return null
-    return cases.value.find((c) => c.id === selectedCaseId.value) ?? null
+    if (!selectedCaseId.value) {
+      return null
+    }
+    return cases.value.find((case_item) => case_item.id === selectedCaseId.value) || null
   })
 
   const selectedCaseResult = computed(() => {
-    if (!selectedCaseId.value) return null
-    return results.value.get(selectedCaseId.value) ?? null
+    if (!selectedCaseId.value) {
+      return null
+    }
+    return results.value.get(selectedCaseId.value) || null
   })
 
-  // Actions
-  function setCases(newCases: TestCase[]) {
-    cases.value = newCases
-  }
-
-  function selectCase(caseId: string | null) {
-    selectedCaseId.value = caseId
-  }
-
-  function updateCaseStatus(caseId: string, status: CaseStatus) {
-    const existing = results.value.get(caseId)
-    if (existing) {
-      existing.status = status
-    } else {
-      results.value.set(caseId, {
-        caseId,
-        status,
-        steps: [],
-        startedAt: Date.now(),
-      })
+  const overallStats = computed(() => {
+    const values = Array.from(results.value.values())
+    return {
+      total: cases.value.length,
+      pass: values.filter((result) => (result.humanResult ?? result.status) === 'pass').length,
+      fail: values.filter((result) => (result.humanResult ?? result.status) === 'fail').length,
+      skip: values.filter((result) => (result.humanResult ?? result.status) === 'skip').length,
+      waiting: values.filter((result) => result.status === 'waiting_confirm').length,
     }
+  })
+
+  function setCases(new_cases: TestCase[]): void {
+    cases.value = new_cases
+    results.value = new Map()
+    screenshots.value = new Map()
+    selectedCaseId.value = new_cases[0]?.id || null
   }
 
-  function updateStepResult(caseId: string, stepResult: StepResult) {
-    const caseResult = results.value.get(caseId)
-    if (caseResult) {
-      const existingIndex = caseResult.steps.findIndex((s) => s.stepId === stepResult.stepId)
-      if (existingIndex >= 0) {
-        caseResult.steps[existingIndex] = stepResult
-      } else {
-        caseResult.steps.push(stepResult)
-      }
-      // Store screenshot if available
-      if (stepResult.screenshot) {
-        screenshots.value.set(`${caseId}-${stepResult.stepId}`, stepResult.screenshot)
-      }
-    } else {
-      results.value.set(caseId, {
-        caseId,
-        status: 'running',
-        steps: [stepResult],
-        startedAt: Date.now(),
-      })
-      if (stepResult.screenshot) {
-        screenshots.value.set(`${caseId}-${stepResult.stepId}`, stepResult.screenshot)
-      }
-    }
+  function clearResults(): void {
+    results.value = new Map()
+    screenshots.value = new Map()
   }
 
-  function setCaseWaitingConfirm(caseId: string) {
-    updateCaseStatus(caseId, 'waiting_confirm')
-  }
-
-  function confirmCase(caseId: string, result: 'pass' | 'fail' | 'skip', note?: string) {
-    const caseResult = results.value.get(caseId)
-    if (caseResult) {
-      caseResult.status = result
-      caseResult.humanResult = result
-      caseResult.humanNote = note
-      caseResult.finishedAt = Date.now()
-    }
-  }
-
-  function getStepScreenshot(caseId: string, stepId: number): string | null {
-    return screenshots.value.get(`${caseId}-${stepId}`) ?? null
-  }
-
-  function clearResults() {
-    results.value.clear()
-    screenshots.value.clear()
+  function resetAll(): void {
+    cases.value = []
+    clearResults()
     selectedCaseId.value = null
   }
 
-  function getCaseStatus(caseId: string): CaseStatus {
-    return results.value.get(caseId)?.status ?? 'pending'
+  function selectCase(case_id: string | null): void {
+    selectedCaseId.value = case_id
+  }
+
+  function ensureCaseResult(case_id: string): CaseResult {
+    const existing = results.value.get(case_id)
+    if (existing) {
+      return existing
+    }
+
+    const created: CaseResult = {
+      caseId: case_id,
+      status: 'pending',
+      steps: [],
+      startedAt: Date.now(),
+    }
+    results.value.set(case_id, created)
+    return created
+  }
+
+  function updateCaseStatus(case_id: string, status: CaseStatus, auto_status?: 'pass' | 'fail'): void {
+    const case_result = ensureCaseResult(case_id)
+    case_result.status = status
+    case_result.autoStatus = auto_status
+    if (status === 'running' && !case_result.startedAt) {
+      case_result.startedAt = Date.now()
+    }
+    if (status === 'pass' || status === 'fail' || status === 'skip') {
+      case_result.finishedAt = Date.now()
+    }
+  }
+
+  function updateStepResult(case_id: string, step_result: StepResult): void {
+    const case_result = ensureCaseResult(case_id)
+    const existing_index = case_result.steps.findIndex((item) => item.stepId === step_result.stepId)
+    if (existing_index >= 0) {
+      case_result.steps[existing_index] = step_result
+    } else {
+      case_result.steps.push(step_result)
+    }
+
+    case_result.status = step_result.status === 'fail' ? 'fail' : 'running'
+
+    if (step_result.screenshot) {
+      screenshots.value.set(`${case_id}-${step_result.stepId}`, step_result.screenshot)
+    }
+  }
+
+  function confirmCase(case_id: string, result: 'pass' | 'fail' | 'skip', note?: string): void {
+    const case_result = ensureCaseResult(case_id)
+    case_result.status = result
+    case_result.humanResult = result
+    case_result.humanNote = note
+    case_result.finishedAt = Date.now()
+  }
+
+  function getCaseStatus(case_id: string): CaseStatus {
+    return results.value.get(case_id)?.status || 'pending'
+  }
+
+  function getStepScreenshot(case_id: string, step_id: number): string | null {
+    return screenshots.value.get(`${case_id}-${step_id}`) || null
   }
 
   return {
     cases,
     results,
     selectedCaseId,
-    modules,
-    moduleStats,
-    overallStats,
     selectedCase,
     selectedCaseResult,
+    overallStats,
     setCases,
+    clearResults,
+    resetAll,
     selectCase,
     updateCaseStatus,
     updateStepResult,
-    setCaseWaitingConfirm,
     confirmCase,
-    getStepScreenshot,
-    clearResults,
     getCaseStatus,
+    getStepScreenshot,
   }
 })

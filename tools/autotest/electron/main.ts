@@ -1,21 +1,333 @@
-import { app, BrowserWindow, ipcMain, WebContentsView, dialog, screen, Menu } from 'electron'
+import { app, BrowserWindow, Menu, WebContentsView, dialog, ipcMain, screen } from 'electron'
+import { fork, spawn, type ChildProcess } from 'child_process'
+import { dirname, join, resolve as resolvePath } from 'path'
 import { fileURLToPath } from 'url'
-import { dirname, join } from 'path'
-import { fork } from 'child_process'
 import fs from 'fs'
-import { createElectronIPC, ipcServer } from '../runner/ipc.js'
+import net from 'net'
+import { createElectronIPC } from '../runner/ipc.js'
+import { DEFAULT_CONFIG_FILENAMES, normalizeAutotestConfig } from '../runner/config.js'
+import type {
+  AutotestConfig,
+  BrowserState,
+  ResolvedAutotestConfig,
+  ResolvedLaunchCommand,
+  TreeNode,
+} from '../runner/types.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
+const tsx_loader_path = resolvePath(__dirname, '../node_modules/tsx/dist/loader.mjs')
 
-let mainWindow: BrowserWindow | null = null
-let browserView: WebContentsView | null = null
-let runnerProcess: any = null
-let cdpPort: number = 9222
+const remote_debugging_port = 9222
+const top_bar_height = 44
+const browser_toolbar_height = 48
+const left_column_width = 320
+const right_column_width = 380
+const root_system_dirs = new Set([
+  'bin',
+  'boot',
+  'dev',
+  'etc',
+  'lib',
+  'lib64',
+  'proc',
+  'run',
+  'sbin',
+  'snap',
+  'sys',
+  'usr',
+  'var',
+])
 
-function createWindow() {
+app.commandLine.appendSwitch('remote-debugging-port', String(remote_debugging_port))
+
+let main_window: BrowserWindow | null = null
+let browser_view: WebContentsView | null = null
+let runner_process: ChildProcess | null = null
+let active_project: ResolvedAutotestConfig | null = null
+const project_processes = new Map<string, ChildProcess>()
+
+function sendRunnerEvent(event: any): void {
+  if (main_window && !main_window.isDestroyed()) {
+    main_window.webContents.send('runner-event', event)
+  }
+}
+
+function sendRunnerLog(level: 'info' | 'warn' | 'error', message: string): void {
+  sendRunnerEvent({
+    type: 'log',
+    level,
+    message,
+  })
+}
+
+function isHiddenName(name: string): boolean {
+  return name.startsWith('.')
+}
+
+function isSystemRootChild(parent_path: string, name: string): boolean {
+  return parent_path === '/' && root_system_dirs.has(name)
+}
+
+function shouldIncludeEntry(parent_path: string, name: string): boolean {
+  if (isHiddenName(name)) {
+    return false
+  }
+
+  if (isSystemRootChild(parent_path, name)) {
+    return false
+  }
+
+  return true
+}
+
+function getVisibleChildCount(dir_path: string): number {
+  try {
+    const entries = fs.readdirSync(dir_path, { withFileTypes: true })
+    return entries.filter((entry) => shouldIncludeEntry(dir_path, entry.name)).length
+  } catch {
+    return 0
+  }
+}
+
+function scanVisibleDir(dir_path: string): TreeNode[] {
+  try {
+    const entries = fs.readdirSync(dir_path, { withFileTypes: true })
+    return entries
+      .filter((entry) => shouldIncludeEntry(dir_path, entry.name))
+      .map((entry) => {
+        const full_path = join(dir_path, entry.name)
+        if (entry.isDirectory()) {
+          return {
+            name: entry.name,
+            path: full_path,
+            type: 'dir' as const,
+            has_children: getVisibleChildCount(full_path) > 0,
+          }
+        }
+
+        return {
+          name: entry.name,
+          path: full_path,
+          type: 'file' as const,
+          has_children: false,
+        }
+      })
+      .sort((left, right) => {
+        if (left.type !== right.type) {
+          return left.type === 'dir' ? -1 : 1
+        }
+        return left.name.localeCompare(right.name)
+      })
+  } catch {
+    return []
+  }
+}
+
+function insertSearchPath(root: Map<string, any>, full_path: string): void {
+  const segments = full_path.split('/').filter(Boolean)
+  let current_map = root
+  let current_path = ''
+
+  for (const segment of segments) {
+    current_path = `${current_path}/${segment}`
+    if (!current_map.has(segment)) {
+      current_map.set(segment, {
+        name: segment,
+        path: current_path,
+        type: 'dir',
+        children_map: new Map<string, any>(),
+      })
+    }
+    current_map = current_map.get(segment).children_map
+  }
+}
+
+function mapTreeToNodes(tree: Map<string, any>): TreeNode[] {
+  return Array.from(tree.values())
+    .map((node) => ({
+      name: node.name,
+      path: node.path,
+      type: node.type,
+      has_children: node.children_map.size > 0,
+      children: mapTreeToNodes(node.children_map),
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name))
+}
+
+function searchFileSystemByName(query: string, dir_path = '/', depth = 0, results: string[] = []): string[] {
+  if (!query.trim() || results.length >= 200 || depth > 10) {
+    return results
+  }
+
+  let entries: fs.Dirent[] = []
+  try {
+    entries = fs.readdirSync(dir_path, { withFileTypes: true })
+  } catch {
+    return results
+  }
+
+  for (const entry of entries) {
+    if (results.length >= 200) {
+      break
+    }
+
+    if (!shouldIncludeEntry(dir_path, entry.name)) {
+      continue
+    }
+
+    const full_path = join(dir_path, entry.name)
+    if (entry.name.toLowerCase().includes(query.toLowerCase())) {
+      results.push(full_path)
+    }
+
+    if (entry.isDirectory()) {
+      searchFileSystemByName(query, full_path, depth + 1, results)
+    }
+  }
+
+  return results
+}
+
+function buildSearchTree(query: string): TreeNode[] {
+  const matches = searchFileSystemByName(query)
+  const root = new Map<string, any>()
+
+  for (const match of matches) {
+    insertSearchPath(root, match)
+  }
+
+  return mapTreeToNodes(root)
+}
+
+async function findConfigFile(dir_path: string, depth = 0): Promise<string | null> {
+  if (depth > 6) {
+    return null
+  }
+
+  for (const filename of DEFAULT_CONFIG_FILENAMES) {
+    const candidate = join(dir_path, filename)
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
+  }
+
+  const common_candidates = [
+    join(dir_path, 'test', 'autotest', 'autotest.config.json'),
+    join(dir_path, 'tests', 'autotest', 'autotest.config.json'),
+    join(dir_path, '.autotest', 'autotest.config.json'),
+  ]
+
+  for (const candidate of common_candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate
+    }
+  }
+
+  try {
+    const entries = fs.readdirSync(dir_path, { withFileTypes: true })
+    for (const entry of entries) {
+      if (!entry.isDirectory() || !shouldIncludeEntry(dir_path, entry.name)) {
+        continue
+      }
+      const nested = await findConfigFile(join(dir_path, entry.name), depth + 1)
+      if (nested) {
+        return nested
+      }
+    }
+  } catch {
+    return null
+  }
+
+  return null
+}
+
+function detectPackageManager(project_root: string): 'pnpm' | 'yarn' | 'npm' {
+  if (fs.existsSync(join(project_root, 'pnpm-lock.yaml'))) {
+    return 'pnpm'
+  }
+  if (fs.existsSync(join(project_root, 'yarn.lock'))) {
+    return 'yarn'
+  }
+  return 'npm'
+}
+
+function buildScriptCommand(package_manager: 'pnpm' | 'yarn' | 'npm', script_name: string): string {
+  if (package_manager === 'yarn') {
+    return `yarn ${script_name}`
+  }
+
+  return `${package_manager} run ${script_name}`
+}
+
+function parsePackageScripts(project_root: string): Record<string, string> {
+  const package_path = join(project_root, 'package.json')
+  if (!fs.existsSync(package_path)) {
+    return {}
+  }
+
+  try {
+    const pkg = JSON.parse(fs.readFileSync(package_path, 'utf-8'))
+    return pkg.scripts || {}
+  } catch {
+    return {}
+  }
+}
+
+function withDetectedLaunchCommands(project: ResolvedAutotestConfig): ResolvedAutotestConfig {
+  if (project.launch.commands.length > 0) {
+    return project
+  }
+
+  const scripts = parsePackageScripts(project.project_root)
+  const package_manager = detectPackageManager(project.project_root)
+  const detected_commands: ResolvedLaunchCommand[] = []
+
+  if (scripts['dev:backend']) {
+    detected_commands.push({
+      name: 'backend',
+      command: buildScriptCommand(package_manager, 'dev:backend'),
+      cwd: project.project_root,
+      ready: {
+        type: 'tcp',
+        port: 8080,
+        timeout_ms: 120000,
+        interval_ms: 1000,
+      },
+      env: {},
+    })
+  }
+
+  const frontend_script = ['dev:h5', 'dev:web', 'dev:frontend', 'preview', 'dev']
+    .find((script_name) => Boolean(scripts[script_name]))
+
+  if (frontend_script) {
+    detected_commands.push({
+      name: frontend_script.includes('preview') ? 'preview' : 'frontend',
+      command: buildScriptCommand(package_manager, frontend_script),
+      cwd: project.project_root,
+      ready: {
+        type: 'http',
+        url: project.preview.healthcheck_url,
+        timeout_ms: 120000,
+        interval_ms: 1000,
+      },
+      env: {},
+    })
+  }
+
+  return {
+    ...project,
+    launch: {
+      commands: detected_commands,
+      detection_source: detected_commands.length ? 'auto-detect' : 'manual',
+    },
+  }
+}
+
+function createWindow(): void {
   const { workArea } = screen.getPrimaryDisplay()
-  mainWindow = new BrowserWindow({
+  main_window = new BrowserWindow({
     x: workArea.x,
     y: workArea.y,
     width: workArea.width,
@@ -24,212 +336,363 @@ function createWindow() {
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+    },
   })
-  mainWindow.setMenuBarVisibility(false)
+  main_window.setMenuBarVisibility(false)
 
-  // 创建 BrowserView 用于显示被测页面
-  browserView = new WebContentsView({
+  browser_view = new WebContentsView({
     webPreferences: {
       contextIsolation: true,
-      nodeIntegration: false
-    }
+      nodeIntegration: false,
+    },
   })
 
-  // 启用远程调试 (CDP)
-  browserView.webContents.debugger.attach('1.3')
+  if (main_window) {
+    main_window.contentView.addChildView(browser_view)
+    updateLayout()
+    main_window.on('resize', updateLayout)
 
-  // 打开 DevTools（嵌入底部）
-  browserView.webContents.openDevTools({ mode: 'bottom' })
-
-  if (mainWindow) {
-    mainWindow.contentView.addChildView(browserView)
-    
-    // 设置布局：浏览器视图占中间栏
-    const bounds = mainWindow.getBounds()
-    updateLayout(bounds.width, bounds.height)
-
-    // 窗口大小变化时更新布局
-    mainWindow.on('resize', () => {
-      if (mainWindow) {
-        const [width, height] = mainWindow.getSize()
-        updateLayout(width, height)
-      }
-    })
-
-    // 加载 Vue UI
     if (process.env.VITE_DEV_SERVER_URL) {
-      mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL)
-      mainWindow.webContents.openDevTools()
+      void main_window.loadURL(process.env.VITE_DEV_SERVER_URL)
     } else {
-      mainWindow.loadFile(join(__dirname, '../dist/index.html'))
+      void main_window.loadFile(join(__dirname, '../dist/index.html'))
+    }
+  }
+
+  browser_view.webContents.openDevTools({ mode: 'bottom' })
+  attachBrowserListeners()
+  void browser_view.webContents.loadURL('about:blank')
+}
+
+function updateLayout(): void {
+  if (!browser_view || !main_window) {
+    return
+  }
+
+  const [window_width, window_height] = main_window.getSize()
+  browser_view.setBounds({
+    x: left_column_width,
+    y: top_bar_height + browser_toolbar_height,
+    width: window_width - left_column_width - right_column_width,
+    height: window_height - top_bar_height - browser_toolbar_height,
+  })
+}
+
+function collectBrowserState(): BrowserState {
+  const contents = browser_view?.webContents
+  return {
+    current_url: contents?.getURL() || '',
+    title: contents?.getTitle() || '',
+    can_go_back: contents?.navigationHistory.canGoBack() || false,
+    can_go_forward: contents?.navigationHistory.canGoForward() || false,
+    is_loading: contents?.isLoading() || false,
+    devtools_open: contents?.isDevToolsOpened() || false,
+  }
+}
+
+function emitBrowserState(): void {
+  if (main_window && !main_window.isDestroyed()) {
+    main_window.webContents.send('browser-state', collectBrowserState())
+  }
+}
+
+function attachBrowserListeners(): void {
+  if (!browser_view) {
+    return
+  }
+
+  browser_view.webContents.on('did-navigate', emitBrowserState)
+  browser_view.webContents.on('did-navigate-in-page', emitBrowserState)
+  browser_view.webContents.on('did-start-loading', emitBrowserState)
+  browser_view.webContents.on('did-stop-loading', emitBrowserState)
+  browser_view.webContents.on('page-title-updated', (event) => {
+    event.preventDefault()
+    emitBrowserState()
+  })
+  browser_view.webContents.on('console-message', (_, level, message) => {
+    if (main_window && !main_window.isDestroyed()) {
+      main_window.webContents.send('browser-console', {
+        level: ['verbose', 'info', 'warning', 'error'][level] || 'info',
+        message,
+        timestamp: Date.now(),
+      })
+    }
+  })
+}
+
+async function fetchBrowserWSEndpoint(): Promise<string> {
+  const response = await fetch(`http://127.0.0.1:${remote_debugging_port}/json/version`)
+  const data = await response.json() as { webSocketDebuggerUrl: string }
+  return data.webSocketDebuggerUrl
+}
+
+function isPortReachable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.createConnection({ port, host: '127.0.0.1' })
+    socket.once('connect', () => {
+      socket.destroy()
+      resolve(true)
+    })
+    socket.once('error', () => {
+      socket.destroy()
+      resolve(false)
+    })
+    socket.setTimeout(700, () => {
+      socket.destroy()
+      resolve(false)
+    })
+  })
+}
+
+async function isReadyCheckSatisfied(command: ResolvedLaunchCommand): Promise<boolean> {
+  if (!command.ready) {
+    return false
+  }
+
+  if (command.ready.type === 'tcp' && command.ready.port) {
+    return isPortReachable(command.ready.port)
+  }
+
+  if (command.ready.type === 'http' && command.ready.url) {
+    try {
+      const response = await fetch(command.ready.url)
+      return response.ok || response.status < 500
+    } catch {
+      return false
+    }
+  }
+
+  return false
+}
+
+async function waitForReady(command: ResolvedLaunchCommand): Promise<void> {
+  if (!command.ready) {
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    return
+  }
+
+  const timeout_ms = command.ready.timeout_ms ?? 120000
+  const interval_ms = command.ready.interval_ms ?? 1000
+  const started_at = Date.now()
+
+  while (Date.now() - started_at < timeout_ms) {
+    if (await isReadyCheckSatisfied(command)) {
+      return
+    }
+    await new Promise((resolve) => setTimeout(resolve, interval_ms))
+  }
+
+  throw new Error(`Service ${command.name} did not become ready within ${timeout_ms}ms`)
+}
+
+function attachProcessLogs(command_name: string, child: ChildProcess): void {
+  child.stdout?.on('data', (chunk) => {
+    sendRunnerLog('info', `[${command_name}] ${String(chunk).trim()}`)
+  })
+  child.stderr?.on('data', (chunk) => {
+    sendRunnerLog('warn', `[${command_name}] ${String(chunk).trim()}`)
+  })
+}
+
+async function ensureProjectServices(project: ResolvedAutotestConfig): Promise<void> {
+  for (const command of project.launch.commands) {
+    if (await isReadyCheckSatisfied(command)) {
+      sendRunnerLog('info', `Reuse existing service: ${command.name}`)
+      continue
+    }
+
+    sendRunnerLog('info', `Starting service: ${command.name}`)
+    const child = spawn(command.command, {
+      cwd: command.cwd,
+      shell: true,
+      detached: process.platform !== 'win32',
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: {
+        ...process.env,
+        ...command.env,
+      },
+    })
+
+    project_processes.set(command.name, child)
+    attachProcessLogs(command.name, child)
+    await waitForReady(command)
+  }
+}
+
+function killChildProcess(child: ChildProcess): void {
+  if (!child.pid) {
+    return
+  }
+
+  try {
+    if (process.platform === 'win32') {
+      child.kill('SIGTERM')
+    } else {
+      process.kill(-child.pid, 'SIGTERM')
+    }
+  } catch {
+    try {
+      child.kill('SIGTERM')
+    } catch {
+      // ignore
     }
   }
 }
 
-function updateLayout(width: number, height: number) {
-  if (!browserView || !mainWindow) return
+function stopProjectServices(): void {
+  for (const child of project_processes.values()) {
+    killChildProcess(child)
+  }
+  project_processes.clear()
+}
 
-  // TopBar 40 + BrowserToolbar 40 = 80 留给 Vue UI
-  const topOffset = 80
-  const leftCol = 260
-  const rightCol = 320
+function stopRunnerProcess(): void {
+  if (!runner_process) {
+    return
+  }
 
-  browserView.setBounds({
-    x: leftCol,
-    y: topOffset,
-    width: width - leftCol - rightCol,
-    height: height - topOffset,
+  try {
+    runner_process.send?.({ type: 'control', data: { type: 'stop' } })
+  } catch {
+    // ignore
+  }
+
+  setTimeout(() => {
+    if (runner_process) {
+      runner_process.kill('SIGTERM')
+      runner_process = null
+    }
+  }, 1500)
+}
+
+async function loadProjectFromDirectory(dir_path: string): Promise<{ project: ResolvedAutotestConfig; cases: any[] }> {
+  const config_path = await findConfigFile(dir_path)
+  if (!config_path) {
+    throw new Error(`No autotest config found under ${dir_path}`)
+  }
+
+  const raw_config = JSON.parse(fs.readFileSync(config_path, 'utf-8')) as AutotestConfig
+  const project = withDetectedLaunchCommands(normalizeAutotestConfig(raw_config, config_path, dir_path))
+  const cases = await scanCases(project)
+  return { project, cases }
+}
+
+async function scanCases(project: ResolvedAutotestConfig): Promise<any[]> {
+  const runner_path = join(__dirname, '../runner/index.ts')
+
+  return new Promise<any[]>((resolve, reject) => {
+    const child = fork(runner_path, [
+      '--scan-only',
+      '--config',
+      project.config_path,
+      '--cases-dir',
+      project.cases.root_dir,
+    ], {
+      execArgv: ['--import', tsx_loader_path],
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    })
+
+    child.on('message', (message: any) => {
+      if (message?.type === 'cases-scanned') {
+        resolve(message.cases)
+        child.kill('SIGTERM')
+      } else if (message?.type === 'cases-scan-error') {
+        reject(new Error(message.error))
+        child.kill('SIGTERM')
+      }
+    })
+
+    child.on('error', reject)
+    child.stderr?.on('data', (chunk) => {
+      sendRunnerLog('warn', `[scan] ${String(chunk).trim()}`)
+    })
+  })
+}
+
+function startRunnerProcess(project: ResolvedAutotestConfig, mode: 'auto' | 'manual', cdp_endpoint: string): void {
+  const runner_path = join(__dirname, '../runner/index.ts')
+  runner_process = fork(runner_path, [
+    '--config',
+    project.config_path,
+    '--cases-dir',
+    project.cases.root_dir,
+    '--cdp-endpoint',
+    cdp_endpoint,
+    '--mode',
+    mode,
+  ], {
+    execArgv: ['--import', tsx_loader_path],
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
   })
 
-  mainWindow.webContents.executeJavaScript(`
-    document.documentElement.style.setProperty('--browser-width', '${width - leftCol - rightCol}px')
-  `)
+  runner_process.on('message', (message: any) => {
+    if (message?.type === 'runner-event') {
+      sendRunnerEvent(message.data)
+    }
+  })
+
+  runner_process.on('error', (error) => {
+    sendRunnerLog('error', `Runner process error: ${error.message}`)
+  })
+
+  runner_process.stderr?.on('data', (chunk) => {
+    sendRunnerLog('warn', `[runner] ${String(chunk).trim()}`)
+  })
 }
 
-// 递归扫描目录，仅包含 .ts 文件和目录
-function scanDir(dirPath: string): any[] {
+ipcMain.handle('scan-dir', async (_, dir_path?: string) => {
+  const target_path = dir_path || '/'
+  return {
+    success: true,
+    tree: scanVisibleDir(target_path),
+  }
+})
+
+ipcMain.handle('search-file-system', async (_, query: string) => {
+  return {
+    success: true,
+    tree: buildSearchTree(query),
+  }
+})
+
+ipcMain.handle('select-project', async (_, dir_path: string) => {
   try {
-    const entries = fs.readdirSync(dirPath, { withFileTypes: true })
-    const result: any[] = []
-    for (const entry of entries) {
-      const fullPath = join(dirPath, entry.name)
-      if (entry.isDirectory()) {
-        result.push({
-          name: entry.name,
-          path: fullPath,
-          type: 'dir',
-          children: scanDir(fullPath)
-        })
-      } else if (entry.isFile() && entry.name.endsWith('.ts')) {
-        result.push({
-          name: entry.name,
-          path: fullPath,
-          type: 'file'
-        })
-      }
-    }
-    return result.sort((a, b) => {
-      if (a.type === b.type) return a.name.localeCompare(b.name)
-      return a.type === 'dir' ? -1 : 1
-    })
-  } catch {
-    return []
-  }
-}
+    stopRunnerProcess()
+    active_project = null
 
-// IPC 通信
-ipcMain.handle('scan-dir', async (_, dirPath: string) => {
-  try {
-    const tree = scanDir(dirPath)
-    return { success: true, tree }
-  } catch (err) {
-    return { success: false, error: String(err) }
-  }
-})
+    const { project, cases } = await loadProjectFromDirectory(dir_path)
+    active_project = project
 
-ipcMain.handle('scan-cases', async (_, dirPaths: string[]) => {
-  try {
-    const runnerPath = join(__dirname, '../runner/index.ts')
-    const allCases: any[] = []
-    for (const casesDir of dirPaths) {
-      const cases = await new Promise<any[]>((resolveP, rejectP) => {
-        const child = fork(runnerPath, ['--scan-only', '--cases-dir', casesDir], {
-          execArgv: ['--import', 'tsx'],
-          stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
-        })
-        const timer = setTimeout(() => {
-          child.kill('SIGTERM')
-          rejectP(new Error('Scan timeout'))
-        }, 30000)
-        child.on('message', (msg: any) => {
-          if (msg?.type === 'cases-scanned') {
-            clearTimeout(timer)
-            resolveP(msg.cases)
-            child.kill()
-          } else if (msg?.type === 'cases-scan-error') {
-            clearTimeout(timer)
-            rejectP(new Error(msg.error))
-            child.kill()
-          }
-        })
-        child.on('error', (e) => { clearTimeout(timer); rejectP(e) })
-      })
-      allCases.push(...cases)
-    }
-    return { success: true, cases: allCases }
-  } catch (err) {
-    return { success: false, error: String(err) }
-  }
-})
+    await ensureProjectServices(project)
 
-ipcMain.handle('browser-back', async () => {
-  if (browserView) {
-    browserView.webContents.goBack()
-  }
-})
-
-ipcMain.handle('browser-forward', async () => {
-  if (browserView) {
-    browserView.webContents.goForward()
-  }
-})
-
-ipcMain.handle('browser-reload', async () => {
-  if (browserView) {
-    browserView.webContents.reload()
-  }
-})
-
-ipcMain.handle('browser-navigate', async (_, url: string) => {
-  if (browserView) {
-    await browserView.webContents.loadURL(url)
-  }
-})
-
-ipcMain.handle('devtools-toggle', async () => {
-  if (!browserView) return
-  if (browserView.webContents.isDevToolsOpened()) {
-    browserView.webContents.closeDevTools()
-  } else {
-    browserView.webContents.openDevTools({ mode: 'bottom' })
-  }
-})
-
-ipcMain.handle('start-runner', async (_, casesDir: string, baseUrl: string) => {
-  try {
-    if (runnerProcess) {
-      stopRunnerProcess()
+    if (browser_view) {
+      await browser_view.webContents.loadURL(project.preview.entry_url)
+      emitBrowserState()
     }
 
-    // 获取 BrowserView 的调试 WebSocket 端点
-    if (!browserView) {
-      return { success: false, error: 'BrowserView not initialized' }
+    return {
+      success: true,
+      project,
+      cases,
     }
+  } catch (error) {
+    return {
+      success: false,
+      error: String(error),
+    }
+  }
+})
 
-    const debuggerInfo = browserView.webContents.debugger
-    // 获取或创建调试端口
-    const port = await new Promise<number>((resolve) => {
-      browserView!.webContents.debugger.sendCommand('Runtime.evaluate', {
-        expression: 'window.location.href'
-      }).catch(() => {})
-      
-      // Electron 调试器默认使用环境变量的端口
-      // 我们用一个固定的 WebSocket endpoint
-      setTimeout(() => resolve(cdpPort), 100)
-    })
-
-    const cdpEndpoint = `ws://127.0.0.1:${port}/devtools/page/${browserView.webContents.id}`
-    
-    // 启动 runner 进程
-    const configPath = join(casesDir, '..', 'autotest.config.json')
-    startRunnerProcess(casesDir, configPath, cdpEndpoint)
-
-    return { success: true, cdpEndpoint }
-  } catch (err) {
-    console.error('[start-runner error]', err)
-    return { success: false, error: String(err) }
+ipcMain.handle('start-runner', async (_, project: ResolvedAutotestConfig, auto_advance = true) => {
+  try {
+    active_project = project
+    await ensureProjectServices(project)
+    const cdp_endpoint = await fetchBrowserWSEndpoint()
+    startRunnerProcess(project, auto_advance ? 'auto' : 'manual', cdp_endpoint)
+    return { success: true, cdpEndpoint: cdp_endpoint }
+  } catch (error) {
+    return { success: false, error: String(error) }
   }
 })
 
@@ -238,124 +701,140 @@ ipcMain.handle('stop-runner', async () => {
   return { success: true }
 })
 
-ipcMain.handle('navigate-browser', async (_, url: string) => {
-  if (browserView) {
-    await browserView.webContents.loadURL(url)
-  }
-})
-
-// 加载配置并扫描用例
-ipcMain.handle('load-config', async (_, configPath: string) => {
+ipcMain.handle('reset-session', async () => {
   try {
-    const configText = fs.readFileSync(configPath, 'utf-8')
-    const config = JSON.parse(configText)
-    const casesDir = join(dirname(configPath), config.cases_dir || './cases')
+    stopRunnerProcess()
+    stopProjectServices()
 
-    const runnerPath = join(__dirname, '../runner/index.ts')
-    const cases = await new Promise<any[]>((resolveP, rejectP) => {
-      const child = fork(runnerPath, ['--scan-only', '--cases-dir', casesDir], {
-        execArgv: ['--import', 'tsx'],
-        stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
-      })
-      const timer = setTimeout(() => {
-        child.kill('SIGTERM')
-        rejectP(new Error('Scan timeout'))
-      }, 30000)
-      child.on('message', (msg: any) => {
-        if (msg?.type === 'cases-scanned') {
-          clearTimeout(timer)
-          resolveP(msg.cases)
-          child.kill()
-        } else if (msg?.type === 'cases-scan-error') {
-          clearTimeout(timer)
-          rejectP(new Error(msg.error))
-          child.kill()
-        }
-      })
-      child.on('error', (e) => { clearTimeout(timer); rejectP(e) })
-    })
-
-    return { success: true, config: { ...config, _configPath: configPath, _casesDir: casesDir }, cases }
-  } catch (err) {
-    return { success: false, error: String(err) }
-  }
-})
-
-// 文件选择对话框
-ipcMain.handle('open-file-dialog', async () => {
-  if (!mainWindow) return { success: false, error: 'Main window not available' }
-  
-  const { filePaths } = await dialog.showOpenDialog(mainWindow, {
-    properties: ['openFile'],
-    filters: [
-      { name: 'Config Files', extensions: ['json'] },
-      { name: 'All Files', extensions: ['*'] }
-    ]
-  })
-  
-  if (filePaths && filePaths.length > 0) {
-    return { success: true, filePath: filePaths[0] }
-  }
-  return { success: false, cancelled: true }
-})
-
-// 保存报告对话框
-ipcMain.handle('save-report-dialog', async (_, reportData: string) => {
-  if (!mainWindow) return { success: false, error: 'Main window not available' }
-  
-  const { filePath } = await dialog.showSaveDialog(mainWindow, {
-    defaultPath: 'report.html',
-    filters: [
-      { name: 'HTML Report', extensions: ['html'] },
-      { name: 'JSON Report', extensions: ['json'] }
-    ]
-  })
-  
-  if (filePath) {
-    try {
-      fs.writeFileSync(filePath, reportData)
-      return { success: true, filePath }
-    } catch (err) {
-      return { success: false, error: String(err) }
+    if (active_project) {
+      await ensureProjectServices(active_project)
+      if (browser_view) {
+        await browser_view.webContents.loadURL(active_project.preview.entry_url)
+        emitBrowserState()
+      }
+      const cases = await scanCases(active_project)
+      return { success: true, project: active_project, cases }
     }
-  }
-  return { success: false, cancelled: true }
-})
 
-// 转发控制消息到 runner
-ipcMain.handle('send-control', async (_, message: any) => {
-  if (runnerProcess) {
-    runnerProcess.send({ type: 'control', data: message })
     return { success: true }
+  } catch (error) {
+    return { success: false, error: String(error) }
   }
-  return { success: false, error: 'Runner not running' }
 })
 
-// 转发 console 日志到 Vue UI
-function setupConsoleForwarding() {
-  if (!browserView) return
-  
-  browserView.webContents.on('console-message', (_, level, message) => {
-    if (mainWindow) {
-      mainWindow.webContents.send('browser-console', {
-        level: ['verbose', 'info', 'warning', 'error'][level] || 'log',
-        message,
-        timestamp: Date.now()
-      })
-    }
+ipcMain.handle('send-control', async (_, message: any) => {
+  if (!runner_process) {
+    return { success: false, error: 'Runner is not running' }
+  }
+  runner_process.send?.({ type: 'control', data: message })
+  return { success: true }
+})
+
+ipcMain.handle('browser-back', async () => {
+  browser_view?.webContents.navigationHistory.goBack()
+  emitBrowserState()
+})
+
+ipcMain.handle('browser-forward', async () => {
+  browser_view?.webContents.navigationHistory.goForward()
+  emitBrowserState()
+})
+
+ipcMain.handle('browser-reload', async () => {
+  browser_view?.webContents.reload()
+  emitBrowserState()
+})
+
+ipcMain.handle('browser-force-reload', async () => {
+  browser_view?.webContents.reloadIgnoringCache()
+  emitBrowserState()
+})
+
+ipcMain.handle('browser-navigate', async (_, url: string) => {
+  await browser_view?.webContents.loadURL(url)
+  emitBrowserState()
+})
+
+ipcMain.handle('devtools-toggle', async () => {
+  if (!browser_view) {
+    return
+  }
+
+  if (browser_view.webContents.isDevToolsOpened()) {
+    browser_view.webContents.closeDevTools()
+  } else {
+    browser_view.webContents.openDevTools({ mode: 'bottom' })
+  }
+  emitBrowserState()
+})
+
+ipcMain.handle('browser-get-state', async () => collectBrowserState())
+
+ipcMain.handle('open-file-dialog', async () => {
+  if (!main_window) {
+    return { success: false, error: 'Main window not available' }
+  }
+
+  const result = await dialog.showOpenDialog(main_window, {
+    properties: ['openFile'],
+    filters: [{ name: 'JSON', extensions: ['json'] }],
   })
-}
+
+  if (result.canceled || !result.filePaths[0]) {
+    return { success: false, cancelled: true }
+  }
+
+  return { success: true, filePath: result.filePaths[0] }
+})
+
+ipcMain.handle('save-report-dialog', async (_, report_data: string) => {
+  if (!main_window) {
+    return { success: false, error: 'Main window not available' }
+  }
+
+  const result = await dialog.showSaveDialog(main_window, {
+    defaultPath: 'report.json',
+    filters: [
+      { name: 'JSON Report', extensions: ['json'] },
+      { name: 'HTML Report', extensions: ['html'] },
+      { name: 'Markdown Report', extensions: ['md'] },
+    ],
+  })
+
+  if (result.canceled || !result.filePath) {
+    return { success: false, cancelled: true }
+  }
+
+  fs.writeFileSync(result.filePath, report_data, 'utf-8')
+  return { success: true, filePath: result.filePath }
+})
+
+ipcMain.handle('load-config', async (_, config_path: string) => {
+  try {
+    const raw_config = JSON.parse(fs.readFileSync(config_path, 'utf-8')) as AutotestConfig
+    const project = withDetectedLaunchCommands(
+      normalizeAutotestConfig(raw_config, config_path, dirname(dirname(config_path)))
+    )
+    const cases = await scanCases(project)
+    return { success: true, config: project, cases }
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+})
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   createWindow()
-  setupConsoleForwarding()
-
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow()
     }
   })
+})
+
+app.on('before-quit', () => {
+  stopRunnerProcess()
+  stopProjectServices()
 })
 
 app.on('window-all-closed', () => {
@@ -364,56 +843,10 @@ app.on('window-all-closed', () => {
   }
 })
 
-// 从 runner 进程接收消息并转发到 Vue
-export function forwardToUI(channel: string, data: any) {
-  if (mainWindow) {
-    mainWindow.webContents.send(channel, data)
+export function forwardToUI(channel: string, data: any): void {
+  if (main_window && !main_window.isDestroyed()) {
+    main_window.webContents.send(channel, data)
   }
 }
 
-// 启动 runner 子进程
-function startRunnerProcess(casesDir: string, configPath: string, cdpEndpoint: string) {
-  const runnerPath = join(__dirname, '../runner/index.ts')
-  
-  runnerProcess = fork(runnerPath, [
-    '--cases-dir', casesDir,
-    '--config', configPath,
-    '--cdp-endpoint', cdpEndpoint,
-    '--mode', 'case-confirm'
-  ], {
-    execArgv: ['--loader', 'tsx/esm'],
-    stdio: ['pipe', 'pipe', 'pipe', 'ipc']
-  })
-
-  // 转发 runner 消息到 UI
-  runnerProcess.on('message', (msg: any) => {
-    if (msg.type === 'runner-event') {
-      forwardToUI('runner-event', msg.data)
-    }
-  })
-
-  runnerProcess.on('error', (err: Error) => {
-    console.error('[Runner Process Error]', err)
-    forwardToUI('runner-error', { error: err.message })
-  })
-
-  runnerProcess.on('exit', (code: number) => {
-    console.log(`[Runner Process] Exited with code ${code}`)
-    forwardToUI('runner-exit', { code })
-    runnerProcess = null
-  })
-}
-
-// 停止 runner 进程
-function stopRunnerProcess() {
-  if (runnerProcess) {
-    runnerProcess.send({ type: 'control', data: { type: 'stop' } })
-    setTimeout(() => {
-      if (runnerProcess) {
-        runnerProcess.kill('SIGTERM')
-      }
-    }, 5000)
-  }
-}
-
-export { browserView, mainWindow }
+export { browser_view, main_window, createElectronIPC }

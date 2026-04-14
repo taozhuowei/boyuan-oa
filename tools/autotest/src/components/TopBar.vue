@@ -1,121 +1,150 @@
-<!-- TopBar: 40px header with project name, config path, state pill, and mode toggle -->
 <template>
-  <div class="top-bar">
-    <div class="left">
-      <span class="project-name">{{ projectName || 'AutoTest' }}</span>
-      <span v-if="configPath" class="config-path">{{ configPath }}</span>
+  <header class="top-bar">
+    <div class="project-meta">
+      <div class="brand-block">
+        <span class="brand-kicker">AutoTest</span>
+        <strong>{{ runnerStore.projectName }}</strong>
+      </div>
+      <div class="path-block">
+        <span class="path-label">CONFIG</span>
+        <span class="path-value">{{ runnerStore.configPath || '未选择项目' }}</span>
+      </div>
+      <div class="path-block">
+        <span class="path-label">ROOT</span>
+        <span class="path-value">{{ runnerStore.projectRoot || '未选择项目' }}</span>
+      </div>
     </div>
-    <div class="right">
-      <span class="state-pill" :class="status">{{ statusLabel }}</span>
-      <n-button
-        size="small"
-        :type="mode === 'full-auto' ? 'primary' : 'default'"
-        @click="toggleMode"
-      >
-        {{ mode === 'full-auto' ? '全自动' : '单步确认' }}
-      </n-button>
+
+    <div class="status-block">
+      <span class="state-pill" :class="runnerStore.status">{{ statusLabel }}</span>
+      <span class="mode-pill" :class="runnerStore.mode">{{ modeLabel }}</span>
     </div>
-  </div>
+  </header>
 </template>
 
 <script setup lang="ts">
-import { NButton } from 'naive-ui'
-import { useRunnerStore, type RunnerMode, type RunnerStatus } from '../stores/runner'
 import { computed } from 'vue'
+import { useRunnerStore } from '../stores/runner'
 
 const runnerStore = useRunnerStore()
 
-const projectName = computed(() => runnerStore.projectName)
-const configPath = computed(() => runnerStore.config?.cases_dir ?? '')
-const status = computed<RunnerStatus>(() => runnerStore.status)
-const mode = computed<RunnerMode>(() => runnerStore.mode)
-
 const statusLabel = computed(() => {
-  const map: Record<RunnerStatus, string> = {
+  const labels = {
     idle: '空闲',
-    running: '运行中',
-    paused: '已暂停',
+    preparing: '准备中',
+    running: '执行中',
+    waiting_confirm: '待确认',
+    stopped: '已停止',
     done: '已完成',
   }
-  return map[status.value]
+
+  return labels[runnerStore.status]
 })
 
-function toggleMode() {
-  runnerStore.toggleMode()
-}
+const modeLabel = computed(() => (runnerStore.mode === 'auto' ? '自动进入下一条' : '手动继续'))
 </script>
 
 <style scoped>
 .top-bar {
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 40px;
-  padding: 0 12px;
-  background: var(--bg-1);
+  gap: 18px;
+  padding: 0 16px;
+  background: rgba(21, 24, 29, 0.95);
   border-bottom: 1px solid var(--line);
+  backdrop-filter: blur(12px);
 }
 
-.left {
+.project-meta {
+  min-width: 0;
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 12px;
-  overflow: hidden;
+  gap: 18px;
 }
 
-.project-name {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-1);
-  white-space: nowrap;
+.brand-block,
+.path-block {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
 }
 
-.config-path {
-  font-size: 12px;
-  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+.brand-kicker,
+.path-label {
   color: var(--text-3);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+}
+
+.brand-block strong {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.path-value {
+  min-width: 0;
+  max-width: 360px;
+  color: var(--text-2);
+  font-size: 12px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.right {
+.status-block {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.state-pill {
+.state-pill,
+.mode-pill {
   display: inline-flex;
   align-items: center;
-  height: 20px;
-  padding: 0 8px;
-  border-radius: 10px;
+  justify-content: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
   font-size: 11px;
-  font-weight: 500;
-  text-transform: uppercase;
-  background: var(--bg-2);
-  color: var(--text-2);
-  transition: background 150ms ease-out, color 150ms ease-out;
+  white-space: nowrap;
 }
 
-.state-pill.idle {
-  background: var(--bg-2);
+.state-pill.idle,
+.state-pill.stopped {
   color: var(--text-2);
+}
+
+.state-pill.preparing {
+  color: var(--pending);
+  border-color: rgba(255, 181, 71, 0.35);
 }
 
 .state-pill.running {
-  background: rgba(94, 184, 255, 0.15);
   color: var(--running);
+  border-color: rgba(94, 184, 255, 0.35);
 }
 
-.state-pill.paused {
-  background: rgba(255, 181, 71, 0.15);
+.state-pill.waiting_confirm {
   color: var(--pending);
+  border-color: rgba(255, 181, 71, 0.35);
 }
 
 .state-pill.done {
-  background: rgba(92, 230, 141, 0.15);
   color: var(--pass);
+  border-color: rgba(92, 230, 141, 0.35);
+}
+
+.mode-pill.auto {
+  color: var(--brand);
+}
+
+.mode-pill.manual {
+  color: var(--text-2);
 }
 </style>

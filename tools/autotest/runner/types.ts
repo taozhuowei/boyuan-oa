@@ -1,17 +1,12 @@
 /**
- * Autotest Type Definitions
- *
- * Shared TypeScript types for the autotest tool runner engine, IPC, and Vue frontend.
+ * Autotest shared type definitions.
+ * Purpose: keep runner, Electron main process, and Vue UI aligned on the same data model.
  */
 
 // =============================================================================
-// Locator Types
+// Locator and Assertion Types
 // =============================================================================
 
-/**
- * Discriminated union for element locator definitions.
- * Used to identify UI elements during test execution.
- */
 export type LocatorDef =
   | { by: 'role'; role: string; name: string; exact?: boolean }
   | { by: 'label'; value: string; exact?: boolean }
@@ -19,32 +14,20 @@ export type LocatorDef =
   | { by: 'placeholder'; value: string }
   | { by: 'testid'; value: string }
   | { by: 'catch'; value: string }
-  | { by: 'css'; value: string };
+  | { by: 'css'; value: string }
 
-// =============================================================================
-// Assertion Types
-// =============================================================================
-
-/**
- * Discriminated union for assertion checks.
- * Defines various ways to verify application state.
- */
 export type AssertCheck =
   | { type: 'url_contains' | 'url_equals'; value: string }
   | { type: 'text_visible' | 'text_absent'; value: string }
   | { type: 'element_visible' | 'element_hidden'; locator: LocatorDef }
   | { type: 'toast_contains'; value: string }
   | { type: 'http_status'; value: number }
-  | { type: 'title_contains'; value: string };
+  | { type: 'title_contains'; value: string }
 
 // =============================================================================
-// Test Step Types
+// Test Definition Types
 // =============================================================================
 
-/**
- * Discriminated union for test step definitions.
- * Each step represents a single action or assertion in a test case.
- */
 export type TestStep =
   | { id: number; desc: string; action: 'navigate'; to: string }
   | { id: number; desc: string; action: 'click'; locator: LocatorDef }
@@ -57,193 +40,250 @@ export type TestStep =
   | { id: number; desc: string; action: 'screenshot'; label?: string }
   | { id: number; desc: string; action: 'upload'; locator: LocatorDef; value: string }
   | {
-      id: number;
-      desc: string;
-      action: 'api_call';
-      method: string;
-      endpoint: string;
-      body?: Record<string, unknown>;
+      id: number
+      desc: string
+      action: 'api_call'
+      method: string
+      endpoint: string
+      body?: Record<string, unknown>
     }
   | {
-      id: number;
-      desc: string;
-      action: 'parallel';
-      contexts: TestStep[][];
+      id: number
+      desc: string
+      action: 'parallel'
+      contexts: TestStep[][]
     }
   | {
-      id: number;
-      desc: string;
-      action: 'rapid';
-      repeat: number;
-      interval: number;
-      step: TestStep;
-    };
+      id: number
+      desc: string
+      action: 'rapid'
+      repeat: number
+      interval: number
+      step: TestStep
+    }
 
-// =============================================================================
-// Test Case Types
-// =============================================================================
-
-/**
- * Interface representing a complete test case definition.
- */
 export interface TestCase {
-  /** Unique identifier for the test case (e.g., 'TC-AUTH-01') */
-  id: string;
-
-  /** Short title describing the test (for tree list) */
-  title: string;
-
-  /** Detail: role · operation path · expected result (multi-line allowed) */
-  description: string;
-
-  /** Module or feature area this test belongs to */
-  module: string;
-
-  /** Priority level: P0 (critical), P1 (high), P2 (normal) */
-  priority: 'P0' | 'P1' | 'P2';
-
-  /** Role(s) used in this case for quick filtering */
-  roles?: string[];
-
-  /** Optional tags for categorization and filtering */
-  tags?: string[];
-
-  /** Optional credentials for authentication */
-  credentials?: { username: string; password: string };
-
-  /** Ordered list of steps to execute */
-  steps: TestStep[];
-
-  /** Expected outcome of the test */
-  expect: { result: 'pass' | 'fail'; url?: string };
+  id: string
+  title: string
+  description: string
+  module: string
+  priority: 'P0' | 'P1' | 'P2'
+  roles?: string[]
+  tags?: string[]
+  credentials?: { username: string; password: string }
+  steps: TestStep[]
+  expect: { result: 'pass' | 'fail'; url?: string }
 }
 
 // =============================================================================
-// Status Types
+// Runtime and Report Types
 // =============================================================================
 
-/**
- * Status of an individual test step during execution.
- */
-export type StepStatus = 'pending' | 'running' | 'pass' | 'fail' | 'skip';
+export type StepStatus = 'pending' | 'running' | 'pass' | 'fail' | 'skip'
+export type CaseStatus = 'pending' | 'running' | 'pass' | 'fail' | 'skip' | 'waiting_confirm'
 
-/**
- * Status of an entire test case during execution.
- * Includes 'waiting_confirm' for human verification steps.
- */
-export type CaseStatus = 'pending' | 'running' | 'pass' | 'fail' | 'skip' | 'waiting_confirm';
+export interface ConsoleEntry {
+  level: string
+  ts: string
+  message: string
+}
 
-// =============================================================================
-// Result Types
-// =============================================================================
+export interface NetworkRequest {
+  method: string
+  url: string
+  status: number | null
+  duration_ms: number | null
+  resource_type?: string
+}
 
-/**
- * Result of a single test step execution.
- */
 export interface StepResult {
-  /** Step identifier */
-  stepId: number;
-
-  /** Execution status */
-  status: StepStatus;
-
-  /** Error message if step failed */
-  error?: string;
-
-  /** Screenshot path if captured */
-  screenshot?: string;
-
-  /** Execution duration in milliseconds */
-  durationMs: number;
+  stepId: number
+  status: StepStatus
+  error?: string
+  errorStack?: string
+  screenshot?: string
+  durationMs: number
+  pageUrl?: string
+  pageTitle?: string
+  locator?: LocatorDef
+  consoleTail?: ConsoleEntry[]
+  networkTail?: NetworkRequest[]
 }
 
-/**
- * Result of an entire test case execution.
- */
 export interface CaseResult {
-  /** Test case identifier */
-  caseId: string;
-
-  /** Overall execution status */
-  status: CaseStatus;
-
-  /** Results for each step */
-  steps: StepResult[];
-
-  /** Human-verified result when confirmation is required */
-  humanResult?: 'pass' | 'fail' | 'skip';
-
-  /** Optional note from human reviewer */
-  humanNote?: string;
-
-  /** Unix timestamp when execution started */
-  startedAt: number;
-
-  /** Unix timestamp when execution finished (undefined if still running) */
-  finishedAt?: number;
+  caseId: string
+  status: CaseStatus
+  autoStatus?: 'pass' | 'fail'
+  steps: StepResult[]
+  humanResult?: 'pass' | 'fail' | 'skip'
+  humanNote?: string
+  startedAt: number
+  finishedAt?: number
 }
 
 // =============================================================================
-// IPC Event Types
+// Config Types
 // =============================================================================
 
-/**
- * Events emitted by the test runner to the frontend.
- * Sent via WebSocket for real-time test execution updates.
- */
+export interface ReadyCheck {
+  type: 'http' | 'tcp'
+  url?: string
+  port?: number
+  timeout_ms?: number
+  interval_ms?: number
+}
+
+export interface LaunchCommandConfig {
+  name: string
+  command: string
+  cwd?: string
+  ready?: ReadyCheck
+  env?: Record<string, string>
+}
+
+export interface PreviewConfig {
+  base_url: string
+  entry_url?: string
+  healthcheck_url?: string
+}
+
+export interface CasesConfig {
+  root_dir: string
+  include?: string[]
+  exclude?: string[]
+}
+
+export interface ExecutionConfig {
+  concurrency?: number
+  step_timeout?: number
+  screenshot_on_step?: boolean
+  auto_advance?: boolean
+}
+
+export interface ReportConfig {
+  output_dir?: string
+  formats?: string[]
+}
+
+export interface AutotestConfig {
+  schema_version?: string
+  name: string
+  project_root?: string
+  preview?: PreviewConfig
+  cases?: CasesConfig
+  execution?: ExecutionConfig
+  report?: ReportConfig
+  launch?: { commands?: LaunchCommandConfig[] }
+  discovery?: { config_filenames?: string[] }
+
+  // Legacy compatibility
+  base_url?: string
+  cases_dir?: string
+  concurrency?: number
+  step_timeout?: number
+  screenshot_on_step?: boolean
+}
+
+export interface ResolvedLaunchCommand {
+  name: string
+  command: string
+  cwd: string
+  ready?: ReadyCheck
+  env: Record<string, string>
+}
+
+export interface ResolvedAutotestConfig {
+  schema_version: string
+  name: string
+  project_root: string
+  config_path: string
+  preview: {
+    base_url: string
+    entry_url: string
+    healthcheck_url: string
+  }
+  cases: {
+    root_dir: string
+    include: string[]
+    exclude: string[]
+  }
+  execution: Required<ExecutionConfig>
+  report: {
+    output_dir: string
+    formats: string[]
+  }
+  launch: {
+    commands: ResolvedLaunchCommand[]
+    detection_source: string
+  }
+  discovery: {
+    config_filenames: string[]
+  }
+}
+
+export interface BrowserState {
+  current_url: string
+  title: string
+  can_go_back: boolean
+  can_go_forward: boolean
+  is_loading: boolean
+  devtools_open: boolean
+}
+
+export interface TreeNode {
+  name: string
+  path: string
+  type: 'file' | 'dir'
+  has_children?: boolean
+  children?: TreeNode[]
+}
+
+// =============================================================================
+// IPC Types
+// =============================================================================
+
+export type RunnerMode = 'auto' | 'manual'
+
 export type RunnerEvent =
   | { type: 'step-start'; caseId: string; stepId: number; desc: string }
   | {
-      type: 'step-done';
-      caseId: string;
-      stepId: number;
-      status: StepStatus;
-      error?: string;
-      screenshot?: string;
-      durationMs: number;
+      type: 'step-done'
+      caseId: string
+      stepId: number
+      status: StepStatus
+      error?: string
+      errorStack?: string
+      screenshot?: string
+      durationMs: number
+      pageUrl?: string
+      pageTitle?: string
+      locator?: LocatorDef
+      consoleTail?: ConsoleEntry[]
+      networkTail?: NetworkRequest[]
     }
   | { type: 'case-done'; caseId: string; autoStatus: 'pass' | 'fail'; needConfirm: boolean }
   | {
-      type: 'all-done';
-      summary: { total: number; pass: number; fail: number; skip: number };
+      type: 'all-done'
+      summary: { total: number; pass: number; fail: number; skip: number }
+      reportPaths?: { json?: string; html?: string; markdown?: string }
     }
-  | { type: 'cases-loaded'; cases: Array<{ id: string; title: string; description: string; module: string; priority: 'P0' | 'P1' | 'P2'; roles?: string[]; tags?: string[]; steps: Array<{ id: number; desc: string; action: string }> }> }
-  | { type: 'log'; level: 'info' | 'warn' | 'error'; message: string };
+  | {
+      type: 'cases-loaded'
+      cases: Array<{
+        id: string
+        title: string
+        description: string
+        module: string
+        priority: 'P0' | 'P1' | 'P2'
+        roles?: string[]
+        tags?: string[]
+        steps: Array<{ id: number; desc: string; action: string }>
+      }>
+    }
+  | { type: 'log'; level: 'info' | 'warn' | 'error'; message: string }
 
-/**
- * Control messages sent from frontend to the test runner.
- * Used to control test execution flow.
- */
 export type ControlMessage =
   | { type: 'resume' }
-  | { type: 'next-step' }
   | { type: 'confirm'; caseId: string; result: 'pass' | 'fail' | 'skip'; note?: string }
   | { type: 'stop' }
-  | { type: 'set-mode'; mode: 'case-confirm' | 'full-auto' };
-
-// =============================================================================
-// Configuration Types
-// =============================================================================
-
-/**
- * Configuration interface for the autotest tool.
- */
-export interface AutotestConfig {
-  /** Project name */
-  name: string;
-
-  /** Base URL for the application under test */
-  base_url: string;
-
-  /** Directory containing test case files */
-  cases_dir: string;
-
-  /** Maximum concurrent test executions (default: 1) */
-  concurrency?: number;
-
-  /** Timeout for each step in milliseconds (default: 30000) */
-  step_timeout?: number;
-
-  /** Whether to capture screenshot on each step (default: true) */
-  screenshot_on_step?: boolean;
-}
+  | { type: 'set-mode'; mode: RunnerMode }

@@ -1,47 +1,45 @@
-<!-- AutoTest root: 3-column + topbar layout (TopBar / DirectoryTree | Browser+DevTools | CaseList + ActionPanel) -->
 <template>
-  <div id="app">
-    <TopBar />
-    <div class="main-layout">
-      <div class="left-col">
-        <DirectoryTree />
-      </div>
+  <n-message-provider>
+    <div id="app">
+      <TopBar />
+      <div class="main-layout">
+        <aside class="left-column">
+          <DirectoryTree />
+        </aside>
 
-      <!-- Middle column is mostly covered by Electron BrowserView (managed from main process).
-           We only render the top toolbar and a placeholder hint; the BrowserView overlays the rest. -->
-      <div class="middle-col">
-        <BrowserToolbar />
-        <div class="browser-placeholder">
-          <span>浏览器内嵌区域 · DevTools 嵌于底部</span>
-        </div>
-      </div>
+        <main class="center-column">
+          <BrowserToolbar />
+          <div class="browser-stage">
+            <div class="browser-overlay">
+              <div class="hint-card">
+                <span class="hint-label">LIVE PREVIEW</span>
+                <strong>{{ runnerStore.projectName }}</strong>
+                <span>{{ runnerStore.browser.current_url || '选择项目后自动启动并加载预览' }}</span>
+              </div>
+            </div>
+          </div>
+        </main>
 
-      <div class="right-col">
-        <div class="case-list-wrap">
-          <CaseList @select="onCaseSelect" />
-        </div>
-        <ActionPanel />
+        <aside class="right-column">
+          <CaseList />
+          <ActionPanel />
+        </aside>
       </div>
     </div>
-  </div>
+  </n-message-provider>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
+import { NMessageProvider } from 'naive-ui'
 import TopBar from './components/TopBar.vue'
 import DirectoryTree from './components/DirectoryTree.vue'
 import BrowserToolbar from './components/BrowserToolbar.vue'
 import CaseList from './components/CaseList.vue'
 import ActionPanel from './components/ActionPanel.vue'
 import { useRunnerStore } from './stores/runner'
-import { useResultsStore } from './stores/results'
 
 const runnerStore = useRunnerStore()
-const resultsStore = useResultsStore()
-
-function onCaseSelect(caseId: string) {
-  resultsStore.selectCase(caseId)
-}
 
 onMounted(() => {
   runnerStore.setupElectronListeners()
@@ -57,53 +55,76 @@ onUnmounted(() => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--bg-0);
-  color: var(--text-1);
+  background:
+    radial-gradient(circle at top left, rgba(94, 184, 255, 0.12), transparent 24%),
+    linear-gradient(180deg, rgba(28, 32, 39, 0.75), rgba(11, 13, 16, 1) 32%);
 }
 
 .main-layout {
   flex: 1;
-  display: flex;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr) 380px;
   min-height: 0;
 }
 
-.left-col {
-  width: 260px;
-  flex-shrink: 0;
+.left-column,
+.right-column {
+  min-height: 0;
 }
 
-.middle-col {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+.center-column {
   min-width: 0;
-  background: var(--bg-0);
-}
-
-.browser-placeholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-3);
-  font-size: 12px;
-  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
-  background:
-    linear-gradient(var(--bg-0), var(--bg-0)) padding-box,
-    repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 14px) border-box;
-}
-
-.right-col {
-  width: 320px;
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
 }
 
-.case-list-wrap {
+.browser-stage {
   flex: 1;
-  overflow: hidden;
+  position: relative;
   min-height: 0;
+  border-inline: 1px solid var(--line);
+  background:
+    linear-gradient(180deg, rgba(21, 24, 29, 0.72), rgba(11, 13, 16, 0.3)),
+    repeating-linear-gradient(135deg, rgba(36, 40, 48, 0.25) 0 10px, transparent 10px 24px);
+}
+
+.browser-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 18px;
+}
+
+.hint-card {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 240px;
+  padding: 14px 16px;
+  border: 1px solid rgba(94, 184, 255, 0.18);
+  border-radius: 14px;
+  background: rgba(11, 13, 16, 0.72);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+}
+
+.hint-label {
+  color: var(--brand);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+}
+
+.hint-card strong {
+  font-size: 15px;
+}
+
+.hint-card span:last-child {
+  color: var(--text-2);
+  font-size: 12px;
+  word-break: break-all;
 }
 </style>
