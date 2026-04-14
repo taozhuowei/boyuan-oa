@@ -27,10 +27,7 @@ public class ExpenseService {
     private final ExpenseItemMapper expenseItemMapper;
     private final ExpenseTypeDefMapper expenseTypeDefMapper;
     private final EmployeeMapper employeeMapper;
-    private final DepartmentMapper departmentMapper;
-    private final FormRecordMapper formRecordMapper;
     private final FormService formService;
-    private final ApprovalFlowService approvalFlowService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -162,8 +159,7 @@ public class ExpenseService {
         try {
             return objectMapper.writeValueAsString(request);
         } catch (JsonProcessingException e) {
-            log.error("构建表单数据 JSON 失败", e);
-            return "{}";
+            throw new RuntimeException("Failed to serialize expense form data", e);
         }
     }
 
