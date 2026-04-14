@@ -30,6 +30,7 @@
                   type="link"
                   size="small"
                   style="padding: 0 4px;"
+                  :data-catch="'org-dept-edit-btn-' + node.deptName"
                   @click.stop="openEditModal({ id: node.deptId, name: node.deptName, parentId: node.deptParentId, sort: node.deptSort, employeeCount: node.employeeCount, children: [] })"
                 >
                   编辑
@@ -39,7 +40,7 @@
                   @confirm="doDeleteDept(node.deptId)"
                   @click.stop
                 >
-                  <a-button type="link" size="small" danger style="padding: 0 4px;">删除</a-button>
+                  <a-button type="link" size="small" danger style="padding: 0 4px;" :data-catch="'org-dept-delete-btn-' + node.deptName">删除</a-button>
                 </a-popconfirm>
               </template>
             </div>
@@ -67,6 +68,10 @@
           <a-input :value="getParentName(parentId)" disabled />
         </a-form-item>
       </a-form>
+      <template #footer>
+        <a-button @click="resetDeptForm">取消</a-button>
+        <a-button type="primary" :loading="deptLoading" data-catch="org-dept-modal-ok" @click="doSaveDept">确定</a-button>
+      </template>
     </a-modal>
   </div>
 </template>

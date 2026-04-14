@@ -1,44 +1,50 @@
+<!-- AutoTest root: 3-column + topbar layout (TopBar / DirectoryTree | Browser+DevTools | CaseList + ActionPanel) -->
 <template>
   <div id="app">
-    <ControlBar />
+    <TopBar />
     <div class="main-layout">
-      <div class="left-panel">
-        <CaseTree />
+      <div class="left-col">
+        <DirectoryTree />
       </div>
-      <div class="right-panel">
-        <div class="step-section">
-          <StepList />
+
+      <!-- Middle column is mostly covered by Electron BrowserView (managed from main process).
+           We only render the top toolbar and a placeholder hint; the BrowserView overlays the rest. -->
+      <div class="middle-col">
+        <BrowserToolbar />
+        <div class="browser-placeholder">
+          <span>浏览器内嵌区域 · DevTools 嵌于底部</span>
         </div>
-        <div class="console-section">
-          <ConsoleLog />
+      </div>
+
+      <div class="right-col">
+        <div class="case-list-wrap">
+          <CaseList @select="onCaseSelect" />
         </div>
+        <ActionPanel />
       </div>
     </div>
-    <ConfirmBar v-if="runnerStore.isPaused" class="confirm-bar" />
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue'
-import ControlBar from './components/ControlBar.vue'
-import CaseTree from './components/CaseTree.vue'
-import StepList from './components/StepList.vue'
-import ConfirmBar from './components/ConfirmBar.vue'
-import ConsoleLog from './components/ConsoleLog.vue'
+import TopBar from './components/TopBar.vue'
+import DirectoryTree from './components/DirectoryTree.vue'
+import BrowserToolbar from './components/BrowserToolbar.vue'
+import CaseList from './components/CaseList.vue'
+import ActionPanel from './components/ActionPanel.vue'
 import { useRunnerStore } from './stores/runner'
+import { useResultsStore } from './stores/results'
 
 const runnerStore = useRunnerStore()
+const resultsStore = useResultsStore()
+
+function onCaseSelect(caseId: string) {
+  resultsStore.selectCase(caseId)
+}
 
 onMounted(() => {
-  // Setup Electron IPC listeners
   runnerStore.setupElectronListeners()
-  
-  // Try to launch preview if Tauri API is available (legacy)
-  if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-    import('@tauri-apps/api/core').then(({ invoke }) => {
-      invoke('launch_preview').catch(() => {})
-    })
-  }
 })
 
 onUnmounted(() => {
@@ -46,69 +52,58 @@ onUnmounted(() => {
 })
 </script>
 
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-}
-</style>
-
 <style scoped>
 #app {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f7fa;
+  background: var(--bg-0);
+  color: var(--text-1);
 }
 
 .main-layout {
   flex: 1;
   display: flex;
   overflow: hidden;
+  min-height: 0;
 }
 
-.left-panel {
-  width: 320px;
+.left-col {
+  width: 260px;
   flex-shrink: 0;
-  background: #ffffff;
-  border-right: 1px solid #e2e8f0;
-  overflow: hidden;
 }
 
-.right-panel {
+.middle-col {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  min-width: 0;
+  background: var(--bg-0);
 }
 
-.step-section {
+.browser-placeholder {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-3);
+  font-size: 12px;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  background:
+    linear-gradient(var(--bg-0), var(--bg-0)) padding-box,
+    repeating-linear-gradient(45deg, var(--line) 0 1px, transparent 1px 14px) border-box;
+}
+
+.right-col {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.case-list-wrap {
   flex: 1;
   overflow: hidden;
-  background: #ffffff;
-}
-
-.console-section {
-  height: 180px;
-  flex-shrink: 0;
-  background: #1e1e1e;
-  border-top: 1px solid #333;
-}
-
-.confirm-bar {
-  position: fixed;
-  bottom: 200px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 100;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  border-radius: 8px;
-  padding: 16px 24px;
+  min-height: 0;
 }
 </style>

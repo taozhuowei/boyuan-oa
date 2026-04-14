@@ -18,6 +18,7 @@
       <!-- 我的记录 -->
       <template v-if="activeTab === 'records'">
         <a-table
+          data-catch="attendance-records-table"
           :columns="recordColumns"
           :data-source="records"
           :loading="loadingRecords"
@@ -67,7 +68,7 @@
             <a-textarea v-model:value="leaveForm.reason" :rows="3" />
           </a-form-item>
           <a-form-item>
-            <a-button type="primary" html-type="submit" :loading="submittingLeave">
+            <a-button type="primary" html-type="submit" :loading="submittingLeave" data-catch="leave-form-submit">
               提交申请
             </a-button>
           </a-form-item>
@@ -102,7 +103,7 @@
             <a-textarea v-model:value="overtimeForm.reason" :rows="3" />
           </a-form-item>
           <a-form-item>
-            <a-button type="primary" html-type="submit" :loading="submittingOvertime">
+            <a-button type="primary" html-type="submit" :loading="submittingOvertime" data-catch="attendance-overtime-submit">
               提交申报
             </a-button>
           </a-form-item>
@@ -137,7 +138,7 @@
             <a-textarea v-model:value="selfReportForm.reason" :rows="3" placeholder="请说明未能及时申报的原因" />
           </a-form-item>
           <a-form-item>
-            <a-button type="primary" html-type="submit" :loading="submittingSelfReport">
+            <a-button type="primary" html-type="submit" :loading="submittingSelfReport" data-catch="attendance-selfreport-submit">
               提交申请
             </a-button>
           </a-form-item>

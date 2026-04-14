@@ -31,7 +31,7 @@
             />
           </a-form-item>
 
-          <a-alert v-if="errorMsg" type="error" :message="errorMsg" show-icon style="margin-bottom: 16px" />
+          <a-alert v-if="errorMsg" type="error" :message="errorMsg" show-icon style="margin-bottom: 16px" data-catch="login-form-error-alert" />
 
           <a-form-item>
             <a-button
@@ -40,6 +40,7 @@
               size="large"
               block
               :loading="loading"
+              data-catch="login-form-submit"
             >
               登 录
             </a-button>

@@ -65,12 +65,15 @@
                   <a-select-option value="PM">PM</a-select-option>
                   <a-select-option value="MEMBER">成员</a-select-option>
                 </a-select>
-                <a-button type="primary" :loading="addMemberLoading" @click="doAddMember">添加成员</a-button>
+                <a-button data-catch="project-members-add-btn" type="primary" :loading="addMemberLoading" @click="doAddMember">添加成员</a-button>
+                <!-- TODO data-catch: project-members-user-select — element not found -->
+                <!-- TODO data-catch: project-members-save-btn — element not found -->
               </a-space>
             </div>
           </template>
 
           <a-table
+            data-catch="project-members-list"
             :columns="memberColumns"
             :data-source="members"
             :loading="loadingProject"
@@ -94,7 +97,7 @@
         <!-- ── Tab: 里程碑 ── -->
         <template v-if="activeTab === 'milestones'">
           <div style="margin-bottom: 12px;">
-            <a-button type="primary" @click="showMilestoneModal = true">+ 新建里程碑</a-button>
+            <a-button data-catch="project-milestone-add-btn" type="primary" @click="showMilestoneModal = true">+ 新建里程碑</a-button>
             <a-button style="margin-left: 8px;" @click="loadMilestones" :loading="loadingMilestones">刷新</a-button>
           </div>
 
@@ -137,6 +140,7 @@
             @ok="doSaveMilestone"
             :confirm-loading="milestoneLoading"
             @cancel="resetMilestoneForm"
+            :okButtonProps="{ 'data-catch': 'project-milestone-save-btn' }"
           >
             <a-form :model="milestoneForm" layout="vertical">
               <a-form-item label="名称" required>
@@ -172,8 +176,9 @@
                 <a-textarea v-model:value="progressForm.note" :rows="3" placeholder="描述今日完成内容…" />
               </a-form-item>
               <a-form-item>
-                <a-button type="primary" :loading="progressLoading" @click="doRecordProgress">提交进度</a-button>
+                <a-button data-catch="project-progress-update-btn" type="primary" :loading="progressLoading" @click="doRecordProgress">提交进度</a-button>
               </a-form-item>
+              <!-- TODO data-catch: project-progress-save-btn — element not found -->
             </a-form>
           </a-card>
 
@@ -193,6 +198,8 @@
           </a-card>
         </template>
 
+        <!-- TODO data-catch: project-cost-add-btn — element not found -->
+        <!-- TODO data-catch: project-cost-save-btn — element not found -->
         <!-- ── Tab: Dashboard ── -->
         <template v-if="activeTab === 'dashboard'">
           <a-spin :spinning="loadingDashboard">

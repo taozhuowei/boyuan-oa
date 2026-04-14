@@ -1,13 +1,131 @@
 /**
- * Operation logs module test cases
+ * Operation-Logs module test cases — TC-OPLOG-01 ~ TC-OPLOG-07
+ * Scope: log list, time filter, pagination, action logging, permission guard
  */
+import type { TestCase } from '../../../../tools/autotest/runner/types.js';
+import { loginSteps, USERS } from '../_helpers.js';
 
-import tc_log_01_view_logs from './tc_log_01_view_logs.js';
-import tc_log_02_filter_by_date from './tc_log_02_filter_by_date.js';
-import tc_log_03_finance_no_access from './tc_log_03_finance_no_access.js';
-
-export default [
-  tc_log_01_view_logs,
-  tc_log_02_filter_by_date,
-  tc_log_03_finance_no_access,
+const cases: TestCase[] = [
+  {
+    id: 'TC-OPLOG-01',
+    title: 'CEO 进入操作日志页，列表加载，显示操作人/类型/时间',
+    description: '角色：CEO。路径：登录 → /operation-logs。期望：页面标题为"操作日志"，表格显示操作人、操作类型、时间列。',
+    module: 'operation-logs',
+    priority: 'P0',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '访问 /operation-logs', action: 'navigate', to: '/operation-logs' },
+      { id: 7, desc: '页面标题"操作日志"可见', action: 'assert', check: { type: 'text_visible', value: '操作日志' } },
+      { id: 8, desc: '表格显示"操作人"列', action: 'assert', check: { type: 'text_visible', value: '操作人' } },
+      { id: 9, desc: '表格显示"操作类型"列', action: 'assert', check: { type: 'text_visible', value: '操作类型' } },
+      { id: 10, desc: '表格显示"时间"列', action: 'assert', check: { type: 'text_visible', value: '时间' } },
+    ],
+    expect: { result: 'pass', url: '/operation-logs' },
+  },
+  {
+    id: 'TC-OPLOG-02',
+    title: '按时间范围筛选',
+    description: '角色：CEO。路径：/operation-logs → 选择自定义时间范围 → 点击搜索。期望：列表按条件加载数据。',
+    module: 'operation-logs',
+    priority: 'P1',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '访问 /operation-logs', action: 'navigate', to: '/operation-logs' },
+      { id: 7, desc: '输入开始日期', action: 'fill', locator: { by: 'placeholder', value: '开始日期' }, value: '2026-04-01' },
+      { id: 8, desc: '输入结束日期', action: 'fill', locator: { by: 'placeholder', value: '结束日期' }, value: '2026-04-14' },
+      { id: 9, desc: '点击搜索按钮', action: 'click', locator: { by: 'catch', value: 'operation-logs-list-search-btn' } },
+      { id: 10, desc: '等待筛选结果加载', action: 'wait', ms: 800 },
+      { id: 11, desc: '列表应显示数据', action: 'assert', check: { type: 'element_visible', locator: { by: 'css', value: '.ant-table-row' } } },
+    ],
+    expect: { result: 'pass', url: '/operation-logs' },
+  },
+  {
+    id: 'TC-OPLOG-03',
+    title: '列表分页，翻页正常',
+    description: '角色：CEO。路径：/operation-logs → 点击分页到第 2 页。期望：列表加载第 2 页数据，分页高亮。',
+    module: 'operation-logs',
+    priority: 'P1',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '访问 /operation-logs', action: 'navigate', to: '/operation-logs' },
+      { id: 7, desc: '等待列表加载', action: 'wait', ms: 1000 },
+      { id: 8, desc: '点击第 2 页分页按钮', action: 'click', locator: { by: 'css', value: '.ant-pagination-item[title="2"]' } },
+      { id: 9, desc: '等待翻页结果加载', action: 'wait', ms: 800 },
+      { id: 10, desc: '当前分页应高亮', action: 'assert', check: { type: 'element_visible', locator: { by: 'css', value: '.ant-pagination-item-active' } } },
+    ],
+    expect: { result: 'pass', url: '/operation-logs' },
+  },
+  {
+    id: 'TC-OPLOG-04',
+    title: '执行薪资结算后日志出现对应记录',
+    description: '角色：CEO。路径：/operation-logs。期望：列表中存在"薪资结算"类型的操作日志记录。',
+    module: 'operation-logs',
+    priority: 'P1',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '访问 /operation-logs', action: 'navigate', to: '/operation-logs' },
+      { id: 7, desc: '列表应包含薪资结算记录', action: 'assert', check: { type: 'text_visible', value: '薪资结算' } },
+    ],
+    expect: { result: 'pass', url: '/operation-logs' },
+  },
+  {
+    id: 'TC-OPLOG-05',
+    title: '执行员工信息修改后日志出现对应记录',
+    description: '角色：CEO。路径：/operation-logs。期望：列表中存在"更新员工"类型的操作日志记录。',
+    module: 'operation-logs',
+    priority: 'P1',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '访问 /operation-logs', action: 'navigate', to: '/operation-logs' },
+      { id: 7, desc: '列表应包含更新员工记录', action: 'assert', check: { type: 'text_visible', value: '更新员工' } },
+    ],
+    expect: { result: 'pass', url: '/operation-logs' },
+  },
+  {
+    id: 'TC-OPLOG-06',
+    title: '财务账号访问 /operation-logs',
+    description: '角色：Finance。路径：登录后直接访问 /operation-logs。期望：页面显示 403 或无权限提示，不展示操作日志列表。',
+    module: 'operation-logs',
+    priority: 'P0',
+    roles: ['finance'],
+    credentials: USERS.finance,
+    tags: ['permission'],
+    steps: [
+      ...loginSteps(USERS.finance.username, USERS.finance.password),
+      { id: 6, desc: '访问 /operation-logs', action: 'navigate', to: '/operation-logs' },
+      { id: 7, desc: '不应显示操作日志列表标题', action: 'assert', check: { type: 'text_absent', value: '操作日志' } },
+    ],
+    expect: { result: 'pass' },
+  },
+  {
+    id: 'TC-OPLOG-07',
+    title: '搜索时间范围结束早于开始',
+    description: '角色：CEO。路径：/operation-logs → 开始日期晚于结束日期 → 点击搜索。期望：出现时间范围校验提示。',
+    module: 'operation-logs',
+    priority: 'P1',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '访问 /operation-logs', action: 'navigate', to: '/operation-logs' },
+      { id: 7, desc: '输入开始日期', action: 'fill', locator: { by: 'placeholder', value: '开始日期' }, value: '2026-04-14' },
+      { id: 8, desc: '输入结束日期（早于开始）', action: 'fill', locator: { by: 'placeholder', value: '结束日期' }, value: '2026-04-01' },
+      { id: 9, desc: '点击搜索按钮', action: 'click', locator: { by: 'catch', value: 'operation-logs-list-search-btn' } },
+      { id: 10, desc: '等待校验提示', action: 'wait', ms: 800 },
+      { id: 11, desc: '出现时间范围校验提示', action: 'assert', check: { type: 'toast_contains', value: '时间范围' } },
+    ],
+    expect: { result: 'pass', url: '/operation-logs' },
+  },
 ];
+
+export default cases;

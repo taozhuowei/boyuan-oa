@@ -63,7 +63,7 @@
 
           <!-- ● 头像菜单 -->
           <a-dropdown placement="bottomRight">
-            <a-button type="text" class="avatar-btn">
+            <a-button type="text" class="avatar-btn" data-catch="header-avatar-btn">
               <a-avatar size="small" :style="{ backgroundColor: '#003466' }">
                 {{ userStore.userInfo?.displayName?.slice(0, 1) ?? '?' }}
               </a-avatar>

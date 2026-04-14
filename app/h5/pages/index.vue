@@ -1,6 +1,6 @@
 <template>
   <!-- Workbench dashboard — shows role-based summary cards and pending approval items -->
-  <div class="workbench-page">
+  <div class="workbench-page" data-catch="workbench-summary-root">
     <h2 class="page-title">工作台</h2>
 
     <!-- First-login warning banner -->
@@ -19,7 +19,7 @@
 
     <!-- KPI cards -->
     <div class="stat-cards">
-      <a-card class="stat-card">
+      <a-card class="stat-card" data-catch="workbench-card-todos">
         <a-statistic
           title="待审批事项"
           :value="summary?.pendingApprovalCount ?? todoList.length"
@@ -31,6 +31,18 @@
           title="通知"
           :value="summary?.unreadNotificationCount ?? 0"
           suffix="条未读"
+        />
+      </a-card>
+
+      <a-card
+        v-if="totalEmployees != null"
+        class="stat-card"
+        data-catch="workbench-card-total-employees"
+      >
+        <a-statistic
+          title="员工总数"
+          :value="totalEmployees"
+          suffix="人"
         />
       </a-card>
 
@@ -50,6 +62,7 @@
       <a-card
         v-if="summary?.activeProjectCount != null"
         class="stat-card clickable-card"
+        data-catch="workbench-card-active-projects"
         @click="navigateTo('/projects')"
       >
         <a-statistic
@@ -124,6 +137,7 @@ const loading = ref(false)
 const todoList = ref<FormRecord[]>([])
 const summary = ref<WorkbenchSummary | null>(null)
 const isDefaultPwd = ref<boolean | null>(null)
+const totalEmployees = ref<number | null>(null)
 
 const todoColumns = [
   { title: '类型', dataIndex: 'formTypeName', key: 'formTypeName' },
@@ -174,14 +188,16 @@ onMounted(async () => {
     // Load both todo list and summary in parallel
     const role = useUserStore().userInfo?.role
     const canAccessAttendanceTodo = role === 'ceo' || role === 'project_manager'
-    const [list, summaryData] = await Promise.all([
+    const [list, summaryData, employeesData] = await Promise.all([
       canAccessAttendanceTodo
         ? request<FormRecord[]>({ url: '/attendance/todo' }).catch(() => [])
         : Promise.resolve([]),
-      request<WorkbenchSummary>({ url: '/workbench/summary' }).catch(() => null)
+      request<WorkbenchSummary>({ url: '/workbench/summary' }).catch(() => null),
+      request<{ totalElements: number }>({ url: '/employees?size=1' }).catch(() => null)
     ])
     todoList.value = list ?? []
     summary.value = summaryData
+    totalEmployees.value = employeesData?.totalElements ?? null
 
     // Check default password status after summary is loaded and userInfo is available
     const userStore = useUserStore()

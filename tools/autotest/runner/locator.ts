@@ -56,6 +56,9 @@ export function resolve(page: Page, loc: LocatorDef): Locator {
     case 'testid':
       return page.getByTestId(loc.value);
 
+    case 'catch':
+      return page.locator(`[data-catch="${loc.value}"]`);
+
     case 'css':
       return page.locator(loc.value);
 

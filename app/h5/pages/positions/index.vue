@@ -14,7 +14,7 @@
           @press-enter="onSearch"
         />
         <a-button type="primary" @click="onSearch">搜索</a-button>
-        <a-button v-if="isCEO" type="primary" style="margin-left: auto" @click="openAddPositionModal">
+        <a-button v-if="isCEO" type="primary" style="margin-left: auto" data-catch="positions-list-create-btn" @click="openAddPositionModal">
           新增岗位
         </a-button>
       </div>
@@ -26,6 +26,7 @@
         :pagination="false"
         row-key="id"
         size="small"
+        :expand-icon="expandIcon"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'socialInsuranceMode'">
@@ -33,7 +34,7 @@
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button v-if="isCEO" type="link" size="small" @click.stop="openEditPositionModal(record)">
+              <a-button v-if="isCEO" type="link" size="small" :data-catch="'positions-row-edit-btn-' + record.id" @click.stop="openEditPositionModal(record)">
                 编辑
               </a-button>
               <a-popconfirm
@@ -43,7 +44,7 @@
                 cancel-text="取消"
                 @confirm.stop="deletePosition(record.id)"
               >
-                <a-button type="link" danger size="small" @click.stop>删除</a-button>
+                <a-button type="link" danger size="small" :data-catch="'positions-row-delete-btn-' + record.id" @click.stop>删除</a-button>
               </a-popconfirm>
             </a-space>
           </template>
@@ -54,7 +55,7 @@
           <div class="levels-section">
             <div class="levels-header">
               <span class="levels-title">等级配置</span>
-              <a-button v-if="isCEO" type="primary" size="small" @click="openAddLevelModal(record.id)">
+              <a-button v-if="isCEO" type="primary" size="small" :data-catch="'positions-levels-create-btn-' + record.id" @click="openAddLevelModal(record.id)">
                 新增等级
               </a-button>
             </div>
@@ -69,7 +70,7 @@
               <template #bodyCell="{ column, record: level }">
                 <template v-if="column.key === 'action' && isCEO">
                   <a-space>
-                    <a-button type="link" size="small" @click="openEditLevelModal(record.id, level)">
+                    <a-button type="link" size="small" :data-catch="'positions-level-row-edit-btn-' + level.id" @click="openEditLevelModal(record.id, level)">
                       编辑
                     </a-button>
                     <a-popconfirm
@@ -166,6 +167,10 @@
           </a-col>
         </a-row>
       </a-form>
+      <template #footer>
+        <a-button @click="closePositionModal">取消</a-button>
+        <a-button type="primary" :loading="positionModalLoading" data-catch="positions-modal-save-btn" @click="submitPosition">确定</a-button>
+      </template>
     </a-modal>
 
     <!-- Level Modal (Create/Edit) -->
@@ -210,12 +215,16 @@
           </a-col>
         </a-row>
       </a-form>
+      <template #footer>
+        <a-button @click="closeLevelModal">取消</a-button>
+        <a-button type="primary" :loading="levelModalLoading" data-catch="positions-level-modal-save-btn" @click="submitLevel">确定</a-button>
+      </template>
     </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { h, ref, computed, onMounted } from 'vue'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 import { message } from 'ant-design-vue'
@@ -271,6 +280,17 @@ interface LevelForm {
   baseSalaryOverride: number | null
   performanceBonusOverride: number | null
   annualLeaveOverride: number | null
+}
+
+function expandIcon(props: { expanded: boolean; onExpand: (expanded: boolean, record: any) => void; record: any }) {
+  return h('span', {
+    'data-catch': `positions-row-expand-btn-${props.record.id}`,
+    style: { cursor: 'pointer', marginRight: '8px', color: '#1890ff' },
+    onClick: (e: Event) => {
+      e.stopPropagation()
+      props.onExpand(!props.expanded, props.record)
+    }
+  }, props.expanded ? '▼' : '▶')
 }
 
 // User permissions

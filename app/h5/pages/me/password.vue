@@ -31,7 +31,7 @@
 
         <a-form-item>
           <a-space>
-            <a-button type="primary" html-type="submit" :loading="loading">
+            <a-button type="primary" html-type="submit" :loading="loading" data-catch="me-password-submit">
               保存
             </a-button>
             <a-button @click="handleCancel">取消</a-button>

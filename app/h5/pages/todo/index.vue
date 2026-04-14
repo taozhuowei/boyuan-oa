@@ -26,7 +26,7 @@
             {{ getSummary(record) }}
           </template>
           <template v-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="viewApproval(record)">查看审批</a-button>
+            <a-button type="link" size="small" :data-catch="'todo-row-detail-btn-' + record.id" @click="viewApproval(record)">查看审批</a-button>
           </template>
         </template>
       </a-table>
@@ -52,9 +52,10 @@
         <div class="modal-actions">
           <a-space>
             <a-input v-model:value="approvalComment" placeholder="审批意见（选填）" style="width: 280px" />
-            <a-button danger @click="handleReject">驳回</a-button>
-            <a-button type="primary" @click="handleApprove">通过</a-button>
+            <a-button data-catch="approval-reject-btn" danger @click="handleReject">驳回</a-button>
+            <a-button data-catch="approval-approve-btn" type="primary" @click="handleApprove">通过</a-button>
           </a-space>
+          <!-- TODO data-catch: approval-confirm-btn — element not found -->
         </div>
       </div>
     </a-modal>

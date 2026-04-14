@@ -4,7 +4,7 @@
     <div class="page-header">
       <h2 class="page-title">通知中心</h2>
       <div class="header-actions">
-        <a-button type="link" size="small" :loading="markingAllRead" @click="markAllAsRead">
+        <a-button type="link" size="small" data-catch="notification-mark-all-read" :loading="markingAllRead" @click="markAllAsRead">
           全部已读
         </a-button>
         <a-button type="link" size="small" danger :loading="clearingRead" @click="clearRead">
@@ -19,15 +19,16 @@
       :locale="{ emptyText: '' }"
       class="notification-list"
     >
-      <template #renderItem="{ item }">
+      <template #renderItem="{ item, index }">
         <a-list-item
           :class="['notification-item', { unread: !item.read }]"
+          :data-catch="index === 0 ? 'notification-item-first' : undefined"
           @click="handleItemClick(item)"
         >
           <a-list-item-meta>
             <template #title>
               <div class="notification-title">
-                <a-badge v-if="!item.read" status="error" class="unread-badge" />
+                <a-badge v-if="!item.read" status="error" class="unread-badge" data-catch="notification-badge-unread" />
                 <span>{{ item.title }}</span>
               </div>
             </template>

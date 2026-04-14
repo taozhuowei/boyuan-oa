@@ -31,7 +31,7 @@
           </template>
           <template v-if="column.key === 'action'">
             <template v-if="isCEO && !record.isSystem">
-              <a-button type="link" size="small" @click="openEditModal(record)">
+              <a-button type="link" size="small" :data-catch="'role-row-edit-btn-' + record.roleCode" @click="openEditModal(record)">
                 编辑
               </a-button>
               <a-popconfirm
@@ -40,7 +40,7 @@
                 cancel-text="取消"
                 @confirm="handleDelete(record.id)"
               >
-                <a-button type="link" size="small" danger>
+                <a-button type="link" size="small" danger :data-catch="'role-row-delete-btn-' + record.roleCode">
                   删除
                 </a-button>
               </a-popconfirm>
@@ -91,6 +91,10 @@
           <a-select v-model:value="formState.status" :options="statusOptions" />
         </a-form-item>
       </a-form>
+      <template #footer>
+        <a-button @click="closeModal">取消</a-button>
+        <a-button type="primary" data-catch="role-modal-save-btn" @click="handleModalOk">保存</a-button>
+      </template>
     </a-modal>
   </div>
 </template>

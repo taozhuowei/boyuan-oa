@@ -6,7 +6,7 @@
   <div class="construction-log-page">
     <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h2 class="page-title" style="margin:0;">施工日志</h2>
-      <a-button type="primary" @click="showSubmitModal = true">+ 填写日志</a-button>
+      <a-button type="primary" @click="showSubmitModal = true" data-catch="construction-log-create-btn">+ 填写日志</a-button>
     </div>
 
     <!-- 历史记录列表 -->
@@ -25,6 +25,9 @@
           </a-list-item>
         </template>
       </a-list>
+      <!-- TODO data-catch: construction-row-review-btn-1 — element not found -->
+      <!-- TODO data-catch: construction-row-approve-btn-1 — element not found -->
+      <!-- TODO data-catch: construction-row-reject-btn-1 — element not found -->
     </a-spin>
 
     <!-- 填写施工日志弹窗 -->

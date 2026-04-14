@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, WebContentsView, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, WebContentsView, dialog, screen, Menu } from 'electron'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
 import { fork } from 'child_process'
@@ -14,15 +14,20 @@ let runnerProcess: any = null
 let cdpPort: number = 9222
 
 function createWindow() {
+  const { workArea } = screen.getPrimaryDisplay()
   mainWindow = new BrowserWindow({
-    width: 1600,
-    height: 1000,
+    x: workArea.x,
+    y: workArea.y,
+    width: workArea.width,
+    height: workArea.height,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false
     }
   })
+  mainWindow.setMenuBarVisibility(false)
 
   // 创建 BrowserView 用于显示被测页面
   browserView = new WebContentsView({
@@ -35,10 +40,13 @@ function createWindow() {
   // 启用远程调试 (CDP)
   browserView.webContents.debugger.attach('1.3')
 
+  // 打开 DevTools（嵌入底部）
+  browserView.webContents.openDevTools({ mode: 'bottom' })
+
   if (mainWindow) {
     mainWindow.contentView.addChildView(browserView)
     
-    // 设置布局：左侧 60% BrowserView，右侧 40% 主窗口用于 Vue UI
+    // 设置布局：浏览器视图占中间栏
     const bounds = mainWindow.getBounds()
     updateLayout(bounds.width, bounds.height)
 
@@ -62,25 +70,133 @@ function createWindow() {
 
 function updateLayout(width: number, height: number) {
   if (!browserView || !mainWindow) return
-  
-  const leftWidth = Math.floor(width * 0.6)
-  const rightWidth = width - leftWidth
-  
-  // BrowserView 占左侧 60%
+
+  // TopBar 40 + BrowserToolbar 40 = 80 留给 Vue UI
+  const topOffset = 80
+  const leftCol = 260
+  const rightCol = 320
+
   browserView.setBounds({
-    x: 0,
-    y: 0,
-    width: leftWidth,
-    height: height
+    x: leftCol,
+    y: topOffset,
+    width: width - leftCol - rightCol,
+    height: height - topOffset,
   })
-  
-  // 主窗口内容区域占右侧 40%
+
   mainWindow.webContents.executeJavaScript(`
-    document.documentElement.style.setProperty('--browser-width', '${leftWidth}px')
+    document.documentElement.style.setProperty('--browser-width', '${width - leftCol - rightCol}px')
   `)
 }
 
+// 递归扫描目录，仅包含 .ts 文件和目录
+function scanDir(dirPath: string): any[] {
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+    const result: any[] = []
+    for (const entry of entries) {
+      const fullPath = join(dirPath, entry.name)
+      if (entry.isDirectory()) {
+        result.push({
+          name: entry.name,
+          path: fullPath,
+          type: 'dir',
+          children: scanDir(fullPath)
+        })
+      } else if (entry.isFile() && entry.name.endsWith('.ts')) {
+        result.push({
+          name: entry.name,
+          path: fullPath,
+          type: 'file'
+        })
+      }
+    }
+    return result.sort((a, b) => {
+      if (a.type === b.type) return a.name.localeCompare(b.name)
+      return a.type === 'dir' ? -1 : 1
+    })
+  } catch {
+    return []
+  }
+}
+
 // IPC 通信
+ipcMain.handle('scan-dir', async (_, dirPath: string) => {
+  try {
+    const tree = scanDir(dirPath)
+    return { success: true, tree }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+})
+
+ipcMain.handle('scan-cases', async (_, dirPaths: string[]) => {
+  try {
+    const runnerPath = join(__dirname, '../runner/index.ts')
+    const allCases: any[] = []
+    for (const casesDir of dirPaths) {
+      const cases = await new Promise<any[]>((resolveP, rejectP) => {
+        const child = fork(runnerPath, ['--scan-only', '--cases-dir', casesDir], {
+          execArgv: ['--import', 'tsx'],
+          stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+        })
+        const timer = setTimeout(() => {
+          child.kill('SIGTERM')
+          rejectP(new Error('Scan timeout'))
+        }, 30000)
+        child.on('message', (msg: any) => {
+          if (msg?.type === 'cases-scanned') {
+            clearTimeout(timer)
+            resolveP(msg.cases)
+            child.kill()
+          } else if (msg?.type === 'cases-scan-error') {
+            clearTimeout(timer)
+            rejectP(new Error(msg.error))
+            child.kill()
+          }
+        })
+        child.on('error', (e) => { clearTimeout(timer); rejectP(e) })
+      })
+      allCases.push(...cases)
+    }
+    return { success: true, cases: allCases }
+  } catch (err) {
+    return { success: false, error: String(err) }
+  }
+})
+
+ipcMain.handle('browser-back', async () => {
+  if (browserView) {
+    browserView.webContents.goBack()
+  }
+})
+
+ipcMain.handle('browser-forward', async () => {
+  if (browserView) {
+    browserView.webContents.goForward()
+  }
+})
+
+ipcMain.handle('browser-reload', async () => {
+  if (browserView) {
+    browserView.webContents.reload()
+  }
+})
+
+ipcMain.handle('browser-navigate', async (_, url: string) => {
+  if (browserView) {
+    await browserView.webContents.loadURL(url)
+  }
+})
+
+ipcMain.handle('devtools-toggle', async () => {
+  if (!browserView) return
+  if (browserView.webContents.isDevToolsOpened()) {
+    browserView.webContents.closeDevTools()
+  } else {
+    browserView.webContents.openDevTools({ mode: 'bottom' })
+  }
+})
+
 ipcMain.handle('start-runner', async (_, casesDir: string, baseUrl: string) => {
   try {
     if (runnerProcess) {
@@ -125,6 +241,43 @@ ipcMain.handle('stop-runner', async () => {
 ipcMain.handle('navigate-browser', async (_, url: string) => {
   if (browserView) {
     await browserView.webContents.loadURL(url)
+  }
+})
+
+// 加载配置并扫描用例
+ipcMain.handle('load-config', async (_, configPath: string) => {
+  try {
+    const configText = fs.readFileSync(configPath, 'utf-8')
+    const config = JSON.parse(configText)
+    const casesDir = join(dirname(configPath), config.cases_dir || './cases')
+
+    const runnerPath = join(__dirname, '../runner/index.ts')
+    const cases = await new Promise<any[]>((resolveP, rejectP) => {
+      const child = fork(runnerPath, ['--scan-only', '--cases-dir', casesDir], {
+        execArgv: ['--import', 'tsx'],
+        stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+      })
+      const timer = setTimeout(() => {
+        child.kill('SIGTERM')
+        rejectP(new Error('Scan timeout'))
+      }, 30000)
+      child.on('message', (msg: any) => {
+        if (msg?.type === 'cases-scanned') {
+          clearTimeout(timer)
+          resolveP(msg.cases)
+          child.kill()
+        } else if (msg?.type === 'cases-scan-error') {
+          clearTimeout(timer)
+          rejectP(new Error(msg.error))
+          child.kill()
+        }
+      })
+      child.on('error', (e) => { clearTimeout(timer); rejectP(e) })
+    })
+
+    return { success: true, config: { ...config, _configPath: configPath, _casesDir: casesDir }, cases }
+  } catch (err) {
+    return { success: false, error: String(err) }
   }
 })
 
@@ -194,6 +347,7 @@ function setupConsoleForwarding() {
 }
 
 app.whenReady().then(() => {
+  Menu.setApplicationMenu(null)
   createWindow()
   setupConsoleForwarding()
 

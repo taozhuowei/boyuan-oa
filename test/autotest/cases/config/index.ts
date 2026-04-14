@@ -1,13 +1,140 @@
 /**
- * Config module test cases
+ * Config module test cases — TC-CFG-01 ~ TC-CFG-07
+ * Scope: system configuration — attendance units, approval flows, retention policy
+ * Note: Retention-period config UI is not present on /config; related cases use api_call.
  */
+import type { TestCase } from '../../../../tools/autotest/runner/types.js';
+import { loginSteps, USERS } from '../_helpers.js';
 
-import tc_cfg_01_load_config from './tc_cfg_01_load_config.js';
-import tc_cfg_02_change_leave_unit from './tc_cfg_02_change_leave_unit.js';
-import tc_cfg_06_finance_no_access from './tc_cfg_06_finance_no_access.js';
-
-export default [
-  tc_cfg_01_load_config,
-  tc_cfg_02_change_leave_unit,
-  tc_cfg_06_finance_no_access,
+const cases: TestCase[] = [
+  {
+    id: 'TC-CFG-01',
+    title: '系统配置页正常加载',
+    description: '角色：CEO。路径：登录 → /config。期望：页面显示"考勤计量单位"卡片与请假/加班单位字段。',
+    module: 'config',
+    priority: 'P0',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '访问 /config', action: 'navigate', to: '/config' },
+      { id: 7, desc: '标题"系统配置"可见', action: 'assert', check: { type: 'text_visible', value: '系统配置' } },
+      { id: 8, desc: '"考勤计量单位"卡片可见', action: 'assert', check: { type: 'text_visible', value: '考勤计量单位' } },
+      { id: 9, desc: '请假单位字段可见', action: 'assert', check: { type: 'text_visible', value: '请假单位' } },
+      { id: 10, desc: '加班单位字段可见', action: 'assert', check: { type: 'text_visible', value: '加班单位' } },
+    ],
+    expect: { result: 'pass', url: '/config' },
+  },
+  {
+    id: 'TC-CFG-02',
+    title: 'CEO 修改请假单位后生效',
+    description: '角色：CEO。路径：/config → 选择请假单位"天" → 保存 → 重新加载页面。期望：请假单位显示为"天"。',
+    module: 'config',
+    priority: 'P0',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '访问 /config', action: 'navigate', to: '/config' },
+      { id: 7, desc: '点击请假单位下拉', action: 'click', locator: { by: 'catch', value: 'config-leave-unit-select' } },
+      { id: 8, desc: '选择"天"选项', action: 'click', locator: { by: 'text', value: '天', exact: true } },
+      { id: 9, desc: '点击保存', action: 'click', locator: { by: 'catch', value: 'config-attendance-save-btn' } },
+      { id: 10, desc: '出现"保存成功"提示', action: 'assert', check: { type: 'toast_contains', value: '保存成功' } },
+      { id: 11, desc: '刷新页面', action: 'navigate', to: '/config' },
+      { id: 12, desc: '请假单位显示为"天"', action: 'assert', check: { type: 'text_visible', value: '天' } },
+    ],
+    expect: { result: 'pass', url: '/config' },
+  },
+  {
+    id: 'TC-CFG-03',
+    title: '审批流配置表格展示所有业务类型',
+    description: '角色：CEO。路径：/config。期望：审批流配置卡片内表格展示请假/加班/施工日志/工伤 4 种业务的审批流状态。',
+    module: 'config',
+    priority: 'P1',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '访问 /config', action: 'navigate', to: '/config' },
+      { id: 7, desc: '"审批流配置"卡片可见', action: 'assert', check: { type: 'text_visible', value: '审批流配置' } },
+      { id: 8, desc: '表格应至少展示 1 行业务类型', action: 'assert', check: { type: 'element_visible', locator: { by: 'catch', value: 'config-approval-flows-table' } } },
+    ],
+    expect: { result: 'pass', url: '/config' },
+  },
+  {
+    id: 'TC-CFG-04',
+    title: '数据保留期配置可通过 API 查询',
+    description: '角色：CEO。路径：登录后调 /api/config/retention。期望：API 返回保留期当前值（UI 暂未实现对应页面）。',
+    module: 'config',
+    priority: 'P1',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    tags: ['api-only'],
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '调用 GET /api/config/retention', action: 'api_call', method: 'GET', endpoint: '/api/config/retention' },
+      { id: 7, desc: '人工核对 API 返回了保留期值（查看 console 日志）', action: 'screenshot', label: 'retention-api-response' },
+    ],
+    expect: { result: 'pass' },
+  },
+  {
+    id: 'TC-CFG-05',
+    title: '修改数据保留期通过 API',
+    description: '角色：CEO。路径：登录后调 POST /api/config/retention 修改某模块保留期。期望：API 返回 200，再查询应为新值。',
+    module: 'config',
+    priority: 'P1',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    tags: ['api-only'],
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      {
+        id: 6,
+        desc: '调用 POST /api/config/retention（修改 audit 模块保留 90 天）',
+        action: 'api_call',
+        method: 'POST',
+        endpoint: '/api/config/retention',
+        body: { module: 'audit', days: 90 },
+      },
+      { id: 7, desc: '再次 GET 验证值', action: 'api_call', method: 'GET', endpoint: '/api/config/retention' },
+      { id: 8, desc: '人工核对返回值', action: 'screenshot', label: 'retention-updated' },
+    ],
+    expect: { result: 'pass' },
+  },
+  {
+    id: 'TC-CFG-06',
+    title: '财务账号无"系统"入口',
+    description: '角色：Finance。路径：登录。期望：顶部工具栏不显示"系统"按钮（该按钮仅 CEO 可见）。',
+    module: 'config',
+    priority: 'P1',
+    roles: ['finance'],
+    credentials: USERS.finance,
+    tags: ['permission'],
+    steps: [
+      ...loginSteps(USERS.finance.username, USERS.finance.password),
+      { id: 6, desc: '顶部不应显示"⚙ 系统"按钮', action: 'assert', check: { type: 'text_absent', value: '⚙ 系统' } },
+      { id: 7, desc: '直接访问 /config', action: 'navigate', to: '/config' },
+      { id: 8, desc: '不应显示"保存"按钮（财务即使能进入也只读）', action: 'assert', check: { type: 'element_hidden', locator: { by: 'catch', value: 'config-attendance-save-btn' } } },
+    ],
+    expect: { result: 'pass' },
+  },
+  {
+    id: 'TC-CFG-07',
+    title: '保留期设为 0 或负数触发校验',
+    description: '角色：CEO。路径：API 层 POST /api/config/retention days=0 或负数。期望：返回 4xx，不写入。',
+    module: 'config',
+    priority: 'P1',
+    roles: ['ceo'],
+    credentials: USERS.ceo,
+    tags: ['api-only'],
+    steps: [
+      ...loginSteps(USERS.ceo.username, USERS.ceo.password),
+      { id: 6, desc: '调用 POST 设 days=0', action: 'api_call', method: 'POST', endpoint: '/api/config/retention', body: { module: 'audit', days: 0 } },
+      { id: 7, desc: '调用 POST 设 days=-5', action: 'api_call', method: 'POST', endpoint: '/api/config/retention', body: { module: 'audit', days: -5 } },
+      { id: 8, desc: '人工核对返回错误码（看 console）', action: 'screenshot', label: 'retention-validation' },
+    ],
+    expect: { result: 'pass' },
+  },
 ];
+
+export default cases;

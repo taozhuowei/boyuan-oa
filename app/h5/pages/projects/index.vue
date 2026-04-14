@@ -29,6 +29,7 @@
     <!-- 项目列表 -->
     <a-card>
       <a-table
+        data-catch="projects-list-table"
         :columns="columns"
         :data-source="projects"
         :loading="loading"
@@ -61,12 +62,13 @@
                   title="确认关闭该项目？"
                   @confirm="doCloseProject(record.id as number)"
                 >
-                  <a-button type="link" size="small" danger>关闭</a-button>
+                  <a-button type="link" size="small" danger :data-catch="'project-row-close-btn-' + record.id">关闭</a-button>
                 </a-popconfirm>
                 <a-button
                   v-if="record.status === 'CLOSED'"
                   type="link"
                   size="small"
+                  :data-catch="'project-row-reopen-btn-' + record.id"
                   @click="doReopenProject(record.id as number)"
                 >重开</a-button>
                 <a-popconfirm title="确认删除该项目？" @confirm="doDeleteProject(record.id as number)">
@@ -86,6 +88,7 @@
       @ok="doCreateProject"
       :confirm-loading="createLoading"
       @cancel="resetCreateForm"
+      :okButtonProps="{ 'data-catch': 'project-create-modal-ok' }"
     >
       <a-form :model="createForm" layout="vertical">
         <a-form-item label="项目名称" required>

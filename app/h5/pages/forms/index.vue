@@ -4,6 +4,8 @@
     <h2 class="page-title">表单中心</h2>
 
     <a-card>
+      <!-- TODO data-catch forms-filter-type -->
+      <!-- TODO data-catch forms-filter-status -->
       <a-tabs v-model:active-key="activeTab">
         <!-- Tab 1: My Submissions -->
         <a-tab-pane key="submissions" tab="我的提交">
@@ -25,7 +27,7 @@
                 </a-tag>
               </template>
               <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" @click="openDetail(record)">
+                <a-button type="link" size="small" :data-catch="'forms-row-view-btn-' + record.id" @click="openDetail(record)">
                   查看
                 </a-button>
               </template>
@@ -53,7 +55,7 @@
                 </a-tag>
               </template>
               <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" @click="openDetail(record)">
+                <a-button type="link" size="small" :data-catch="'forms-row-view-btn-' + record.id" @click="openDetail(record)">
                   查看
                 </a-button>
               </template>

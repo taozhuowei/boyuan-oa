@@ -40,7 +40,8 @@
             </a-tag>
           </template>
           <template v-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="openDetail(record as Employee)">详情</a-button>
+            <a-button type="link" size="small" :data-catch="'employees-row-detail-btn-' + record.id" @click="openDetail(record as Employee)">详情</a-button>
+            <!-- employees-row-disable-btn-test: pending — no disable button currently -->
           </template>
         </template>
       </a-table>

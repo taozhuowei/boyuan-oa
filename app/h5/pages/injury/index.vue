@@ -8,9 +8,9 @@
       <h2 class="page-title" style="margin:0;">工伤补偿</h2>
       <a-space>
         <!-- 劳工/PM 均可发起（PM 代录使用下面的 proxyFor 字段） -->
-        <a-button type="primary" @click="openApply">+ 发起申报</a-button>
+        <a-button type="primary" @click="openApply" data-catch="injury-apply-btn">+ 发起申报</a-button>
         <!-- 财务：录入理赔按钮 -->
-        <a-button v-if="isFinance" @click="showClaimModal = true">录入理赔</a-button>
+        <a-button v-if="isFinance" @click="showClaimModal = true" data-catch="injury-claim-btn">录入理赔</a-button>
       </a-space>
     </div>
 
@@ -30,6 +30,8 @@
           </a-list-item>
         </template>
       </a-list>
+      <!-- TODO data-catch: injury-approve-btn — element not found -->
+      <!-- TODO data-catch: injury-approve-modal-ok — element not found -->
     </a-spin>
 
     <!-- 工伤申报弹窗（不含补偿金额） -->
@@ -40,6 +42,7 @@
       :confirm-loading="applying"
       @cancel="resetApplyForm"
       ok-text="提交"
+      :ok-button-props="{ 'data-catch': 'injury-apply-modal-submit' }"
     >
       <a-form :model="applyForm" layout="vertical">
         <!-- PM 代录：选择受伤员工 -->
@@ -51,6 +54,7 @@
             :options="workerOptions"
             show-search
             option-filter-prop="label"
+            data-catch="injury-proxy-select"
           />
         </a-form-item>
 
@@ -74,6 +78,7 @@
             accept="image/*,.pdf"
             hint="可上传照片或医疗证明，最多 5 个"
             @change="onInjuryFilesChange"
+            data-catch="injury-file-upload"
           />
         </a-form-item>
 
@@ -92,6 +97,7 @@
       :confirm-loading="claiming"
       @cancel="resetClaimForm"
       ok-text="提交理赔"
+      :ok-button-props="{ 'data-catch': 'injury-claim-modal-submit' }"
     >
       <a-form :model="claimForm" layout="vertical">
         <a-form-item label="关联申报单 ID" required>

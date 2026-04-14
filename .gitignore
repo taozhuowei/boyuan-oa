@@ -30,3 +30,5 @@ test/reports/
 Thumbs.db
 
 CLAUDE.md
+local/
+local/seed-data.sql

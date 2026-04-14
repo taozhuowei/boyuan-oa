@@ -13,11 +13,12 @@
       <div v-if="currentStep === 0" class="step-content">
         <a-textarea
           v-model:value="csvInput"
+          data-catch="directory-textarea-csv"
           :rows="10"
           placeholder="在此粘贴 CSV 数据，每行一条，格式：姓名,手机号,部门&#10;示例：&#10;张三,13800138000,工程部&#10;李四,13900139000,财务部"
         />
         <div class="step-actions">
-          <a-button type="primary" :loading="previewLoading" @click="handlePreview">
+          <a-button type="primary" data-catch="directory-btn-next" :loading="previewLoading" @click="handlePreview">
             下一步
           </a-button>
         </div>
@@ -27,7 +28,7 @@
       <div v-if="currentStep === 1" class="step-content">
         <div class="statistics">
           <a-card class="stat-card">
-            <a-statistic title="共计" :value="previewData?.totalCount ?? 0" />
+            <a-statistic title="共计" data-catch="directory-stat-total" :value="previewData?.totalCount ?? 0" />
           </a-card>
           <a-card class="stat-card">
             <a-statistic title="有效" :value="previewData?.validCount ?? 0" value-style="color: #52c41a" />
@@ -36,7 +37,7 @@
             <a-statistic title="无效" :value="previewData?.invalidCount ?? 0" value-style="color: #ff4d4f" />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="重复" :value="previewData?.duplicateCount ?? 0" value-style="color: #fa8c16" />
+            <a-statistic title="重复" data-catch="directory-stat-duplicate" :value="previewData?.duplicateCount ?? 0" value-style="color: #fa8c16" />
           </a-card>
         </div>
 
@@ -60,7 +61,7 @@
 
         <div class="step-actions">
           <a-button @click="handleBack">上一步</a-button>
-          <a-button type="primary" :loading="importLoading" @click="handleImport">
+          <a-button type="primary" data-catch="directory-btn-import" :loading="importLoading" @click="handleImport">
             确认导入
           </a-button>
         </div>

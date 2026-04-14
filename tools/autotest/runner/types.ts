@@ -18,6 +18,7 @@ export type LocatorDef =
   | { by: 'text'; value: string; exact?: boolean }
   | { by: 'placeholder'; value: string }
   | { by: 'testid'; value: string }
+  | { by: 'catch'; value: string }
   | { by: 'css'; value: string };
 
 // =============================================================================
@@ -54,6 +55,7 @@ export type TestStep =
   | { id: number; desc: string; action: 'wait_for'; locator: LocatorDef }
   | { id: number; desc: string; action: 'assert'; check: AssertCheck }
   | { id: number; desc: string; action: 'screenshot'; label?: string }
+  | { id: number; desc: string; action: 'upload'; locator: LocatorDef; value: string }
   | {
       id: number;
       desc: string;
@@ -88,14 +90,20 @@ export interface TestCase {
   /** Unique identifier for the test case (e.g., 'TC-AUTH-01') */
   id: string;
 
-  /** Human-readable title describing the test */
+  /** Short title describing the test (for tree list) */
   title: string;
+
+  /** Detail: role · operation path · expected result (multi-line allowed) */
+  description: string;
 
   /** Module or feature area this test belongs to */
   module: string;
 
   /** Priority level: P0 (critical), P1 (high), P2 (normal) */
   priority: 'P0' | 'P1' | 'P2';
+
+  /** Role(s) used in this case for quick filtering */
+  roles?: string[];
 
   /** Optional tags for categorization and filtering */
   tags?: string[];
@@ -199,7 +207,7 @@ export type RunnerEvent =
       type: 'all-done';
       summary: { total: number; pass: number; fail: number; skip: number };
     }
-  | { type: 'cases-loaded'; cases: Array<{ id: string; title: string; module: string; priority: 'P0' | 'P1' | 'P2'; tags?: string[]; steps: Array<{ id: number; desc: string; action: string }> }> }
+  | { type: 'cases-loaded'; cases: Array<{ id: string; title: string; description: string; module: string; priority: 'P0' | 'P1' | 'P2'; roles?: string[]; tags?: string[]; steps: Array<{ id: number; desc: string; action: string }> }> }
   | { type: 'log'; level: 'info' | 'warn' | 'error'; message: string };
 
 /**

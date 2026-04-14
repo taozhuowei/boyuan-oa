@@ -11,7 +11,7 @@
           value-format="YYYY-MM-DD"
           :placeholder="['开始日期', '结束日期']"
         />
-        <a-button type="primary" @click="onSearch">搜索</a-button>
+        <a-button type="primary" data-catch="operation-logs-list-search-btn" @click="onSearch">搜索</a-button>
         <a-button @click="onReset">重置</a-button>
       </div>
 

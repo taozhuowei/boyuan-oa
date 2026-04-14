@@ -37,8 +37,10 @@
                   v-if="record.status === 'OPEN'"
                   type="link"
                   size="small"
+                  :data-catch="'payroll-cycle-open-btn-' + record.id"
                   @click="doOpenWindow(record.id as number)"
                 >开放申报窗口</a-button>
+                <!-- TODO data-catch: payroll-cycle-publish-btn-test — element not found -->
                 <a-button
                   v-if="['OPEN','WINDOW_OPEN','WINDOW_CLOSED'].includes(record.status as string)"
                   type="link"
@@ -55,6 +57,7 @@
           <div style="max-width: 480px; margin-top: 8px;">
             <a-form layout="vertical">
               <a-form-item label="选择周期">
+                <!-- TODO data-catch: payroll-settle-cycle-option-latest — element not feasible (options prop) -->
                 <a-select
                   :value="selectedCycleId ?? undefined"
                   placeholder="请选择工资周期"
@@ -67,11 +70,13 @@
 
             <a-space>
               <a-button
+                data-catch="payroll-settle-precheck-btn"
                 :disabled="!selectedCycleId"
                 :loading="precheckLoading"
                 @click="doPrecheck"
               >预结算检查</a-button>
               <a-button
+                data-catch="payroll-settle-run-btn"
                 type="primary"
                 :disabled="!selectedCycleId || !precheckPassed"
                 :loading="settleLoading"
@@ -107,7 +112,9 @@
         <!-- 工资条查看（Finance/CEO 按周期查全员） -->
         <template v-if="activeTab === 'slips'">
           <div style="margin-bottom: 12px;">
+            <!-- TODO data-catch: payroll-slips-cycle-option-latest — element not feasible (options prop) -->
             <a-select
+              data-catch="payroll-slips-cycle-select"
               :value="selectedCycleIdForSlips ?? undefined"
               placeholder="请选择工资周期"
               :options="cycleOptions"
@@ -118,6 +125,7 @@
             <a-button :loading="loadingSlips" @click="loadSlipsByCycle" :disabled="!selectedCycleIdForSlips">查询</a-button>
           </div>
           <a-table
+            data-catch="payroll-all-slips-table"
             :columns="financeSlipColumns"
             :data-source="slips"
             :loading="loadingSlips"
@@ -132,7 +140,7 @@
                 ¥{{ formatAmount(record.netPay) }}
               </template>
               <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" @click="openSlipDetail(record as unknown as PayrollSlip)">详情</a-button>
+                <a-button type="link" size="small" :data-catch="'payroll-slip-row-detail-btn-' + record.id" @click="openSlipDetail(record as unknown as PayrollSlip)">详情</a-button>
               </template>
             </template>
           </a-table>
@@ -149,6 +157,7 @@
         </div>
 
         <a-list
+          data-catch="payroll-my-slips-list"
           :data-source="slips"
           :loading="loadingSlips"
           :locale="{ emptyText: '暂无工资条' }"
@@ -182,6 +191,7 @@
       :confirm-loading="creatingCycle"
       @ok="doCreateCycle"
       @cancel="createCycleForm.period = ''"
+      :okButtonProps="{ 'data-catch': 'payroll-cycle-create-ok' }"
     >
       <a-form layout="vertical">
         <a-form-item label="周期（格式：YYYY-MM）">
@@ -197,6 +207,7 @@
       :confirm-loading="confirmingSlip"
       @ok="submitPinConfirm"
       @cancel="closePinModal"
+      :okButtonProps="{ 'data-catch': 'payroll-sign-confirm-btn' }"
     >
       <a-form layout="vertical">
         <a-form-item

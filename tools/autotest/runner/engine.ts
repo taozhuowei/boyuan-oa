@@ -233,6 +233,10 @@ export class TestEngine {
           screenshot = buf.toString('base64');
           break;
 
+        case 'upload':
+          await resolve(page, step.locator).setInputFiles(step.value);
+          break;
+
         case 'assert':
           await this.executeAssert(page, step.check);
           break;
@@ -410,8 +414,10 @@ export class TestEngine {
       cases: cases.map(c => ({
         id: c.id,
         title: c.title,
+        description: c.description,
         module: c.module,
         priority: c.priority,
+        roles: c.roles,
         tags: c.tags,
         steps: c.steps.map(s => ({ id: s.id, desc: s.desc, action: s.action })),
       })),

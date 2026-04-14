@@ -73,27 +73,19 @@ async function runAll() {
   }
 
   try {
-    // Use Electron IPC if available
-    if (typeof window !== 'undefined' && window.electronAPI) {
-      const result = await window.electronAPI.startRunner(config.cases_dir, config.base_url)
-      if (result.success) {
-        runnerStore.setStatus('running')
-        runnerStore.addLogEntry('info', '运行器已启动')
-        if (result.cdpEndpoint) {
-          runnerStore.addLogEntry('info', `CDP endpoint: ${result.cdpEndpoint}`)
-        }
-      } else {
-        runnerStore.addLogEntry('error', `启动失败: ${result.error}`)
-      }
-    } else {
-      // Fallback to Tauri API
-      const { invoke } = await import('@tauri-apps/api/core')
-      await invoke('start_runner', {
-        casesDir: config.cases_dir,
-        baseUrl: config.base_url,
-      })
+    if (!window.electronAPI) {
+      runnerStore.addLogEntry('error', 'electronAPI 不可用，请在 Electron 桌面模式下运行')
+      return
+    }
+    const result = await window.electronAPI.startRunner(config.cases_dir, config.base_url)
+    if (result.success) {
       runnerStore.setStatus('running')
       runnerStore.addLogEntry('info', '运行器已启动')
+      if (result.cdpEndpoint) {
+        runnerStore.addLogEntry('info', `CDP endpoint: ${result.cdpEndpoint}`)
+      }
+    } else {
+      runnerStore.addLogEntry('error', `启动失败: ${result.error}`)
     }
   } catch (error) {
     runnerStore.addLogEntry('error', `启动失败: ${error}`)
@@ -110,39 +102,41 @@ function stop() {
 
 async function loadConfig() {
   try {
-    let filePath: string | null = null
-
-    // Use Electron file dialog if available
-    if (typeof window !== 'undefined' && window.electronAPI) {
-      const result = await window.electronAPI.openFileDialog()
-      if (result.success && result.filePath) {
-        filePath = result.filePath
-      } else if (result.cancelled) {
-        return
-      } else {
-        throw new Error(result.error || 'Failed to open file dialog')
-      }
-    } else {
-      // Fallback to Tauri
-      const { invoke } = await import('@tauri-apps/api/core')
-      filePath = await invoke<string | null>('open_config_dialog')
-    }
-
-    if (!filePath) {
+    if (!window.electronAPI) {
+      runnerStore.addLogEntry('error', 'electronAPI 不可用，请在 Electron 桌面模式下运行')
       return
     }
+    const dialogResult = await window.electronAPI.openFileDialog()
+    if (dialogResult.cancelled) return
+    if (!dialogResult.success || !dialogResult.filePath) {
+      throw new Error(dialogResult.error || 'Failed to open file dialog')
+    }
 
-    const response = await fetch(`file://${filePath}`)
-    const configText = await response.text()
-    const config: AutotestConfig = JSON.parse(configText)
+    const loadResult = await window.electronAPI.loadConfig(dialogResult.filePath)
+    if (!loadResult.success) {
+      throw new Error(loadResult.error || 'Failed to load config')
+    }
+    const config = loadResult.config as AutotestConfig
 
     runnerStore.setConfig({
       name: config.name,
       base_url: config.base_url,
-      cases_dir: config.cases_dir,
+      cases_dir: (config as any)._casesDir || config.cases_dir,
     })
 
-    runnerStore.addLogEntry('info', `已加载配置: ${config.name}`)
+    const cases = loadResult.cases || []
+    const testCases = cases.map((c: any) => ({
+      id: c.id,
+      title: c.title,
+      module: c.module,
+      priority: c.priority,
+      tags: c.tags || [],
+      steps: c.steps || [],
+      expect: { result: 'pass' as const },
+    }))
+    resultsStore.setCases(testCases)
+
+    runnerStore.addLogEntry('info', `已加载配置: ${config.name}，共 ${cases.length} 个用例`)
   } catch (error) {
     runnerStore.addLogEntry('error', `加载配置失败: ${error}`)
   }

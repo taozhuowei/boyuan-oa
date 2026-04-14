@@ -14,6 +14,7 @@
                 style="width: 160px"
                 :options="unitOptions"
                 placeholder="请选择单位"
+                data-catch="config-leave-unit-select"
               />
             </template>
             <template v-else>
@@ -37,7 +38,7 @@
           </div>
 
           <div v-if="isCEO" class="form-actions">
-            <a-button type="primary" :loading="saving" @click="saveAttendanceConfig">
+            <a-button type="primary" :loading="saving" data-catch="config-attendance-save-btn" @click="saveAttendanceConfig">
               保存
             </a-button>
           </div>
@@ -53,6 +54,7 @@
             :pagination="false"
             row-key="id"
             size="small"
+            data-catch="config-approval-flows-table"
           >
             <template #emptyText>
               <span v-if="flowsError">无法加载审批流配置</span>

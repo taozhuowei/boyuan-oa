@@ -22,6 +22,7 @@ interface CliArgs {
   configPath: string;
   mode: 'case-confirm' | 'full-auto';
   cdpEndpoint?: string;
+  scanOnly?: boolean;
 }
 
 function parseCliArgs(): CliArgs {
@@ -51,6 +52,9 @@ function parseCliArgs(): CliArgs {
       case '--cdp-endpoint':
         parsed.cdpEndpoint = args[++i];
         break;
+      case '--scan-only':
+        parsed.scanOnly = true;
+        break;
     }
   }
 
@@ -67,6 +71,21 @@ function parseCliArgs(): CliArgs {
     baseUrl: parsed.baseUrl,
     configPath: parsed.configPath ? resolvePath(parsed.configPath) : defaultConfigPath,
     mode: parsed.mode || 'case-confirm',
+    cdpEndpoint: parsed.cdpEndpoint,
+    scanOnly: parsed.scanOnly,
+  };
+}
+
+function lightCase(c: TestCase) {
+  return {
+    id: c.id,
+    title: c.title,
+    description: c.description,
+    module: c.module,
+    priority: c.priority,
+    roles: c.roles,
+    tags: c.tags,
+    steps: c.steps.map(s => ({ id: s.id, desc: s.desc, action: s.action })),
   };
 }
 
@@ -169,14 +188,7 @@ async function run(args: CliArgs): Promise<void> {
   // Send cases-loaded event
   ipcServer.send({
     type: 'cases-loaded',
-    cases: cases.map(c => ({
-      id: c.id,
-      title: c.title,
-      module: c.module,
-      priority: c.priority,
-      tags: c.tags,
-      steps: c.steps.map(s => ({ id: s.id, desc: s.desc, action: s.action }))
-    }))
+    cases: cases.map(lightCase),
   });
 
   // Run all cases
@@ -213,14 +225,7 @@ export async function startRunner(
   // Send cases-loaded
   ipcServer.send({
     type: 'cases-loaded',
-    cases: cases.map(c => ({
-      id: c.id,
-      title: c.title,
-      module: c.module,
-      priority: c.priority,
-      tags: c.tags,
-      steps: c.steps.map(s => ({ id: s.id, desc: s.desc, action: s.action }))
-    }))
+    cases: cases.map(lightCase),
   });
 
   // Run
@@ -244,8 +249,20 @@ export { createElectronIPC, ipcServer };
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const args = parseCliArgs();
-  run(args).catch(err => {
-    console.error('[Fatal]', err);
-    process.exit(1);
-  });
+  if (args.scanOnly) {
+    loadCases(args.casesDir)
+      .then(cases => {
+        process.send?.({ type: 'cases-scanned', cases: cases.map(lightCase) });
+        process.exit(0);
+      })
+      .catch(err => {
+        process.send?.({ type: 'cases-scan-error', error: String(err) });
+        process.exit(1);
+      });
+  } else {
+    run(args).catch(err => {
+      console.error('[Fatal]', err);
+      process.exit(1);
+    });
+  }
 }
