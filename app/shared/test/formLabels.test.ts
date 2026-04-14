@@ -120,7 +120,7 @@ describe('formLabels', () => {
 
     it('should handle missing formData', () => {
       expect(formatFormSummary('LEAVE', undefined)).toBe('')
-      expect(formatFormSummary('LEAVE', {})).toBe(' 天')
+      expect(formatFormSummary('LEAVE', {})).toBe('')
     })
 
     it('should return empty string for unknown form types', () => {

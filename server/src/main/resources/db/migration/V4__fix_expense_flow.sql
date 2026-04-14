@@ -4,25 +4,20 @@
 -- ============================================
 -- 1. Fix EXPENSE approval flow: CEO -> Finance
 -- ============================================
-DO $$
-DECLARE
-    flow_id BIGINT;
-BEGIN
-    SELECT id INTO flow_id FROM approval_flow_def WHERE business_type = 'EXPENSE' AND is_active = TRUE;
-    
-    IF flow_id IS NOT NULL THEN
-        -- Delete old nodes and re-insert
-        DELETE FROM approval_flow_node WHERE flow_id = flow_id;
-        
-        -- 插入审批流节点：节点1 - CEO审批
-        INSERT INTO approval_flow_node (flow_id, node_order, node_name, approval_mode, approver_type, approver_ref)
-        VALUES (flow_id, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo');
-        
-        -- 插入审批流节点：节点2 - 财务审批
-        INSERT INTO approval_flow_node (flow_id, node_order, node_name, approval_mode, approver_type, approver_ref)
-        VALUES (flow_id, 2, '财务审批', 'SEQUENTIAL', 'ROLE', 'finance');
-    END IF;
-END $$;
+-- 删除现有节点（仅针对已存在的 EXPENSE 审批流）
+DELETE FROM approval_flow_node
+WHERE flow_id IN (SELECT id FROM approval_flow_def WHERE business_type = 'EXPENSE' AND is_active = TRUE);
+
+-- 重新插入审批流节点
+INSERT INTO approval_flow_node (flow_id, node_order, node_name, approval_mode, approver_type, approver_ref)
+SELECT a.id, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo'
+FROM approval_flow_def a
+WHERE a.business_type = 'EXPENSE' AND a.is_active = TRUE;
+
+INSERT INTO approval_flow_node (flow_id, node_order, node_name, approval_mode, approver_type, approver_ref)
+SELECT a.id, 2, '财务审批', 'SEQUENTIAL', 'ROLE', 'finance'
+FROM approval_flow_def a
+WHERE a.business_type = 'EXPENSE' AND a.is_active = TRUE;
 
 -- ============================================
 -- 2. Ensure OFFICE expense type exists

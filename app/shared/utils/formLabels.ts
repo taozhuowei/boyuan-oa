@@ -130,6 +130,7 @@ export function formatFormSummary(
   if (formType === 'LEAVE') {
     const typeLabel = getLeaveTypeLabel(String(d.leaveType || ''))
     const days = d.days ?? ''
+    if (!typeLabel && !days) return ''
     return `${typeLabel} ${days}天`.trim()
   }
 
@@ -138,6 +139,7 @@ export function formatFormSummary(
     const hours = d.hours ?? ''
     const startTime = d.startTime ?? ''
     const endTime = d.endTime ?? ''
+    if (!typeLabel && !hours && !startTime && !endTime) return ''
     if (hours) {
       return `${typeLabel} ${hours}小时`.trim()
     }
@@ -150,6 +152,7 @@ export function formatFormSummary(
   if (formType === 'EXPENSE') {
     const typeLabel = EXPENSE_TYPE_LABELS[String(d.expenseType || '')] || String(d.expenseType || '')
     const amount = d.totalAmount ?? ''
+    if (!typeLabel && !amount) return ''
     return `${typeLabel} ¥${amount}`.trim()
   }
 

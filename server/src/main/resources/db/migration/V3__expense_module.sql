@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS expense_claim (
     trip_purpose VARCHAR(500),
     -- 费用金额
     total_amount DECIMAL(12,2) NOT NULL,
-    -- 发票信息（JSON数组：发票号、金额、日期〈简要描述）
+    -- 发票信息（JSON数组：发票号、金额、日期简要描述）
     invoices_json TEXT,
     -- 项目关联（可选，用于项目相关报销）
     project_id BIGINT REFERENCES project(id),
@@ -69,32 +69,28 @@ VALUES ('EXPENSE', '报销申请', TRUE, TRUE)
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================
--- 添加报销审批流定义（员工→直系领导→财务）
+-- 添加报销审批流定义（CEO → 财务）
+-- 使用标准 SQL（兼容 H2 和 PostgreSQL）
 -- ============================================
 
--- 先检查是否已存在，避免重复插入
-DO $$
-DECLARE
-    flow_id BIGINT;
-BEGIN
-    -- 检查是否已存在 EXPENSE 审批流
-    SELECT id INTO flow_id FROM approval_flow_def WHERE business_type = 'EXPENSE' AND is_active = TRUE;
-    
-    IF flow_id IS NULL THEN
-        -- 插入审批流定义
-        INSERT INTO approval_flow_def (business_type, version, is_active, created_at)
-        VALUES ('EXPENSE', 1, TRUE, CURRENT_TIMESTAMP)
-        RETURNING id INTO flow_id;
-        
-        -- 插入审批流节点：节点1 - CEO审批
-        INSERT INTO approval_flow_node (flow_id, node_order, node_name, approval_mode, approver_type, approver_ref)
-        VALUES (flow_id, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo');
-        
-        -- 插入审批流节点：节点2 - 财务审批
-        INSERT INTO approval_flow_node (flow_id, node_order, node_name, approval_mode, approver_type, approver_ref)
-        VALUES (flow_id, 2, '财务审批', 'SEQUENTIAL', 'ROLE', 'finance');
-    END IF;
-END $$;
+-- 插入审批流定义（如果不存在）
+INSERT INTO approval_flow_def (business_type, version, is_active, created_at)
+SELECT 'EXPENSE', 1, TRUE, CURRENT_TIMESTAMP
+WHERE NOT EXISTS (SELECT 1 FROM approval_flow_def WHERE business_type = 'EXPENSE' AND is_active = TRUE);
+
+-- 插入审批流节点：节点1 - CEO审批
+INSERT INTO approval_flow_node (flow_id, node_order, node_name, approval_mode, approver_type, approver_ref)
+SELECT a.id, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo'
+FROM approval_flow_def a
+WHERE a.business_type = 'EXPENSE' AND a.is_active = TRUE
+AND NOT EXISTS (SELECT 1 FROM approval_flow_node n WHERE n.flow_id = a.id AND n.node_order = 1);
+
+-- 插入审批流节点：节点2 - 财务审批
+INSERT INTO approval_flow_node (flow_id, node_order, node_name, approval_mode, approver_type, approver_ref)
+SELECT a.id, 2, '财务审批', 'SEQUENTIAL', 'ROLE', 'finance'
+FROM approval_flow_def a
+WHERE a.business_type = 'EXPENSE' AND a.is_active = TRUE
+AND NOT EXISTS (SELECT 1 FROM approval_flow_node n WHERE n.flow_id = a.id AND n.node_order = 2);
 
 -- ============================================
 -- 添加默认费用类型定义
