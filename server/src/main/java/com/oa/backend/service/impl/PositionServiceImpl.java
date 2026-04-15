@@ -63,6 +63,7 @@ public class PositionServiceImpl implements PositionService {
             baseResponse.employeeCategory(),
             baseResponse.defaultRoleCode(),
             baseResponse.baseSalary(),
+            baseResponse.positionSalary(),
             baseResponse.overtimeRateWeekday(),
             baseResponse.overtimeRateWeekend(),
             baseResponse.overtimeRateHoliday(),
@@ -90,6 +91,7 @@ public class PositionServiceImpl implements PositionService {
         position.setEmployeeCategory(req.employeeCategory() != null ? req.employeeCategory() : "OFFICE");
         position.setDefaultRoleCode(req.defaultRoleCode());
         position.setBaseSalary(req.baseSalary());
+        position.setPositionSalary(req.positionSalary());
         position.setOvertimeBaseType(req.overtimeBaseType());
         position.setOvertimeBaseAmount(req.overtimeBaseAmount());
         position.setOvertimeRateWeekday(req.overtimeRateWeekday() != null ? req.overtimeRateWeekday() : new BigDecimal("1.5"));
@@ -130,6 +132,9 @@ public class PositionServiceImpl implements PositionService {
         }
         if (req.baseSalary() != null) {
             position.setBaseSalary(req.baseSalary());
+        }
+        if (req.positionSalary() != null) {
+            position.setPositionSalary(req.positionSalary());
         }
         if (req.overtimeBaseType() != null) {
             position.setOvertimeBaseType(req.overtimeBaseType());
@@ -221,6 +226,7 @@ public class PositionServiceImpl implements PositionService {
         level.setLevelName(req.levelName());
         level.setLevelOrder(req.levelOrder());
         level.setBaseSalaryOverride(req.baseSalaryOverride());
+        level.setPositionSalaryOverride(req.positionSalaryOverride());
         level.setPerformanceBonusOverride(req.performanceBonusOverride());
         level.setAnnualLeaveOverride(req.annualLeaveOverride());
         
@@ -249,6 +255,9 @@ public class PositionServiceImpl implements PositionService {
         }
         if (req.baseSalaryOverride() != null) {
             level.setBaseSalaryOverride(req.baseSalaryOverride());
+        }
+        if (req.positionSalaryOverride() != null) {
+            level.setPositionSalaryOverride(req.positionSalaryOverride());
         }
         if (req.performanceBonusOverride() != null) {
             level.setPerformanceBonusOverride(req.performanceBonusOverride());
@@ -318,6 +327,7 @@ public class PositionServiceImpl implements PositionService {
             p.getEmployeeCategory(),
             p.getDefaultRoleCode(),
             p.getBaseSalary(),
+            p.getPositionSalary(),
             p.getOvertimeRateWeekday(),
             p.getOvertimeRateWeekend(),
             p.getOvertimeRateHoliday(),
@@ -339,6 +349,7 @@ public class PositionServiceImpl implements PositionService {
             l.getLevelName(),
             l.getLevelOrder(),
             l.getBaseSalaryOverride(),
+            l.getPositionSalaryOverride(),
             l.getPerformanceBonusOverride(),
             l.getAnnualLeaveOverride()
         );

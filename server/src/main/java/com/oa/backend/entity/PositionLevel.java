@@ -32,6 +32,10 @@ public class PositionLevel {
     @TableField("base_salary_override")
     private BigDecimal baseSalaryOverride;
 
+    /** 岗位工资覆盖值 */
+    @TableField("position_salary_override")
+    private BigDecimal positionSalaryOverride;
+
     /** 绩效奖金覆盖值 */
     @TableField("performance_bonus_override")
     private BigDecimal performanceBonusOverride;

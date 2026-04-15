@@ -16,8 +16,10 @@
 
 Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可正常使用，无 TODO 占位符，无死路由，核心业务链路可端到端跑通。
 
-> **当前状态（2026-04-11）**：Phase A 所有代码已写完，后端新 JAR 已运行，API 集成测试全部通过（15/15）。
+> **当前状态（2026-04-15）**：Phase A 所有代码已写完，后端新 JAR 已运行，API 集成测试全部通过（15/15）。
 > UI 全部汉化完成，WorkbenchController 菜单已修正。剩余验收工作：需浏览器人工走查，通过后将 `[-]` 改为 `[x]`。
+>
+> **2026-04-15 补充核查**：逐文件核对后，A1/A2/A4 P0 页面全部实装；A5 两项（首次登录横幅、项目卡点击跳转）也已实装于 `app/h5/pages/index.vue`。发现 1 个新 gap 待讨论（见 A5 底部）：薪资构成扩展。
 
 **Phase B（Phase A 完成后）：集成测试 + 生产部署验证**
 
@@ -88,6 +90,9 @@ Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可
 
 - [ ] `[P2]` **薪资更正流程**：后端 `POST /payroll/slips/{id}/correction`（财务发起，CEO 审批解锁，version 递增）；前端在财务视图详情页展示"发起更正"按钮
   > 验收：财务对已发布工资条发起更正，CEO 在待办看到审批项；批准后原版本状态变为 SUPERSEDED
+
+- [-] `[P0]` **薪资构成扩展（V5）**：实现 `净薪资 = 基本 + 岗位 + 绩效 + 加班 − 请假 + Σ固定补贴 + Σ临时补贴 ± 保险补贴/社保`。新增 `position_salary` 字段、`allowance_def`/`allowance_config` 三级覆盖（GLOBAL/POSITION/EMPLOYEE）、`payroll_bonus` 周期临时补贴、`payroll_bonus_approval_required` 配置开关（默认 false=直接生效+通知 CEO，true=走 CEO 审批流）。
+  > 验收：① 岗位管理可设置"岗位工资/默认绩效"；② `/allowances` 页可创建补贴项并按全局/岗位/员工三级配置；③ `/payroll` 周期管理新增"临时补贴/奖金" Tab；④ `/config` 页可切换审批开关；⑤ 结算后工资条按 `payroll_item_def.display_order` 完整展示每一项。
 
 ---
 

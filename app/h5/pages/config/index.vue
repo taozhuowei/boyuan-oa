@@ -63,6 +63,34 @@
           </a-table>
         </a-spin>
       </a-card>
+
+      <!-- Section 3: Payroll Bonus Approval Switch -->
+      <a-card title="临时薪资调整审批" class="config-card">
+        <a-spin :spinning="bonusConfigLoading">
+          <div class="form-row">
+            <span class="form-label">是否需要 CEO 审批：</span>
+            <template v-if="isCEO">
+              <a-switch
+                v-model:checked="bonusApprovalRequired"
+                checked-children="需要"
+                un-checked-children="不需要"
+                data-catch="config-bonus-approval-switch"
+              />
+            </template>
+            <template v-else>
+              <span class="readonly-value">{{ bonusApprovalRequired ? '需要' : '不需要' }}</span>
+            </template>
+          </div>
+          <div class="form-hint">
+            开启后，财务录入的临时补贴/扣款需 CEO 审批通过后方可计入结算；关闭时直接生效，仅发送通知给 CEO。
+          </div>
+          <div v-if="isCEO" class="form-actions">
+            <a-button type="primary" :loading="bonusConfigSaving" data-catch="config-bonus-approval-save-btn" @click="saveBonusApprovalConfig">
+              保存
+            </a-button>
+          </div>
+        </a-spin>
+      </a-card>
     </div>
   </div>
 </template>
@@ -184,10 +212,47 @@ async function loadApprovalFlows() {
   }
 }
 
+// Payroll Bonus Approval Config
+const bonusConfigLoading = ref(false)
+const bonusConfigSaving = ref(false)
+const bonusApprovalRequired = ref(false)
+
+async function loadBonusApprovalConfig() {
+  bonusConfigLoading.value = true
+  try {
+    const data = await request<{ approvalRequired: boolean }>({
+      url: '/payroll/bonus-approval-config'
+    })
+    bonusApprovalRequired.value = !!data.approvalRequired
+  } catch {
+    bonusApprovalRequired.value = false
+  } finally {
+    bonusConfigLoading.value = false
+  }
+}
+
+async function saveBonusApprovalConfig() {
+  if (!isCEO.value) return
+  bonusConfigSaving.value = true
+  try {
+    await request({
+      url: '/payroll/bonus-approval-config',
+      method: 'PUT',
+      body: { approvalRequired: bonusApprovalRequired.value }
+    })
+    message.success('保存成功')
+  } catch {
+    message.error('保存失败')
+  } finally {
+    bonusConfigSaving.value = false
+  }
+}
+
 // Load data on mount
 onMounted(() => {
   loadAttendanceConfig()
   loadApprovalFlows()
+  loadBonusApprovalConfig()
 })
 </script>
 
@@ -234,5 +299,13 @@ onMounted(() => {
 
 .form-actions {
   margin-top: 24px;
+}
+
+.form-hint {
+  color: #999;
+  font-size: 12px;
+  margin: 4px 0 0 116px;
+  max-width: 420px;
+  line-height: 1.5;
 }
 </style>

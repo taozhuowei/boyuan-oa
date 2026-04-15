@@ -86,6 +86,12 @@
                 <template v-if="column.key === 'baseSalaryOverride'">
                   {{ level.baseSalaryOverride ?? '—' }}
                 </template>
+                <template v-if="column.key === 'positionSalaryOverride'">
+                  {{ level.positionSalaryOverride ?? '—' }}
+                </template>
+                <template v-if="column.key === 'performanceBonusOverride'">
+                  {{ level.performanceBonusOverride ?? '—' }}
+                </template>
                 <template v-if="column.key === 'annualLeaveOverride'">
                   {{ level.annualLeaveOverride ?? '—' }}
                 </template>
@@ -128,23 +134,35 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="基本工资">
-              <a-input-number v-model:value="positionForm.baseSalary" style="width: 100%" :precision="2" placeholder="请输入基本工资" />
+            <a-form-item label="年假天数">
+              <a-input-number v-model:value="positionForm.annualLeave" style="width: 100%" :precision="0" placeholder="请输入年假天数" />
             </a-form-item>
           </a-col>
         </a-row>
         <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="基本工资">
+              <a-input-number v-model:value="positionForm.baseSalary" style="width: 100%" :precision="2" placeholder="请输入基本工资" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="岗位工资">
+              <a-input-number v-model:value="positionForm.positionSalary" style="width: 100%" :precision="2" placeholder="按岗位设定的固定薪资项（可选）" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="默认绩效奖金">
+              <a-input-number v-model:value="positionForm.defaultPerformanceBonus" style="width: 100%" :precision="2" placeholder="有绩效奖金时生效（可选）" />
+            </a-form-item>
+          </a-col>
           <a-col :span="12">
             <a-form-item label="社保缴纳方式">
               <a-select v-model:value="positionForm.socialInsuranceMode" placeholder="请选择">
                 <a-select-option value="COMPANY_PAID">公司缴纳</a-select-option>
                 <a-select-option value="MERGED">合并缴纳</a-select-option>
               </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="年假天数">
-              <a-input-number v-model:value="positionForm.annualLeave" style="width: 100%" :precision="0" placeholder="请输入年假天数" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -202,12 +220,17 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="绩效奖金覆盖">
-              <a-input-number v-model:value="levelForm.performanceBonusOverride" style="width: 100%" :precision="2" placeholder="可选" />
+            <a-form-item label="岗位工资覆盖">
+              <a-input-number v-model:value="levelForm.positionSalaryOverride" style="width: 100%" :precision="2" placeholder="可选" />
             </a-form-item>
           </a-col>
         </a-row>
         <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="绩效奖金覆盖">
+              <a-input-number v-model:value="levelForm.performanceBonusOverride" style="width: 100%" :precision="2" placeholder="可选" />
+            </a-form-item>
+          </a-col>
           <a-col :span="12">
             <a-form-item label="年假覆盖">
               <a-input-number v-model:value="levelForm.annualLeaveOverride" style="width: 100%" :precision="0" placeholder="可选" />
@@ -236,6 +259,7 @@ interface Level {
   levelName: string
   levelOrder: number
   baseSalaryOverride: number | null
+  positionSalaryOverride: number | null
   performanceBonusOverride: number | null
   annualLeaveOverride: number | null
 }
@@ -247,6 +271,7 @@ interface Position {
   employeeCategory: 'OFFICE' | 'LABOR'
   defaultRoleCode: string | null
   baseSalary: number | null
+  positionSalary: number | null
   overtimeRateWeekday: number | null
   overtimeRateWeekend: number | null
   overtimeRateHoliday: number | null
@@ -266,6 +291,8 @@ interface PositionForm {
   employeeCategory: 'OFFICE' | 'LABOR'
   defaultRoleCode: string
   baseSalary: number | null
+  positionSalary: number | null
+  defaultPerformanceBonus: number | null
   socialInsuranceMode: 'COMPANY_PAID' | 'MERGED' | null
   annualLeave: number | null
   requiresConstructionLog: boolean
@@ -278,6 +305,7 @@ interface LevelForm {
   levelName: string
   levelOrder: number | null
   baseSalaryOverride: number | null
+  positionSalaryOverride: number | null
   performanceBonusOverride: number | null
   annualLeaveOverride: number | null
 }
@@ -306,7 +334,9 @@ const columns = [
   { title: '岗位名称', dataIndex: 'positionName', key: 'positionName' },
   { title: '员工类别', dataIndex: 'employeeCategory', key: 'employeeCategory', width: 100 },
   { title: '默认角色', dataIndex: 'defaultRoleCode', key: 'defaultRoleCode', width: 120 },
-  { title: '基本工资', dataIndex: 'baseSalary', key: 'baseSalary', width: 120 },
+  { title: '基本工资', dataIndex: 'baseSalary', key: 'baseSalary', width: 110 },
+  { title: '岗位工资', dataIndex: 'positionSalary', key: 'positionSalary', width: 110 },
+  { title: '默认绩效', dataIndex: 'defaultPerformanceBonus', key: 'defaultPerformanceBonus', width: 110 },
   { title: '社保模式', key: 'socialInsuranceMode', width: 100 },
   { title: '操作', key: 'action', width: 150 }
 ]
@@ -314,7 +344,9 @@ const columns = [
 const levelColumns = [
   { title: '等级名称', dataIndex: 'levelName', key: 'levelName' },
   { title: '等级顺序', dataIndex: 'levelOrder', key: 'levelOrder', width: 100 },
-  { title: '基本工资覆盖', dataIndex: 'baseSalaryOverride', key: 'baseSalaryOverride', width: 140 },
+  { title: '基本工资覆盖', dataIndex: 'baseSalaryOverride', key: 'baseSalaryOverride', width: 130 },
+  { title: '岗位工资覆盖', dataIndex: 'positionSalaryOverride', key: 'positionSalaryOverride', width: 130 },
+  { title: '绩效奖金覆盖', dataIndex: 'performanceBonusOverride', key: 'performanceBonusOverride', width: 130 },
   { title: '年假覆盖', dataIndex: 'annualLeaveOverride', key: 'annualLeaveOverride', width: 100 },
   { title: '操作', key: 'action', width: 150 }
 ]
@@ -340,6 +372,8 @@ const defaultPositionForm: PositionForm = {
   employeeCategory: 'OFFICE',
   defaultRoleCode: '',
   baseSalary: null,
+  positionSalary: null,
+  defaultPerformanceBonus: null,
   socialInsuranceMode: 'COMPANY_PAID',
   annualLeave: null,
   requiresConstructionLog: false,
@@ -359,6 +393,7 @@ const defaultLevelForm: LevelForm = {
   levelName: '',
   levelOrder: null,
   baseSalaryOverride: null,
+  positionSalaryOverride: null,
   performanceBonusOverride: null,
   annualLeaveOverride: null
 }
@@ -398,6 +433,8 @@ function openEditPositionModal(record: Position) {
     employeeCategory: record.employeeCategory,
     defaultRoleCode: record.defaultRoleCode ?? '',
     baseSalary: record.baseSalary,
+    positionSalary: record.positionSalary,
+    defaultPerformanceBonus: record.defaultPerformanceBonus,
     socialInsuranceMode: record.socialInsuranceMode,
     annualLeave: record.annualLeave,
     requiresConstructionLog: record.requiresConstructionLog,
@@ -424,10 +461,11 @@ async function submitPosition() {
       employeeCategory: positionForm.value.employeeCategory,
       defaultRoleCode: positionForm.value.defaultRoleCode || null,
       baseSalary: positionForm.value.baseSalary,
+      positionSalary: positionForm.value.positionSalary,
       overtimeRateWeekday: null,
       overtimeRateWeekend: null,
       overtimeRateHoliday: null,
-      defaultPerformanceBonus: null,
+      defaultPerformanceBonus: positionForm.value.defaultPerformanceBonus,
       annualLeave: positionForm.value.annualLeave,
       leaveDeductBaseType: null,
       socialInsuranceMode: positionForm.value.socialInsuranceMode,
@@ -487,6 +525,7 @@ function openEditLevelModal(positionId: number, level: Level) {
     levelName: level.levelName,
     levelOrder: level.levelOrder,
     baseSalaryOverride: level.baseSalaryOverride,
+    positionSalaryOverride: level.positionSalaryOverride,
     performanceBonusOverride: level.performanceBonusOverride,
     annualLeaveOverride: level.annualLeaveOverride
   }
@@ -512,6 +551,7 @@ async function submitLevel() {
       levelName: levelForm.value.levelName,
       levelOrder: levelForm.value.levelOrder,
       baseSalaryOverride: levelForm.value.baseSalaryOverride,
+      positionSalaryOverride: levelForm.value.positionSalaryOverride,
       performanceBonusOverride: levelForm.value.performanceBonusOverride,
       annualLeaveOverride: levelForm.value.annualLeaveOverride
     }

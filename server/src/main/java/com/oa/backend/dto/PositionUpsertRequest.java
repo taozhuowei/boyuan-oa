@@ -10,6 +10,7 @@ public record PositionUpsertRequest(
     String employeeCategory,
     String defaultRoleCode,
     BigDecimal baseSalary,
+    BigDecimal positionSalary,
     String overtimeBaseType,
     BigDecimal overtimeBaseAmount,
     BigDecimal overtimeRateWeekday,

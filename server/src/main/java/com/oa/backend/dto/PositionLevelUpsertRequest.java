@@ -9,6 +9,7 @@ public record PositionLevelUpsertRequest(
     String levelName,
     Integer levelOrder,
     BigDecimal baseSalaryOverride,
+    BigDecimal positionSalaryOverride,
     BigDecimal performanceBonusOverride,
     Integer annualLeaveOverride
 ) {}

@@ -44,9 +44,13 @@ public class Position {
     @TableField("has_performance_bonus")
     private Boolean hasPerformanceBonus;
 
-    /** 基本工资 */
+    /** 基本工资（底薪） */
     @TableField("base_salary")
     private BigDecimal baseSalary;
+
+    /** 岗位工资（按岗位设定的固定薪资项） */
+    @TableField("position_salary")
+    private BigDecimal positionSalary;
 
     /** 加班计算基准类型 */
     @TableField("overtime_base_type")

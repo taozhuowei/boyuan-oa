@@ -122,6 +122,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/org', label: '组织架构', path: '/org' },
     { key: '/positions', label: '岗位管理', path: '/positions' },
+    { key: '/allowances', label: '补贴配置', path: '/allowances' },
     { key: '/role', label: '角色管理', path: '/role' },
     { key: '/projects', label: '项目管理', path: '/projects' },
     { key: '/payroll', label: '薪资管理', path: '/payroll' },

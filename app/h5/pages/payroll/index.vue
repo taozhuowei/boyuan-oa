@@ -12,6 +12,7 @@
           <a-tab-pane key="cycles" tab="周期管理" />
           <a-tab-pane key="settle" tab="结算操作" />
           <a-tab-pane key="slips" tab="工资条查看" />
+          <a-tab-pane key="bonuses" tab="临时补贴/奖金" />
         </a-tabs>
 
         <!-- 周期管理 -->
@@ -141,6 +142,47 @@
               </template>
               <template v-if="column.key === 'action'">
                 <a-button type="link" size="small" :data-catch="'payroll-slip-row-detail-btn-' + record.id" @click="openSlipDetail(record as unknown as PayrollSlip)">详情</a-button>
+              </template>
+            </template>
+          </a-table>
+        </template>
+
+        <!-- 临时补贴/奖金管理 -->
+        <template v-if="activeTab === 'bonuses'">
+          <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+            <a-select
+              :value="selectedBonusCycleId ?? undefined"
+              placeholder="请选择工资周期"
+              :options="cycleOptions"
+              :loading="loadingCycles"
+              style="width: 220px"
+              @change="(v) => { selectedBonusCycleId = v as number; loadBonuses() }"
+            />
+            <a-button type="primary" size="small" :disabled="!selectedBonusCycleId || !isFinance" @click="openBonusModal">+ 录入</a-button>
+            <a-tag v-if="bonusApprovalRequired" color="orange">需 CEO 审批</a-tag>
+            <a-tag v-else color="green">直接生效（通知 CEO）</a-tag>
+          </div>
+          <a-table
+            :columns="bonusColumns"
+            :data-source="bonuses"
+            :loading="loadingBonuses"
+            row-key="id"
+            size="small"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'type'">
+                <a-tag :color="record.type === 'EARNING' ? 'green' : 'red'">{{ record.type === 'EARNING' ? '补贴/奖金' : '扣款' }}</a-tag>
+              </template>
+              <template v-if="column.key === 'amount'">
+                ¥{{ formatAmount(record.amount) }}
+              </template>
+              <template v-if="column.key === 'status'">
+                <a-tag :color="bonusStatusColor(record.status)">{{ bonusStatusLabel(record.status) }}</a-tag>
+              </template>
+              <template v-if="column.key === 'action'">
+                <a-popconfirm title="确定删除该条目？" @confirm="deleteBonus(record.id)">
+                  <a-button v-if="isFinance || role === 'ceo'" type="link" danger size="small">删除</a-button>
+                </a-popconfirm>
               </template>
             </template>
           </a-table>
@@ -312,6 +354,61 @@
       </template>
       <a-spin v-else :spinning="loadingSlipDetail" tip="加载中..." />
     </a-modal>
+
+    <!-- 临时补贴/奖金 录入 Modal -->
+    <a-modal
+      v-model:open="showBonusModal"
+      title="录入临时补贴/奖金"
+      :confirm-loading="creatingBonus"
+      @ok="submitBonus"
+      @cancel="showBonusModal = false"
+      width="520px"
+    >
+      <a-form layout="vertical" :model="bonusForm">
+        <a-form-item label="员工" required>
+          <a-select
+            v-model:value="bonusForm.employeeId"
+            placeholder="选择员工"
+            :options="employeeOptions"
+            show-search
+            option-filter-prop="label"
+          />
+        </a-form-item>
+        <a-form-item label="名称" required>
+          <a-input v-model:value="bonusForm.name" placeholder="如 春节奖金 / 罚款" />
+        </a-form-item>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="类型" required>
+              <a-select v-model:value="bonusForm.type">
+                <a-select-option value="EARNING">补贴/奖金（加）</a-select-option>
+                <a-select-option value="DEDUCTION">扣款（减）</a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="金额" required>
+              <a-input-number v-model:value="bonusForm.amount" :min="0.01" :precision="2" style="width: 100%" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-form-item label="备注">
+          <a-textarea v-model:value="bonusForm.remark" :rows="2" placeholder="可选" />
+        </a-form-item>
+        <a-alert
+          v-if="bonusApprovalRequired"
+          type="warning"
+          show-icon
+          message="本条目需经 CEO 审批通过后方可计入结算"
+        />
+        <a-alert
+          v-else
+          type="info"
+          show-icon
+          message="录入后立即生效；系统会通知 CEO 知晓"
+        />
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -417,6 +514,55 @@ const pinError = ref('')
 // 签名绑定提示
 const showBindPromptModal = ref(false)
 
+// 临时补贴/奖金
+interface PayrollBonus {
+  id: number
+  cycleId: number
+  employeeId: number
+  name: string
+  amount: number | string
+  type: 'EARNING' | 'DEDUCTION'
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  remark?: string
+  formId?: number | null
+  createdBy?: number
+  createdAt?: string
+}
+
+interface EmployeeOption { id: number; name: string; employeeNo: string }
+
+const isFinance = computed(() => role.value === 'finance')
+const selectedBonusCycleId = ref<number | null>(null)
+const bonuses = ref<PayrollBonus[]>([])
+const loadingBonuses = ref(false)
+const bonusApprovalRequired = ref(false)
+const employeesForBonus = ref<EmployeeOption[]>([])
+const employeeOptions = computed(() => employeesForBonus.value.map(e => ({
+  value: e.id, label: `${e.name} (${e.employeeNo})`
+})))
+const showBonusModal = ref(false)
+const creatingBonus = ref(false)
+const bonusForm = ref<{ employeeId: number | null; name: string; amount: number | null; type: 'EARNING' | 'DEDUCTION'; remark: string }>({
+  employeeId: null, name: '', amount: null, type: 'EARNING', remark: ''
+})
+
+const bonusColumns = [
+  { title: '员工 ID', dataIndex: 'employeeId', key: 'employeeId', width: 100 },
+  { title: '名称', dataIndex: 'name', key: 'name' },
+  { title: '类型', key: 'type', width: 110 },
+  { title: '金额', key: 'amount', width: 120 },
+  { title: '状态', key: 'status', width: 100 },
+  { title: '备注', dataIndex: 'remark', key: 'remark' },
+  { title: '操作', key: 'action', width: 90 }
+]
+
+function bonusStatusLabel(s: string) {
+  return ({ PENDING: '待审批', APPROVED: '已批准', REJECTED: '已驳回' } as Record<string, string>)[s] ?? s
+}
+function bonusStatusColor(s: string) {
+  return ({ PENDING: 'orange', APPROVED: 'green', REJECTED: 'red' } as Record<string, string>)[s] ?? 'default'
+}
+
 // ── 表格列定义 ─────────────────────────────────────────────
 
 const cycleColumns = [
@@ -449,6 +595,81 @@ function onTabChange(key: string) {
   activeTab.value = key
   if (key === 'cycles' && cycles.value.length === 0) loadCycles()
   if (key === 'slips' && cycles.value.length === 0) loadCycles()
+  if (key === 'bonuses') {
+    if (cycles.value.length === 0) loadCycles()
+    loadBonusApprovalConfig()
+    if (employeesForBonus.value.length === 0) loadEmployeesForBonus()
+  }
+}
+
+// ── 临时补贴/奖金 ─────────────────────────────────────────
+
+async function loadBonusApprovalConfig() {
+  try {
+    const data = await request<{ approvalRequired: boolean }>({ url: '/payroll/bonus-approval-config' })
+    bonusApprovalRequired.value = !!data.approvalRequired
+  } catch {
+    bonusApprovalRequired.value = false
+  }
+}
+
+async function loadEmployeesForBonus() {
+  try {
+    const page = await request<{ content: EmployeeOption[] }>({ url: '/employees?size=500' })
+    employeesForBonus.value = page?.content ?? []
+  } catch {
+    employeesForBonus.value = []
+  }
+}
+
+async function loadBonuses() {
+  if (!selectedBonusCycleId.value) { bonuses.value = []; return }
+  loadingBonuses.value = true
+  try {
+    const data = await request<PayrollBonus[]>({ url: `/payroll/cycles/${selectedBonusCycleId.value}/bonuses` })
+    bonuses.value = data ?? []
+  } catch {
+    bonuses.value = []
+  } finally {
+    loadingBonuses.value = false
+  }
+}
+
+function openBonusModal() {
+  bonusForm.value = { employeeId: null, name: '', amount: null, type: 'EARNING', remark: '' }
+  showBonusModal.value = true
+}
+
+async function submitBonus() {
+  if (!selectedBonusCycleId.value) { message.warning('请先选择周期'); return }
+  if (!bonusForm.value.employeeId) { message.warning('请选择员工'); return }
+  if (!bonusForm.value.name.trim()) { message.warning('请填写名称'); return }
+  if (!bonusForm.value.amount || bonusForm.value.amount <= 0) { message.warning('金额必须为正数'); return }
+  creatingBonus.value = true
+  try {
+    await request({
+      url: `/payroll/cycles/${selectedBonusCycleId.value}/bonuses`,
+      method: 'POST',
+      body: bonusForm.value
+    })
+    message.success(bonusApprovalRequired.value ? '已提交，等待 CEO 审批' : '已录入并通知 CEO')
+    showBonusModal.value = false
+    await loadBonuses()
+  } catch {
+    // handled by request util
+  } finally {
+    creatingBonus.value = false
+  }
+}
+
+async function deleteBonus(id: number) {
+  try {
+    await request({ url: `/payroll/bonuses/${id}`, method: 'DELETE' })
+    message.success('已删除')
+    await loadBonuses()
+  } catch {
+    // handled
+  }
 }
 
 // ── 周期管理 ──────────────────────────────────────────────

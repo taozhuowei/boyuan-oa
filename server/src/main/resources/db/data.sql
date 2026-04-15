@@ -75,3 +75,30 @@ ALTER TABLE approval_flow_node ALTER COLUMN id RESTART WITH 100;
 -- System Config: initialization status
 -- ============================================
 MERGE INTO system_config (config_key, config_value, description) KEY (config_key) VALUES ('initialized', 'true', 'System initialization status');
+
+-- ============================================
+-- V5: 薪资构成扩展 — 临时补贴表单类型 + 审批流 + 配置开关
+-- ============================================
+MERGE INTO form_type_def (code, name, is_enabled, is_system) KEY (code) VALUES
+('PAYROLL_BONUS', '临时薪资调整', TRUE, TRUE);
+
+MERGE INTO approval_flow_def (id, business_type, version, is_active) KEY (id) VALUES
+(5, 'PAYROLL_BONUS', 1, TRUE);
+
+MERGE INTO approval_flow_node (id, flow_id, node_order, node_name, approval_mode, approver_type, approver_ref, skip_condition) KEY (id) VALUES
+(8, 5, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL);
+
+MERGE INTO system_config (config_key, config_value, description) KEY (config_key) VALUES
+('payroll_bonus_approval_required', 'false', '临时薪资调整是否需要 CEO 审批');
+
+-- V5: 新增内置工资项（POSITION_SALARY/PERFORMANCE_BONUS/TEMPORARY_BONUS/TEMPORARY_DEDUCT）
+MERGE INTO payroll_item_def (code, name, type, display_order, is_enabled, is_system) KEY (code) VALUES
+('BASE_SALARY',         '基本工资', 'EARNING',    1, TRUE, TRUE),
+('POSITION_SALARY',     '岗位工资', 'EARNING',   11, TRUE, TRUE),
+('PERFORMANCE_BONUS',   '绩效奖金', 'EARNING',   12, TRUE, TRUE),
+('OVERTIME_PAY',        '加班费',   'EARNING',    2, TRUE, TRUE),
+('LEAVE_DEDUCT',        '请假扣款', 'DEDUCTION',  3, TRUE, TRUE),
+('SOCIAL_INSURANCE',    '社会保险（个人）', 'DEDUCTION',  4, TRUE, TRUE),
+('COMPANY_PAID_SUBSIDY','保险补贴', 'EARNING',    5, TRUE, TRUE),
+('TEMPORARY_BONUS',     '临时补贴', 'EARNING',   90, TRUE, TRUE),
+('TEMPORARY_DEDUCT',    '临时扣款', 'DEDUCTION', 91, TRUE, TRUE);

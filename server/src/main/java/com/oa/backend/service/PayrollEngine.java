@@ -26,6 +26,11 @@ import java.util.Map;
  *
  * 周期状态流转：OPEN → WINDOW_OPEN → WINDOW_CLOSED → SETTLED → LOCKED
  * 窗口期到期由 {@link #autoCloseExpiredWindows()} 定时任务自动关闭，无手动关闭接口。
+ *
+ * 薪资公式（V5 后）：
+ *   净薪资 = 基本工资 + 岗位工资 + 绩效奖金 + 加班费 − 请假扣款
+ *          + Σ 固定补贴（三级覆盖） + Σ 临时补贴 − Σ 临时扣款
+ *          + 保险补贴（COMPANY_PAID） / − 社保个人（MERGED）
  */
 @Slf4j
 @Service
@@ -38,21 +43,20 @@ public class PayrollEngine {
     private final PayrollItemDefMapper itemDefMapper;
     private final EmployeeMapper employeeMapper;
     private final PositionMapper positionMapper;
+    private final PositionLevelMapper positionLevelMapper;
     private final FormRecordMapper formRecordMapper;
     private final SocialInsuranceItemMapper socialInsuranceItemMapper;
+    private final AllowanceResolutionService allowanceResolutionService;
+    private final PayrollBonusService payrollBonusService;
     private final ObjectMapper objectMapper;
 
     // ── 周期管理 ──────────────────────────────────────────────────────────
 
     /**
      * 创建新的工资周期。
-     *
-     * @param period 周期标识，如 "2026-04"
-     * @return 创建的 PayrollCycle
      */
     @Transactional
     public PayrollCycle createCycle(String period) {
-        // 防重
         PayrollCycle existing = cycleMapper.findByPeriod(period);
         if (existing != null) {
             throw new IllegalStateException("周期 [" + period + "] 已存在");
@@ -61,7 +65,6 @@ public class PayrollEngine {
         YearMonth ym = YearMonth.parse(period);
         LocalDate startDate = ym.atDay(1);
         LocalDate endDate = ym.atEndOfMonth();
-        // 发薪日为次月15日（遇周末顺延，此处简化为固定15日）
         LocalDate payDate = ym.plusMonths(1).atDay(15);
 
         PayrollCycle cycle = new PayrollCycle();
@@ -84,10 +87,6 @@ public class PayrollEngine {
 
     /**
      * 开放申报窗口期。
-     * 窗口开放后，员工可提交考勤申报；窗口截止日由 Scheduler 自动关闭。
-     *
-     * @param cycleId 周期 ID
-     * @return 更新后的周期
      */
     @Transactional
     public PayrollCycle openWindow(Long cycleId) {
@@ -130,19 +129,13 @@ public class PayrollEngine {
 
     /**
      * 预结算检查。
-     * 强制检查 2 项：① 无 PENDING_REVIEW 状态 PayrollSlip；② 无 CALCULATING 状态 PayrollCycle
-     *
-     * @param cycleId 周期 ID
-     * @return 检查结果列表
      */
     public List<PrecheckItem> precheck(Long cycleId) {
         requireCycle(cycleId);
 
-        // 检查1：无 PUBLISHED 未确认工资条（本周期）
         int publishedCount = slipMapper.countByStatus(cycleId, "PUBLISHED");
         boolean check1Pass = publishedCount == 0;
 
-        // 检查2：无其他 CALCULATING 或 SETTLING 状态的周期
         long calculatingCount = cycleMapper.selectCount(
                 new LambdaQueryWrapper<PayrollCycle>()
                         .in(PayrollCycle::getStatus, "CALCULATING", "SETTLING")
@@ -161,10 +154,6 @@ public class PayrollEngine {
 
     /**
      * 正式结算。
-     * 执行预检查 → 计算每个员工的工资 → 生成 PayrollSlip + PayrollSlipItem → 锁定周期。
-     *
-     * @param cycleId 周期 ID
-     * @return 结算后的周期
      */
     @OperationLogRecord(action = "PAYROLL_SETTLE", targetType = "PAYROLL_CYCLE")
     @Transactional
@@ -176,7 +165,6 @@ public class PayrollEngine {
             throw new IllegalStateException("周期状态为 [" + cycle.getStatus() + "]，无法执行结算");
         }
 
-        // 执行预检查
         List<PrecheckItem> checks = precheck(cycleId);
         boolean allPass = checks.stream().allMatch(PrecheckItem::pass);
         if (!allPass) {
@@ -187,29 +175,26 @@ public class PayrollEngine {
             throw new IllegalStateException("预结算检查未通过: " + failMsg);
         }
 
-        // 确保系统工资项定义存在
+        // 同步临时补贴审批状态：若开启审批开关，部分 PENDING 记录可能已被 CEO 审批完毕
+        int synced = payrollBonusService.syncFromApprovalForms(cycleId);
+        if (synced > 0) {
+            log.info("临时补贴审批状态已同步: cycleId={}, changed={}", cycleId, synced);
+        }
+
         initSystemItemDefs();
 
-        // 获取所有活跃员工
         List<Employee> employees = employeeMapper.selectList(
                 new LambdaQueryWrapper<Employee>()
                         .eq(Employee::getAccountStatus, "ACTIVE")
                         .eq(Employee::getDeleted, 0)
         );
 
-        // 加载工资项定义
-        PayrollItemDef baseSalaryDef = findOrCreateItemDef("BASE_SALARY", "基本工资", "EARNING", 1);
-        PayrollItemDef overtimeDef = findOrCreateItemDef("OVERTIME_PAY", "加班费", "EARNING", 2);
-        PayrollItemDef leaveDeductDef = findOrCreateItemDef("LEAVE_DEDUCT", "请假扣款", "DEDUCTION", 3);
-        PayrollItemDef socialInsuranceDef = findOrCreateItemDef("SOCIAL_INSURANCE", "社会保险（个人）", "DEDUCTION", 4);
-        PayrollItemDef companyPaidSubsidyDef = findOrCreateItemDef("COMPANY_PAID_SUBSIDY", "社保补贴（公司代缴）", "EARNING", 5);
+        SlipItemDefs defs = loadSlipItemDefs();
 
         for (Employee emp : employees) {
-            calculateAndSaveSlip(cycle, emp, baseSalaryDef, overtimeDef, leaveDeductDef,
-                    socialInsuranceDef, companyPaidSubsidyDef);
+            calculateAndSaveSlip(cycle, emp, defs);
         }
 
-        // 锁定周期
         cycle.setStatus("SETTLED");
         cycle.setLockedAt(LocalDateTime.now());
         cycle.setUpdatedAt(LocalDateTime.now());
@@ -219,51 +204,60 @@ public class PayrollEngine {
         return cycle;
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────
+    // ── 核心：单员工工资计算 ────────────────────────────────────────────────
 
-    /**
-     * 计算并保存单个员工的工资条
-     *
-     * @param socialInsuranceDef   个人社保扣款项定义（MERGED 模式使用）
-     * @param companyPaidSubsidyDef 公司代缴补贴项定义（COMPANY_PAID 模式使用）
-     */
-    private void calculateAndSaveSlip(PayrollCycle cycle, Employee emp,
-                                       PayrollItemDef baseDef, PayrollItemDef overtimeDef, PayrollItemDef leaveDef,
-                                       PayrollItemDef socialInsuranceDef, PayrollItemDef companyPaidSubsidyDef) {
-        // 获取基本工资及社保模式（从岗位配置读取）
-        BigDecimal baseSalary = BigDecimal.ZERO;
-        String socialInsuranceMode = null;
-        if (emp.getPositionId() != null) {
-            Position pos = positionMapper.selectById(emp.getPositionId());
-            if (pos != null) {
-                if (pos.getBaseSalary() != null) baseSalary = pos.getBaseSalary();
-                socialInsuranceMode = pos.getSocialInsuranceMode();
-            }
-        }
+    private void calculateAndSaveSlip(PayrollCycle cycle, Employee emp, SlipItemDefs defs) {
+        SalaryComponents comps = resolveFixedComponents(emp);
+        BigDecimal baseSalary = comps.baseSalary;
+        BigDecimal positionSalary = comps.positionSalary;
+        BigDecimal performanceBonus = comps.performanceBonus;
 
-        // 统计审批通过的加班时长（小时）
+        // 加班/请假 base 基数，根据岗位配置 overtime_base_type 决定
+        BigDecimal overtimeBase = resolveRateBase(emp, comps, comps.overtimeBaseType, comps.overtimeBaseAmount);
+        BigDecimal leaveBase = resolveRateBase(emp, comps, comps.leaveBaseType, null);
+
         BigDecimal overtimeHours = calculateOvertimeHours(emp.getId(), cycle.getStartDate(), cycle.getEndDate());
-
-        // 统计审批通过的请假时长（小时）
         BigDecimal leaveHours = calculateLeaveHours(emp.getId(), cycle.getStartDate(), cycle.getEndDate());
 
-        // 计算日薪（月薪 / 21.75 工作日）
-        BigDecimal dailyRate = baseSalary.divide(BigDecimal.valueOf(21.75), 2, RoundingMode.HALF_UP);
-        BigDecimal hourlyRate = dailyRate.divide(BigDecimal.valueOf(8), 2, RoundingMode.HALF_UP);
+        BigDecimal overtimeHourlyRate = hourlyRate(overtimeBase);
+        BigDecimal leaveHourlyRate = hourlyRate(leaveBase);
 
-        // 默认加班倍率 1.5（简化，实际读岗位配置）
-        BigDecimal overtimePay = hourlyRate.multiply(overtimeHours).multiply(BigDecimal.valueOf(1.5))
+        // 简化：加班统一按 1.5 倍计（实际应按工作日/周末/节假日拆分，后续扩展）
+        BigDecimal overtimePay = overtimeHourlyRate.multiply(overtimeHours)
+                .multiply(BigDecimal.valueOf(1.5))
                 .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal leaveDeduct = leaveHourlyRate.multiply(leaveHours).setScale(2, RoundingMode.HALF_UP);
 
-        // 请假扣款（按实际时长扣，默认100%，即 hourlyRate * hours）
-        BigDecimal leaveDeduct = hourlyRate.multiply(leaveHours).setScale(2, RoundingMode.HALF_UP);
+        // 社保
+        BigDecimal socialInsuranceAmount = calculateSocialInsurance(emp.getPositionId(), baseSalary,
+                comps.socialInsuranceMode);
+        boolean isCompanyPaid = "COMPANY_PAID".equals(comps.socialInsuranceMode);
 
-        // 计算社保（根据岗位社保模式，null/empty 视为 MERGED）
-        BigDecimal socialInsuranceAmount = calculateSocialInsurance(emp.getPositionId(), baseSalary, socialInsuranceMode);
-        boolean isCompanyPaid = "COMPANY_PAID".equals(socialInsuranceMode);
+        // 固定补贴（三级覆盖）
+        List<AllowanceResolutionService.Resolved> allowances = allowanceResolutionService.resolveForEmployee(emp);
+        BigDecimal allowanceTotal = BigDecimal.ZERO;
+        for (AllowanceResolutionService.Resolved r : allowances) {
+            allowanceTotal = allowanceTotal.add(r.amount());
+        }
 
-        // 净收入：MERGED 模式扣减个人社保；COMPANY_PAID 模式不扣
-        BigDecimal netPay = baseSalary.add(overtimePay).subtract(leaveDeduct);
+        // 临时补贴/扣款
+        List<PayrollBonus> bonuses = payrollBonusService.listApprovedByCycleEmployee(cycle.getId(), emp.getId());
+        BigDecimal tempEarning = BigDecimal.ZERO;
+        BigDecimal tempDeduct = BigDecimal.ZERO;
+        for (PayrollBonus b : bonuses) {
+            if ("EARNING".equals(b.getType())) tempEarning = tempEarning.add(b.getAmount());
+            else tempDeduct = tempDeduct.add(b.getAmount());
+        }
+
+        // 净收入
+        BigDecimal netPay = baseSalary
+                .add(positionSalary)
+                .add(performanceBonus)
+                .add(overtimePay)
+                .subtract(leaveDeduct)
+                .add(allowanceTotal)
+                .add(tempEarning)
+                .subtract(tempDeduct);
         if (!isCompanyPaid) {
             netPay = netPay.subtract(socialInsuranceAmount);
         }
@@ -281,31 +275,104 @@ public class PayrollEngine {
         slip.setDeleted(0);
         slipMapper.insert(slip);
 
-        // 保存工资项明细
-        saveSlipItem(slip.getId(), baseDef.getId(), baseSalary, "基本工资");
+        // 明细项
+        if (baseSalary.compareTo(BigDecimal.ZERO) > 0) {
+            saveSlipItem(slip.getId(), defs.baseSalary.getId(), baseSalary, "基本工资");
+        }
+        if (positionSalary.compareTo(BigDecimal.ZERO) > 0) {
+            saveSlipItem(slip.getId(), defs.positionSalary.getId(), positionSalary, "岗位工资");
+        }
+        if (performanceBonus.compareTo(BigDecimal.ZERO) > 0) {
+            saveSlipItem(slip.getId(), defs.performanceBonus.getId(), performanceBonus, "绩效奖金");
+        }
         if (overtimePay.compareTo(BigDecimal.ZERO) > 0) {
-            saveSlipItem(slip.getId(), overtimeDef.getId(), overtimePay,
-                    "加班费 " + overtimeHours + " 小时 × " + hourlyRate + " × 1.5");
+            saveSlipItem(slip.getId(), defs.overtime.getId(), overtimePay,
+                    "加班费 " + overtimeHours + " 小时 × " + overtimeHourlyRate + " × 1.5");
         }
         if (leaveDeduct.compareTo(BigDecimal.ZERO) > 0) {
-            saveSlipItem(slip.getId(), leaveDef.getId(), leaveDeduct.negate(),
-                    "请假扣款 " + leaveHours + " 小时 × " + hourlyRate);
+            saveSlipItem(slip.getId(), defs.leaveDeduct.getId(), leaveDeduct.negate(),
+                    "请假扣款 " + leaveHours + " 小时 × " + leaveHourlyRate);
         }
-        // 社保明细：MERGED→扣款（负数），COMPANY_PAID→补贴（正数，仅记录）
+        for (AllowanceResolutionService.Resolved r : allowances) {
+            PayrollItemDef d = findOrCreateItemDef("ALLOWANCE_" + r.def().getCode(),
+                    r.def().getName(), "EARNING", 20 + (r.def().getDisplayOrder() == null ? 0 : r.def().getDisplayOrder()));
+            saveSlipItem(slip.getId(), d.getId(), r.amount(), r.def().getName());
+        }
+        for (PayrollBonus b : bonuses) {
+            PayrollItemDef d = "EARNING".equals(b.getType()) ? defs.temporaryBonus : defs.temporaryDeduct;
+            BigDecimal signed = "EARNING".equals(b.getType()) ? b.getAmount() : b.getAmount().negate();
+            String note = b.getName() + (b.getRemark() != null && !b.getRemark().isBlank() ? " — " + b.getRemark() : "");
+            saveSlipItem(slip.getId(), d.getId(), signed, note);
+        }
         if (socialInsuranceAmount.compareTo(BigDecimal.ZERO) > 0) {
             if (isCompanyPaid) {
-                saveSlipItem(slip.getId(), companyPaidSubsidyDef.getId(), socialInsuranceAmount,
-                        "社保补贴（公司代缴，记录用）");
+                saveSlipItem(slip.getId(), defs.companySubsidy.getId(), socialInsuranceAmount,
+                        "保险补贴（公司代缴，记录用）");
             } else {
-                saveSlipItem(slip.getId(), socialInsuranceDef.getId(), socialInsuranceAmount.negate(),
+                saveSlipItem(slip.getId(), defs.socialInsurance.getId(), socialInsuranceAmount.negate(),
                         "社会保险个人部分");
             }
         }
     }
 
     /**
-     * 查询员工在周期内已通过审批的加班时长（OVERTIME 类型表单）
+     * 解析员工薪资固定项：基本工资 / 岗位工资 / 绩效奖金 / 加班基数类型 / 社保模式等。
+     * 优先级：position_level override > position default。
      */
+    private SalaryComponents resolveFixedComponents(Employee emp) {
+        SalaryComponents c = new SalaryComponents();
+        if (emp.getPositionId() == null) return c;
+
+        Position pos = positionMapper.selectById(emp.getPositionId());
+        if (pos == null) return c;
+
+        c.baseSalary = firstNonNull(pos.getBaseSalary(), BigDecimal.ZERO);
+        c.positionSalary = firstNonNull(pos.getPositionSalary(), BigDecimal.ZERO);
+        c.performanceBonus = Boolean.TRUE.equals(pos.getHasPerformanceBonus())
+                ? firstNonNull(pos.getDefaultPerformanceBonus(), BigDecimal.ZERO)
+                : BigDecimal.ZERO;
+        c.overtimeBaseType = pos.getOvertimeBaseType();
+        c.overtimeBaseAmount = pos.getOvertimeBaseAmount();
+        c.leaveBaseType = pos.getLeaveDeductBaseType();
+        c.socialInsuranceMode = pos.getSocialInsuranceMode();
+
+        if (emp.getLevelId() != null) {
+            PositionLevel level = positionLevelMapper.selectById(emp.getLevelId());
+            if (level != null && (level.getDeleted() == null || level.getDeleted() == 0)) {
+                if (level.getBaseSalaryOverride() != null) c.baseSalary = level.getBaseSalaryOverride();
+                if (level.getPositionSalaryOverride() != null) c.positionSalary = level.getPositionSalaryOverride();
+                if (level.getPerformanceBonusOverride() != null
+                        && Boolean.TRUE.equals(pos.getHasPerformanceBonus())) {
+                    c.performanceBonus = level.getPerformanceBonusOverride();
+                }
+            }
+        }
+
+        return c;
+    }
+
+    /**
+     * 根据 base_type 决定加班/请假计算基数。
+     * BASE: 基本工资；TOTAL: 基本 + 岗位 + 绩效；CUSTOM: overtimeBaseAmount（仅加班）；其它/null: 基本。
+     */
+    private BigDecimal resolveRateBase(Employee emp, SalaryComponents c, String baseType, BigDecimal customAmount) {
+        if ("TOTAL".equals(baseType)) {
+            return c.baseSalary.add(c.positionSalary).add(c.performanceBonus);
+        }
+        if ("CUSTOM".equals(baseType) && customAmount != null) {
+            return customAmount;
+        }
+        return c.baseSalary;
+    }
+
+    private BigDecimal hourlyRate(BigDecimal monthly) {
+        if (monthly == null || monthly.compareTo(BigDecimal.ZERO) <= 0) return BigDecimal.ZERO;
+        BigDecimal daily = monthly.divide(BigDecimal.valueOf(21.75), 4, RoundingMode.HALF_UP);
+        return daily.divide(BigDecimal.valueOf(8), 2, RoundingMode.HALF_UP);
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────
+
     private BigDecimal calculateOvertimeHours(Long employeeId, LocalDate start, LocalDate end) {
         List<FormRecord> records = formRecordMapper.selectList(
                 new LambdaQueryWrapper<FormRecord>()
@@ -324,7 +391,6 @@ public class PayrollEngine {
                 String startTimeStr = (String) data.get("startTime");
                 String endTimeStr = (String) data.get("endTime");
                 if (startTimeStr != null && endTimeStr != null) {
-                    // 简化计算：解析 HH:mm 格式
                     int[] st = parseTime(startTimeStr);
                     int[] et = parseTime(endTimeStr);
                     double hours = (et[0] * 60 + et[1] - st[0] * 60 - st[1]) / 60.0;
@@ -337,9 +403,6 @@ public class PayrollEngine {
         return total.setScale(1, RoundingMode.HALF_UP);
     }
 
-    /**
-     * 查询员工在周期内已通过审批的请假时长（LEAVE 类型表单，按天数计算）
-     */
     private BigDecimal calculateLeaveHours(Long employeeId, LocalDate start, LocalDate end) {
         List<FormRecord> records = formRecordMapper.selectList(
                 new LambdaQueryWrapper<FormRecord>()
@@ -358,7 +421,7 @@ public class PayrollEngine {
                 Object daysObj = data.get("days");
                 if (daysObj != null) {
                     double days = Double.parseDouble(daysObj.toString());
-                    total = total.add(BigDecimal.valueOf(days * 8)); // 1天=8小时
+                    total = total.add(BigDecimal.valueOf(days * 8));
                 }
             } catch (Exception e) {
                 log.warn("解析请假天数失败: formId={}", r.getId(), e);
@@ -391,17 +454,6 @@ public class PayrollEngine {
         return cycle;
     }
 
-    /**
-     * 计算员工社保金额。
-     *
-     * 数据来源：social_insurance_item 表按 position_id 过滤，以 employee_rate * baseSalary 累加。
-     * 若岗位无社保项，返回 ZERO。
-     *
-     * @param positionId  岗位 ID（可为 null）
-     * @param baseSalary  月基本工资，用作缴费基数
-     * @param mode        社保模式（"COMPANY_PAID" / null/"MERGED"）
-     * @return 社保金额（恒为非负数，由调用方决定正负方向）
-     */
     private BigDecimal calculateSocialInsurance(Long positionId, BigDecimal baseSalary, String mode) {
         if (positionId == null) return BigDecimal.ZERO;
 
@@ -411,12 +463,8 @@ public class PayrollEngine {
                         .eq(SocialInsuranceItem::getIsEnabled, true)
                         .eq(SocialInsuranceItem::getDeleted, 0)
         );
-
         if (items.isEmpty()) return BigDecimal.ZERO;
 
-        // MERGED 模式：按 employee_rate 计算个人缴纳部分
-        // COMPANY_PAID 模式：按 employee_rate 计算公司代缴金额（记录用）
-        // 两种模式金额计算逻辑相同，区别由调用方处理（扣款 vs 补贴）
         BigDecimal total = BigDecimal.ZERO;
         for (SocialInsuranceItem item : items) {
             if (item.getEmployeeRate() == null) continue;
@@ -432,10 +480,28 @@ public class PayrollEngine {
      */
     private void initSystemItemDefs() {
         ensureItemDef("BASE_SALARY", "基本工资", "EARNING", 1, true);
+        ensureItemDef("POSITION_SALARY", "岗位工资", "EARNING", 11, true);
+        ensureItemDef("PERFORMANCE_BONUS", "绩效奖金", "EARNING", 12, true);
         ensureItemDef("OVERTIME_PAY", "加班费", "EARNING", 2, true);
         ensureItemDef("LEAVE_DEDUCT", "请假扣款", "DEDUCTION", 3, true);
         ensureItemDef("SOCIAL_INSURANCE", "社会保险（个人）", "DEDUCTION", 4, true);
-        ensureItemDef("COMPANY_PAID_SUBSIDY", "社保补贴（公司代缴）", "EARNING", 5, true);
+        ensureItemDef("COMPANY_PAID_SUBSIDY", "保险补贴", "EARNING", 5, true);
+        ensureItemDef("TEMPORARY_BONUS", "临时补贴", "EARNING", 90, true);
+        ensureItemDef("TEMPORARY_DEDUCT", "临时扣款", "DEDUCTION", 91, true);
+    }
+
+    private SlipItemDefs loadSlipItemDefs() {
+        SlipItemDefs d = new SlipItemDefs();
+        d.baseSalary = findOrCreateItemDef("BASE_SALARY", "基本工资", "EARNING", 1);
+        d.positionSalary = findOrCreateItemDef("POSITION_SALARY", "岗位工资", "EARNING", 11);
+        d.performanceBonus = findOrCreateItemDef("PERFORMANCE_BONUS", "绩效奖金", "EARNING", 12);
+        d.overtime = findOrCreateItemDef("OVERTIME_PAY", "加班费", "EARNING", 2);
+        d.leaveDeduct = findOrCreateItemDef("LEAVE_DEDUCT", "请假扣款", "DEDUCTION", 3);
+        d.socialInsurance = findOrCreateItemDef("SOCIAL_INSURANCE", "社会保险（个人）", "DEDUCTION", 4);
+        d.companySubsidy = findOrCreateItemDef("COMPANY_PAID_SUBSIDY", "保险补贴", "EARNING", 5);
+        d.temporaryBonus = findOrCreateItemDef("TEMPORARY_BONUS", "临时补贴", "EARNING", 90);
+        d.temporaryDeduct = findOrCreateItemDef("TEMPORARY_DEDUCT", "临时扣款", "DEDUCTION", 91);
+        return d;
     }
 
     private void ensureItemDef(String code, String name, String type, int order, boolean system) {
@@ -460,7 +526,13 @@ public class PayrollEngine {
     }
 
     private PayrollItemDef findOrCreateItemDef(String code, String name, String type, int order) {
-        ensureItemDef(code, name, type, order, true);
+        PayrollItemDef existing = itemDefMapper.selectOne(
+                new LambdaQueryWrapper<PayrollItemDef>()
+                        .eq(PayrollItemDef::getCode, code)
+                        .eq(PayrollItemDef::getDeleted, 0)
+        );
+        if (existing != null) return existing;
+        ensureItemDef(code, name, type, order, false);
         return itemDefMapper.selectOne(
                 new LambdaQueryWrapper<PayrollItemDef>()
                         .eq(PayrollItemDef::getCode, code)
@@ -468,10 +540,35 @@ public class PayrollEngine {
         );
     }
 
+    private static <T> T firstNonNull(T a, T fallback) {
+        return a != null ? a : fallback;
+    }
+
     // ── Inner types ───────────────────────────────────────────────────────
 
-    /**
-     * 预结算检查项结果
-     */
     public record PrecheckItem(String key, String label, boolean pass, String message) {}
+
+    /** 员工固定薪资项组合 */
+    private static class SalaryComponents {
+        BigDecimal baseSalary = BigDecimal.ZERO;
+        BigDecimal positionSalary = BigDecimal.ZERO;
+        BigDecimal performanceBonus = BigDecimal.ZERO;
+        String overtimeBaseType;
+        BigDecimal overtimeBaseAmount;
+        String leaveBaseType;
+        String socialInsuranceMode;
+    }
+
+    /** 结算时复用的工资项定义引用 */
+    private static class SlipItemDefs {
+        PayrollItemDef baseSalary;
+        PayrollItemDef positionSalary;
+        PayrollItemDef performanceBonus;
+        PayrollItemDef overtime;
+        PayrollItemDef leaveDeduct;
+        PayrollItemDef socialInsurance;
+        PayrollItemDef companySubsidy;
+        PayrollItemDef temporaryBonus;
+        PayrollItemDef temporaryDeduct;
+    }
 }

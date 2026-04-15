@@ -13,6 +13,7 @@ public record PositionResponse(
     String employeeCategory,
     String defaultRoleCode,
     BigDecimal baseSalary,
+    BigDecimal positionSalary,
     BigDecimal overtimeRateWeekday,
     BigDecimal overtimeRateWeekend,
     BigDecimal overtimeRateHoliday,
