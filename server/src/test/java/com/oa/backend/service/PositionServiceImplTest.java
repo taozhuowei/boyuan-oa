@@ -96,7 +96,7 @@ class PositionServiceImplTest {
 
         PositionUpsertRequest req = new PositionUpsertRequest(
             "施工岗", "LABOR", "worker",
-            new BigDecimal("6000"), null, null,
+            new BigDecimal("6000"), null, null, null,
             new BigDecimal("1.8"), new BigDecimal("2.5"), new BigDecimal("3.5"),
             null, 5, null, null, true, true
         );
@@ -303,7 +303,7 @@ class PositionServiceImplTest {
         when(positionMapper.selectById(1L)).thenReturn(position);
         when(positionLevelMapper.insert(any())).thenReturn(1);
 
-        PositionLevelUpsertRequest req = new PositionLevelUpsertRequest("高级工程师", 1, null, null, null);
+        PositionLevelUpsertRequest req = new PositionLevelUpsertRequest("高级工程师", 1, null, null, null, null);
         PositionLevelResponse result = service.createLevel(1L, req);
 
         assertEquals("高级工程师", result.levelName());
@@ -314,7 +314,7 @@ class PositionServiceImplTest {
     void createLevel_positionNotFound_throwsException() {
         when(positionMapper.selectById(99L)).thenReturn(null);
 
-        PositionLevelUpsertRequest req = new PositionLevelUpsertRequest("高级工程师", 1, null, null, null);
+        PositionLevelUpsertRequest req = new PositionLevelUpsertRequest("高级工程师", 1, null, null, null, null);
         assertThrows(IllegalArgumentException.class, () -> service.createLevel(99L, req));
         verify(positionLevelMapper, never()).insert(any());
     }
@@ -322,10 +322,10 @@ class PositionServiceImplTest {
     @Test
     @DisplayName("createLevel: blank levelName - req with null/blank name; throws IllegalArgumentException")
     void createLevel_blankLevelName_throwsException() {
-        PositionLevelUpsertRequest reqWithNull = new PositionLevelUpsertRequest(null, 1, null, null, null);
+        PositionLevelUpsertRequest reqWithNull = new PositionLevelUpsertRequest(null, 1, null, null, null, null);
         assertThrows(IllegalArgumentException.class, () -> service.createLevel(1L, reqWithNull));
 
-        PositionLevelUpsertRequest reqWithBlank = new PositionLevelUpsertRequest("   ", 1, null, null, null);
+        PositionLevelUpsertRequest reqWithBlank = new PositionLevelUpsertRequest("   ", 1, null, null, null, null);
         assertThrows(IllegalArgumentException.class, () -> service.createLevel(1L, reqWithBlank));
         verify(positionLevelMapper, never()).insert(any());
     }
@@ -337,7 +337,7 @@ class PositionServiceImplTest {
     void updateLevel_levelNotFound_throwsException() {
         when(positionLevelMapper.selectById(99L)).thenReturn(null);
 
-        PositionLevelUpsertRequest req = new PositionLevelUpsertRequest("新名称", 1, null, null, null);
+        PositionLevelUpsertRequest req = new PositionLevelUpsertRequest("新名称", 1, null, null, null, null);
         assertThrows(IllegalArgumentException.class, () -> service.updateLevel(1L, 99L, req));
         verify(positionLevelMapper, never()).updateById(any());
     }
@@ -349,7 +349,7 @@ class PositionServiceImplTest {
         when(positionLevelMapper.selectById(1L)).thenReturn(level);
         when(positionLevelMapper.updateById(any())).thenReturn(1);
 
-        PositionLevelUpsertRequest req = new PositionLevelUpsertRequest("新名称", 2, null, null, null);
+        PositionLevelUpsertRequest req = new PositionLevelUpsertRequest("新名称", 2, null, null, null, null);
         service.updateLevel(1L, 1L, req);
 
         verify(positionLevelMapper).updateById(any());
@@ -383,7 +383,7 @@ class PositionServiceImplTest {
 
     private PositionUpsertRequest emptyReqWithName(String name) {
         return new PositionUpsertRequest(
-            name, null, null, null, null, null,
+            name, null, null, null, null, null, null,
             null, null, null, null, null, null, null, null, null
         );
     }

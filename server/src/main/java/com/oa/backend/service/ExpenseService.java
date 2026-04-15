@@ -147,7 +147,8 @@ public class ExpenseService {
                         t.getName(),
                         t.getDescription(),
                         t.getRequireInvoice(),
-                        t.getDailyLimit()
+                        t.getDailyLimit(),
+                        t.getDisplayOrder()
                 ))
                 .collect(Collectors.toList());
     }
