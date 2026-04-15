@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.entity.*;
 import com.oa.backend.mapper.*;
 import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.PayrollCorrectionService;
 import com.oa.backend.service.PayrollEngine;
 import com.oa.backend.service.SignatureService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,7 @@ public class PayrollController {
     private final PayrollItemDefMapper itemDefMapper;
     private final EmployeeMapper employeeMapper;
     private final SignatureService signatureService;
+    private final PayrollCorrectionService correctionService;
 
     // ── 周期管理（Finance/CEO） ──────────────────────────────────────────────
 
@@ -294,4 +296,47 @@ public class PayrollController {
 
     /** 确认工资条请求 */
     public record ConfirmSlipRequest(String pin) {}
+
+    // ── 薪资更正（Finance 发起 → CEO 审批） ───────────────────────────────────
+
+    /**
+     * Finance 发起更正：填写 reason + 更正项（部分或全部 item_def_id 的新金额）。
+     * 创建 form_record（PAYROLL_CORRECTION）+ payroll_adjustment（PENDING）。
+     * CEO 在 /todo 通过审批后，下次访问 /payroll/corrections 会自动应用。
+     */
+    @PostMapping("/slips/{id}/correction")
+    @PreAuthorize("hasRole('FINANCE')")
+    public ResponseEntity<?> createCorrection(@PathVariable Long id,
+                                              @RequestBody CorrectionRequest req,
+                                              Authentication auth) {
+        Long financeId = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        if (financeId == null) {
+            return ResponseEntity.status(401).body(Map.of("message", "无法识别当前用户"));
+        }
+        try {
+            List<PayrollCorrectionService.CorrectionItem> items = req.corrections() == null
+                    ? List.of()
+                    : req.corrections().stream()
+                            .map(c -> new PayrollCorrectionService.CorrectionItem(c.itemDefId(), c.amount(), c.remark()))
+                            .toList();
+            PayrollAdjustment adj = correctionService.createCorrection(id, req.reason(), items, financeId);
+            return ResponseEntity.ok(adj);
+        } catch (IllegalStateException ex) {
+            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+        }
+    }
+
+    /**
+     * 列出更正记录（自动同步 form 状态：APPROVED 的会就地应用、REJECTED 的更新 status）。
+     */
+    @GetMapping("/corrections")
+    @PreAuthorize("hasAnyRole('FINANCE','CEO')")
+    public ResponseEntity<List<PayrollAdjustment>> listCorrections(
+            @RequestParam(required = false) Long cycleId,
+            @RequestParam(required = false) Long employeeId) {
+        return ResponseEntity.ok(correctionService.list(cycleId, employeeId));
+    }
+
+    public record CorrectionRequest(String reason, List<CorrectionItemPayload> corrections) {}
+    public record CorrectionItemPayload(Long itemDefId, java.math.BigDecimal amount, String remark) {}
 }

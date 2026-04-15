@@ -85,11 +85,11 @@ Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可
 - [-] `[P1]` **工作台项目进度卡片可点击**：`activeProjectCount` 统计卡片点击跳转至 `/projects`
   > 验收：CEO 工作台点击"活跃项目"数字跳转到项目列表页
 
-- [ ] `[P2]` **考勤驳回后重新发起**：被驳回的请假/加班单在"我的记录"Tab 展示驳回原因；"重新发起"按钮复制原单数据打开提交表单
+- [-] `[P2]` **考勤驳回后重新发起**：详情弹窗对 REJECTED 单展示驳回原因（取自审批历史最后一次 REJECT 的 comment）；"重新发起"按钮预填 leaveForm/overtimeForm 并切到对应 Tab
   > 验收：提交请假后被 PM 驳回，员工在记录中看到驳回原因和"重新发起"按钮
 
-- [ ] `[P2]` **薪资更正流程**：后端 `POST /payroll/slips/{id}/correction`（财务发起，CEO 审批解锁，version 递增）；前端在财务视图详情页展示"发起更正"按钮
-  > 验收：财务对已发布工资条发起更正，CEO 在待办看到审批项；批准后原版本状态变为 SUPERSEDED
+- [-] `[P2]` **薪资更正流程**：V6 迁移新增 `payroll_adjustment.slip_id/form_id/corrections_json/new_slip_id/applied`，PAYROLL_CORRECTION 表单类型 + CEO 单节点审批流。后端 `POST /payroll/slips/{id}/correction`（财务发起）+ `GET /payroll/corrections`（自动同步 form 状态：通过则 SUPERSEDED 原条 + version+1 新条）。前端工资条详情新增"发起更正"按钮 + "更正记录" Tab。
+  > 验收：财务对已发布工资条发起更正，CEO 在 /todo 看到审批项；批准后下次访问"更正记录"自动应用，原条 SUPERSEDED + 新版本 PUBLISHED。
 
 - [-] `[P0]` **薪资构成扩展（V5）**：实现 `净薪资 = 基本 + 岗位 + 绩效 + 加班 − 请假 + Σ固定补贴 + Σ临时补贴 ± 保险补贴/社保`。新增 `position_salary` 字段、`allowance_def`/`allowance_config` 三级覆盖（GLOBAL/POSITION/EMPLOYEE）、`payroll_bonus` 周期临时补贴、`payroll_bonus_approval_required` 配置开关（默认 false=直接生效+通知 CEO，true=走 CEO 审批流）。
   > 验收：① 岗位管理可设置"岗位工资/默认绩效"；② `/allowances` 页可创建补贴项并按全局/岗位/员工三级配置；③ `/payroll` 周期管理新增"临时补贴/奖金" Tab；④ `/config` 页可切换审批开关；⑤ 结算后工资条按 `payroll_item_def.display_order` 完整展示每一项。

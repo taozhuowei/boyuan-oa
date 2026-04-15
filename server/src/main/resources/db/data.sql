@@ -80,13 +80,16 @@ MERGE INTO system_config (config_key, config_value, description) KEY (config_key
 -- V5: 薪资构成扩展 — 临时补贴表单类型 + 审批流 + 配置开关
 -- ============================================
 MERGE INTO form_type_def (code, name, is_enabled, is_system) KEY (code) VALUES
-('PAYROLL_BONUS', '临时薪资调整', TRUE, TRUE);
+('PAYROLL_BONUS', '临时薪资调整', TRUE, TRUE),
+('PAYROLL_CORRECTION', '薪资更正', TRUE, TRUE);
 
 MERGE INTO approval_flow_def (id, business_type, version, is_active) KEY (id) VALUES
-(5, 'PAYROLL_BONUS', 1, TRUE);
+(5, 'PAYROLL_BONUS', 1, TRUE),
+(6, 'PAYROLL_CORRECTION', 1, TRUE);
 
 MERGE INTO approval_flow_node (id, flow_id, node_order, node_name, approval_mode, approver_type, approver_ref, skip_condition) KEY (id) VALUES
-(8, 5, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL);
+(8, 5, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL),
+(9, 6, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL);
 
 MERGE INTO system_config (config_key, config_value, description) KEY (config_key) VALUES
 ('payroll_bonus_approval_required', 'false', '临时薪资调整是否需要 CEO 审批');

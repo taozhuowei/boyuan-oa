@@ -319,6 +319,8 @@ public class FormService {
             case "INJURY" -> "工伤补偿";
             case "LOG" -> "施工日志";
             case "EXPENSE" -> "费用报销";
+            case "PAYROLL_BONUS" -> "临时薪资调整";
+            case "PAYROLL_CORRECTION" -> "薪资更正";
             default -> formType;
         };
     }

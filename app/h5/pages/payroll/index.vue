@@ -13,6 +13,7 @@
           <a-tab-pane key="settle" tab="结算操作" />
           <a-tab-pane key="slips" tab="工资条查看" />
           <a-tab-pane key="bonuses" tab="临时补贴/奖金" />
+          <a-tab-pane key="corrections" tab="更正记录" />
         </a-tabs>
 
         <!-- 周期管理 -->
@@ -187,6 +188,33 @@
             </template>
           </a-table>
         </template>
+
+        <!-- 薪资更正记录 -->
+        <template v-if="activeTab === 'corrections'">
+          <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+            <a-button :loading="loadingCorrections" @click="loadCorrections">刷新</a-button>
+            <span style="color: #999; font-size: 12px;">列表会自动应用 CEO 已审批通过的更正</span>
+          </div>
+          <a-table
+            :columns="correctionColumns"
+            :data-source="corrections"
+            :loading="loadingCorrections"
+            row-key="id"
+            size="small"
+          >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'status'">
+                <a-tag :color="bonusStatusColor(record.status)">{{ bonusStatusLabel(record.status) }}</a-tag>
+              </template>
+              <template v-if="column.key === 'applied'">
+                <a-tag :color="record.applied ? 'green' : 'default'">{{ record.applied ? '已应用' : '未应用' }}</a-tag>
+              </template>
+              <template v-if="column.key === 'createdAt'">
+                {{ formatTime(record.createdAt) }}
+              </template>
+            </template>
+          </a-table>
+        </template>
       </a-card>
     </template>
 
@@ -351,8 +379,43 @@
             >提交异议</a-button>
           </template>
         </template>
+
+        <!-- 财务操作按钮：发起更正（PUBLISHED/CONFIRMED/DISPUTED 状态可发起；SUPERSEDED 不可） -->
+        <template v-if="isFinance && ['PUBLISHED','CONFIRMED','DISPUTED'].includes(slipDetail.slip.status)">
+          <a-divider style="margin: 12px 0;" />
+          <a-space style="width: 100%; justify-content: center;">
+            <a-button data-catch="payroll-correction-open-btn" @click="openCorrectionModal">发起更正</a-button>
+          </a-space>
+        </template>
       </template>
       <a-spin v-else :spinning="loadingSlipDetail" tip="加载中..." />
+    </a-modal>
+
+    <!-- 薪资更正发起 Modal -->
+    <a-modal
+      v-model:open="showCorrectionModal"
+      title="发起薪资更正"
+      :confirm-loading="submittingCorrection"
+      width="640px"
+      @ok="submitCorrection"
+      @cancel="showCorrectionModal = false"
+    >
+      <p style="color: #999; margin-bottom: 12px;">
+        修改下方任意工资项的金额（保持空白则不变），并填写更正原因。提交后由 CEO 审批通过后生效，原工资条将被标记 SUPERSEDED，新版本号 +1。
+      </p>
+      <div v-for="row in correctionRows" :key="row.itemDefId" class="correction-row">
+        <span class="correction-name">{{ row.name }}</span>
+        <a-input-number
+          v-model:value="row.newAmount"
+          :precision="2"
+          :placeholder="`原 ${row.originalAmount}`"
+          style="width: 160px"
+        />
+        <a-input v-model:value="row.remark" placeholder="备注（可选）" style="flex: 1; margin-left: 8px;" />
+      </div>
+      <a-form-item label="更正原因" required style="margin-top: 16px;">
+        <a-textarea v-model:value="correctionReason" :rows="3" placeholder="必填" />
+      </a-form-item>
     </a-modal>
 
     <!-- 临时补贴/奖金 录入 Modal -->
@@ -563,6 +626,52 @@ function bonusStatusColor(s: string) {
   return ({ PENDING: 'orange', APPROVED: 'green', REJECTED: 'red' } as Record<string, string>)[s] ?? 'default'
 }
 
+// 薪资更正
+interface PayrollCorrection {
+  id: number
+  cycleId: number
+  employeeId: number
+  reason: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  slipId: number
+  formId: number | null
+  newSlipId: number | null
+  applied: boolean
+  createdAt?: string
+}
+
+interface CorrectionRow {
+  itemDefId: number
+  name: string
+  originalAmount: string | number
+  newAmount: number | null
+  remark: string
+}
+
+const corrections = ref<PayrollCorrection[]>([])
+const loadingCorrections = ref(false)
+const showCorrectionModal = ref(false)
+const submittingCorrection = ref(false)
+const correctionRows = ref<CorrectionRow[]>([])
+const correctionReason = ref('')
+const correctionTargetSlipId = ref<number | null>(null)
+
+const correctionColumns = [
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
+  { title: '原工资条', dataIndex: 'slipId', key: 'slipId', width: 100 },
+  { title: '员工 ID', dataIndex: 'employeeId', key: 'employeeId', width: 100 },
+  { title: '原因', dataIndex: 'reason', key: 'reason' },
+  { title: '状态', key: 'status', width: 100 },
+  { title: '是否应用', key: 'applied', width: 100 },
+  { title: '新工资条', dataIndex: 'newSlipId', key: 'newSlipId', width: 100 },
+  { title: '发起时间', key: 'createdAt', width: 160 }
+]
+
+function formatTime(t: string | undefined) {
+  if (!t) return '—'
+  return t.replace('T', ' ').slice(0, 16)
+}
+
 // ── 表格列定义 ─────────────────────────────────────────────
 
 const cycleColumns = [
@@ -600,6 +709,7 @@ function onTabChange(key: string) {
     loadBonusApprovalConfig()
     if (employeesForBonus.value.length === 0) loadEmployeesForBonus()
   }
+  if (key === 'corrections') loadCorrections()
 }
 
 // ── 临时补贴/奖金 ─────────────────────────────────────────
@@ -669,6 +779,69 @@ async function deleteBonus(id: number) {
     await loadBonuses()
   } catch {
     // handled
+  }
+}
+
+// ── 薪资更正 ─────────────────────────────────────────────
+
+async function loadCorrections() {
+  loadingCorrections.value = true
+  try {
+    const data = await request<PayrollCorrection[]>({ url: '/payroll/corrections' })
+    corrections.value = data ?? []
+  } catch {
+    corrections.value = []
+  } finally {
+    loadingCorrections.value = false
+  }
+}
+
+function openCorrectionModal() {
+  if (!slipDetail.value) return
+  correctionTargetSlipId.value = slipDetail.value.slip.id
+  correctionReason.value = ''
+  correctionRows.value = slipDetail.value.items.map(it => ({
+    itemDefId: it.itemDefId,
+    name: it.name,
+    originalAmount: formatAmount(it.amount),
+    newAmount: null,
+    remark: ''
+  }))
+  showCorrectionModal.value = true
+}
+
+async function submitCorrection() {
+  if (!correctionTargetSlipId.value) return
+  if (!correctionReason.value.trim()) {
+    message.warning('请填写更正原因')
+    return
+  }
+  const dirty = correctionRows.value.filter(r => r.newAmount != null || (r.remark && r.remark.trim() !== ''))
+  if (dirty.length === 0) {
+    message.warning('请至少修改一项金额或备注')
+    return
+  }
+  submittingCorrection.value = true
+  try {
+    await request({
+      url: `/payroll/slips/${correctionTargetSlipId.value}/correction`,
+      method: 'POST',
+      body: {
+        reason: correctionReason.value,
+        corrections: dirty.map(r => ({
+          itemDefId: r.itemDefId,
+          amount: r.newAmount,
+          remark: r.remark
+        }))
+      }
+    })
+    message.success('已发起更正，待 CEO 审批')
+    showCorrectionModal.value = false
+    showSlipDetail.value = false
+  } catch {
+    // handled
+  } finally {
+    submittingCorrection.value = false
   }
 }
 
@@ -1020,5 +1193,18 @@ function slipStatusColor(status: string): string {
 .pin-hint a {
   color: #1890ff;
   cursor: pointer;
+}
+
+.correction-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.correction-name {
+  width: 110px;
+  color: #333;
 }
 </style>

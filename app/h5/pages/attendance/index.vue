@@ -302,7 +302,16 @@
             </a-descriptions-item>
           </template>
           <a-descriptions-item v-if="selectedRecord.remark" label="备注" :span="2">{{ selectedRecord.remark }}</a-descriptions-item>
+          <a-descriptions-item v-if="selectedRecord.status === 'REJECTED'" label="驳回原因" :span="2">
+            <span style="color: #ff4d4f">{{ getRejectReason(selectedRecord) }}</span>
+          </a-descriptions-item>
         </a-descriptions>
+
+        <div v-if="selectedRecord.status === 'REJECTED' && canResubmit(selectedRecord)" class="resubmit-row">
+          <a-button type="primary" data-catch="attendance-record-resubmit-btn" @click="resubmitRecord(selectedRecord)">
+            重新发起
+          </a-button>
+        </div>
       </div>
     </a-modal>
   </div>
@@ -312,7 +321,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
-import type { Dayjs } from 'dayjs'
+import dayjs, { type Dayjs } from 'dayjs'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
+dayjs.extend(customParseFormat)
 import {
   getFieldLabel,
   getLeaveTypeLabel,
@@ -356,6 +367,14 @@ interface InitiatedNotifRecord {
   responses: OvertimeResponse[]
 }
 
+interface ApprovalHistory {
+  nodeName?: string
+  approver?: string
+  action?: string
+  comment?: string
+  time?: string
+}
+
 interface FormRecord {
   id: number
   formType: string
@@ -364,6 +383,7 @@ interface FormRecord {
   status: string
   formData?: Record<string, unknown>
   remark?: string
+  history?: ApprovalHistory[]
 }
 
 const userStore = useUserStore()
@@ -567,9 +587,51 @@ function statusLabel(status: string) {
   return map[status] ?? status
 }
 
-function viewRecord(record: FormRecord) {
+async function viewRecord(record: FormRecord) {
   selectedRecord.value = record
   detailVisible.value = true
+  // 拉取审批历史，用于展示驳回原因
+  try {
+    const detail = await request<FormRecord>({ url: `/forms/${record.id}` })
+    if (detail) {
+      selectedRecord.value = { ...record, history: detail.history, formData: detail.formData ?? record.formData }
+    }
+  } catch {
+    // 忽略，详情已能展示基本信息
+  }
+}
+
+function getRejectReason(record: FormRecord): string {
+  const history = record.history ?? []
+  const rejectStep = [...history].reverse().find(h => h.action === 'REJECT')
+  return rejectStep?.comment || '—'
+}
+
+function canResubmit(record: FormRecord): boolean {
+  return record.formType === 'LEAVE' || record.formType === 'OVERTIME'
+}
+
+function resubmitRecord(record: FormRecord) {
+  const data = record.formData ?? {}
+  if (record.formType === 'LEAVE') {
+    leaveForm.value = {
+      leaveType: (data.leaveType as string) ?? null,
+      startDate: data.startDate ? dayjs(data.startDate as string) : null,
+      endDate: data.endDate ? dayjs(data.endDate as string) : null,
+      reason: record.remark ?? ''
+    }
+    activeTab.value = 'leave'
+  } else if (record.formType === 'OVERTIME') {
+    overtimeForm.value = {
+      date: data.date ? dayjs(data.date as string) : null,
+      startTime: data.startTime ? dayjs(data.startTime as string, 'HH:mm') : null,
+      endTime: data.endTime ? dayjs(data.endTime as string, 'HH:mm') : null,
+      overtimeType: (data.overtimeType as string) ?? null,
+      reason: record.remark ?? ''
+    }
+    activeTab.value = 'overtime'
+  }
+  detailVisible.value = false
 }
 
 async function loadRecords() {
@@ -720,6 +782,11 @@ onMounted(loadRecords)
   padding: 8px 16px;
   color: #999;
   font-size: 13px;
+}
+
+.resubmit-row {
+  margin-top: 16px;
+  text-align: right;
 }
 
 /* Removed flex constraints to allow natural content flow */

@@ -444,6 +444,11 @@ CREATE TABLE IF NOT EXISTS payroll_adjustment (
     initiator_id BIGINT REFERENCES employee(id),
     reason VARCHAR(500),
     status VARCHAR(20) DEFAULT 'PENDING' CHECK(status IN('PENDING','APPROVED','REJECTED')),
+    slip_id BIGINT,
+    form_id BIGINT,
+    corrections_json TEXT,
+    new_slip_id BIGINT,
+    applied BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted INT DEFAULT 0
