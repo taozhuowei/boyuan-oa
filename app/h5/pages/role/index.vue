@@ -90,6 +90,24 @@
         <a-form-item label="状态" name="status">
           <a-select v-model:value="formState.status" :options="statusOptions" />
         </a-form-item>
+
+        <a-divider style="margin: 8px 0;">权限矩阵（设计 §2.2 步骤 5）</a-divider>
+        <table class="perm-matrix">
+          <thead>
+            <tr>
+              <th>模块</th>
+              <th v-for="lvl in PERMISSION_LEVELS" :key="lvl.code">{{ lvl.label }}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="mod in PERMISSION_MODULES" :key="mod.code">
+              <td>{{ mod.label }}</td>
+              <td v-for="lvl in PERMISSION_LEVELS" :key="lvl.code">
+                <a-checkbox :checked="hasPermission(mod.code, lvl.code)" @change="(e: any) => togglePermission(mod.code, lvl.code, e.target.checked)" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </a-form>
       <template #footer>
         <a-button @click="closeModal">取消</a-button>
@@ -126,6 +144,34 @@ interface FormState {
 
 const userStore = useUserStore()
 const isCEO = computed(() => userStore.userInfo?.role === 'ceo')
+
+// 设计 §2.2 步骤 5：4 级权限 × 6 大模块 = 24 个权限码
+const PERMISSION_MODULES = [
+  { code: 'HR',         label: '人员' },
+  { code: 'PROJECT',    label: '项目' },
+  { code: 'PAYROLL',    label: '薪资' },
+  { code: 'ATTENDANCE', label: '考勤' },
+  { code: 'EXPENSE',    label: '报销' },
+  { code: 'INJURY',     label: '工伤' }
+]
+const PERMISSION_LEVELS = [
+  { code: 'VIEW',    label: '查看' },
+  { code: 'EDIT',    label: '修改' },
+  { code: 'MANAGE',  label: '增删' },
+  { code: 'APPROVE', label: '审批' }
+]
+function permCode(mod: string, lvl: string) { return `${mod}_${lvl}` }
+function hasPermission(mod: string, lvl: string): boolean {
+  return formState.permissions.includes(permCode(mod, lvl))
+}
+function togglePermission(mod: string, lvl: string, checked: boolean) {
+  const code = permCode(mod, lvl)
+  if (checked && !formState.permissions.includes(code)) {
+    formState.permissions.push(code)
+  } else if (!checked) {
+    formState.permissions = formState.permissions.filter(p => p !== code)
+  }
+}
 
 const loading = ref(false)
 const roles = ref<Role[]>([])
@@ -280,5 +326,28 @@ onMounted(loadRoles)
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 16px;
+}
+
+.perm-matrix {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.perm-matrix th,
+.perm-matrix td {
+  border: 1px solid #f0f0f0;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.perm-matrix th {
+  background: #fafafa;
+  font-weight: 500;
+}
+
+.perm-matrix td:first-child {
+  font-weight: 500;
+  background: #fafafa;
+  text-align: left;
 }
 </style>

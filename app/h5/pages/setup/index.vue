@@ -1,12 +1,17 @@
 <template>
   <div class="setup-page">
     <a-card title="系统初始化向导" class="setup-card">
-      <a-steps :current="currentStep" direction="horizontal" class="setup-steps">
-        <a-step title="创建CEO账号" />
-        <a-step title="创建HR账号" />
-        <a-step title="可选人员配置" />
-        <a-step title="确认信息" />
+      <a-steps :current="currentStep" direction="horizontal" class="setup-steps" size="small">
+        <a-step title="CEO" />
+        <a-step title="HR" />
+        <a-step title="运维 / 总经理" />
+        <a-step title="确认" />
         <a-step title="恢复码" />
+        <a-step title="自定义角色" />
+        <a-step title="员工导入" />
+        <a-step title="组织架构" />
+        <a-step title="审批流 / 全局" />
+        <a-step title="留存期" />
       </a-steps>
 
       <!-- Step 1: CEO Account -->
@@ -181,10 +186,69 @@
           <a-button
             type="primary"
             :disabled="!recoverySaved"
-            @click="finishSetup"
+            @click="goToStep(5)"
           >
-            完成
+            下一步
           </a-button>
+        </div>
+      </div>
+
+      <!-- Step 6: 自定义角色（设计 §2.2 步骤 5） -->
+      <div v-if="currentStep === 5" class="step-content">
+        <h3>自定义角色</h3>
+        <p style="color: #666;">如有非内置岗位（如总监、组长等），可在角色管理中创建自定义角色并分配权限矩阵（4 级 × 6 模块）。</p>
+        <a-button @click="navigateTo('/role')" type="primary">前往角色管理</a-button>
+        <div class="step-actions">
+          <a-button @click="goToStep(4)">上一步</a-button>
+          <a-button type="link" @click="goToStep(6)">跳过</a-button>
+          <a-button type="primary" @click="goToStep(6)">下一步</a-button>
+        </div>
+      </div>
+
+      <!-- Step 7: 员工导入（设计 §2.2 步骤 6） -->
+      <div v-if="currentStep === 6" class="step-content">
+        <h3>员工批量导入</h3>
+        <p style="color: #666;">通过 CSV 粘贴批量录入员工档案；财务可在通讯录导入页完成。</p>
+        <a-button @click="navigateTo('/directory')" type="primary">前往通讯录导入</a-button>
+        <div class="step-actions">
+          <a-button @click="goToStep(5)">上一步</a-button>
+          <a-button type="link" @click="goToStep(7)">跳过</a-button>
+          <a-button type="primary" @click="goToStep(7)">下一步</a-button>
+        </div>
+      </div>
+
+      <!-- Step 8: 组织架构（设计 §2.2 步骤 7 + §3.5） -->
+      <div v-if="currentStep === 7" class="step-content">
+        <h3>组织架构</h3>
+        <p style="color: #666;">在组织架构页配置部门树并通过拖拽确定汇报关系（系统自动校验循环汇报）。</p>
+        <a-button @click="navigateTo('/org')" type="primary">前往组织架构</a-button>
+        <div class="step-actions">
+          <a-button @click="goToStep(6)">上一步</a-button>
+          <a-button type="link" @click="goToStep(8)">跳过</a-button>
+          <a-button type="primary" @click="goToStep(8)">下一步</a-button>
+        </div>
+      </div>
+
+      <!-- Step 9: 全局配置 + 审批流（设计 §2.2 步骤 8-9） -->
+      <div v-if="currentStep === 8" class="step-content">
+        <h3>全局配置 / 审批流</h3>
+        <p style="color: #666;">在系统配置页设置考勤计量单位、临时薪资调整审批开关，并按业务类型编辑审批流末端节点（总经理/CEO 等）。</p>
+        <a-button @click="navigateTo('/config')" type="primary">前往系统配置</a-button>
+        <div class="step-actions">
+          <a-button @click="goToStep(7)">上一步</a-button>
+          <a-button type="link" @click="goToStep(9)">跳过</a-button>
+          <a-button type="primary" @click="goToStep(9)">下一步</a-button>
+        </div>
+      </div>
+
+      <!-- Step 10: 数据保留期（设计 §2.2 步骤 10 + §10） -->
+      <div v-if="currentStep === 9" class="step-content">
+        <h3>数据保留期</h3>
+        <p style="color: #666;">设置薪资条 / 表单 / 操作日志等各类数据的留存年限；到期前 30 天会通知 CEO 与运维。</p>
+        <a-button @click="navigateTo('/retention')" type="primary">前往数据保留</a-button>
+        <div class="step-actions">
+          <a-button @click="goToStep(8)">上一步</a-button>
+          <a-button type="primary" @click="finishSetup">完成初始化</a-button>
         </div>
       </div>
     </a-card>
