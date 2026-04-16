@@ -8,7 +8,7 @@
 |------|------|----------|
 | H5 前端单元测试 | `app/h5/test/` | `yarn workspace oa-h5 test` |
 | MP 单元测试 | `app/mp/test/` | `yarn workspace oa-mp test` |
-| Shared utils 单元测试 | `test/unit/shared/` | `yarn vitest run test/unit/shared` |
+| Shared utils 单元测试 | `app/shared/test/` | `cd app/shared && yarn vitest run` |
 | 后端单元测试 | `server/src/test/` | `cd server && mvn test` |
 | API 集成测试 | `test/integration/` | `yarn vitest run --config vitest.integration.config.ts` |
 
