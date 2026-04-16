@@ -35,7 +35,7 @@ public class FormController {
      * 权限：项目经理、CEO、财务（各类表单审批流的不同节点审批人）
      */
     @GetMapping("/todo")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE','DEPARTMENT_MANAGER')")
     public ResponseEntity<List<FormRecordResponse>> getTodoList(Authentication authentication) {
         Long currentEmployeeId = getCurrentEmployeeId(authentication);
         if (currentEmployeeId == null) {
@@ -49,7 +49,7 @@ public class FormController {
      * 权限：项目经理、CEO、财务
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE','DEPARTMENT_MANAGER')")
     public ResponseEntity<FormRecordResponse> approve(
             @PathVariable Long id,
             @Valid @RequestBody FormApprovalRequest request,
@@ -68,7 +68,7 @@ public class FormController {
      * 权限：项目经理、CEO、财务
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE','DEPARTMENT_MANAGER')")
     public ResponseEntity<FormRecordResponse> reject(
             @PathVariable Long id,
             @Valid @RequestBody FormApprovalRequest request,
@@ -89,7 +89,7 @@ public class FormController {
      * 其他: 只能查看自己的
      */
     @GetMapping("/history")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER','HR')")
     public ResponseEntity<List<FormRecordResponse>> getHistory(
             Authentication authentication,
             @RequestParam(required = false) List<String> formTypes) {
@@ -114,7 +114,7 @@ public class FormController {
      * 权限：所有角色（需要有权限查看该表单）
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER','HR')")
     public ResponseEntity<FormRecordResponse> getDetail(
             @PathVariable Long id,
             Authentication authentication) {

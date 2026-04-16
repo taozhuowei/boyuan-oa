@@ -37,7 +37,7 @@ public class AttendanceController {
      * 获取请假表单配置
      */
     @GetMapping("/leave/config")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER','HR')")
     public ResponseEntity<FormConfigResponse> getLeaveConfig() {
         return ResponseEntity.ok(buildLeaveConfig());
     }
@@ -46,7 +46,7 @@ public class AttendanceController {
      * 提交请假申请
      */
     @PostMapping("/leave")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER','HR')")
     public ResponseEntity<FormRecordResponse> submitLeave(
             @Valid @RequestBody FormSubmitRequest request,
             Authentication authentication) {
@@ -69,7 +69,7 @@ public class AttendanceController {
      * 获取加班表单配置
      */
     @GetMapping("/overtime/config")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER','HR')")
     public ResponseEntity<FormConfigResponse> getOvertimeConfig() {
         return ResponseEntity.ok(buildOvertimeConfig());
     }
@@ -78,7 +78,7 @@ public class AttendanceController {
      * 提交加班申请
      */
     @PostMapping("/overtime")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER','HR')")
     public ResponseEntity<FormRecordResponse> submitOvertime(
             @Valid @RequestBody FormSubmitRequest request,
             Authentication authentication) {
@@ -101,7 +101,7 @@ public class AttendanceController {
      * 获取考勤记录列表
      */
     @GetMapping("/records")
-    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER','HR')")
     public ResponseEntity<List<FormRecordResponse>> getRecords(Authentication authentication) {
         Long currentEmployeeId = getCurrentEmployeeId(authentication);
         if (currentEmployeeId == null) {
@@ -119,7 +119,7 @@ public class AttendanceController {
      * 权限：项目经理初审，CEO终审
      */
     @GetMapping("/todo")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER')")
     public ResponseEntity<List<FormRecordResponse>> getTodoList(Authentication authentication) {
         Long currentEmployeeId = getCurrentEmployeeId(authentication);
         if (currentEmployeeId == null) {
@@ -132,7 +132,7 @@ public class AttendanceController {
      * 审批通过
      */
     @PostMapping("/{id}/approve")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER')")
     public ResponseEntity<FormRecordResponse> approve(
             @PathVariable Long id,
             @Valid @RequestBody FormApprovalRequest request,
@@ -150,7 +150,7 @@ public class AttendanceController {
      * 审批驳回
      */
     @PostMapping("/{id}/reject")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER')")
     public ResponseEntity<FormRecordResponse> reject(
             @PathVariable Long id,
             @Valid @RequestBody FormApprovalRequest request,

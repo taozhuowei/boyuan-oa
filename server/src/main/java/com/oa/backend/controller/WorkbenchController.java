@@ -143,7 +143,7 @@ public class WorkbenchController {
      */
     private Integer calculatePendingApprovalCount(String role, Long employeeId) {
         return switch (role) {
-            case "ceo", "project_manager" -> {
+            case "ceo", "project_manager", "department_manager" -> {
                 // 审批人视角：统计需要我审批的 PENDING 状态表单
                 Long count = formRecordMapper.selectCount(
                         new LambdaQueryWrapper<FormRecord>()
@@ -247,6 +247,10 @@ public class WorkbenchController {
                     username, "陈明远", role, getRoleName(role), "运营管理部", "OFFICE", "ACTIVE",
                     getVisibleModules(role)
             );
+            case "dept_manager.demo" -> new UserProfileResponse(
+                    username, "周伟", role, getRoleName(role), "综合管理部", "OFFICE", "ACTIVE",
+                    getVisibleModules(role)
+            );
             default -> new UserProfileResponse(
                     username, username, role, getRoleName(role), "未分配", "OFFICE", "ACTIVE",
                     getVisibleModules(role)
@@ -267,6 +271,8 @@ public class WorkbenchController {
             case "project_manager" -> "项目经理";
             case "ceo" -> "首席经营者";
             case "worker" -> "劳工";
+            case "hr" -> "人力资源";
+            case "department_manager" -> "部门经理";
             default -> "员工";
         };
     }
@@ -283,6 +289,7 @@ public class WorkbenchController {
             case "finance" -> List.of("workbench", "forms", "employees", "directory", "payroll");
             case "project_manager" -> List.of("workbench", "forms", "employees", "projects");
             case "worker" -> List.of("workbench", "forms", "employees", "projects", "payroll");
+            case "department_manager" -> List.of("workbench", "employees", "attendance", "todo", "team");
             default -> List.of("workbench", "forms", "employees", "projects", "payroll");
         };
     }
@@ -335,9 +342,10 @@ public class WorkbenchController {
             );
             case "department_manager" -> Arrays.asList(
                 new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "team", "/employees", true, null),
+                new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
+                new WorkbenchConfigResponse.MenuItem("team", "\u56e2\u961f\u6210\u5458", "team", "/team", true, null),
                 new WorkbenchConfigResponse.MenuItem("attendance", "\u8003\u52e4\u7ba1\u7406", "calendar", "/attendance", true, null),
-                new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null)
+                new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "user", "/employees", true, null)
             );
             case "worker" -> Arrays.asList(
                 new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),

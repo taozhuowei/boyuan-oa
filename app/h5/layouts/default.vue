@@ -162,10 +162,10 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
   ],
   department_manager: [
     { key: '/', label: '工作台', path: '/' },
-    { key: '/employees', label: '员工管理', path: '/employees' },
-    { key: '/attendance', label: '考勤管理', path: '/attendance' },
     { key: '/todo', label: '审批中心', path: '/todo' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
+    { key: '/team', label: '团队成员', path: '/team' },
+    { key: '/attendance', label: '考勤管理', path: '/attendance' },
+    { key: '/employees', label: '员工管理', path: '/employees' }
   ],
   worker: [
     { key: '/', label: '工作台', path: '/' },
