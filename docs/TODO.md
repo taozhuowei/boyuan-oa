@@ -118,9 +118,6 @@ Phase A 完成标准：所有角色登录后，菜单内的每一个页面均可
   - Worker：施工日志、工伤申报、表单中心
   > 验收：6 个角色全部通关，无死链
 
-- [x] `[P1]` **AutoTest 工具通用化**：`tools/autotest` 改为三栏可视化工作台，支持全盘目录树检索、项目级配置扫描、项目自动启动、右栏人工确认、AI 友好失败报告
-  > 验收：`tools/autotest` 构建通过；`test/autotest/autotest.config.json` 已升级到通用配置协议；README 已同步更新
-
 ### B2 — 生产部署验证
 
 - [ ] `[P0]` **Docker 构建测试**：在本地执行 `docker build -t boyuan-oa .`，镜像构建成功，`docker run` 后 `/actuator/health` 返回 `{"status":"UP"}`

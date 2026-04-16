@@ -14,14 +14,12 @@
 | --- | --- | --- | --- |
 | 单元测试 | 验证单个 Service/工具类的纯逻辑 | JUnit 5 + Mockito（后端）/ Vitest（前端） | 每次提交前 |
 | 集成测试 | 验证 Controller + Service + DB 接口契约 | Spring Boot Test + H2 / Testcontainers | 每日构建 |
-| 系统/E2E 测试 | 验证完整业务路径（按角色视角，含数据库状态） | AutoTest 可视化工具（`tools/autotest/`） | 阶段提测前 |
-| 回归测试 | 防止新改动破坏已有功能 | AutoTest P0 冒烟套件全量执行 | 每次发版前 |
+| 系统/E2E 测试 | 验证完整业务路径（按角色视角，含数据库状态） | 待选型 | 阶段提测前 |
+| 回归测试 | 防止新改动破坏已有功能 | 待选型 | 每次发版前 |
 
 **覆盖率要求**：后端 Service 层 ≥ 80%；算薪引擎 / 审批流引擎 / 签名存证核心路径 100%。
 
-> **E2E 用例详细设计**：系统/E2E 测试用例（196 条，覆盖全部角色×业务流程×正常/异常/并发场景）
-> 单独维护于 **[`autotest/AUTOTEST_DESIGN.md`](./autotest/AUTOTEST_DESIGN.md)**，由 AutoTest 工具直接加载。
-> 工具使用说明见 [`tools/autotest/README.md`](../tools/autotest/README.md)。
+> **E2E 用例**：系统/E2E 层测试框架与用例尚未落地；以下第 4 章「系统/E2E 测试」仅保留业务场景设计作为后续实现参考。
 
 ---
 
