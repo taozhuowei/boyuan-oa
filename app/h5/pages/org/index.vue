@@ -4,7 +4,7 @@
   <div class="org-page">
     <div class="page-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
       <h2 class="page-title" style="margin: 0;">组织架构</h2>
-      <a-button v-if="isCeo" type="primary" @click="openCreateModal(null)">+ 新建部门</a-button>
+      <a-button v-if="isCeo" type="primary" data-catch="dept-create-btn" @click="openCreateModal(null)">+ 新建部门</a-button>
     </div>
 
     <a-spin :spinning="loading">
@@ -17,6 +17,7 @@
           :tree-data="treeData"
           :default-expand-all="true"
           :selectable="false"
+          data-catch="org-tree"
         >
           <template #title="node">
             <div style="display: flex; align-items: center; gap: 8px; padding: 2px 0;">
@@ -59,7 +60,7 @@
     >
       <a-form :model="deptForm" layout="vertical">
         <a-form-item label="部门名称" required>
-          <a-input v-model:value="deptForm.name" placeholder="请输入部门名称" />
+          <a-input v-model:value="deptForm.name" data-catch="dept-name-input" placeholder="请输入部门名称" />
         </a-form-item>
         <a-form-item label="排序">
           <a-input-number v-model:value="deptForm.sort" :min="0" style="width: 100%;" />

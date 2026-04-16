@@ -16,6 +16,7 @@
       </div>
 
       <a-table
+        data-catch="operation-log-list"
         :columns="columns"
         :data-source="records"
         :loading="loading"

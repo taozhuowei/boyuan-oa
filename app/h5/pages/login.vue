@@ -18,6 +18,7 @@
               placeholder="请输入工号或手机号"
               size="large"
               :disabled="loading"
+              data-catch="login-username"
             />
           </a-form-item>
 
@@ -28,6 +29,7 @@
               placeholder="请输入密码"
               size="large"
               :disabled="loading"
+              data-catch="login-password"
             />
           </a-form-item>
 

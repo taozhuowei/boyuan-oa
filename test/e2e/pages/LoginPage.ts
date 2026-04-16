@@ -22,7 +22,7 @@ export class LoginPage {
   }
 
   async submit(): Promise<void> {
-    await this.page.getByTestId('login-submit').click()
+    await this.page.getByTestId('login-form-submit').click()
   }
 
   /** 完整登录流程，等待跳转到工作台 */
@@ -35,6 +35,6 @@ export class LoginPage {
   }
 
   async getErrorMessage(): Promise<string> {
-    return this.page.getByTestId('login-error').innerText()
+    return this.page.getByTestId('login-form-error-alert').innerText()
   }
 }

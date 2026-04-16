@@ -41,7 +41,7 @@ test.describe('E2E-01 员工主线', () => {
     const page = await context.newPage()
     const forms = new FormsPage(page)
     await forms.gotoLeaveForm()
-    await forms.fillLeaveForm({ leaveType: 'ANNUAL', days: 3, startDate: '2026-05-01' })
+    await forms.fillLeaveForm({ leaveType: 'ANNUAL', startDate: '2026-05-01', endDate: '2026-05-03' })
     await forms.submitLeaveForm()
     await forms.expectSubmitSuccess()
 

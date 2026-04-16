@@ -29,6 +29,7 @@
         }"
         row-key="id"
         size="small"
+        :customRow="(record) => ({ 'data-catch': 'employee-row' })"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'entryDate'">
@@ -84,6 +85,7 @@
       :title="formMode === 'create' ? '新增员工' : '编辑员工'"
       :confirm-loading="submitting"
       width="700px"
+      :okButtonProps="{ 'data-catch': 'employee-save-btn' }"
       @ok="submitForm"
       @cancel="showForm = false"
     >
@@ -91,12 +93,12 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="姓名" required>
-              <a-input v-model:value="form.name" />
+              <a-input v-model:value="form.name" data-catch="employee-name-input" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="手机号">
-              <a-input v-model:value="form.phone" />
+              <a-input v-model:value="form.phone" data-catch="employee-phone-input" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -130,7 +132,7 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="部门 ID" required>
-              <a-input-number v-model:value="form.departmentId" :precision="0" style="width: 100%" />
+              <a-input-number v-model:value="form.departmentId" :precision="0" style="width: 100%" data-catch="employee-dept-select" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -187,7 +189,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
 import { message } from 'ant-design-vue'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
@@ -332,10 +334,10 @@ async function submitForm() {
     const body = { ...form.value, entryDate: form.value.entryDate || null }
     if (formMode.value === 'create') {
       await request({ url: '/employees', method: 'POST', body })
-      message.success('员工已创建')
+      message.success(h('span', { 'data-catch': 'employee-create-success' }, '员工已创建'))
     } else if (editingId.value) {
       await request({ url: `/employees/${editingId.value}`, method: 'PUT', body })
-      message.success('员工已更新')
+      message.success(h('span', { 'data-catch': 'employee-save-success' }, '员工已更新'))
     }
     showForm.value = false
     await loadEmployees()

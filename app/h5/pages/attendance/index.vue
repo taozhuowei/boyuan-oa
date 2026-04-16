@@ -7,7 +7,7 @@
     <a-card>
       <a-tabs v-model:activeKey="activeTab" @change="onTabChange">
         <a-tab-pane key="records" tab="我的记录" />
-        <a-tab-pane key="leave" tab="请假申请" />
+        <a-tab-pane key="leave" tab="请假申请" data-catch="attendance-tab-leave" />
         <a-tab-pane key="overtime" tab="加班申报" />
         <a-tab-pane key="self-report" tab="自补加班" />
         <a-tab-pane key="notifications" tab="加班通知" />
@@ -52,17 +52,17 @@
           @finish="submitLeave"
         >
           <a-form-item label="假种" name="leaveType" :rules="[{ required: true, message: '请选择假种' }]">
-            <a-select v-model:value="leaveForm.leaveType" placeholder="请选择">
+            <a-select v-model:value="leaveForm.leaveType" placeholder="请选择" data-catch="form-leave-type">
               <a-select-option value="事假">事假</a-select-option>
               <a-select-option value="病假">病假</a-select-option>
               <a-select-option value="年假">年假</a-select-option>
             </a-select>
           </a-form-item>
           <a-form-item label="开始日期" name="startDate" :rules="[{ required: true, message: '请选择开始日期' }]">
-            <a-date-picker v-model:value="leaveForm.startDate" style="width: 100%" placeholder="请选择日期" />
+            <a-date-picker v-model:value="leaveForm.startDate" style="width: 100%" placeholder="请选择日期" data-catch="form-leave-start-date" />
           </a-form-item>
           <a-form-item label="结束日期" name="endDate" :rules="[{ required: true, message: '请选择结束日期' }]">
-            <a-date-picker v-model:value="leaveForm.endDate" style="width: 100%" placeholder="请选择日期" />
+            <a-date-picker v-model:value="leaveForm.endDate" style="width: 100%" placeholder="请选择日期" data-catch="form-leave-end-date" />
           </a-form-item>
           <a-form-item label="请假原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
             <a-textarea v-model:value="leaveForm.reason" :rows="3" />

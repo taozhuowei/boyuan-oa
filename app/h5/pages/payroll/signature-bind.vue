@@ -11,7 +11,7 @@
 
     <!-- 已绑定状态 -->
     <div v-if="isBound" class="bound-state">
-      <a-result status="success" title="您已完成签名绑定">
+      <a-result status="success" data-catch="signature-success" title="您已完成签名绑定">
         <template #extra>
           <p class="bound-hint">如需更换签名，可点击下方按钮重新绑定</p>
           <a-button type="primary" @click="handleRebind">重新绑定</a-button>
@@ -24,6 +24,7 @@
       <a-card title="请在手写区域绘制您的签名" class="signature-card">
         <SignatureCanvas
           ref="signatureCanvasRef"
+          data-catch="signature-canvas"
           :width="400"
           :height="200"
           stroke-color="#003466"
@@ -88,7 +89,7 @@
         </a-descriptions>
         <div class="form-actions">
           <a-button @click="goBackToPin">返回修改</a-button>
-          <a-button type="primary" :loading="submitting" @click="handleSubmit">
+          <a-button type="primary" data-catch="signature-submit" :loading="submitting" @click="handleSubmit">
             确认绑定
           </a-button>
         </div>

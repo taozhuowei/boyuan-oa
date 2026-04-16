@@ -16,13 +16,14 @@
             :pagination="pagination"
             row-key="id"
             size="small"
+            :customRow="(record) => ({ 'data-catch': 'form-list-item' })"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'submitTime'">
                 {{ formatDateTime(record.submitTime) }}
               </template>
               <template v-if="column.key === 'status'">
-                <a-tag :color="getStatusColor(record.status)">
+                <a-tag :color="getStatusColor(record.status)" data-catch="form-status">
                   {{ getStatusLabel(record.status) }}
                 </a-tag>
               </template>
@@ -44,13 +45,14 @@
             :pagination="pagination"
             row-key="id"
             size="small"
+            :customRow="(record) => ({ 'data-catch': 'form-list-item' })"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'submitTime'">
                 {{ formatDateTime(record.submitTime) }}
               </template>
               <template v-if="column.key === 'status'">
-                <a-tag :color="getStatusColor(record.status)">
+                <a-tag :color="getStatusColor(record.status)" data-catch="form-status">
                   {{ getStatusLabel(record.status) }}
                 </a-tag>
               </template>

@@ -21,11 +21,12 @@ test.describe('E2E-04 项目经理主线', () => {
     await loginAs(context, 'pm')
 
     const page = await context.newPage()
-    await page.goto('/forms/injury')
+    await page.goto('/injury')
+    await page.waitForLoadState('networkidle')
+    await page.getByTestId('injury-apply-btn').click()
 
-    await page.getByTestId('form-injury-project').selectOption('1')
-    await page.getByTestId('form-injury-description').fill('现场检查发现轻微划伤')
-    await page.getByTestId('form-injury-submit').click()
+    await page.getByTestId('injury-description').fill('现场检查发现轻微划伤')
+    await page.getByTestId('injury-apply-modal-submit').click()
     await expect(page.getByTestId('form-submit-success')).toBeVisible({ timeout: 10_000 })
 
     // DB 断言：通过 API 验证 approval 第一节点为 SKIPPED
@@ -62,16 +63,20 @@ test.describe('E2E-04 项目经理主线', () => {
     await loginAs(context, 'pm')
 
     const page = await context.newPage()
-    await page.goto('/projects/1/members')
+    // 第二角色分配在 /projects/[id] "第二角色" Tab
+    await page.goto('/projects/1')
     await page.waitForLoadState('networkidle')
+    // 切换到"第二角色"Tab
+    await page.getByRole('tab', { name: '第二角色' }).click()
 
-    // 找到 worker.demo 行，分配工长角色
-    const workerRow = page.getByTestId('member-row-worker.demo')
-    await workerRow.getByTestId('assign-second-role-btn').click()
+    // 输入员工 ID（worker.demo 的 seed ID = 5）并选择 FOREMAN 角色
+    await page.locator('input[type=number]').first().fill('5')
     await page.getByTestId('second-role-option-FOREMAN').click()
-    await page.getByTestId('second-role-confirm-btn').click()
+    await page.getByTestId('assign-second-role-btn').click()
 
-    await expect(page.getByTestId('assign-second-role-success')).toBeVisible({ timeout: 10_000 })
+    // 分配成功后列表刷新，worker.demo 行应出现
+    await page.waitForTimeout(1_000)
+    await expect(page.getByTestId('member-row-worker.demo')).toBeVisible({ timeout: 10_000 })
 
     await context.close()
   })

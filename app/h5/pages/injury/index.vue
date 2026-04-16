@@ -10,7 +10,7 @@
         <!-- 劳工/PM 均可发起（PM 代录使用下面的 proxyFor 字段） -->
         <a-button type="primary" @click="openApply" data-catch="injury-apply-btn">+ 发起申报</a-button>
         <!-- 财务：录入理赔按钮 -->
-        <a-button v-if="isFinance" @click="showClaimModal = true" data-catch="injury-claim-btn">录入理赔</a-button>
+        <a-button v-if="isFinance" @click="showClaimModal = true" data-catch="injury-fill-amount-btn">录入理赔</a-button>
       </a-space>
     </div>
 
@@ -21,12 +21,21 @@
       </a-card>
       <a-list v-else :data-source="records" :bordered="false">
         <template #renderItem="{ item }">
-          <a-list-item>
+          <a-list-item :data-catch="item.status === 'APPROVED' ? 'injury-row-archived' : undefined">
             <a-list-item-meta
               :title="`工伤申报 — ${item.formNo}`"
               :description="`提交：${formatTime(item.createdAt)}${item.formData?.injuryDate ? ' | 受伤日期：' + item.formData.injuryDate : ''}`"
             />
-            <a-tag :color="statusColor(item.status)">{{ statusLabel(item.status) }}</a-tag>
+            <a-space>
+              <a-tag :color="statusColor(item.status)">{{ statusLabel(item.status) }}</a-tag>
+              <a-button
+                v-if="isFinance && item.status === 'APPROVED'"
+                size="small"
+                type="link"
+                @click="showClaimModal = true"
+                data-catch="injury-fill-amount-btn"
+              >录入金额</a-button>
+            </a-space>
           </a-list-item>
         </template>
       </a-list>
@@ -59,7 +68,7 @@
         </a-form-item>
 
         <a-form-item label="受伤日期" required>
-          <a-date-picker v-model:value="applyForm.injuryDate" style="width:100%;" placeholder="请选择日期" />
+          <a-date-picker v-model:value="applyForm.injuryDate" style="width:100%;" placeholder="请选择日期" data-catch="injury-date" />
         </a-form-item>
 
         <a-form-item label="伤情描述" required>
@@ -67,6 +76,7 @@
             v-model:value="applyForm.description"
             :rows="4"
             placeholder="请描述受伤经过、部位及严重程度"
+            data-catch="injury-description"
           />
         </a-form-item>
 
@@ -97,7 +107,7 @@
       :confirm-loading="claiming"
       @cancel="resetClaimForm"
       ok-text="提交理赔"
-      :ok-button-props="{ 'data-catch': 'injury-claim-modal-submit' }"
+      :ok-button-props="{ 'data-catch': 'injury-amount-submit' }"
     >
       <a-form :model="claimForm" layout="vertical">
         <a-form-item label="关联申报单 ID" required>
@@ -116,6 +126,7 @@
             :precision="2"
             style="width:100%;"
             placeholder="0.00"
+            data-catch="injury-amount-input"
           />
         </a-form-item>
         <a-form-item label="财务备注">
@@ -132,7 +143,7 @@
  * 劳工申报（不含金额）→ PM 初审 → CEO 终审；PM 可代录（触发 skipCondition）
  * 财务角色可录入理赔（POST /injury-claims）
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 import { message } from 'ant-design-vue'
@@ -268,7 +279,7 @@ async function doCreateClaim() {
         financeNote: claimForm.value.financeNote
       }
     })
-    message.success('理赔已录入')
+    message.success(h('span', { 'data-catch': 'injury-amount-success' }, '理赔已录入'))
     showClaimModal.value = false
     resetClaimForm()
   } catch {

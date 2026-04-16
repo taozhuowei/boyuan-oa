@@ -3,10 +3,25 @@
   <div class="todo-page">
     <h2 class="page-title">待办中心</h2>
 
+    <a-alert
+      v-if="approvalResult"
+      data-catch="approval-result"
+      :message="approvalResult"
+      type="success"
+      show-icon
+      closable
+      style="margin-bottom: 12px;"
+      @close="approvalResult = ''"
+    />
+
     <a-card>
       <a-tabs v-model:activeKey="activeTab" @change="onTabChange">
         <a-tab-pane key="all" tab="全部" />
-        <a-tab-pane key="attendance" tab="考勤审批" />
+        <a-tab-pane key="attendance">
+          <template #tab>
+            <span data-catch="todo-tab-approval">考勤审批</span>
+          </template>
+        </a-tab-pane>
         <a-tab-pane key="expense" tab="报销审批" />
       </a-tabs>
 
@@ -17,7 +32,11 @@
         :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
         row-key="id"
         size="small"
+        :customRow="() => ({ 'data-catch': 'todo-item' })"
       >
+        <template #emptyText>
+          <a-empty data-catch="todo-empty" description="暂无数据" />
+        </template>
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'submitTime'">
             {{ formatTime(record.submitTime) }}
@@ -51,11 +70,10 @@
 
         <div class="modal-actions">
           <a-space>
-            <a-input v-model:value="approvalComment" placeholder="审批意见（选填）" style="width: 280px" />
+            <a-input v-model:value="approvalComment" data-catch="approval-comment" placeholder="审批意见（选填）" style="width: 280px" />
             <a-button data-catch="approval-reject-btn" danger @click="handleReject">驳回</a-button>
             <a-button data-catch="approval-approve-btn" type="primary" @click="handleApprove">通过</a-button>
           </a-space>
-          <!-- TODO data-catch: approval-confirm-btn — element not found -->
         </div>
       </div>
     </a-modal>
@@ -85,6 +103,7 @@ const modalVisible = ref(false)
 const selectedRecord = ref<FormRecord | null>(null)
 const approvalComment = ref('')
 const approvalHistory = ref<ApprovalStep[]>([])
+const approvalResult = ref('')
 
 const columns = [
   { title: '类型', dataIndex: 'formTypeName', key: 'formTypeName', width: 100 },
@@ -124,6 +143,7 @@ async function viewApproval(record: FormRecord) {
   selectedRecord.value = record
   approvalComment.value = ''
   approvalHistory.value = []
+  approvalResult.value = ''
   modalVisible.value = true
   // Load approval history (best-effort; not blocking modal open)
   try {
@@ -142,6 +162,7 @@ async function handleApprove() {
       method: 'POST',
       body: { action: 'APPROVE', comment: approvalComment.value }
     })
+    approvalResult.value = '审批通过'
     modalVisible.value = false
     await loadTodo()
   } catch (e: unknown) {
@@ -158,6 +179,7 @@ async function handleReject() {
       method: 'POST',
       body: { action: 'REJECT', comment: approvalComment.value }
     })
+    approvalResult.value = '已驳回'
     modalVisible.value = false
     await loadTodo()
   } catch (e: unknown) {

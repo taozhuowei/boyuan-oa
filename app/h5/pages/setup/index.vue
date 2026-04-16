@@ -2,7 +2,7 @@
   <div class="setup-page">
     <a-card title="系统初始化向导" class="setup-card">
       <a-steps :current="currentStep" direction="horizontal" class="setup-steps" size="small">
-        <a-step title="CEO" />
+        <a-step title="CEO" data-catch="setup-step-indicator-1" />
         <a-step title="HR" />
         <a-step title="运维 / 总经理" />
         <a-step title="确认" />
@@ -25,6 +25,7 @@
             <a-input
               v-model:value="formState.ceoName"
               placeholder="请输入CEO姓名"
+              data-catch="setup-ceo-name"
             />
           </a-form-item>
           <a-form-item
@@ -34,6 +35,7 @@
             <a-input
               v-model:value="formState.ceoPhone"
               placeholder="请输入CEO手机号"
+              data-catch="setup-ceo-phone"
             />
           </a-form-item>
           <a-form-item
@@ -43,6 +45,7 @@
             <a-input-password
               v-model:value="formState.ceoPassword"
               placeholder="请输入密码（至少8位）"
+              data-catch="setup-ceo-password"
             />
           </a-form-item>
           <a-form-item
@@ -56,7 +59,7 @@
           </a-form-item>
         </a-form>
         <div class="step-actions">
-          <a-button type="primary" @click="goToStep(1)">下一步</a-button>
+          <a-button type="primary" data-catch="setup-step1-next" @click="goToStep(1)">下一步</a-button>
         </div>
       </div>
 
@@ -172,7 +175,7 @@
       <!-- Step 5: Recovery Code -->
       <div v-if="currentStep === 4" class="step-content">
         <h3>恢复码</h3>
-        <pre class="recovery-code">{{ recoveryCode }}</pre>
+        <pre class="recovery-code" data-catch="setup-recovery-code">{{ recoveryCode }}</pre>
         <a-button class="copy-btn" @click="copyRecoveryCode">复制</a-button>
         <a-alert
           type="warning"

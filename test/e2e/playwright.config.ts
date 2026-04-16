@@ -23,6 +23,8 @@ export default defineConfig({
   ],
   use: {
     baseURL: BASE_URL,
+    // 项目使用 data-catch 而非 data-testid 作为 testid 属性
+    testIdAttribute: 'data-catch',
     // 每个 action 超时 10s（等待元素出现）
     actionTimeout: 10_000,
     // 每个 navigation 超时 30s

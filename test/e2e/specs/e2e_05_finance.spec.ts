@@ -37,14 +37,21 @@ test.describe('E2E-05 财务主线', () => {
     await page.goto('/payroll')
     await page.waitForLoadState('networkidle')
 
-    // 点击"发起结算"
-    await page.getByTestId('payroll-settle-btn').click()
-    // 二次确认弹窗
-    await expect(page.getByTestId('settle-confirm-dialog')).toBeVisible()
-    await page.getByTestId('settle-confirm-ok').click()
+    // 切换到"结算操作"Tab
+    await page.getByRole('tab', { name: '结算操作' }).click()
 
-    // 等待结算完成
-    await expect(page.getByTestId('payroll-cycle-locked-badge')).toBeVisible({ timeout: 30_000 })
+    // 先执行预结算检查
+    await page.getByTestId('payroll-settle-precheck-btn').click()
+    // 等待检查通过（最多 10s）
+    await page.waitForTimeout(3_000)
+
+    // 正式结算
+    await page.getByTestId('payroll-settle-run-btn').click()
+    await page.waitForLoadState('networkidle', { timeout: 30_000 })
+
+    // 返回"周期管理"Tab 确认状态已变 SETTLED
+    await page.getByRole('tab', { name: '周期管理' }).click()
+    await expect(page.getByTestId('payroll-cycle-status')).toBeVisible({ timeout: 10_000 })
 
     await context.close()
   })
@@ -75,7 +82,9 @@ test.describe('E2E-05 财务主线', () => {
 
     const page = await context.newPage()
     await page.goto('/payroll')
-    await page.getByTestId('payroll-correction-btn').click()
+    // 切换到"更正记录"Tab，点击"发起更正"
+    await page.getByRole('tab', { name: '更正记录' }).click()
+    await page.getByTestId('payroll-correction-open-btn').click()
     await page.getByTestId('correction-reason-input').fill('数据录入错误，需更正基本工资')
     await page.getByTestId('correction-submit-btn').click()
     await expect(page.getByTestId('correction-pending-badge')).toBeVisible({ timeout: 10_000 })

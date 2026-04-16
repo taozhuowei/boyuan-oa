@@ -32,7 +32,7 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
-                <a-tag :color="cycleStatusColor(record.status)">{{ cycleStatusLabel(record.status) }}</a-tag>
+                <a-tag data-catch="payroll-cycle-status" :color="cycleStatusColor(record.status)">{{ cycleStatusLabel(record.status) }}</a-tag>
               </template>
               <template v-if="column.key === 'action'">
                 <a-button
@@ -204,7 +204,7 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
-                <a-tag :color="bonusStatusColor(record.status)">{{ bonusStatusLabel(record.status) }}</a-tag>
+                <a-tag data-catch="correction-pending-badge" :color="bonusStatusColor(record.status)">{{ bonusStatusLabel(record.status) }}</a-tag>
               </template>
               <template v-if="column.key === 'applied'">
                 <a-tag :color="record.applied ? 'green' : 'default'">{{ record.applied ? '已应用' : '未应用' }}</a-tag>
@@ -409,6 +409,7 @@
       title="发起薪资更正"
       :confirm-loading="submittingCorrection"
       width="640px"
+      :okButtonProps="{ 'data-catch': 'correction-submit-btn' }"
       @ok="submitCorrection"
       @cancel="showCorrectionModal = false"
     >
@@ -426,7 +427,7 @@
         <a-input v-model:value="row.remark" placeholder="备注（可选）" style="flex: 1; margin-left: 8px;" />
       </div>
       <a-form-item label="更正原因" required style="margin-top: 16px;">
-        <a-textarea v-model:value="correctionReason" :rows="3" placeholder="必填" />
+        <a-textarea data-catch="correction-reason-input" v-model:value="correctionReason" :rows="3" placeholder="必填" />
       </a-form-item>
     </a-modal>
 

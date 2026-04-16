@@ -12,16 +12,17 @@
         v-model:selectedKeys="selectedKeys"
         theme="dark"
         mode="inline"
+        data-catch="nav-sidebar"
         @click="onMenuClick"
       >
         <template v-for="item in menuItems" :key="item.key">
           <a-sub-menu v-if="item.children?.length" :key="item.key">
             <template #title>{{ item.label }}</template>
-            <a-menu-item v-for="child in item.children" :key="child.path">
+            <a-menu-item v-for="child in item.children" :key="child.path" :data-catch="'nav-item-' + child.path">
               {{ child.label }}
             </a-menu-item>
           </a-sub-menu>
-          <a-menu-item v-else :key="item.path">{{ item.label }}</a-menu-item>
+          <a-menu-item v-else :key="item.path" :data-catch="'nav-item-' + item.path">{{ item.label }}</a-menu-item>
         </template>
       </a-menu>
     </a-layout-sider>
@@ -49,7 +50,7 @@
 
           <!-- 🔔通知 N -->
           <a-badge :count="notificationCount" :overflow-count="99" class="action-badge">
-            <a-button type="text" class="action-btn" @click="navigateTo('/notifications')">
+            <a-button type="text" class="action-btn" data-catch="notification-bell" @click="navigateTo('/notifications')">
               🔔 通知
             </a-button>
           </a-badge>

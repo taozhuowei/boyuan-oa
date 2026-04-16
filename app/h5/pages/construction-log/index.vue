@@ -39,10 +39,11 @@
       :confirm-loading="submitting"
       @cancel="resetForm"
       ok-text="提交"
+      :okButtonProps="{ 'data-catch': 'form-log-submit' }"
     >
       <a-form :model="form" layout="vertical">
         <a-form-item label="日志日期" required>
-          <a-date-picker v-model:value="form.logDate" style="width:100%;" placeholder="请选择日期" />
+          <a-date-picker v-model:value="form.logDate" style="width:100%;" placeholder="请选择日期" data-catch="form-log-date" />
         </a-form-item>
 
         <!-- workItems 动态列表 -->
@@ -76,7 +77,7 @@
         </a-form-item>
 
         <a-form-item label="备注">
-          <a-textarea v-model:value="form.remark" :rows="3" placeholder="情况说明（可选）" />
+          <a-textarea v-model:value="form.remark" :rows="3" placeholder="情况说明（可选）" data-catch="form-log-content" />
         </a-form-item>
 
         <a-form-item label="附件">

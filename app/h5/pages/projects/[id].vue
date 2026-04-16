@@ -241,6 +241,7 @@
             <!-- 里程碑完成率 -->
             <a-card title="里程碑完成率" style="margin-bottom: 16px;">
               <a-progress
+                data-catch="project-progress-rate"
                 :percent="milestonesCompletionPct"
                 status="active"
                 :stroke-color="{ from: '#108ee9', to: '#87d068' }"
@@ -392,13 +393,13 @@
             </a-form-item>
             <a-form-item label="第二角色" style="margin: 0;">
               <a-select v-model:value="srForm.roleCode" style="width: 200px">
-                <a-select-option v-for="d in srDefs" :key="d.code" :value="d.code">{{ d.name }}（{{ d.appliesTo === 'OFFICE' ? '员工' : '劳工' }}）</a-select-option>
+                <a-select-option v-for="d in srDefs" :key="d.code" :value="d.code" :data-catch="d.code === 'FOREMAN' ? 'second-role-option-FOREMAN' : undefined">{{ d.name }}（{{ d.appliesTo === 'OFFICE' ? '员工' : '劳工' }}）</a-select-option>
               </a-select>
             </a-form-item>
-            <a-button type="primary" :loading="srLoading" @click="assignSecondRole">分配</a-button>
+            <a-button data-catch="assign-second-role-btn" type="primary" :loading="srLoading" @click="assignSecondRole">分配</a-button>
             <a-button @click="loadSecondRoles">刷新</a-button>
           </div>
-          <a-table :columns="srColumns" :data-source="srAssignments" :loading="srLoading" row-key="id" size="small">
+          <a-table :columns="srColumns" :data-source="srAssignments" :loading="srLoading" row-key="id" size="small" :customRow="(record: any) => ({ 'data-catch': 'member-row-' + record.username })">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'roleName'">{{ srRoleName(record.roleCode) }}</template>
               <template v-if="column.key === 'action'">
