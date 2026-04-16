@@ -476,13 +476,20 @@
             <a-button v-if="canEditInsurance" type="primary" @click="openInsuranceModal">+ 新建保险条目</a-button>
             <a-button @click="loadInsurance">刷新</a-button>
           </div>
-          <a-table :columns="insuranceColumns" :data-source="insuranceRows" :loading="insuranceLoading" row-key="id" size="small">
+          <a-table :columns="insuranceColumns" :data-source="insuranceRows"
+                   :loading="insuranceLoading" :pagination="false"
+                   row-key="insuranceName" size="small"
+                   :row-class-name="(r: any) => r.isTotal ? 'insurance-total-row' : ''">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'scope'">
-                {{ insuranceScopeLabel(record.scope) }}{{ record.scopeTargetId ? ' #' + record.scopeTargetId : '' }}
+                <span v-if="!record.isTotal">{{ insuranceScopeLabel(record.scope) }}{{ record.scopeTargetId ? ' #' + record.scopeTargetId : '' }}</span>
+              </template>
+              <template v-if="column.key === 'cost'">
+                <strong v-if="record.isTotal">¥{{ formatAmount(Number(record.cost)) }}</strong>
+                <span v-else>¥{{ formatAmount(Number(record.cost ?? 0)) }}</span>
               </template>
               <template v-if="column.key === 'action'">
-                <a-popconfirm v-if="canEditInsurance" title="确定删除？" @confirm="deleteInsurance(record.id)">
+                <a-popconfirm v-if="canEditInsurance && !record.isTotal" title="确定删除？" @confirm="deleteInsurance(record.id)">
                   <a-button type="link" danger size="small">删除</a-button>
                 </a-popconfirm>
               </template>
@@ -1103,7 +1110,7 @@ async function saveRevenue() {
 
 // ── 保险成本 ──────────────────────────────────────────
 
-interface InsuranceRow { id: number; insuranceName: string; scope: string; scopeTargetId?: number | null; dailyRate: number; effectiveDate: string; remark?: string | null }
+interface InsuranceRow { id: number | null; insuranceName: string; scope?: string; scopeTargetId?: number | null; dailyRate?: number; effectiveDate?: string; remark?: string | null; manDays?: number; cost?: number; isTotal?: boolean }
 const insuranceRows = ref<InsuranceRow[]>([])
 const insuranceLoading = ref(false)
 const showInsuranceModal = ref(false)
@@ -1113,12 +1120,14 @@ const insuranceForm = ref<{ insuranceName: string; scope: 'GLOBAL' | 'POSITION' 
 })
 const canEditInsurance = computed(() => ['ceo', 'finance'].includes(role.value))
 
+// 设计 §8.4 线稿：本期出勤 / 本期成本 两列 + 合计行（来自 GET /summary）
 const insuranceColumns = [
   { title: '险种', dataIndex: 'insuranceName', key: 'insuranceName' },
-  { title: '适用范围', key: 'scope', width: 160 },
-  { title: '日费率（元/天）', dataIndex: 'dailyRate', key: 'dailyRate', width: 130 },
-  { title: '生效日期', dataIndex: 'effectiveDate', key: 'effectiveDate', width: 120 },
-  { title: '备注', dataIndex: 'remark', key: 'remark' },
+  { title: '适用范围', key: 'scope', width: 140 },
+  { title: '日费率', dataIndex: 'dailyRate', key: 'dailyRate', width: 100 },
+  { title: '生效日期', dataIndex: 'effectiveDate', key: 'effectiveDate', width: 110 },
+  { title: '本期出勤', dataIndex: 'manDays', key: 'manDays', width: 100 },
+  { title: '本期成本', key: 'cost', width: 130 },
   { title: '操作', key: 'action', width: 80 }
 ]
 
@@ -1129,7 +1138,8 @@ function insuranceScopeLabel(scope: string) {
 async function loadInsurance() {
   insuranceLoading.value = true
   try {
-    insuranceRows.value = await request<InsuranceRow[]>({ url: `/projects/${projectId.value}/insurance` }) ?? []
+    // 用 /summary 一次拉取条目元信息 + 真聚合的本期出勤 + 本期成本（含合计行）
+    insuranceRows.value = await request<InsuranceRow[]>({ url: `/projects/${projectId.value}/insurance/summary` }) ?? []
   } catch { insuranceRows.value = [] }
   finally { insuranceLoading.value = false }
 }
@@ -1318,6 +1328,11 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+:deep(.insurance-total-row) td {
+  background: #fafafa;
+  font-weight: 500;
+}
+
 .project-detail-page {
   /* Flow layout: natural top-to-bottom content flow */
 }

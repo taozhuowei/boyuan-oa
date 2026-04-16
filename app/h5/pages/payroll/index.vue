@@ -337,18 +337,30 @@
           </a-descriptions-item>
         </a-descriptions>
 
-        <!-- 明细列表 -->
-        <a-divider style="margin: 8px 0;" />
-        <div v-for="item in slipDetail.items" :key="item.id" class="slip-item-row">
+        <!-- 明细列表（设计 §6.5：分两段展示，应发 / 扣减 / 实发） -->
+        <a-divider style="margin: 8px 0;">应发收入</a-divider>
+        <div v-for="item in earningItems" :key="'e-' + item.id" class="slip-item-row">
           <span class="slip-item-name">{{ item.name }}</span>
-          <span
-            class="slip-item-amount"
-            :style="{ color: Number(item.amount) < 0 ? '#ff4d4f' : '#333' }"
-          >
-            {{ Number(item.amount) > 0 ? '+' : '' }}¥{{ formatAmount(item.amount) }}
-          </span>
+          <span class="slip-item-amount" style="color: #333">+¥{{ formatAmount(item.amount) }}</span>
         </div>
-        <a-divider style="margin: 8px 0;" />
+        <div v-if="earningItems.length === 0" class="slip-empty-tip">无</div>
+        <div class="slip-item-row slip-subtotal">
+          <span>应发合计</span>
+          <strong>¥{{ formatAmount(earningTotal) }}</strong>
+        </div>
+
+        <a-divider style="margin: 12px 0;">扣减项</a-divider>
+        <div v-for="item in deductionItems" :key="'d-' + item.id" class="slip-item-row">
+          <span class="slip-item-name">{{ item.name }}</span>
+          <span class="slip-item-amount" style="color: #ff4d4f">-¥{{ formatAmount(Math.abs(Number(item.amount))) }}</span>
+        </div>
+        <div v-if="deductionItems.length === 0" class="slip-empty-tip">无</div>
+        <div class="slip-item-row slip-subtotal">
+          <span>扣减合计</span>
+          <strong style="color: #ff4d4f">¥{{ formatAmount(deductionTotal) }}</strong>
+        </div>
+
+        <a-divider style="margin: 12px 0;" />
         <div class="slip-item-row slip-total">
           <span>实发合计</span>
           <strong>¥{{ formatAmount(slipDetail.slip.netPay) }}</strong>
@@ -564,6 +576,20 @@ const selectedCycleIdForSlips = ref<number | null>(null)
 const showSlipDetail = ref(false)
 const slipDetail = ref<SlipDetail | null>(null)
 const loadingSlipDetail = ref(false)
+
+// 工资条按 type 分组（设计 §6.5）
+const earningItems = computed<SlipItem[]>(() =>
+  (slipDetail.value?.items ?? []).filter(it => it.type === 'EARNING' && Number(it.amount) > 0)
+)
+const deductionItems = computed<SlipItem[]>(() =>
+  (slipDetail.value?.items ?? []).filter(it => it.type === 'DEDUCTION' || Number(it.amount) < 0)
+)
+const earningTotal = computed(() =>
+  earningItems.value.reduce((s, it) => s + Number(it.amount), 0)
+)
+const deductionTotal = computed(() =>
+  deductionItems.value.reduce((s, it) => s + Math.abs(Number(it.amount)), 0)
+)
 const confirmingSlip = ref(false)
 const disputingSlip = ref(false)
 const showDisputeInput = ref(false)
@@ -1181,6 +1207,18 @@ function slipStatusColor(status: string): string {
 .slip-total {
   font-weight: 600;
   font-size: 15px;
+}
+.slip-subtotal {
+  font-weight: 500;
+  font-size: 14px;
+  border-top: 1px dashed #eee;
+  margin-top: 4px;
+  padding-top: 6px;
+}
+.slip-empty-tip {
+  color: #aaa;
+  font-size: 12px;
+  padding: 4px 0;
 }
 
 .pin-hint {

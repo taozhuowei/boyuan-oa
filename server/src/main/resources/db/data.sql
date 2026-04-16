@@ -98,17 +98,17 @@ MERGE INTO approval_flow_node (id, flow_id, node_order, node_name, approval_mode
 MERGE INTO system_config (config_key, config_value, description) KEY (config_key) VALUES
 ('payroll_bonus_approval_required', 'false', '临时薪资调整是否需要 CEO 审批');
 
--- V5: 新增内置工资项（POSITION_SALARY/PERFORMANCE_BONUS/TEMPORARY_BONUS/TEMPORARY_DEDUCT）
-MERGE INTO payroll_item_def (code, name, type, display_order, is_enabled, is_system) KEY (code) VALUES
-('BASE_SALARY',         '基本工资', 'EARNING',    1, TRUE, TRUE),
-('POSITION_SALARY',     '岗位工资', 'EARNING',   11, TRUE, TRUE),
-('PERFORMANCE_BONUS',   '绩效奖金', 'EARNING',   12, TRUE, TRUE),
-('OVERTIME_PAY',        '加班费',   'EARNING',    2, TRUE, TRUE),
-('LEAVE_DEDUCT',        '请假扣款', 'DEDUCTION',  3, TRUE, TRUE),
-('SOCIAL_INSURANCE',    '社会保险（个人）', 'DEDUCTION',  4, TRUE, TRUE),
-('COMPANY_PAID_SUBSIDY','保险补贴', 'EARNING',    5, TRUE, TRUE),
-('TEMPORARY_BONUS',     '临时补贴', 'EARNING',   90, TRUE, TRUE),
-('TEMPORARY_DEDUCT',    '临时扣款', 'DEDUCTION', 91, TRUE, TRUE);
+-- V5/V9: 新增内置工资项（V9 增 category 列：EARNING 应发组 / DEDUCTION 扣减组）
+MERGE INTO payroll_item_def (code, name, type, category, display_order, is_enabled, is_system) KEY (code) VALUES
+('BASE_SALARY',         '基本工资',         'EARNING',   'EARNING',    1, TRUE, TRUE),
+('POSITION_SALARY',     '岗位工资',         'EARNING',   'EARNING',   11, TRUE, TRUE),
+('PERFORMANCE_BONUS',   '绩效奖金',         'EARNING',   'EARNING',   12, TRUE, TRUE),
+('OVERTIME_PAY',        '加班费',           'EARNING',   'EARNING',    2, TRUE, TRUE),
+('LEAVE_DEDUCT',        '请假扣款',         'DEDUCTION', 'DEDUCTION',  3, TRUE, TRUE),
+('SOCIAL_INSURANCE',    '社会保险（个人）', 'DEDUCTION', 'DEDUCTION',  4, TRUE, TRUE),
+('COMPANY_PAID_SUBSIDY','保险补贴',         'EARNING',   'EARNING',    5, TRUE, TRUE),
+('TEMPORARY_BONUS',     '临时补贴',         'EARNING',   'EARNING',   90, TRUE, TRUE),
+('TEMPORARY_DEDUCT',    '临时扣款',         'DEDUCTION', 'DEDUCTION', 91, TRUE, TRUE);
 
 -- V7: 第二角色定义 + 售后问题类型种子
 MERGE INTO second_role_def (code, name, applies_to, project_bound, description, is_system, is_enabled) KEY (code) VALUES
