@@ -44,9 +44,12 @@ FORBIDDEN: <list>
 - Auth: JWT in Authorization header; role codes: ceo, hr, finance, project_manager, department_manager, employee, worker
 - API base: /api (proxied by Nuxt)
 
-### What is done (verified against code)
+### What is done (verified against code, 2026-04-16)
 - M0-M4: infra, auth/JWT, org/dept CRUD, approval engine (advance/skip/CEO fallback), attendance
 - M5: payroll cycle/settle/sign/PDF, signature canvas, social insurance mode branching
+- V5: payroll composition extension — position_salary, allowance_def/config (3-tier), payroll_bonus, bonus approval toggle
+- V6: payroll correction flow — POST /payroll/slips/{id}/correction, GET /corrections, SUPERSEDED slip logic
+- V7–V10: second-role, after-sale, material cost, revenue, insurance, construction attendance, audit, department_manager role
 - M6: project CRUD, milestones, progress, dashboard, construction summary
 - M8: construction logs, work item templates, injury claims, attachments
 - M9: notifications (real DB), workbench summary (real DB)
@@ -60,35 +63,41 @@ FORBIDDEN: <list>
 - Dev tools fixed: /dev/** added to SecurityConfig permitAll (DevController is @Profile("dev") only)
 - Seed data (local/seed-data.sql): all roles have 3–5 attendance records (all status values) and payroll slips
 
-### What is NOT done (production blockers)
-Pages with "TODO: implement" placeholder (non-functional):
-- /positions  — position + salary grade management (HR/CEO)
-- /role       — role management (CEO)
-- /config (or /settings) — system config page (CEO/HR)
+**All Phase A H5 pages implemented (verified by file read, 2026-04-16):**
+- /me (118L) — personal profile, calls GET /auth/me
+- /me/password (137L) — change password form, calls POST /auth/change-password
+- /forms (366L) — form record center (PM/worker), calls GET /forms
+- /directory (294L) — CSV import, calls POST /import-preview + /import-apply
+- /operation-logs (175L) — log viewer (CEO only), calls GET /operation-logs
+- /positions (639L) — position + level CRUD (CEO/HR), calls /positions + /positions/{id}/levels
+- /role (353L) — role management (CEO), calls /roles
+- /config (391L) — attendance units + approval flow config (CEO), calls /config/attendance-unit + /approval-flows
+- /allowances — allowance definitions + 3-tier config
+- Workbench (index.vue, 276L) — project count card has @click="navigateTo('/projects')"
+- First-login password banner — shown when isDefaultPassword=true, links to /me/password
+- Attendance re-submit — REJECTED forms show resubmitRecord button
 
-Pages completely missing (route exists in layout but no page file):
-- /me          — personal profile view
-- /me/password — change password (logged-in user)
-- /forms       — form record center (PM/worker menu)
-- /directory   — directory import (finance menu)
-- /operation-logs — operation log viewer (CEO/sysadmin, DESIGN §1.2)
+**All Phase A backend endpoints present:**
+- POST /auth/change-password — bcrypt verify + update
+- GET /auth/me — current user info incl. isDefaultPassword
+- GET /operation-logs — paginated, CEO only
+- POST /payroll/slips/{id}/correction — finance initiates
+- GET /payroll/corrections — correction history
+- @OperationLogRecord applied to: ApprovalFlowService.advance, PayrollEngine.settle, EmployeeController.updateEmployee, SignatureController.bindSignature
 
-Backend gaps:
-- POST /auth/change-password — no endpoint for logged-in password change (only forgot-password reset exists)
-- GET /operation-logs — no query endpoint for operation log viewer
+### What is NOT done
+**Pending browser walkthrough (code exists, not yet browser-validated — [-] in TODO.md):**
+- All Phase A pages above are [-] in TODO.md; need manual browser walk per role
+- TODO.md Phase B B1: 6-role full menu walkthrough (browser, manual)
 
-Functional gaps (lower priority but needed before launch):
-- Attendance: no "re-submit" flow after rejection (user must create a new form manually — UX gap)
-- Payroll: no /correction endpoint or UI for salary correction unlock flow
-- Workbench: project count card not clickable (no navigation)
-- @OperationLogRecord annotation defined but never applied to any business method (audit log writes nothing)
+**Genuine code gaps (not implemented anywhere):**
+- /config page does NOT include company_name editing (DESIGN.md §2.2 mentions it as editable; only attendance units + approval flows are implemented)
 
-### Deferred (post-launch)
-- Payroll correction/dispute unlock flow (P2)
-- Attendance retroactive submit (P2)
-- Page config backend endpoint (P3)
-- Version injection (git tag → JAR → VITE_APP_VERSION) (P2)
-- M-MP WeChat mini program (Phase 3, blocked until web+backend are live)
+**Phase B/C/D not started:**
+- B2: Docker/PostgreSQL prod deploy validation
+- B2: version injection (git tag → JAR → VITE_APP_VERSION)
+- C: WeChat mini-program (uni-app, Phase 3, blocked until web+backend live)
+- D: Production server setup and deployment
 
 ### Key file locations
 - Layout + nav menus: app/h5/layouts/default.vue
