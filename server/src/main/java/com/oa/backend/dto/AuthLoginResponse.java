@@ -1,5 +1,7 @@
 package com.oa.backend.dto;
 
+import java.util.List;
+
 /**
  * 登录认证响应 DTO
  *
@@ -13,6 +15,7 @@ package com.oa.backend.dto;
  * @param roleName     角色名称
  * @param department   所属部门
  * @param employeeType 员工类型
+ * @param secondRoles  当前用户持有的第二角色代码列表（如 FOREMAN / AFTER_SALES / MATERIAL_MANAGER）；空列表表示无第二角色
  */
 public record AuthLoginResponse(
     String token,
@@ -24,6 +27,7 @@ public record AuthLoginResponse(
     String role,
     String roleName,
     String department,
-    String employeeType
+    String employeeType,
+    List<String> secondRoles
 ) {
 }

@@ -72,6 +72,32 @@ describe('loginWithAccount', () => {
     expect(result.user.roleName).toBe(roleNameMap['finance']) // '财务'
   })
 
+  it('API 成功但后端未返回 roleName 时 fallback 到 roleNameMap（hr 角色）', async () => {
+    mockRequest.mockResolvedValueOnce({
+      token: 'jwt-hr',
+      username: 'hr.demo',
+      displayName: '人事专员',
+      role: 'hr'
+      // 故意不提供 roleName
+    })
+
+    const result = await loginWithAccount({ identifier: 'hr.demo', password: '123456' })
+    expect(result.user.roleName).toBe('人力资源')
+  })
+
+  it('API 成功但后端未返回 roleName 时 fallback 到 roleNameMap（general_manager 角色）', async () => {
+    mockRequest.mockResolvedValueOnce({
+      token: 'jwt-gm',
+      username: 'gm.demo',
+      displayName: '总经理',
+      role: 'general_manager'
+      // 故意不提供 roleName
+    })
+
+    const result = await loginWithAccount({ identifier: 'gm.demo', password: '123456' })
+    expect(result.user.roleName).toBe('总经理')
+  })
+
   it('API 成功时 department 缺失时 fallback 为"未分配部门"', async () => {
     mockRequest.mockResolvedValueOnce({
       token: 'jwt-dep',

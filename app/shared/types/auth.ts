@@ -41,6 +41,8 @@ export interface SessionUser {
   userId: number | null
   positionId: number | null
   phone?: string
+  /** 当前用户持有的第二角色代码列表（如 FOREMAN / AFTER_SALES / MATERIAL_MANAGER）。来源：后端 second_role_assignment 表 */
+  secondRoles?: string[]
 }
 
 /**
@@ -125,7 +127,9 @@ export const roleNameMap: Record<string, string> = {
   worker: '劳工',
   finance: '财务',
   project_manager: '项目经理',
-  ceo: '首席经营者'
+  ceo: '首席经营者',
+  hr: '人力资源',
+  general_manager: '总经理'
 }
 
 /**

@@ -1,10 +1,10 @@
 /**
  * shared/utils/forms.ts 单元测试
  *
- * 覆盖：getAvailableFormOptions（纯函数，按用户角色/类型返回可用表单列表）
+ * 覆盖：getAvailableFormOptions（纯函数，按用户角色/类型/第二角色返回可用表单列表）
  *
  * 该函数无任何平台依赖，可在 jsdom 或 node 环境中直接运行。
- * 测试覆盖场景：未登录用户、OFFICE 员工、LABOR 员工、劳工角色、中文 employeeType。
+ * 测试覆盖场景：未登录用户、OFFICE 员工、劳工（无工长）、劳工（持有工长第二角色）、中文 employeeType。
  */
 import { describe, it, expect } from 'vitest'
 import { getAvailableFormOptions } from '../utils'
@@ -40,23 +40,33 @@ describe('getAvailableFormOptions', () => {
     expect(options.map((o) => o.code)).not.toContain('LOG')
   })
 
-  // TODO(audit): DESIGN.md §8.3 — LOG 入口仅限持有「工长」第二角色的劳工，普通 worker 不可见。
-  // 当前 SessionUser 类型（auth.ts）无 secondRole 字段，getAvailableFormOptions 对所有
-  // role=worker 开放 LOG，与设计不符。需扩展 SessionUser 类型并修正实现后更新本测试。
-  it('role=worker 用户返回 4 种表单（含 INJURY / LOG）', () => {
-    const options = getAvailableFormOptions(makeUser({ role: 'worker', employeeType: 'OFFICE' }))
+  // DESIGN.md §8.3：劳工（无工长第二角色）只有 LEAVE / OVERTIME / INJURY，无 LOG
+  it('role=worker 无 FOREMAN 第二角色：返回 3 种表单（含 INJURY，不含 LOG）', () => {
+    const options = getAvailableFormOptions(makeUser({ role: 'worker', employeeType: 'LABOR' }))
+    expect(options).toHaveLength(3)
+    expect(options.map((o) => o.code)).toContain('INJURY')
+    expect(options.map((o) => o.code)).not.toContain('LOG')
+  })
+
+  it('role=worker 持有 FOREMAN 第二角色：返回 4 种表单（含 INJURY / LOG）', () => {
+    const options = getAvailableFormOptions(
+      makeUser({ role: 'worker', employeeType: 'LABOR', secondRoles: ['FOREMAN'] })
+    )
     expect(options).toHaveLength(4)
     expect(options.map((o) => o.code)).toContain('INJURY')
     expect(options.map((o) => o.code)).toContain('LOG')
   })
 
-  it('employeeType=LABOR 用户返回 4 种表单', () => {
+  it('employeeType=LABOR 无 FOREMAN：返回 3 种表单（不含 LOG）', () => {
     const options = getAvailableFormOptions(makeUser({ role: 'employee', employeeType: 'LABOR' }))
-    expect(options).toHaveLength(4)
+    expect(options).toHaveLength(3)
+    expect(options.map((o) => o.code)).not.toContain('LOG')
   })
 
-  it('employeeType=劳工（中文）用户返回 4 种表单', () => {
-    const options = getAvailableFormOptions(makeUser({ role: 'employee', employeeType: '劳工' }))
+  it('employeeType=劳工（中文）持有 FOREMAN：返回 4 种表单', () => {
+    const options = getAvailableFormOptions(
+      makeUser({ role: 'employee', employeeType: '劳工', secondRoles: ['FOREMAN'] })
+    )
     expect(options).toHaveLength(4)
   })
 
@@ -76,7 +86,9 @@ describe('getAvailableFormOptions', () => {
   })
 
   it('劳工表单中 INJURY 排在 LOG 之前', () => {
-    const codes = getAvailableFormOptions(makeUser({ role: 'worker' })).map((o) => o.code)
+    const codes = getAvailableFormOptions(
+      makeUser({ role: 'worker', secondRoles: ['FOREMAN'] })
+    ).map((o) => o.code)
     expect(codes.indexOf('INJURY')).toBeLessThan(codes.indexOf('LOG'))
   })
 })

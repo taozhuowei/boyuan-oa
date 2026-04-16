@@ -14,15 +14,20 @@ export const officeFormOptions: FormTypeOption[] = [
   { code: 'OVERTIME', name: '加班申请', description: '登记项目赶工、临时支援和加班补贴依据。', icon: 'work' }
 ]
 
-export const laborExtraFormOptions: FormTypeOption[] = [
-  { code: 'INJURY', name: '工伤补偿', description: '记录工伤情况并提交补偿审批。', icon: 'warning' },
+export const injuryFormOption: FormTypeOption =
+  { code: 'INJURY', name: '工伤补偿', description: '记录工伤情况并提交补偿审批。', icon: 'warning' }
+
+export const logFormOption: FormTypeOption =
   { code: 'LOG', name: '施工日志', description: '沉淀现场进度、天气、问题与施工内容。', icon: 'assignment' }
-]
 
 /**
  * 获取用户可用的表单选项列表
+ *
+ * LOG 入口仅限持有 FOREMAN 第二角色的劳工（DESIGN.md §8.3）。
+ * INJURY 入口对所有劳工开放（role=worker 或 employeeType=LABOR/劳工）。
+ *
  * @param user - 当前会话用户信息
- * @returns 根据用户角色返回对应的表单选项列表
+ * @returns 根据用户角色和第二角色返回对应的表单选项列表
  */
 export function getAvailableFormOptions(user: SessionUser | null): FormTypeOption[] {
   if (!user) {
@@ -34,5 +39,10 @@ export function getAvailableFormOptions(user: SessionUser | null): FormTypeOptio
     user.employeeType === 'LABOR' ||
     user.employeeType === '劳工'
 
-  return isWorker ? [...officeFormOptions, ...laborExtraFormOptions] : officeFormOptions
+  if (!isWorker) return officeFormOptions
+
+  const isForeman = user.secondRoles?.includes('FOREMAN') ?? false
+  return isForeman
+    ? [...officeFormOptions, injuryFormOption, logFormOption]
+    : [...officeFormOptions, injuryFormOption]
 }

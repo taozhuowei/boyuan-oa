@@ -22,6 +22,7 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
       roleName?: string
       department?: string
       employeeType?: string
+      secondRoles?: string[]
     }>({
       url: '/auth/login',
       method: 'POST',
@@ -40,7 +41,8 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
         employeeType: response.employeeType ?? 'OFFICE',
         status: '在线值守',
         userId: response.userId ?? null,
-        positionId: null
+        positionId: null,
+        secondRoles: response.secondRoles ?? []
       }
     }
   } catch {

@@ -17,6 +17,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import com.oa.backend.mapper.SecondRoleAssignmentMapper;
+import java.util.List;
+import java.util.Collections;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -49,6 +52,7 @@ public class AuthController {
     private final DepartmentMapper departmentMapper;
     private final ResetCodeStore resetCodeStore;
     private final PasswordEncoder passwordEncoder;
+    private final SecondRoleAssignmentMapper secondRoleAssignmentMapper;
 
     private final SecureRandom secureRandom = new SecureRandom();
 
@@ -127,6 +131,18 @@ public class AuthController {
             }
         }
 
+        List<String> secondRoles = Collections.emptyList();
+        try {
+            secondRoles = secondRoleAssignmentMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.oa.backend.entity.SecondRoleAssignment>()
+                    .eq(com.oa.backend.entity.SecondRoleAssignment::getEmployeeId, employee.getId())
+                    .ne(com.oa.backend.entity.SecondRoleAssignment::getRevoked, true)
+                    .eq(com.oa.backend.entity.SecondRoleAssignment::getDeleted, 0)
+            ).stream().map(com.oa.backend.entity.SecondRoleAssignment::getRoleCode).toList();
+        } catch (Exception e) {
+            log.warn("Failed to query second roles for employee {}: {}", employee.getId(), e.getMessage());
+        }
+
         return ResponseEntity.ok(new AuthLoginResponse(
             token,
             "Bearer",
@@ -137,7 +153,8 @@ public class AuthController {
             employee.getRoleCode(),
             roleName,
             departmentName,
-            employee.getEmployeeType()
+            employee.getEmployeeType(),
+            secondRoles
         ));
     }
 
@@ -169,7 +186,8 @@ public class AuthController {
             user.roleCode(),
             user.roleName(),
             user.department(),
-            user.employeeType()
+            user.employeeType(),
+            Collections.emptyList()
         ));
     }
 
