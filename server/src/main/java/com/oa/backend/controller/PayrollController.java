@@ -45,6 +45,7 @@ public class PayrollController {
     private final EmployeeMapper employeeMapper;
     private final SignatureService signatureService;
     private final PayrollCorrectionService correctionService;
+    private final com.oa.backend.service.NotificationService notificationService;
 
     // ── 周期管理（Finance/CEO） ──────────────────────────────────────────────
 
@@ -122,6 +123,42 @@ public class PayrollController {
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
+    }
+
+    /**
+     * CEO 解锁已结算周期（设计 §6.6）：仅 CEO，无需审批；操作日志自动记录；通知财务。
+     * 解锁后周期回到 WINDOW_CLOSED，财务可重新结算或更正。
+     */
+    @PostMapping("/cycles/{id}/unlock")
+    @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "PAYROLL_CYCLE_UNLOCK", targetType = "PAYROLL_CYCLE")
+    public ResponseEntity<?> unlock(@PathVariable Long id, Authentication auth) {
+        PayrollCycle cycle = cycleMapper.selectById(id);
+        if (cycle == null || (cycle.getDeleted() != null && cycle.getDeleted() == 1)) {
+            return ResponseEntity.notFound().build();
+        }
+        if (!"SETTLED".equals(cycle.getStatus()) && !"LOCKED".equals(cycle.getStatus())) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "周期当前状态 [" + cycle.getStatus() + "] 不需要解锁"));
+        }
+        cycle.setStatus("WINDOW_CLOSED");
+        cycle.setLockedAt(null);
+        cycle.setUpdatedAt(LocalDateTime.now());
+        cycleMapper.updateById(cycle);
+
+        // 通知所有 finance 角色
+        try {
+            List<com.oa.backend.entity.Employee> finances = employeeMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.oa.backend.entity.Employee>()
+                            .eq(com.oa.backend.entity.Employee::getRoleCode, "finance")
+                            .eq(com.oa.backend.entity.Employee::getDeleted, 0));
+            for (com.oa.backend.entity.Employee f : finances) {
+                notificationService.send(f.getId(), "薪资周期已被 CEO 解锁",
+                        "周期 " + cycle.getPeriod() + " 已解锁，请重新核对并结算。",
+                        "PAYROLL", "PAYROLL_CYCLE", id);
+            }
+        } catch (Exception ignored) {}
+        return ResponseEntity.ok(cycle);
     }
 
     // ── 工资条（分角色权限） ────────────────────────────────────────────────

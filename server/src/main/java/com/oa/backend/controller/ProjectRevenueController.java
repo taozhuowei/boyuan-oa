@@ -2,10 +2,14 @@ package com.oa.backend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.entity.ProjectMilestone;
+import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.ProjectMilestoneMapper;
+import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.RevenueChangeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
@@ -34,10 +38,14 @@ import java.util.Map;
 public class ProjectRevenueController {
 
     private final ProjectMilestoneMapper milestoneMapper;
+    private final RevenueChangeService revenueChangeService;
+    private final EmployeeMapper employeeMapper;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('CEO','GENERAL_MANAGER','FINANCE','PROJECT_MANAGER')")
     public ResponseEntity<List<ProjectMilestone>> list(@PathVariable Long projectId) {
+        // 自动同步已审批的合同金额变更
+        revenueChangeService.syncApprovedChanges(projectId);
         return ResponseEntity.ok(milestoneMapper.selectList(
                 new LambdaQueryWrapper<ProjectMilestone>()
                         .eq(ProjectMilestone::getProjectId, projectId)
@@ -45,6 +53,10 @@ public class ProjectRevenueController {
                         .orderByAsc(ProjectMilestone::getSort)));
     }
 
+    /**
+     * 更新里程碑收款字段（receipt_*）。FINANCE/CEO。
+     * contract_amount 不在此修改 — 必须通过 /contract-change 走对方审批（设计 §8.5）。
+     */
     @PutMapping("/{milestoneId}")
     @PreAuthorize("hasAnyRole('CEO','FINANCE')")
     public ResponseEntity<?> update(@PathVariable Long projectId,
@@ -54,7 +66,11 @@ public class ProjectRevenueController {
         if (m == null || m.getDeleted() == 1 || !m.getProjectId().equals(projectId)) {
             return ResponseEntity.notFound().build();
         }
-        if (req.contractAmount() != null) m.setContractAmount(req.contractAmount());
+        if (req.contractAmount() != null
+                && (m.getContractAmount() == null || req.contractAmount().compareTo(m.getContractAmount()) != 0)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "message", "合同金额变更须通过 POST /contract-change 走对方审批（设计 §8.5）"));
+        }
         if (req.receiptStatus() != null) m.setReceiptStatus(req.receiptStatus());
         if (req.actualReceiptAmount() != null) m.setActualReceiptAmount(req.actualReceiptAmount());
         if (req.receiptDate() != null) m.setReceiptDate(req.receiptDate());
@@ -64,9 +80,44 @@ public class ProjectRevenueController {
         return ResponseEntity.ok(m);
     }
 
+    /** 发起合同金额变更（设计 §8.5 跨方审批） */
+    @PostMapping("/{milestoneId}/contract-change")
+    @PreAuthorize("hasAnyRole('FINANCE','PROJECT_MANAGER')")
+    public ResponseEntity<?> proposeContractChange(@PathVariable Long projectId,
+                                                   @PathVariable Long milestoneId,
+                                                   @RequestBody ContractChangeRequest req,
+                                                   Authentication auth) {
+        Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        String role = auth.getAuthorities().stream()
+                .map(a -> a.getAuthority())
+                .anyMatch("ROLE_FINANCE"::equals) ? "FINANCE" : "PROJECT_MANAGER";
+        try {
+            ProjectMilestone m = revenueChangeService.createChange(milestoneId, req.amount(), req.reason(), me, role);
+            return ResponseEntity.ok(m);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    /** 撤销变更（仅发起人本人） */
+    @DeleteMapping("/{milestoneId}/contract-change")
+    @PreAuthorize("hasAnyRole('FINANCE','PROJECT_MANAGER')")
+    public ResponseEntity<?> cancelChange(@PathVariable Long projectId,
+                                          @PathVariable Long milestoneId,
+                                          Authentication auth) {
+        Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        try {
+            revenueChangeService.cancelChange(milestoneId, me);
+            return ResponseEntity.ok(Map.of("message", "已撤销"));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(403).body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @GetMapping("/summary")
     @PreAuthorize("hasAnyRole('CEO','GENERAL_MANAGER','FINANCE','PROJECT_MANAGER')")
     public ResponseEntity<Map<String, Object>> summary(@PathVariable Long projectId) {
+        revenueChangeService.syncApprovedChanges(projectId);
         List<ProjectMilestone> list = milestoneMapper.selectList(
                 new LambdaQueryWrapper<ProjectMilestone>()
                         .eq(ProjectMilestone::getProjectId, projectId)
@@ -88,4 +139,6 @@ public class ProjectRevenueController {
     public record RevenueUpdateRequest(
             BigDecimal contractAmount, String receiptStatus,
             BigDecimal actualReceiptAmount, LocalDate receiptDate, String receiptRemark) {}
+
+    public record ContractChangeRequest(BigDecimal amount, String reason) {}
 }
