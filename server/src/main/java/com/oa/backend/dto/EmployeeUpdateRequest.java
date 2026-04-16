@@ -1,6 +1,8 @@
 package com.oa.backend.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 员工更新请求 DTO
@@ -16,5 +18,13 @@ public record EmployeeUpdateRequest(
     Long levelId,
     Long directSupervisorId,
     String accountStatus,
-    LocalDate leaveDate
-) {}
+    LocalDate leaveDate,
+    Integer socialSeniority,
+    String contractType,
+    BigDecimal dailySubsidy,
+    BigDecimal expenseLimit,
+    BigDecimal performanceRatio,
+    List<EmergencyContactRequest> emergencyContacts
+) {
+    public record EmergencyContactRequest(String name, String phone, String address) {}
+}

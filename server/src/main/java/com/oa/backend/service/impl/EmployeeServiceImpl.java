@@ -3,10 +3,13 @@ package com.oa.backend.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.dto.EmployeeCreateRequest;
 import com.oa.backend.dto.EmployeeUpdateRequest;
 import com.oa.backend.dto.SalaryOverrideRequest;
+import com.oa.backend.entity.EmergencyContact;
 import com.oa.backend.entity.Employee;
+import com.oa.backend.mapper.EmergencyContactMapper;
 import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +30,7 @@ import java.util.Optional;
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeMapper employeeMapper;
+    private final EmergencyContactMapper emergencyContactMapper;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -115,6 +119,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setDirectSupervisorId(request.directSupervisorId());
         employee.setAccountStatus("ACTIVE");
         employee.setEntryDate(request.entryDate() != null ? request.entryDate() : LocalDate.now());
+        employee.setSocialSeniority(request.socialSeniority());
+        employee.setContractType(request.contractType());
+        employee.setDailySubsidy(request.dailySubsidy());
+        employee.setExpenseLimit(request.expenseLimit());
+        employee.setPerformanceRatio(request.performanceRatio());
 
         LocalDateTime now = LocalDateTime.now();
         employee.setCreatedAt(now);
@@ -122,6 +131,12 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setDeleted(0);
 
         employeeMapper.insert(employee);
+        if (request.emergencyContacts() != null) {
+            java.util.List<EmployeeUpdateRequest.EmergencyContactRequest> mapped = request.emergencyContacts().stream()
+                    .map(c -> new EmployeeUpdateRequest.EmergencyContactRequest(c.name(), c.phone(), c.address()))
+                    .toList();
+            replaceEmergencyContacts(employee.getId(), mapped);
+        }
         return employee;
     }
 
@@ -164,10 +179,55 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (request.leaveDate() != null) {
             employee.setLeaveDate(request.leaveDate());
         }
+        if (request.socialSeniority() != null) {
+            employee.setSocialSeniority(request.socialSeniority());
+        }
+        if (request.contractType() != null) {
+            employee.setContractType(request.contractType());
+        }
+        if (request.dailySubsidy() != null) {
+            employee.setDailySubsidy(request.dailySubsidy());
+        }
+        if (request.expenseLimit() != null) {
+            employee.setExpenseLimit(request.expenseLimit());
+        }
+        if (request.performanceRatio() != null) {
+            employee.setPerformanceRatio(request.performanceRatio());
+        }
 
         employee.setUpdatedAt(LocalDateTime.now());
         employeeMapper.updateById(employee);
+
+        // 紧急联系人采用整表替换：传 null 不动；传空列表清空；传非空列表替换
+        if (request.emergencyContacts() != null) {
+            replaceEmergencyContacts(id, request.emergencyContacts());
+        }
         return employee;
+    }
+
+    /** 整表替换某员工的紧急联系人（软删旧 + 插新）。null 列表不动；空列表清空。 */
+    private void replaceEmergencyContacts(Long employeeId,
+                                          java.util.List<EmployeeUpdateRequest.EmergencyContactRequest> contacts) {
+        if (contacts == null) return;
+        java.util.List<EmergencyContact> existing = emergencyContactMapper.selectList(
+                new LambdaQueryWrapper<EmergencyContact>()
+                        .eq(EmergencyContact::getEmployeeId, employeeId)
+                        .eq(EmergencyContact::getDeleted, 0));
+        for (EmergencyContact ec : existing) {
+            emergencyContactMapper.deleteById(ec.getId());
+        }
+        for (EmployeeUpdateRequest.EmergencyContactRequest c : contacts) {
+            if (c == null || c.name() == null || c.name().isBlank()
+                    || c.phone() == null || c.phone().isBlank()) continue;
+            EmergencyContact ec = new EmergencyContact();
+            ec.setEmployeeId(employeeId);
+            ec.setName(c.name());
+            ec.setPhone(c.phone());
+            ec.setAddress(c.address());
+            ec.setCreatedAt(LocalDateTime.now());
+            ec.setUpdatedAt(LocalDateTime.now());
+            emergencyContactMapper.insert(ec);
+        }
     }
 
     @Override

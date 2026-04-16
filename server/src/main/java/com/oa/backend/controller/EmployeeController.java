@@ -34,6 +34,7 @@ public class EmployeeController {
     private final EmployeeService employeeService;
     private final DepartmentMapper departmentMapper;
     private final RoleMapper roleMapper;
+    private final com.oa.backend.mapper.EmergencyContactMapper emergencyContactMapper;
 
     /**
      * 获取员工列表（分页）
@@ -190,6 +191,19 @@ public class EmployeeController {
             }
         }
 
+        // 紧急联系人列表
+        java.util.List<EmployeeResponse.EmergencyContact> contacts = new java.util.ArrayList<>();
+        try {
+            java.util.List<com.oa.backend.entity.EmergencyContact> rows = emergencyContactMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.oa.backend.entity.EmergencyContact>()
+                            .eq(com.oa.backend.entity.EmergencyContact::getEmployeeId, employee.getId())
+                            .eq(com.oa.backend.entity.EmergencyContact::getDeleted, 0));
+            for (com.oa.backend.entity.EmergencyContact ec : rows) {
+                contacts.add(new EmployeeResponse.EmergencyContact(
+                        ec.getId(), ec.getName(), ec.getPhone(), ec.getAddress()));
+            }
+        } catch (Exception ignored) {}
+
         return new EmployeeResponse(
             employee.getId(),
             employee.getEmployeeNo(),
@@ -211,6 +225,12 @@ public class EmployeeController {
             employee.getBaseSalaryOverride(),
             employee.getPerformanceBaseOverride(),
             employee.getSalaryOverrideNote(),
+            employee.getSocialSeniority(),
+            employee.getContractType(),
+            employee.getDailySubsidy(),
+            employee.getExpenseLimit(),
+            employee.getPerformanceRatio(),
+            contacts,
             employee.getCreatedAt(),
             employee.getUpdatedAt()
         );

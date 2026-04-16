@@ -26,6 +26,9 @@
           <a-tab-pane key="dashboard" tab="Dashboard" />
           <a-tab-pane v-if="isPmOrCeo" key="summary" tab="汇总报告" />
           <a-tab-pane v-if="isPmOrCeo" key="logs" tab="施工日志审批" />
+          <a-tab-pane v-if="isPmOrCeo" key="second-roles" tab="第二角色" />
+          <a-tab-pane key="material" tab="实体成本" />
+          <a-tab-pane key="aftersale" tab="售后问题单" />
         </a-tabs>
 
         <!-- ── Tab: 基本信息 ── -->
@@ -359,6 +362,117 @@
             <a-form layout="vertical">
               <a-form-item label="驳回原因">
                 <a-textarea v-model:value="rejectLogComment" :rows="3" />
+              </a-form-item>
+            </a-form>
+          </a-modal>
+        </template>
+
+        <!-- ── Tab: 第二角色 ── -->
+        <template v-if="activeTab === 'second-roles'">
+          <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: end;">
+            <a-form-item label="员工 ID" style="margin: 0;">
+              <a-input-number v-model:value="srForm.employeeId" :precision="0" style="width: 140px" />
+            </a-form-item>
+            <a-form-item label="第二角色" style="margin: 0;">
+              <a-select v-model:value="srForm.roleCode" style="width: 200px">
+                <a-select-option v-for="d in srDefs" :key="d.code" :value="d.code">{{ d.name }}（{{ d.appliesTo === 'OFFICE' ? '员工' : '劳工' }}）</a-select-option>
+              </a-select>
+            </a-form-item>
+            <a-button type="primary" :loading="srLoading" @click="assignSecondRole">分配</a-button>
+            <a-button @click="loadSecondRoles">刷新</a-button>
+          </div>
+          <a-table :columns="srColumns" :data-source="srAssignments" :loading="srLoading" row-key="id" size="small">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'roleName'">{{ srRoleName(record.roleCode) }}</template>
+              <template v-if="column.key === 'action'">
+                <a-popconfirm title="确定撤销此第二角色？" @confirm="revokeSecondRole(record.id)">
+                  <a-button type="link" danger size="small">撤销</a-button>
+                </a-popconfirm>
+              </template>
+            </template>
+          </a-table>
+        </template>
+
+        <!-- ── Tab: 实体成本 ── -->
+        <template v-if="activeTab === 'material'">
+          <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+            <a-button type="primary" @click="openMaterialModal">+ 录入实体成本</a-button>
+            <a-button @click="loadMaterialCosts">刷新</a-button>
+            <span style="margin-left: auto; color: #666;">
+              合计：¥{{ formatAmount(materialTotal) }}
+            </span>
+          </div>
+          <a-table :columns="materialColumns" :data-source="materialCosts" :loading="materialLoading" row-key="id" size="small">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'subtotal'">¥{{ formatAmount(Number(record.quantity) * Number(record.unitPrice)) }}</template>
+              <template v-if="column.key === 'action'">
+                <a-popconfirm title="确定删除？" @confirm="deleteMaterialCost(record.id)">
+                  <a-button type="link" danger size="small">删除</a-button>
+                </a-popconfirm>
+              </template>
+            </template>
+          </a-table>
+          <a-modal v-model:open="showMaterialModal" title="录入实体成本" :confirm-loading="materialSubmitting" @ok="submitMaterialCost" @cancel="showMaterialModal = false" width="540px">
+            <a-form layout="vertical" :model="materialForm">
+              <a-row :gutter="16">
+                <a-col :span="12"><a-form-item label="物品名称" required><a-input v-model:value="materialForm.itemName" /></a-form-item></a-col>
+                <a-col :span="12"><a-form-item label="规格"><a-input v-model:value="materialForm.spec" /></a-form-item></a-col>
+              </a-row>
+              <a-row :gutter="16">
+                <a-col :span="8"><a-form-item label="数量" required><a-input-number v-model:value="materialForm.quantity" :min="0" :precision="2" style="width: 100%" /></a-form-item></a-col>
+                <a-col :span="8"><a-form-item label="单位" required><a-input v-model:value="materialForm.unit" /></a-form-item></a-col>
+                <a-col :span="8"><a-form-item label="单价（元）" required><a-input-number v-model:value="materialForm.unitPrice" :min="0" :precision="2" style="width: 100%" /></a-form-item></a-col>
+              </a-row>
+              <a-row :gutter="16">
+                <a-col :span="12"><a-form-item label="发生日期" required><a-input v-model:value="materialForm.occurredOn" placeholder="YYYY-MM-DD" /></a-form-item></a-col>
+                <a-col :span="12"><a-form-item label="备注"><a-input v-model:value="materialForm.remark" /></a-form-item></a-col>
+              </a-row>
+            </a-form>
+          </a-modal>
+        </template>
+
+        <!-- ── Tab: 售后问题单 ── -->
+        <template v-if="activeTab === 'aftersale'">
+          <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+            <a-button type="primary" @click="openTicketModal">+ 新建问题单</a-button>
+            <a-button @click="loadTickets">刷新</a-button>
+          </div>
+          <a-table :columns="ticketColumns" :data-source="tickets" :loading="ticketsLoading" row-key="id" size="small">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'typeName'">{{ ticketTypeName(record.typeCode) }}</template>
+              <template v-if="column.key === 'status'">
+                <a-tag :color="record.status === 'CLOSED' ? 'green' : record.status === 'PROCESSING' ? 'blue' : 'orange'">
+                  {{ { PENDING: '待处理', PROCESSING: '处理中', CLOSED: '已关闭' }[record.status] ?? record.status }}
+                </a-tag>
+              </template>
+              <template v-if="column.key === 'action'">
+                <a-button type="link" size="small" @click="openTicketEdit(record)">编辑</a-button>
+              </template>
+            </template>
+          </a-table>
+          <a-modal v-model:open="showTicketModal" :title="editingTicketId ? '编辑问题单' : '新建问题单'" :confirm-loading="ticketSubmitting" @ok="submitTicket" @cancel="showTicketModal = false" width="600px">
+            <a-form layout="vertical" :model="ticketForm">
+              <a-row :gutter="16">
+                <a-col :span="12">
+                  <a-form-item label="问题类型" required>
+                    <a-select v-model:value="ticketForm.typeCode">
+                      <a-select-option v-for="t in ticketTypes" :key="t.code" :value="t.code">{{ t.name }}</a-select-option>
+                    </a-select>
+                  </a-form-item>
+                </a-col>
+                <a-col :span="12">
+                  <a-form-item label="售后日期" required><a-input v-model:value="ticketForm.incidentDate" placeholder="YYYY-MM-DD" /></a-form-item>
+                </a-col>
+              </a-row>
+              <a-form-item label="问题描述" required><a-textarea v-model:value="ticketForm.description" :rows="3" /></a-form-item>
+              <a-form-item label="客户反馈"><a-textarea v-model:value="ticketForm.customerFeedback" :rows="2" /></a-form-item>
+              <a-form-item label="处理结果"><a-textarea v-model:value="ticketForm.resolution" :rows="2" /></a-form-item>
+              <a-form-item label="状态">
+                <a-select v-model:value="ticketForm.status">
+                  <a-select-option value="PENDING">待处理</a-select-option>
+                  <a-select-option value="PROCESSING">处理中</a-select-option>
+                  <a-select-option value="CLOSED">已关闭</a-select-option>
+                </a-select>
               </a-form-item>
             </a-form>
           </a-modal>
@@ -837,6 +951,157 @@ async function doRecallLog(id: number) {
 
 function onTabChange(key: string) {
   if (key === 'logs') loadLogs()
+  if (key === 'second-roles') { loadSecondRoleDefs(); loadSecondRoles() }
+  if (key === 'material') loadMaterialCosts()
+  if (key === 'aftersale') { loadTicketTypes(); loadTickets() }
+}
+
+// ── 第二角色 ─────────────────────────────────────────────
+
+interface SecondRoleDef { code: string; name: string; appliesTo: 'OFFICE' | 'LABOR'; projectBound: boolean }
+interface SecondRoleAssignment { id: number; employeeId: number; roleCode: string; projectId: number | null }
+const srDefs = ref<SecondRoleDef[]>([])
+const srAssignments = ref<SecondRoleAssignment[]>([])
+const srLoading = ref(false)
+const srForm = ref<{ employeeId: number | null; roleCode: string | null }>({ employeeId: null, roleCode: null })
+const srColumns = [
+  { title: '员工 ID', dataIndex: 'employeeId', key: 'employeeId', width: 100 },
+  { title: '角色', key: 'roleName' },
+  { title: '操作', key: 'action', width: 100 }
+]
+async function loadSecondRoleDefs() {
+  if (srDefs.value.length) return
+  try { srDefs.value = await request<SecondRoleDef[]>({ url: '/second-roles/defs' }) ?? [] } catch { srDefs.value = [] }
+}
+async function loadSecondRoles() {
+  srLoading.value = true
+  try {
+    srAssignments.value = await request<SecondRoleAssignment[]>({ url: `/second-roles?projectId=${projectId.value}` }) ?? []
+  } catch { srAssignments.value = [] } finally { srLoading.value = false }
+}
+function srRoleName(code: string) { return srDefs.value.find(d => d.code === code)?.name ?? code }
+async function assignSecondRole() {
+  if (!srForm.value.employeeId || !srForm.value.roleCode) { message.warning('请填写员工 ID 与第二角色'); return }
+  try {
+    await request({ url: '/second-roles', method: 'POST', body: {
+      employeeId: srForm.value.employeeId, roleCode: srForm.value.roleCode, projectId: projectId.value
+    }})
+    message.success('已分配')
+    srForm.value = { employeeId: null, roleCode: null }
+    await loadSecondRoles()
+  } catch {}
+}
+async function revokeSecondRole(id: number) {
+  try { await request({ url: `/second-roles/${id}`, method: 'DELETE' }); await loadSecondRoles() } catch {}
+}
+
+// ── 实体成本 ────────────────────────────────────────────
+
+interface MaterialCost { id: number; itemName: string; spec?: string; quantity: number; unit: string; unitPrice: number; occurredOn: string; remark?: string }
+const materialCosts = ref<MaterialCost[]>([])
+const materialLoading = ref(false)
+const showMaterialModal = ref(false)
+const materialSubmitting = ref(false)
+const materialForm = ref<{ itemName: string; spec: string; quantity: number | null; unit: string; unitPrice: number | null; occurredOn: string; remark: string }>({
+  itemName: '', spec: '', quantity: null, unit: '', unitPrice: null, occurredOn: new Date().toISOString().slice(0, 10), remark: ''
+})
+const materialColumns = [
+  { title: '物品名称', dataIndex: 'itemName', key: 'itemName' },
+  { title: '规格', dataIndex: 'spec', key: 'spec' },
+  { title: '数量', dataIndex: 'quantity', key: 'quantity', width: 80 },
+  { title: '单位', dataIndex: 'unit', key: 'unit', width: 80 },
+  { title: '单价', dataIndex: 'unitPrice', key: 'unitPrice', width: 100 },
+  { title: '小计', key: 'subtotal', width: 110 },
+  { title: '日期', dataIndex: 'occurredOn', key: 'occurredOn', width: 110 },
+  { title: '操作', key: 'action', width: 80 }
+]
+const materialTotal = computed(() => materialCosts.value.reduce((s, m) => s + Number(m.quantity) * Number(m.unitPrice), 0))
+async function loadMaterialCosts() {
+  materialLoading.value = true
+  try {
+    materialCosts.value = await request<MaterialCost[]>({ url: `/projects/${projectId.value}/material-costs` }) ?? []
+  } catch { materialCosts.value = [] } finally { materialLoading.value = false }
+}
+function openMaterialModal() {
+  materialForm.value = { itemName: '', spec: '', quantity: null, unit: '', unitPrice: null, occurredOn: new Date().toISOString().slice(0, 10), remark: '' }
+  showMaterialModal.value = true
+}
+async function submitMaterialCost() {
+  if (!materialForm.value.itemName || !materialForm.value.quantity || !materialForm.value.unit || !materialForm.value.unitPrice || !materialForm.value.occurredOn) {
+    message.warning('必填项不完整'); return
+  }
+  materialSubmitting.value = true
+  try {
+    await request({ url: `/projects/${projectId.value}/material-costs`, method: 'POST', body: materialForm.value })
+    message.success('已录入'); showMaterialModal.value = false; await loadMaterialCosts()
+  } catch {} finally { materialSubmitting.value = false }
+}
+async function deleteMaterialCost(id: number) {
+  try { await request({ url: `/projects/${projectId.value}/material-costs/${id}`, method: 'DELETE' }); await loadMaterialCosts() } catch {}
+}
+function formatAmount(n: number) { return Number(n ?? 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }
+
+// ── 售后问题单 ─────────────────────────────────────────
+
+interface AfterSaleType { code: string; name: string }
+interface AfterSaleTicket { id: number; projectId: number; typeCode: string; incidentDate: string; description: string; customerFeedback?: string; resolution?: string; status: string }
+const ticketTypes = ref<AfterSaleType[]>([])
+const tickets = ref<AfterSaleTicket[]>([])
+const ticketsLoading = ref(false)
+const showTicketModal = ref(false)
+const ticketSubmitting = ref(false)
+const editingTicketId = ref<number | null>(null)
+const ticketForm = ref<{ typeCode: string | null; incidentDate: string; description: string; customerFeedback: string; resolution: string; status: string }>({
+  typeCode: null, incidentDate: new Date().toISOString().slice(0, 10), description: '', customerFeedback: '', resolution: '', status: 'PENDING'
+})
+const ticketColumns = [
+  { title: '日期', dataIndex: 'incidentDate', key: 'incidentDate', width: 110 },
+  { title: '类型', key: 'typeName', width: 130 },
+  { title: '描述', dataIndex: 'description', key: 'description' },
+  { title: '状态', key: 'status', width: 100 },
+  { title: '操作', key: 'action', width: 80 }
+]
+async function loadTicketTypes() {
+  if (ticketTypes.value.length) return
+  try { ticketTypes.value = await request<AfterSaleType[]>({ url: '/after-sale/types' }) ?? [] } catch { ticketTypes.value = [] }
+}
+function ticketTypeName(code: string) { return ticketTypes.value.find(t => t.code === code)?.name ?? code }
+async function loadTickets() {
+  ticketsLoading.value = true
+  try { tickets.value = await request<AfterSaleTicket[]>({ url: `/after-sale/tickets?projectId=${projectId.value}` }) ?? [] }
+  catch { tickets.value = [] } finally { ticketsLoading.value = false }
+}
+function openTicketModal() {
+  editingTicketId.value = null
+  ticketForm.value = { typeCode: ticketTypes.value[0]?.code ?? null, incidentDate: new Date().toISOString().slice(0, 10), description: '', customerFeedback: '', resolution: '', status: 'PENDING' }
+  showTicketModal.value = true
+}
+function openTicketEdit(record: AfterSaleTicket) {
+  editingTicketId.value = record.id
+  ticketForm.value = {
+    typeCode: record.typeCode,
+    incidentDate: record.incidentDate,
+    description: record.description,
+    customerFeedback: record.customerFeedback ?? '',
+    resolution: record.resolution ?? '',
+    status: record.status
+  }
+  showTicketModal.value = true
+}
+async function submitTicket() {
+  if (!ticketForm.value.typeCode || !ticketForm.value.incidentDate || !ticketForm.value.description) {
+    message.warning('类型/日期/描述必填'); return
+  }
+  ticketSubmitting.value = true
+  try {
+    const body = { ...ticketForm.value, projectId: projectId.value }
+    if (editingTicketId.value) {
+      await request({ url: `/after-sale/tickets/${editingTicketId.value}`, method: 'PUT', body })
+    } else {
+      await request({ url: '/after-sale/tickets', method: 'POST', body })
+    }
+    message.success('已保存'); showTicketModal.value = false; await loadTickets()
+  } catch {} finally { ticketSubmitting.value = false }
 }
 
 // ── 初始化 ────────────────────────────────────────────

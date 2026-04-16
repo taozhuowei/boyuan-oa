@@ -56,6 +56,11 @@
             size="small"
             data-catch="config-approval-flows-table"
           >
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'action' && isCEO">
+                <a-button type="link" size="small" @click="openFlowEditor(record.businessType)">编辑节点</a-button>
+              </template>
+            </template>
             <template #emptyText>
               <span v-if="flowsError">无法加载审批流配置</span>
               <span v-else>暂无审批流配置</span>
@@ -63,6 +68,30 @@
           </a-table>
         </a-spin>
       </a-card>
+
+      <!-- Approval flow editor modal -->
+      <a-modal
+        v-model:open="flowEditorOpen"
+        :title="`编辑审批流 — ${editingBusinessType}`"
+        :confirm-loading="savingFlow"
+        width="640px"
+        @ok="saveFlow"
+        @cancel="flowEditorOpen = false"
+      >
+        <p style="color: #999; margin-bottom: 12px;">按从上到下顺序执行节点；保存即覆盖（旧节点软删，新节点全量插入）。</p>
+        <div v-for="(n, idx) in editingNodes" :key="idx" class="flow-node-row">
+          <span class="node-no">#{{ idx + 1 }}</span>
+          <a-input v-model:value="n.nodeName" placeholder="节点名" style="width: 130px" />
+          <a-select v-model:value="n.approverType" style="width: 160px">
+            <a-select-option value="DIRECT_SUPERVISOR">直系领导</a-select-option>
+            <a-select-option value="ROLE">角色</a-select-option>
+            <a-select-option value="DESIGNATED">指定员工</a-select-option>
+          </a-select>
+          <a-input v-model:value="n.approverRef" placeholder="角色code 或员工 ID" style="flex: 1" />
+          <a-button type="link" danger @click="removeNode(idx)">删除</a-button>
+        </div>
+        <a-button type="dashed" block @click="addNode">+ 添加节点</a-button>
+      </a-modal>
 
       <!-- Section 3: Payroll Bonus Approval Switch -->
       <a-card title="临时薪资调整审批" class="config-card">
@@ -188,8 +217,52 @@ const flowColumns = [
     customRender: ({ text }: { text: string }) => BUSINESS_TYPE_LABELS[text] ?? text },
   { title: '审批节点数', dataIndex: 'nodeCount', key: 'nodeCount', width: 110 },
   { title: '状态', dataIndex: 'isActive', key: 'isActive', width: 80,
-    customRender: ({ text }: { text: boolean }) => text ? '启用' : '禁用' }
+    customRender: ({ text }: { text: boolean }) => text ? '启用' : '禁用' },
+  { title: '操作', key: 'action', width: 100 }
 ]
+
+interface FlowNode { nodeName: string; approverType: string; approverRef: string; skipCondition?: string | null }
+const flowEditorOpen = ref(false)
+const savingFlow = ref(false)
+const editingBusinessType = ref('')
+const editingNodes = ref<FlowNode[]>([])
+
+async function openFlowEditor(businessType: string) {
+  editingBusinessType.value = businessType
+  flowEditorOpen.value = true
+  try {
+    const data = await request<{ flow: { businessType: string }, nodes: FlowNode[] }>({ url: `/approval/flows/${businessType}` })
+    editingNodes.value = (data?.nodes ?? []).map(n => ({ ...n, approverRef: n.approverRef ?? '' }))
+  } catch {
+    editingNodes.value = []
+  }
+}
+
+function addNode() {
+  editingNodes.value.push({ nodeName: '', approverType: 'ROLE', approverRef: '', skipCondition: null })
+}
+
+function removeNode(idx: number) {
+  editingNodes.value.splice(idx, 1)
+}
+
+async function saveFlow() {
+  if (editingNodes.value.some(n => !n.nodeName?.trim() || !n.approverType)) {
+    message.warning('节点名和审批人类型必填')
+    return
+  }
+  savingFlow.value = true
+  try {
+    await request({
+      url: `/approval/flows/${editingBusinessType.value}`,
+      method: 'PUT',
+      body: { nodes: editingNodes.value }
+    })
+    message.success('已保存')
+    flowEditorOpen.value = false
+    await loadApprovalFlows()
+  } catch {} finally { savingFlow.value = false }
+}
 
 async function loadApprovalFlows() {
   flowsLoading.value = true
@@ -308,4 +381,11 @@ onMounted(() => {
   max-width: 420px;
   line-height: 1.5;
 }
+
+.flow-node-row {
+  display: flex; gap: 8px; align-items: center;
+  padding: 6px 0; border-bottom: 1px solid #f0f0f0;
+}
+
+.node-no { color: #999; width: 30px; }
 </style>

@@ -3,6 +3,7 @@ package com.oa.backend.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 员工响应 DTO
@@ -28,6 +29,14 @@ public record EmployeeResponse(
     BigDecimal baseSalaryOverride,
     BigDecimal performanceBaseOverride,
     String salaryOverrideNote,
+    Integer socialSeniority,
+    String contractType,
+    BigDecimal dailySubsidy,
+    BigDecimal expenseLimit,
+    BigDecimal performanceRatio,
+    List<EmergencyContact> emergencyContacts,
     LocalDateTime createdAt,
     LocalDateTime updatedAt
-) {}
+) {
+    public record EmergencyContact(Long id, String name, String phone, String address) {}
+}

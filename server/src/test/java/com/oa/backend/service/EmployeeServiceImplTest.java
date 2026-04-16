@@ -106,7 +106,8 @@ class EmployeeServiceImplTest {
 
         EmployeeCreateRequest req = new EmployeeCreateRequest(
             "张三", "13900000099", null, "employee",
-            "OFFICE", 1L, null, null, null, null
+            "OFFICE", 1L, null, null, null, null,
+            null, null, null, null, null, null
         );
 
         Employee result = service.createEmployee(req);
@@ -196,7 +197,8 @@ class EmployeeServiceImplTest {
         when(employeeMapper.updateById(any())).thenReturn(1);
 
         EmployeeUpdateRequest req = new EmployeeUpdateRequest(
-            "新名字", "13900001111", null, "admin", null, null, 2L, null, null, null, null
+            "新名字", "13900001111", null, "admin", null, null, 2L, null, null, null, null,
+            null, null, null, null, null, null
         );
 
         Employee result = service.updateEmployee(1L, req);
@@ -214,7 +216,8 @@ class EmployeeServiceImplTest {
         when(employeeMapper.selectOne(any())).thenReturn(null);
 
         EmployeeUpdateRequest req = new EmployeeUpdateRequest(
-            "新名字", null, null, null, null, null, null, null, null, null, null
+            "新名字", null, null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null
         );
 
         assertThrows(IllegalArgumentException.class, () -> service.updateEmployee(999L, req));
@@ -226,7 +229,8 @@ class EmployeeServiceImplTest {
         when(employeeMapper.selectOne(any())).thenReturn(null);
 
         EmployeeUpdateRequest req = new EmployeeUpdateRequest(
-            "新名字", null, null, null, null, null, null, null, null, null, null
+            "新名字", null, null, null, null, null, null, null, null, null, null,
+            null, null, null, null, null, null
         );
 
         assertThrows(IllegalArgumentException.class, () -> service.updateEmployee(1L, req));

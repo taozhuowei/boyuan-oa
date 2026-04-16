@@ -94,6 +94,26 @@ public class Employee {
     @TableField("salary_override_note")
     private String salaryOverrideNote;
 
+    /** 社会工龄（年）— 用于年假按劳动法计算 */
+    @TableField("social_seniority")
+    private Integer socialSeniority;
+
+    /** 合同类型：FORMAL（正式）/ LABOR（劳务）/ INTERN（实习） */
+    @TableField("contract_type")
+    private String contractType;
+
+    /** 出差日补贴（元/天） */
+    @TableField("daily_subsidy")
+    private java.math.BigDecimal dailySubsidy;
+
+    /** 差旅报销额度（元/次） */
+    @TableField("expense_limit")
+    private java.math.BigDecimal expenseLimit;
+
+    /** 绩效工资比例（%）— 0~100，按基本工资百分比计算绩效部分 */
+    @TableField("performance_ratio")
+    private java.math.BigDecimal performanceRatio;
+
     /** 逻辑删除标志 */
     @TableLogic
     private Integer deleted;

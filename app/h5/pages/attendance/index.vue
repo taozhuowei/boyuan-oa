@@ -67,6 +67,23 @@
           <a-form-item label="请假原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
             <a-textarea v-model:value="leaveForm.reason" :rows="3" />
           </a-form-item>
+
+          <a-divider style="margin: 8px 0;" />
+          <a-form-item>
+            <a-checkbox v-model:checked="leaveForm.enableDelegation">启用临时委托（请假期间，由代办人代为处理我的审批事务）</a-checkbox>
+          </a-form-item>
+          <template v-if="leaveForm.enableDelegation">
+            <a-form-item label="代办人手机号" :rules="[{ required: true, message: '请填写代办人手机号' }]">
+              <a-input v-model:value="leaveForm.delegatePhone" placeholder="必填" />
+            </a-form-item>
+            <a-form-item label="委托范围（可选）">
+              <a-select v-model:value="leaveForm.delegateScope" allow-clear placeholder="留空 = 所有审批事务">
+                <a-select-option value="LEAVE">仅请假</a-select-option>
+                <a-select-option value="OVERTIME">仅加班</a-select-option>
+              </a-select>
+            </a-form-item>
+          </template>
+
           <a-form-item>
             <a-button type="primary" html-type="submit" :loading="submittingLeave" data-catch="leave-form-submit">
               提交申请
@@ -405,7 +422,11 @@ const leaveForm = ref<{
   startDate: Dayjs | null
   endDate: Dayjs | null
   reason: string
-}>({ leaveType: null, startDate: null, endDate: null, reason: '' })
+  enableDelegation: boolean
+  delegatePhone: string
+  delegateScope: string | null
+}>({ leaveType: null, startDate: null, endDate: null, reason: '',
+     enableDelegation: false, delegatePhone: '', delegateScope: null })
 
 const overtimeForm = ref<{
   date: Dayjs | null
@@ -668,7 +689,25 @@ async function submitLeave() {
         remark: leaveForm.value.reason
       }
     })
-    leaveForm.value = { leaveType: null, startDate: null, endDate: null, reason: '' }
+    // 临时委托：在请假提交成功后另起接口创建委托
+    if (leaveForm.value.enableDelegation && leaveForm.value.delegatePhone.trim() && leaveForm.value.endDate) {
+      try {
+        await request({
+          url: '/delegations',
+          method: 'POST',
+          body: {
+            delegatePhone: leaveForm.value.delegatePhone.trim(),
+            scope: leaveForm.value.delegateScope || null,
+            startsAt: leaveForm.value.startDate ? `${leaveForm.value.startDate.format('YYYY-MM-DD')}T00:00:00` : null,
+            expiresAt: `${leaveForm.value.endDate.format('YYYY-MM-DD')}T23:59:59`
+          }
+        })
+      } catch {
+        alert('请假已提交，但临时委托创建失败，请到委托管理手动创建')
+      }
+    }
+    leaveForm.value = { leaveType: null, startDate: null, endDate: null, reason: '',
+                        enableDelegation: false, delegatePhone: '', delegateScope: null }
     activeTab.value = 'records'
     await loadRecords()
   } catch (e: unknown) {

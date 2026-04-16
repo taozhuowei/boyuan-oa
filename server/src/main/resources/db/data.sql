@@ -11,7 +11,7 @@ INSERT INTO department (id, parent_id, name, sort) VALUES
 (4, NULL, '运营管理部', 4),
 (5, NULL, '施工一部', 5);
 
--- 角色数据（6条）- 使用 MERGE INTO 避免重复
+-- 角色数据（7条）- 使用 MERGE INTO 避免重复
 MERGE INTO sys_role (id, role_code, role_name, description, status, is_system)
 KEY (id) VALUES
 (1, 'employee', '员工', '发起和查看本人业务单据，查看并确认工资条。', 1, 1),
@@ -19,7 +19,8 @@ KEY (id) VALUES
 (3, 'project_manager', '项目经理', '处理项目范围内审批，维护项目施工日志模板，查看项目总览。', 1, 1),
 (4, 'ceo', '首席经营者', '管理全局配置、终审审批、配置角色权限、查看经营总览。', 1, 1),
 (5, 'worker', '劳工', '施工现场工作人员，可使用施工日志和工伤补偿相关功能。', 1, 1),
-(6, 'hr', '人力资源', '维护人员与薪资配置，执行结算、复核异议、导出数据。', 1, 1);
+(6, 'hr', '人力资源', '维护人员与薪资配置，执行结算、复核异议、导出数据。', 1, 1),
+(7, 'general_manager', '总经理', '介于 CEO 与各部门负责人之间；可加入审批流末端链；可见全项目但不可见考勤/薪资/HR 档案。', 1, 1);
 
 -- ============================================
 -- Phase 3: 项目种子数据
@@ -105,3 +106,14 @@ MERGE INTO payroll_item_def (code, name, type, display_order, is_enabled, is_sys
 ('COMPANY_PAID_SUBSIDY','保险补贴', 'EARNING',    5, TRUE, TRUE),
 ('TEMPORARY_BONUS',     '临时补贴', 'EARNING',   90, TRUE, TRUE),
 ('TEMPORARY_DEDUCT',    '临时扣款', 'DEDUCTION', 91, TRUE, TRUE);
+
+-- V7: 第二角色定义 + 售后问题类型种子
+MERGE INTO second_role_def (code, name, applies_to, project_bound, description, is_system, is_enabled) KEY (code) VALUES
+('AFTER_SALES',      '售后',     'OFFICE', TRUE, '项目结束后处理售后问题单',     TRUE, TRUE),
+('MATERIAL_MANAGER', '物资管理', 'OFFICE', TRUE, '录入项目实体成本',             TRUE, TRUE),
+('FOREMAN',          '工长',     'LABOR',  TRUE, '提交施工日志，可代录工伤',     TRUE, TRUE);
+
+MERGE INTO after_sale_type_def (code, name, display_order, is_system, is_enabled) KEY (code) VALUES
+('QUALITY',      '质量问题',                1, TRUE, TRUE),
+('CONSTRUCTION', '施工问题',                2, TRUE, TRUE),
+('NON_QUALITY',  '非质量问题（客户原因）', 3, TRUE, TRUE);

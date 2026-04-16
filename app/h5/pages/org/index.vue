@@ -73,6 +73,34 @@
         <a-button type="primary" :loading="deptLoading" data-catch="org-dept-modal-ok" @click="doSaveDept">确定</a-button>
       </template>
     </a-modal>
+
+    <!-- 汇报关系（直系领导可视化 + 拖拽重组） -->
+    <a-card title="汇报关系" style="margin-top: 16px;">
+      <template #extra>
+        <a-button :loading="loadingTree" size="small" @click="loadSupervisorTree">刷新</a-button>
+      </template>
+      <a-spin :spinning="loadingTree">
+        <p style="color: #999; margin: 0 0 12px 0;">
+          顶端固定为 CEO；将下属拖到任意上级节点重组直系领导。系统会自动校验循环汇报。
+        </p>
+        <a-tree
+          v-if="supervisorTree.length"
+          :tree-data="supervisorTree"
+          :default-expand-all="true"
+          :selectable="false"
+          :draggable="isCeoOrHr"
+          @drop="onSupervisorDrop"
+        >
+          <template #title="node">
+            <span style="font-weight: 500;">{{ node.title }}</span>
+            <span v-if="node.subtitle" style="color: #999; margin-left: 6px; font-size: 12px;">
+              {{ node.subtitle }}
+            </span>
+          </template>
+        </a-tree>
+        <a-empty v-else description="暂无员工" />
+      </a-spin>
+    </a-card>
   </div>
 </template>
 
@@ -217,7 +245,89 @@ async function doDeleteDept(id: number) {
   }
 }
 
-onMounted(() => loadDepartments())
+// ── 汇报关系（直系领导）可视化 + 拖拽重组 ──────────────────────
+
+interface EmployeeBrief { id: number; name: string; employeeNo?: string; roleName?: string; directSupervisorId?: number | null }
+interface SupervisorTreeNode { key: string; title: string; subtitle?: string; employeeId: number; children: SupervisorTreeNode[] }
+
+const isCeoOrHr = computed(() => ['ceo', 'hr'].includes(userStore.userInfo?.role ?? ''))
+const allEmployees = ref<EmployeeBrief[]>([])
+const supervisorTree = ref<SupervisorTreeNode[]>([])
+const loadingTree = ref(false)
+
+async function loadSupervisorTree() {
+  loadingTree.value = true
+  try {
+    const data = await request<{ content: EmployeeBrief[] }>({ url: '/employees?size=500' })
+    allEmployees.value = data?.content ?? []
+    supervisorTree.value = buildSupervisorTree(allEmployees.value)
+  } catch {
+    allEmployees.value = []
+    supervisorTree.value = []
+  } finally { loadingTree.value = false }
+}
+
+function buildSupervisorTree(list: EmployeeBrief[]): SupervisorTreeNode[] {
+  const byId = new Map<number, SupervisorTreeNode>()
+  list.forEach(e => byId.set(e.id, {
+    key: 'emp-' + e.id, title: e.name, subtitle: e.roleName ?? '',
+    employeeId: e.id, children: []
+  }))
+  const roots: SupervisorTreeNode[] = []
+  list.forEach(e => {
+    const node = byId.get(e.id)!
+    const parent = e.directSupervisorId != null ? byId.get(e.directSupervisorId) : null
+    if (parent) parent.children.push(node)
+    else roots.push(node)
+  })
+  return roots
+}
+
+interface AntdTreeDropInfo {
+  dragNode: { employeeId: number }
+  node: { employeeId: number }
+  dropToGap: boolean
+}
+async function onSupervisorDrop(info: AntdTreeDropInfo) {
+  if (!isCeoOrHr.value) return
+  const dragId = info.dragNode.employeeId
+  const newSupervisorId = info.dropToGap ? null : info.node.employeeId
+  if (!newSupervisorId) {
+    message.warning('当前仅支持拖拽到具体上级节点')
+    return
+  }
+  if (dragId === newSupervisorId) return
+  if (isAncestor(dragId, newSupervisorId)) {
+    message.error('不允许循环汇报：目标上级是当前节点的下属')
+    return
+  }
+  try {
+    await request({ url: `/employees/${dragId}`, method: 'PUT', body: { directSupervisorId: newSupervisorId } })
+    message.success('汇报关系已更新')
+    await loadSupervisorTree()
+  } catch {
+    message.error('保存失败')
+  }
+}
+
+function isAncestor(employeeId: number, candidateAncestorId: number): boolean {
+  // 从 employeeId 向下查找其子树，若 candidateAncestorId 在子树中则成立
+  const queue: number[] = [employeeId]
+  while (queue.length) {
+    const curr = queue.shift()!
+    const children = allEmployees.value.filter(e => e.directSupervisorId === curr)
+    for (const c of children) {
+      if (c.id === candidateAncestorId) return true
+      queue.push(c.id)
+    }
+  }
+  return false
+}
+
+onMounted(() => {
+  loadDepartments()
+  loadSupervisorTree()
+})
 </script>
 
 <style scoped>
