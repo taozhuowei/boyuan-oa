@@ -36,7 +36,7 @@ CONSTRAINTS: <list>
 FORBIDDEN: <list>
 ```
 
-## PROJECT STATE (2026-04-10)
+## PROJECT STATE (2026-04-16)
 
 ### Tech stack
 - H5: Nuxt 3, Ant Design Vue (antd), TypeScript, Pinia, Vitest
@@ -53,6 +53,12 @@ FORBIDDEN: <list>
 - M10: retention policies, export tasks, operation_log physical delete
 - M11: CI/CD (GitHub Actions), deploy scripts (update.sh/rollback.sh), Dockerfile (Maven), deploy:h5/deploy:backend npm scripts
 - M12: setup wizard (5-step), DevController @Profile("dev") confirmed
+- Dynamic page title: uninitialized → "博渊OA管理系统"; after init → "{企业名}OA管理系统"
+  - company_name stored in system_config; returned by GET /setup/status
+  - Setup wizard step 1 includes optional company name field
+  - app.vue fetches and sets reactive title via useHead()
+- Dev tools fixed: /dev/** added to SecurityConfig permitAll (DevController is @Profile("dev") only)
+- Seed data (local/seed-data.sql): all roles have 3–5 attendance records (all status values) and payroll slips
 
 ### What is NOT done (production blockers)
 Pages with "TODO: implement" placeholder (non-functional):
@@ -90,8 +96,9 @@ Functional gaps (lower priority but needed before launch):
 - API calls: use $fetch or useFetch with /api prefix (proxied to backend :8080)
 - Backend controllers: server/src/main/java/com/oa/backend/controller/
 - DB migration: server/src/main/resources/db/migration/ (V1__init_schema.sql, V2__init_data.sql)
-- Dev seed data: server/src/main/resources/db/data.sql (H2 only)
-- Test users: ceo.demo/123456, hr.demo/123456, finance.demo/123456, pm.demo/123456, employee.demo/123456
+- Dev seed data: server/src/main/resources/db/data.sql (H2 only); local/seed-data.sql (gitignored, loaded at dev startup)
+- company_name: stored in system_config table; key = "company_name"
+- Test users: ceo.demo/123456, hr.demo/123456, finance.demo/123456, pm.demo/123456, employee.demo/123456, worker.demo/123456, dept_manager.demo/123456
 
 ### Integration test
 - test/integration/api.test.ts covers M0-M2 APIs only

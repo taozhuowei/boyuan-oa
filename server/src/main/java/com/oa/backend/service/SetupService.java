@@ -37,6 +37,7 @@ public class SetupService {
     private static final String KEY_INITIALIZED = "initialized";
     private static final String KEY_INITIALIZED_AT = "initialized_at";
     private static final String KEY_RECOVERY_CODE_HASH = "recovery_code_hash";
+    private static final String KEY_COMPANY_NAME = "company_name";
     private static final String DEFAULT_PASSWORD = "123456";
 
     private final SystemConfigMapper systemConfigMapper;
@@ -52,6 +53,15 @@ public class SetupService {
     public boolean isInitialized() {
         String value = systemConfigMapper.getValue(KEY_INITIALIZED);
         return Boolean.parseBoolean(value);
+    }
+
+    /**
+     * 获取企业名称（用于页面 title 动态显示）。
+     *
+     * @return system_config 中 'company_name' 的值，未设置时返回 null
+     */
+    public String getCompanyName() {
+        return systemConfigMapper.getValue(KEY_COMPANY_NAME);
     }
 
     /**
@@ -118,6 +128,11 @@ public class SetupService {
         if (request.customRoles() != null && !request.customRoles().isEmpty()) {
             createCustomRoles(request.customRoles());
             log.info("自定义角色创建成功: count={}", request.customRoles().size());
+        }
+
+        // 保存企业名称（若有）
+        if (request.companyName() != null && !request.companyName().isBlank()) {
+            systemConfigMapper.setValue(KEY_COMPANY_NAME, request.companyName().trim(), "企业名称");
         }
 
         // 标记系统已初始化
@@ -374,6 +389,7 @@ public class SetupService {
      * @param customRoles  自定义角色列表（可选）
      */
     public record SetupRequest(
+            String companyName,
             String ceoName,
             String ceoPhone,
             String ceoPassword,

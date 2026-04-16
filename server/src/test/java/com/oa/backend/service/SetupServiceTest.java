@@ -123,6 +123,7 @@ class SetupServiceTest {
 
         // Execute
         SetupService.SetupRequest request = new SetupService.SetupRequest(
+                null,
                 "CEO Name", "13800138000", "password123",
                 "HR Name", "13800138001",
                 null, null, null, null, null
@@ -185,6 +186,7 @@ class SetupServiceTest {
         when(roleMapper.insert(any())).thenReturn(1);
 
         SetupService.SetupRequest request = new SetupService.SetupRequest(
+                null,
                 "CEO", "13800000001", "password123",
                 "HR", "13800000002",
                 "OPS", "13800000003",
@@ -218,6 +220,7 @@ class SetupServiceTest {
         );
 
         SetupService.SetupRequest request = new SetupService.SetupRequest(
+                null,
                 "CEO", "13800000001", "password123",
                 "HR", "13800000002",
                 null, null, null, null,
@@ -260,6 +263,7 @@ class SetupServiceTest {
         );
 
         SetupService.SetupRequest request = new SetupService.SetupRequest(
+                null,
                 "CEO", "13800000001", "password123",
                 "HR", "13800000002",
                 null, null, null, null,
@@ -278,6 +282,7 @@ class SetupServiceTest {
         when(systemConfigMapper.getValue("initialized")).thenReturn("true");
 
         SetupService.SetupRequest request = new SetupService.SetupRequest(
+                null,
                 "CEO", "13800000001", "password123",
                 "HR", "13800000002",
                 null, null, null, null, null
@@ -307,6 +312,7 @@ class SetupServiceTest {
         when(systemConfigMapper.getValue("initialized")).thenReturn(null);
 
         SetupService.SetupRequest request = new SetupService.SetupRequest(
+                null,
                 "CEO", "13800000001", "short",
                 "HR", "13800000002",
                 null, null, null, null, null
@@ -324,6 +330,7 @@ class SetupServiceTest {
         when(systemConfigMapper.getValue("initialized")).thenReturn(null);
 
         SetupService.SetupRequest request = new SetupService.SetupRequest(
+                null,
                 "", "13800000001", "password123",
                 "HR", "13800000002",
                 null, null, null, null, null

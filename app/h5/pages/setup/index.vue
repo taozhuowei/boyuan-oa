@@ -19,6 +19,16 @@
         <h3>创建CEO账号</h3>
         <a-form :model="formState" layout="vertical">
           <a-form-item
+            label="企业名称"
+            extra="用于系统标题显示，如「博渊建筑OA管理系统」"
+          >
+            <a-input
+              v-model:value="formState.companyName"
+              placeholder="请输入企业名称（可选）"
+              data-catch="setup-company-name"
+            />
+          </a-form-item>
+          <a-form-item
             label="姓名"
             :rules="[{ required: true, message: '请输入CEO姓名' }]"
           >
@@ -267,6 +277,7 @@ definePageMeta({
 })
 
 interface FormState {
+  companyName: string
   ceoName: string
   ceoPhone: string
   ceoPassword: string
@@ -286,6 +297,7 @@ const recoveryCode = ref('')
 const recoverySaved = ref(false)
 
 const formState = reactive<FormState>({
+  companyName: '',
   ceoName: '',
   ceoPhone: '',
   ceoPassword: '',
@@ -361,6 +373,7 @@ async function submitSetup() {
     hrName: formState.hrName,
     hrPhone: formState.hrPhone
   }
+  if (formState.companyName) body.companyName = formState.companyName
 
   if (formState.opsName) body.opsName = formState.opsName
   if (formState.opsPhone) body.opsPhone = formState.opsPhone

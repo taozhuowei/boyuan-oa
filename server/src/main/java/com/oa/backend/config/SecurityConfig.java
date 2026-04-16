@@ -121,7 +121,9 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/auth/**", "/actuator/**", "/health", "/setup/status", "/setup/init", "/setup/reset-ceo-password").permitAll()
+                .requestMatchers("/auth/**", "/actuator/**", "/health", "/setup/status", "/setup/init", "/setup/reset-ceo-password",
+                        "/dev/**"   // @Profile("dev") ensures this path doesn't exist in prod
+                ).permitAll()
                 .anyRequest().authenticated()
             )
             .exceptionHandling(ex -> ex

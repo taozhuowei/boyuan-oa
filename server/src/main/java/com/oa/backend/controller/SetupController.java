@@ -48,13 +48,16 @@ public class SetupController {
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> status() {
         boolean initialized = setupService.isInitialized();
+        String companyName = setupService.getCompanyName();
         String message = initialized
                 ? "系统已初始化"
                 : "系统待初始化，请完成初始化向导";
-        return ResponseEntity.ok(Map.of(
-                "initialized", initialized,
-                "message", message
-        ));
+        // Use HashMap to allow null values (Map.of rejects null)
+        java.util.Map<String, Object> body = new java.util.HashMap<>();
+        body.put("initialized", initialized);
+        body.put("companyName", companyName);
+        body.put("message", message);
+        return ResponseEntity.ok(body);
     }
 
     /**
@@ -125,6 +128,7 @@ public class SetupController {
 
     private SetupRequest toServiceRequest(SetupInitRequest req) {
         return new SetupRequest(
+                req.companyName(),
                 req.ceoName(),
                 req.ceoPhone(),
                 req.ceoPassword(),
@@ -144,6 +148,8 @@ public class SetupController {
      * 系统初始化请求。
      */
     public record SetupInitRequest(
+            String companyName,   // 企业名称（可选）
+
             @NotBlank(message = "CEO 姓名不能为空")
             String ceoName,
 
