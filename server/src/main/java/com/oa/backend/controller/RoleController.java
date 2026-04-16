@@ -43,6 +43,7 @@ public class RoleController {
      */
     @PostMapping
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "ROLE_CREATE", targetType = "ROLE")
     public ResponseEntity<RoleViewResponse> create(
         @Valid @RequestBody RoleUpsertRequest request
     ) {
@@ -57,6 +58,7 @@ public class RoleController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "ROLE_UPDATE", targetType = "ROLE")
     public ResponseEntity<RoleViewResponse> update(
         @PathVariable Long id,
         @Valid @RequestBody RoleUpsertRequest request
@@ -73,6 +75,7 @@ public class RoleController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "ROLE_DELETE", targetType = "ROLE")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         try {
             accessManagementService.deleteRole(id);

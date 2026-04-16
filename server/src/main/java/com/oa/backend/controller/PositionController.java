@@ -46,6 +46,7 @@ public class PositionController {
      */
     @PostMapping
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "POSITION_CREATE", targetType = "POSITION")
     public ResponseEntity<PositionResponse> createPosition(@RequestBody PositionUpsertRequest request) {
         PositionResponse response = positionService.createPosition(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -57,6 +58,7 @@ public class PositionController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "POSITION_UPDATE", targetType = "POSITION")
     public ResponseEntity<PositionResponse> updatePosition(
             @PathVariable Long id,
             @RequestBody PositionUpsertRequest request) {
@@ -69,6 +71,7 @@ public class PositionController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "POSITION_DELETE", targetType = "POSITION")
     public ResponseEntity<Void> deletePosition(@PathVariable Long id) {
         positionService.deletePosition(id);
         return ResponseEntity.noContent().build();

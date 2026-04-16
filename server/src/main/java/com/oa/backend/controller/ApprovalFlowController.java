@@ -64,6 +64,7 @@ public class ApprovalFlowController {
      */
     @PutMapping("/{businessType}")
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "APPROVAL_FLOW_UPDATE", targetType = "APPROVAL_FLOW")
     public ResponseEntity<FlowWithNodes> updateFlow(
             @PathVariable String businessType,
             @RequestBody UpdateFlowRequest request) {

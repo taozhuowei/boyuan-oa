@@ -140,6 +140,16 @@ public class AccessManagementService {
     }
 
     /**
+     * 按角色编码返回该角色的权限列表。被 JwtAuthenticationFilter 消费以拼装 PERM_* 权限点。
+     * 角色不存在 → 空列表。
+     */
+    public List<String> getPermissionsByRoleCode(String roleCode) {
+        return findRoleByCode(normalizeRoleCode(roleCode))
+                .map(ManagedRole::permissions)
+                .orElseGet(java.util.Collections::emptyList);
+    }
+
+    /**
      * 创建新角色 - 支持自定义角色编码、名称、描述和权限列表
      *
      * 处理逻辑：

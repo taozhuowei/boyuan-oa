@@ -131,6 +131,7 @@ public class DepartmentController {
      */
     @PostMapping
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "DEPT_CREATE", targetType = "DEPARTMENT")
     public ResponseEntity<DepartmentResponse> createDepartment(@RequestBody DepartmentRequest request) {
         if (request.name() == null || request.name().isBlank()) {
             return ResponseEntity.badRequest().build();
@@ -165,6 +166,7 @@ public class DepartmentController {
      */
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "DEPT_UPDATE", targetType = "DEPARTMENT")
     public ResponseEntity<DepartmentResponse> updateDepartment(
             @PathVariable Long id,
             @RequestBody DepartmentRequest request) {
@@ -207,6 +209,7 @@ public class DepartmentController {
      */
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('CEO')")
+    @com.oa.backend.annotation.OperationLogRecord(action = "DEPT_DELETE", targetType = "DEPARTMENT")
     public ResponseEntity<Void> deleteDepartment(@PathVariable Long id) {
         Department department = departmentMapper.selectById(id);
         if (department == null || department.getDeleted() == 1) {

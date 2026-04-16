@@ -1,5 +1,6 @@
 package com.oa.backend.security;
 
+import com.oa.backend.service.AccessManagementService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -27,6 +29,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     /** JWT令牌服务，用于验证令牌和提取声明信息 */
     private final JwtTokenService jwtTokenService;
+
+    /** 角色 → 权限点映射来源（设计 §2.2 步骤 5 — 自定义角色权限矩阵动态生效） */
+    private final AccessManagementService accessManagementService;
 
     /**
      * 执行内部过滤逻辑
@@ -67,17 +72,25 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     // 从JWT中提取角色声明
                     String role = decodedJWT.getClaim("role").asString();
                     // 构建Spring Security权限字符串，默认为EMPLOYEE角色
-                    String authority = "ROLE_" + (role == null || role.isBlank() ? "EMPLOYEE" : role.toUpperCase());
+                    String resolvedRole = role == null || role.isBlank() ? "EMPLOYEE" : role.toLowerCase();
+                    String roleAuthority = "ROLE_" + resolvedRole.toUpperCase();
 
-                    // 创建Spring Security认证令牌，包含用户名、令牌和权限列表
+                    // 权限点（PERM_*）：来自角色权限矩阵，用于细粒度 @PreAuthorize
+                    List<org.springframework.security.core.GrantedAuthority> authorities = new ArrayList<>();
+                    authorities.add(new SimpleGrantedAuthority(roleAuthority));
+                    try {
+                        for (String p : accessManagementService.getPermissionsByRoleCode(resolvedRole)) {
+                            if (p != null && !p.isBlank()) {
+                                authorities.add(new SimpleGrantedAuthority("PERM_" + p.toUpperCase()));
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // 角色不存在或权限未配置时，仅使用角色权限，不中断请求
+                    }
+
                     UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                            username,
-                            token,
-                            List.of(new SimpleGrantedAuthority(authority))
-                        );
+                        new UsernamePasswordAuthenticationToken(username, token, authorities);
 
-                    // 将认证信息设置到Security上下文，供后续处理器使用
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }
             });

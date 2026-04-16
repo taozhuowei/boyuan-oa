@@ -319,8 +319,9 @@
         <!-- ── Tab: 施工日志审批 ── -->
         <template v-if="activeTab === 'logs'">
           <a-spin :spinning="loadingLogs">
-            <div style="margin-bottom: 12px;">
+            <div style="margin-bottom: 12px; display: flex; gap: 8px;">
               <a-button @click="loadLogs" :loading="loadingLogs">刷新</a-button>
+              <a-button @click="openMaterialsSummary">材料汇总（本期）</a-button>
             </div>
             <a-empty v-if="logRecords.length === 0" description="暂无施工日志" />
             <a-list v-else :data-source="logRecords" :bordered="false">
@@ -366,6 +367,20 @@
                 <a-textarea v-model:value="rejectLogComment" :rows="3" />
               </a-form-item>
             </a-form>
+          </a-modal>
+
+          <a-modal v-model:open="showMaterialsSummary" title="材料用量汇总（本期）" :footer="null" width="760px">
+            <div v-if="!materialsSummary.materials?.length" style="color: #999;">本期无材料记录</div>
+            <a-table v-else
+                     :columns="materialsSummaryColumns"
+                     :data-source="materialsSummary.materials"
+                     :pagination="false" row-key="name" size="small" bordered>
+              <template #bodyCell="{ column, record }">
+                <template v-if="column.key && column.key.startsWith('d_')">
+                  {{ record.byDate?.[column.key.substring(2)] ?? '—' }}
+                </template>
+              </template>
+            </a-table>
           </a-modal>
         </template>
 
@@ -928,6 +943,36 @@ async function doCreateSummary() {
     message.error('生成失败')
   } finally {
     summaryLoading.value = false
+  }
+}
+
+// ── 施工日志材料汇总（设计 §8.3） ───────────────────
+
+interface MaterialsSummary {
+  materials: Array<{ name: string; unit: string; total: number; byDate: Record<string, number> }>
+  dates: string[]
+}
+const showMaterialsSummary = ref(false)
+const materialsSummary = ref<MaterialsSummary>({ materials: [], dates: [] })
+const materialsSummaryColumns = computed(() => {
+  const cols: Array<Record<string, unknown>> = [
+    { title: '材料', dataIndex: 'name', key: 'name', width: 150, fixed: 'left' },
+    { title: '单位', dataIndex: 'unit', key: 'unit', width: 80 },
+    { title: '合计', dataIndex: 'total', key: 'total', width: 100 }
+  ]
+  for (const d of materialsSummary.value.dates ?? []) {
+    cols.push({ title: d.slice(5), key: 'd_' + d, align: 'right' })
+  }
+  return cols
+})
+async function openMaterialsSummary() {
+  showMaterialsSummary.value = true
+  try {
+    materialsSummary.value = await request<MaterialsSummary>({
+      url: `/projects/${projectId.value}/construction-log/materials-summary`
+    }) ?? { materials: [], dates: [] }
+  } catch {
+    materialsSummary.value = { materials: [], dates: [] }
   }
 }
 

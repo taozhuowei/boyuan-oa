@@ -67,6 +67,7 @@ public class SecondRoleController {
     @PostMapping
     @PreAuthorize("hasAnyRole('CEO','PROJECT_MANAGER')")
     @Transactional
+    @com.oa.backend.annotation.OperationLogRecord(action = "SECOND_ROLE_ASSIGN", targetType = "SECOND_ROLE")
     public ResponseEntity<?> assign(@RequestBody AssignRequest req, Authentication auth) {
         if (req.employeeId() == null || req.roleCode() == null || req.roleCode().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "employeeId 与 roleCode 必填"));
@@ -133,6 +134,7 @@ public class SecondRoleController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('CEO','PROJECT_MANAGER')")
     @Transactional
+    @com.oa.backend.annotation.OperationLogRecord(action = "SECOND_ROLE_REVOKE", targetType = "SECOND_ROLE")
     public ResponseEntity<?> revoke(@PathVariable Long id) {
         SecondRoleAssignment a = assignmentMapper.selectById(id);
         if (a == null || a.getDeleted() == 1) return ResponseEntity.notFound().build();

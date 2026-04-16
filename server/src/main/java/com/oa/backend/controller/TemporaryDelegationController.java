@@ -40,6 +40,7 @@ public class TemporaryDelegationController {
 
     @PostMapping
     @PreAuthorize("isAuthenticated()")
+    @com.oa.backend.annotation.OperationLogRecord(action = "DELEGATION_CREATE", targetType = "DELEGATION")
     public ResponseEntity<?> create(@RequestBody DelegationRequest req, Authentication auth) {
         Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
         try {
@@ -54,6 +55,7 @@ public class TemporaryDelegationController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
+    @com.oa.backend.annotation.OperationLogRecord(action = "DELEGATION_REVOKE", targetType = "DELEGATION")
     public ResponseEntity<?> revoke(@PathVariable Long id, Authentication auth) {
         Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
         try {
