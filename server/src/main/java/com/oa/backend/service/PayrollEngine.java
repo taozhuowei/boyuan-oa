@@ -348,6 +348,15 @@ public class PayrollEngine {
             }
         }
 
+        // 设计 §6.4：员工档案 performance_ratio (%) 设置时，按 baseSalary * ratio% 应用，覆盖固定金额
+        if (Boolean.TRUE.equals(pos.getHasPerformanceBonus())
+                && emp.getPerformanceRatio() != null
+                && emp.getPerformanceRatio().compareTo(BigDecimal.ZERO) > 0) {
+            c.performanceBonus = c.baseSalary
+                    .multiply(emp.getPerformanceRatio())
+                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+        }
+
         return c;
     }
 

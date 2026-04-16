@@ -28,6 +28,8 @@
           <a-tab-pane v-if="isPmOrCeo" key="logs" tab="施工日志审批" />
           <a-tab-pane v-if="isPmOrCeo" key="second-roles" tab="第二角色" />
           <a-tab-pane key="material" tab="实体成本" />
+          <a-tab-pane key="insurance" tab="保险成本" />
+          <a-tab-pane key="revenue" tab="营收" />
           <a-tab-pane key="aftersale" tab="售后问题单" />
         </a-tabs>
 
@@ -427,6 +429,83 @@
                 <a-col :span="12"><a-form-item label="发生日期" required><a-input v-model:value="materialForm.occurredOn" placeholder="YYYY-MM-DD" /></a-form-item></a-col>
                 <a-col :span="12"><a-form-item label="备注"><a-input v-model:value="materialForm.remark" /></a-form-item></a-col>
               </a-row>
+            </a-form>
+          </a-modal>
+        </template>
+
+        <!-- ── Tab: 营收 ── -->
+        <template v-if="activeTab === 'revenue'">
+          <div style="margin-bottom: 12px; display: flex; gap: 16px; align-items: center;">
+            <a-statistic title="合同合计" :value="revenueSummary.contractTotal ?? 0" :precision="2" prefix="¥" />
+            <a-statistic title="已收款" :value="revenueSummary.received ?? 0" :precision="2" prefix="¥" value-style="color: #52c41a" />
+            <a-statistic title="待收款" :value="revenueSummary.pending ?? 0" :precision="2" prefix="¥" value-style="color: #fa8c16" />
+            <a-button style="margin-left: auto" @click="loadRevenue">刷新</a-button>
+          </div>
+          <a-table :columns="revenueColumns" :data-source="revenueRows" :loading="revenueLoading" row-key="id" size="small">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'completed'">
+                <a-tag :color="record.actualCompletionDate ? 'green' : 'default'">{{ record.actualCompletionDate ?? '未完成' }}</a-tag>
+              </template>
+              <template v-if="column.key === 'receiptStatus'">
+                <a-tag :color="record.receiptStatus === 'RECEIVED' ? 'green' : 'orange'">{{ record.receiptStatus === 'RECEIVED' ? '已收款' : '待收款' }}</a-tag>
+              </template>
+              <template v-if="column.key === 'action'">
+                <a-button v-if="canEditRevenue" type="link" size="small" @click="openRevenueEdit(record)">编辑</a-button>
+              </template>
+            </template>
+          </a-table>
+          <a-modal v-model:open="showRevenueModal" :title="`编辑里程碑 — ${editingRevenue?.name ?? ''}`" :confirm-loading="revenueSaving" @ok="saveRevenue" @cancel="showRevenueModal = false" width="540px">
+            <a-form layout="vertical" :model="revenueForm">
+              <a-form-item label="合同金额（元）"><a-input-number v-model:value="revenueForm.contractAmount" :precision="2" :min="0" style="width: 100%" /></a-form-item>
+              <a-form-item label="收款状态">
+                <a-select v-model:value="revenueForm.receiptStatus">
+                  <a-select-option value="PENDING">待收款</a-select-option>
+                  <a-select-option value="RECEIVED">已收款</a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item label="实际收款金额（元）"><a-input-number v-model:value="revenueForm.actualReceiptAmount" :precision="2" :min="0" style="width: 100%" /></a-form-item>
+              <a-form-item label="收款日期"><a-input v-model:value="revenueForm.receiptDate" placeholder="YYYY-MM-DD" /></a-form-item>
+              <a-form-item label="备注"><a-textarea v-model:value="revenueForm.receiptRemark" :rows="2" /></a-form-item>
+            </a-form>
+          </a-modal>
+        </template>
+
+        <!-- ── Tab: 保险成本 ── -->
+        <template v-if="activeTab === 'insurance'">
+          <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+            <a-button v-if="canEditInsurance" type="primary" @click="openInsuranceModal">+ 新建保险条目</a-button>
+            <a-button @click="loadInsurance">刷新</a-button>
+          </div>
+          <a-table :columns="insuranceColumns" :data-source="insuranceRows" :loading="insuranceLoading" row-key="id" size="small">
+            <template #bodyCell="{ column, record }">
+              <template v-if="column.key === 'scope'">
+                {{ insuranceScopeLabel(record.scope) }}{{ record.scopeTargetId ? ' #' + record.scopeTargetId : '' }}
+              </template>
+              <template v-if="column.key === 'action'">
+                <a-popconfirm v-if="canEditInsurance" title="确定删除？" @confirm="deleteInsurance(record.id)">
+                  <a-button type="link" danger size="small">删除</a-button>
+                </a-popconfirm>
+              </template>
+            </template>
+          </a-table>
+          <a-modal v-model:open="showInsuranceModal" title="新建保险条目" :confirm-loading="insuranceSaving" @ok="submitInsurance" @cancel="showInsuranceModal = false" width="520px">
+            <a-form layout="vertical" :model="insuranceForm">
+              <a-form-item label="险种名称" required><a-input v-model:value="insuranceForm.insuranceName" placeholder="如 工伤险 / 人身险" /></a-form-item>
+              <a-form-item label="作用域" required>
+                <a-select v-model:value="insuranceForm.scope">
+                  <a-select-option value="GLOBAL">全部劳工</a-select-option>
+                  <a-select-option value="POSITION">指定岗位</a-select-option>
+                  <a-select-option value="EMPLOYEE">指定个人</a-select-option>
+                </a-select>
+              </a-form-item>
+              <a-form-item v-if="insuranceForm.scope !== 'GLOBAL'" :label="insuranceForm.scope === 'POSITION' ? '岗位 ID' : '员工 ID'" required>
+                <a-input-number v-model:value="insuranceForm.scopeTargetId" :precision="0" style="width: 100%" />
+              </a-form-item>
+              <a-row :gutter="16">
+                <a-col :span="12"><a-form-item label="单价（元/天）" required><a-input-number v-model:value="insuranceForm.dailyRate" :precision="2" :min="0" style="width: 100%" /></a-form-item></a-col>
+                <a-col :span="12"><a-form-item label="生效日期" required><a-input v-model:value="insuranceForm.effectiveDate" placeholder="YYYY-MM-DD" /></a-form-item></a-col>
+              </a-row>
+              <a-form-item label="备注"><a-input v-model:value="insuranceForm.remark" /></a-form-item>
             </a-form>
           </a-modal>
         </template>
@@ -954,6 +1033,130 @@ function onTabChange(key: string) {
   if (key === 'second-roles') { loadSecondRoleDefs(); loadSecondRoles() }
   if (key === 'material') loadMaterialCosts()
   if (key === 'aftersale') { loadTicketTypes(); loadTickets() }
+  if (key === 'revenue') loadRevenue()
+  if (key === 'insurance') loadInsurance()
+}
+
+// ── 营收 ────────────────────────────────────────────────
+
+interface RevenueRow { id: number; name: string; sort: number; actualCompletionDate?: string | null; contractAmount?: number | null; receiptStatus?: string; actualReceiptAmount?: number | null; receiptDate?: string | null; receiptRemark?: string | null }
+const revenueRows = ref<RevenueRow[]>([])
+const revenueLoading = ref(false)
+const revenueSummary = ref<{ contractTotal?: number; received?: number; pending?: number }>({})
+const showRevenueModal = ref(false)
+const revenueSaving = ref(false)
+const editingRevenue = ref<RevenueRow | null>(null)
+const revenueForm = ref<{ contractAmount: number | null; receiptStatus: string; actualReceiptAmount: number | null; receiptDate: string; receiptRemark: string }>({
+  contractAmount: null, receiptStatus: 'PENDING', actualReceiptAmount: null, receiptDate: '', receiptRemark: ''
+})
+const canEditRevenue = computed(() => ['ceo', 'finance'].includes(role.value))
+
+const revenueColumns = [
+  { title: '里程碑', dataIndex: 'name', key: 'name' },
+  { title: '完成日期', key: 'completed', width: 130 },
+  { title: '合同金额', dataIndex: 'contractAmount', key: 'contractAmount', width: 110 },
+  { title: '收款状态', key: 'receiptStatus', width: 100 },
+  { title: '实收', dataIndex: 'actualReceiptAmount', key: 'actualReceiptAmount', width: 110 },
+  { title: '收款日期', dataIndex: 'receiptDate', key: 'receiptDate', width: 110 },
+  { title: '操作', key: 'action', width: 80 }
+]
+
+async function loadRevenue() {
+  revenueLoading.value = true
+  try {
+    const [list, sum] = await Promise.all([
+      request<RevenueRow[]>({ url: `/projects/${projectId.value}/revenue` }),
+      request<{ contractTotal: number; received: number; pending: number }>({ url: `/projects/${projectId.value}/revenue/summary` })
+    ])
+    revenueRows.value = list ?? []
+    revenueSummary.value = sum ?? {}
+  } catch { revenueRows.value = []; revenueSummary.value = {} }
+  finally { revenueLoading.value = false }
+}
+
+function openRevenueEdit(record: RevenueRow) {
+  editingRevenue.value = record
+  revenueForm.value = {
+    contractAmount: record.contractAmount ?? null,
+    receiptStatus: record.receiptStatus ?? 'PENDING',
+    actualReceiptAmount: record.actualReceiptAmount ?? null,
+    receiptDate: record.receiptDate ?? '',
+    receiptRemark: record.receiptRemark ?? ''
+  }
+  showRevenueModal.value = true
+}
+
+async function saveRevenue() {
+  if (!editingRevenue.value) return
+  revenueSaving.value = true
+  try {
+    await request({
+      url: `/projects/${projectId.value}/revenue/${editingRevenue.value.id}`,
+      method: 'PUT',
+      body: revenueForm.value
+    })
+    message.success('已保存')
+    showRevenueModal.value = false
+    await loadRevenue()
+  } catch {} finally { revenueSaving.value = false }
+}
+
+// ── 保险成本 ──────────────────────────────────────────
+
+interface InsuranceRow { id: number; insuranceName: string; scope: string; scopeTargetId?: number | null; dailyRate: number; effectiveDate: string; remark?: string | null }
+const insuranceRows = ref<InsuranceRow[]>([])
+const insuranceLoading = ref(false)
+const showInsuranceModal = ref(false)
+const insuranceSaving = ref(false)
+const insuranceForm = ref<{ insuranceName: string; scope: 'GLOBAL' | 'POSITION' | 'EMPLOYEE'; scopeTargetId: number | null; dailyRate: number | null; effectiveDate: string; remark: string }>({
+  insuranceName: '', scope: 'GLOBAL', scopeTargetId: null, dailyRate: null, effectiveDate: new Date().toISOString().slice(0, 10), remark: ''
+})
+const canEditInsurance = computed(() => ['ceo', 'finance'].includes(role.value))
+
+const insuranceColumns = [
+  { title: '险种', dataIndex: 'insuranceName', key: 'insuranceName' },
+  { title: '适用范围', key: 'scope', width: 160 },
+  { title: '日费率（元/天）', dataIndex: 'dailyRate', key: 'dailyRate', width: 130 },
+  { title: '生效日期', dataIndex: 'effectiveDate', key: 'effectiveDate', width: 120 },
+  { title: '备注', dataIndex: 'remark', key: 'remark' },
+  { title: '操作', key: 'action', width: 80 }
+]
+
+function insuranceScopeLabel(scope: string) {
+  return ({ GLOBAL: '全劳工', POSITION: '岗位', EMPLOYEE: '指定个人' } as Record<string, string>)[scope] ?? scope
+}
+
+async function loadInsurance() {
+  insuranceLoading.value = true
+  try {
+    insuranceRows.value = await request<InsuranceRow[]>({ url: `/projects/${projectId.value}/insurance` }) ?? []
+  } catch { insuranceRows.value = [] }
+  finally { insuranceLoading.value = false }
+}
+
+function openInsuranceModal() {
+  insuranceForm.value = { insuranceName: '', scope: 'GLOBAL', scopeTargetId: null, dailyRate: null, effectiveDate: new Date().toISOString().slice(0, 10), remark: '' }
+  showInsuranceModal.value = true
+}
+
+async function submitInsurance() {
+  if (!insuranceForm.value.insuranceName || !insuranceForm.value.dailyRate || !insuranceForm.value.effectiveDate) {
+    message.warning('险种/单价/生效日期必填'); return
+  }
+  insuranceSaving.value = true
+  try {
+    await request({ url: `/projects/${projectId.value}/insurance`, method: 'POST', body: insuranceForm.value })
+    message.success('已新建')
+    showInsuranceModal.value = false
+    await loadInsurance()
+  } catch {} finally { insuranceSaving.value = false }
+}
+
+async function deleteInsurance(id: number) {
+  try {
+    await request({ url: `/projects/${projectId.value}/insurance/${id}`, method: 'DELETE' })
+    await loadInsurance()
+  } catch {}
 }
 
 // ── 第二角色 ─────────────────────────────────────────────

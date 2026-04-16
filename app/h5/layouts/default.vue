@@ -174,6 +174,13 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/payroll', label: '工资条', path: '/payroll' },
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
   ],
+  // 总经理：可见全项目与营收，但不见考勤/薪资/HR 档案（设计 §3.2）
+  general_manager: [
+    { key: '/', label: '工作台', path: '/' },
+    { key: '/todo', label: '审批中心', path: '/todo' },
+    { key: '/projects', label: '项目管理', path: '/projects' },
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
+  ],
   employee: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/forms', label: '表单中心', path: '/forms' },
