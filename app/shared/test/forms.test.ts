@@ -40,6 +40,9 @@ describe('getAvailableFormOptions', () => {
     expect(options.map((o) => o.code)).not.toContain('LOG')
   })
 
+  // TODO(audit): DESIGN.md §8.3 — LOG 入口仅限持有「工长」第二角色的劳工，普通 worker 不可见。
+  // 当前 SessionUser 类型（auth.ts）无 secondRole 字段，getAvailableFormOptions 对所有
+  // role=worker 开放 LOG，与设计不符。需扩展 SessionUser 类型并修正实现后更新本测试。
   it('role=worker 用户返回 4 种表单（含 INJURY / LOG）', () => {
     const options = getAvailableFormOptions(makeUser({ role: 'worker', employeeType: 'OFFICE' }))
     expect(options).toHaveLength(4)

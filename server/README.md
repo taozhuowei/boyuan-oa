@@ -122,7 +122,7 @@ void settle_withCalculatingCycle_shouldFail() {
 | `EmployeeServiceImplTest` | `authenticate` | 正确密码 | 返回 `Optional.of(employee)` |
 | `EmployeeServiceImplTest` | `authenticate` | 错误密码 | 返回 `Optional.empty()` |
 | `EmployeeServiceImplTest` | `authenticate` | 账号不存在 | 返回 `Optional.empty()` |
-| `EmployeeServiceImplTest` | `authenticate` | 账号 disabled | 返回 `Optional.empty()` |
+| `EmployeeServiceImplTest` | `authenticate` | 账号 disabled | 返回 `Optional.empty()` ⚠️ 注：实际测试 `authenticate_queryFiltersActiveAndNotDeleted` 仅 mock `selectOne` 返回 null，未验证查询条件包含 `account_status=ACTIVE`；属于空洞测试，建议改为 `@SpringBootTest` 层验证实际 SQL 过滤 |
 | `EmployeeServiceImplTest` | `generateEmployeeNo` | 正常生成 | 格式匹配 `EMP\d{6}\d{4}` |
 | `ResetCodeStoreTest` | `store` / `verify` | 正确验证码 10 min 内 | verify 返回 true |
 | `ResetCodeStoreTest` | `verify` | 过期验证码 | verify 返回 false |
@@ -157,9 +157,12 @@ void parseToken_expired_shouldThrow() {
 | `ProjectServiceImplTest` | `createProject` | 正常创建 | 返回带 id 的 Project；projectNo 格式 `PRJ-YYYYMM-XXXX` |
 | `ProjectServiceImplTest` | `addMember` | 添加 PM 成员 | ProjectMember.role = PM；不写 pmId 到 project 表 |
 | `ProjectServiceImplTest` | `addMember` | 添加重复成员 | 不重复插入（幂等）或抛出明确异常 |
-| `ProjectServiceImplTest` | `updateStatus` | ACTIVE → COMPLETED | status 变更成功；COMPLETED → ACTIVE 应失败 |
+| `ProjectServiceImplTest` | `closeProject` | ACTIVE → CLOSED | status=CLOSED；actualEndDate 非空 |
+| `ProjectServiceImplTest` | `reopenProject` | CLOSED → ACTIVE | status=ACTIVE |
 | `AccessManagementServiceTest` | `buildProfile` | 已知角色 ceo | 返回正确 roleName / visibleModules |
 | `AccessManagementServiceTest` | `buildProfile` | 未知角色 | 返回 null 或抛出异常（文档定义哪种） |
+
+> **⚠️ 覆盖缺口**：`ProjectServiceImplTest` 仅覆盖 §8.1 基础 CRUD（项目创建/关闭/成员管理）。§8.2 里程碑、§8.3 施工日志工作流（工长分配/日志审批/汇总）、§8.4 成本录入、§8.5 营收管理、§8.6 售后问题单 **均无单元测试**，需补充对应 Service 测试类。
 
 **ProjectServiceImplTest 示例**
 ```java
