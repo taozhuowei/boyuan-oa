@@ -593,8 +593,8 @@ test('员工提交请假单，状态为 PENDING', async ({ page }) => {
 步骤 1：从服务器获取相关时间段的日志文件
          → oa-system.2026-04-07.log
 
-步骤 2：使用 tools/log_analyzer 工具（见 ARCHITECTURE §13.6）
-         → 输入 trace_id，定位出错的模块/类/方法/行号
+步骤 2：使用 日志文件（位于服务器日志目录，格式为标准文本日志）
+         → 搜索 trace_id，定位出错的模块/类/方法/行号
 
 步骤 3：根据工具输出的调用链，提取问题场景的输入参数
          → 如：PayrollEngine.settle(cycleId=xxx) 在特定数据条件下抛出异常

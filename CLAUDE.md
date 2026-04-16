@@ -96,3 +96,55 @@ Functional gaps (lower priority but needed before launch):
 ### Integration test
 - test/integration/api.test.ts covers M0-M2 APIs only
 - Full smoke test (login→leave→approve→payroll confirm) not automated yet
+
+---
+
+## Directory Layout & File Placement Rules
+
+Read this section before creating, moving, or deleting any file or directory.
+
+### Top-level structure
+```
+/
+├── app/
+│   ├── h5/          # H5 frontend (Nuxt 3 + Ant Design Vue)
+│   ├── mp/          # WeChat mini-program (uni-app, Phase C)
+│   └── shared/      # Shared TS types + utils used by both h5 and mp
+├── server/          # Spring Boot backend
+├── test/            # All test code and test design docs
+│   ├── integration/ # API integration tests (Vitest + real HTTP)
+│   └── unit/        # Unit tests (currently: shared/)
+├── local/           # Local-only files (gitignored): seed SQL, personal notes
+├── .github/         # CI/CD workflows (GitHub Actions)
+├── ARCHITECTURE.md  # Project-level technical architecture doc
+├── DESIGN.md        # Business design doc (product/requirements)
+├── TODO.md          # Single source of progress tracking
+├── CLAUDE.md        # AI agent instructions (this file)
+├── README.md        # Project overview + quick start
+└── BUSINESS_REPORT_PRICING_ANALYSIS.md  # Business/pricing analysis (non-code)
+```
+
+### Document ownership rules
+| Document type | Location |
+|---|---|
+| H5 frontend implementation detail | app/h5/FRONTEND_IMPL.md |
+| Backend implementation detail | server/BACKEND_IMPL.md |
+| Technical architecture (cross-cutting) | ARCHITECTURE.md (root) |
+| Business/product design | DESIGN.md (root) |
+| Progress tracking | TODO.md (root, single source of truth) |
+| Test design and strategy | test/TEST_DESIGN.md |
+
+### File placement rules
+- **Test files**: ALL test code goes under test/. Never scatter test files inside source directories (e.g. no app/shared/test/).
+- **Docs**: Each service/app directory has ONE implementation doc (README = quick start, IMPL = implementation detail). No duplication across files.
+- **Temp files**: Temporary scripts, debug helpers, one-off tools go to local/ (gitignored). Never commit them.
+- **Tools / scripts**: Only commit scripts that are actively wired into CI or documented workflows. Unused scripts must be deleted.
+- **Dependencies**: No speculative dependencies. Add a package only when code actually imports it.
+- **Lock files**: Exactly ONE lock file at repo root: yarn.lock. Never commit package-lock.json or app/package-lock.json.
+
+### Before adding a file — checklist
+1. Does a file with this responsibility already exist? If yes, update it.
+2. Is this the correct directory per the ownership table above?
+3. Is it a temp file that belongs in local/ instead?
+4. Will this file be gitignored or tracked? Check .gitignore.
+5. If adding a dependency: is it actually imported? Is it devDep or dep?

@@ -31,7 +31,7 @@
 │                          客户端层（Client Layer）                          │
 │  ┌─────────────────────────────┐   ┌──────────────────────────────────┐  │
 │  │    企业微信工作台小程序        │   │    Web 浏览器（PC / 平板 / 手机）  │  │
-│  │  Vant 4.9 · uni-app · MP   │   │  Ant Design Vue 4 · uni-app · H5 │  │
+│  │  Vant 4.9 · uni-app · MP   │   │  Ant Design Vue 4 · Nuxt 3 · H5  │  │
 │  └──────────────┬──────────────┘   └────────────────┬─────────────────┘  │
 │                 └──────────────────┬─────────────────┘                   │
 └───────────────────────────────────┼────────────────────────────────────┘
@@ -78,7 +78,8 @@
 
 | 层               | 技术                    | 版本 / 说明          |
 |------------------|-------------------------|----------------------|
-| 前端框架          | uni-app + Vue 3 + Vite  | 编译到小程序 + H5    |
+| 前端框架（H5）    | Nuxt 3 + Vue 3          | PC/平板/手机浏览器   |
+| 前端框架（MP）    | uni-app + Vue 3 + Vite  | 微信小程序           |
 | 前端组件库（H5）  | Ant Design Vue 4.x      | PC/平板/手机浏览器   |
 | 前端组件库（MP）  | Vant 4.9.x              | 企业微信小程序        |
 | 后端框架          | Spring Boot 3           | Java 17              |
@@ -1592,25 +1593,7 @@ public class OperationLogAspect {
 }
 ```
 
----
 
-### 13.6 日志分析工具（tools/log_analyzer）
-
-> 日志文件为运维专用，携带 `trace_id` 可快速定位问题链路。工具详见 `tools/log_analyzer/README.md`。
-
-**认证机制：** 工具启动时读取环境变量 `OA_DEPLOY_KEY`（部署者持有，不进源码），无 key 则拒绝解析。防止日志文件流出后被第三方轻易读取。
-
-**使用场景：** 将一段日志文本（或日志文件）拖入工具，输入 trace_id / 时间范围 / 模块名过滤，工具输出：
-
-```
-[PAYROLL] PayrollController.java:247 — settle() — 312ms
-[PAYROLL] PayrollEngine.java:89 — validatePrerequisites() — 8ms
-[PAYROLL] PayrollSlipRepository.java:134 — bulkInsert() — 287ms — ERROR
-  java.sql.BatchUpdateException: Duplicate key value violates unique constraint ...
-  at com.oa.backend.repository.PayrollSlipRepository.bulkInsert(PayrollSlipRepository.java:134)
-```
-
-工具路径：`tools/log_analyzer/`，独立 Python 子项目，部署时与服务器分离。
 
 ---
 
@@ -1636,7 +1619,7 @@ public class OperationLogAspect {
 - 电子签名与存证的数据结构
 - 文件存储路径规范（`/uploads/{业务类型}/{yyyy-MM}/{UUID}.{ext}`）
 - 数据清理的物理删除机制
-- 双端适配架构（uni-app + 组件适配层）
+- H5 端 Nuxt 3 SPA 架构；MP 端 uni-app 架构
 - 状态机流转规则（审批流基本状态集合）
 
 ---

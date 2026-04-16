@@ -6,17 +6,21 @@
 
 | 类型 | 位置 | 运行方式 |
 |------|------|----------|
-| 前端单元测试 | `app/mp/src/test/` | `cd app/mp && npx vitest run` |
+| H5 前端单元测试 | `app/h5/test/` | `yarn workspace oa-h5 test` |
+| MP 单元测试 | `app/mp/test/` | `yarn workspace oa-mp test` |
+| Shared utils 单元测试 | `test/unit/shared/` | `yarn vitest run test/unit/shared` |
 | 后端单元测试 | `server/src/test/` | `cd server && mvn test` |
-| 集成测试 | `test/integration/` | `cd app/mp && npx vitest run --config vitest.integration.config.ts` |
+| API 集成测试 | `test/integration/` | `yarn vitest run --config vitest.integration.config.ts` |
 
 ## 一键运行
 
+运行所有前端测试：
+
 ```bash
-cd test
-run-all.bat     # Windows
-bash run-all.sh # Unix/macOS
+yarn test
 ```
+
+> 注：`yarn test` 默认运行 H5 单元测试。
 
 ## 测试报告
 
