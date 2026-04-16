@@ -16,9 +16,12 @@
     "build:h5": "nuxt build --cwd app/h5",
     "build:mp": "cd app/mp && NODE_ENV=production uni build --platform mp-weixin",
     "build:backend": "cd server && mvn clean package -DskipTests",
-    "start": "java -jar server/target/backend-*.jar"
+    "start": "java -jar server/target/backend-*.jar",
+    "test:e2e": "playwright test --config test/e2e/playwright.config.ts",
+    "test:e2e:report": "playwright show-report test/e2e/playwright-report"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "concurrently": "^8.2.2",
     "dotenv-cli": "^7.4.4",
     "wait-on": "^7.2.0"
