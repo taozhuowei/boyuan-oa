@@ -48,6 +48,22 @@ public class ProjectMilestone {
     @TableField("receipt_remark")
     private String receiptRemark;
 
+    /** 待审批合同金额变更（设计 §8.5）— 非空表示有未决变更 */
+    @TableField("pending_change_amount")
+    private java.math.BigDecimal pendingChangeAmount;
+
+    /** 变更发起方角色：FINANCE / PROJECT_MANAGER（决定对方审批人） */
+    @TableField("pending_change_role")
+    private String pendingChangeRole;
+
+    /** 变更发起人 employee_id */
+    @TableField("pending_change_initiator")
+    private Long pendingChangeInitiator;
+
+    /** 关联的 form_record id */
+    @TableField("pending_change_form_id")
+    private Long pendingChangeFormId;
+
     @TableField("created_at")
     private LocalDateTime createdAt;
 

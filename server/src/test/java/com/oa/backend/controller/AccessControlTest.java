@@ -198,12 +198,13 @@ class AccessControlTest {
     }
 
     /**
-     * 测试：PROJECT_MANAGER角色提交施工日志应返回403
+     * PROJECT_MANAGER 提交施工日志：设计 §8.3 允许 PM 在未配置工长时自填日志，
+     * 故应返回 200/4xx 业务错误而非 403。当前 mock auth 无法识别真实 employee → 400 即视为权限通过。
      */
     @Test
     @WithMockUser(roles = "PROJECT_MANAGER")
-    @DisplayName("PROJECT_MANAGER role cannot submit work log (403)")
-    void projectManager_workLog_returns403() throws Exception {
+    @DisplayName("PROJECT_MANAGER role can submit work log (per §8.3 PM 自填)")
+    void projectManager_workLog_isAccessible() throws Exception {
         mockMvc.perform(post("/logs")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -215,7 +216,10 @@ class AccessControlTest {
                                     "remark": "Test submission"
                                 }
                                 """))
-                .andExpect(status().isForbidden());
+                .andExpect(result -> {
+                    int s = result.getResponse().getStatus();
+                    if (s == 403) throw new AssertionError("PROJECT_MANAGER 应允许提交施工日志（设计 §8.3），但返回 403");
+                });
     }
 
     // ═══════════════════════════════════════════════════════════════════════

@@ -38,6 +38,10 @@ public class Project {
     @TableField("log_report_cycle_days")
     private Integer logReportCycleDays;
 
+    /** 工长劳工 ID（设计 §8.3 — 未指定 → PM 自填日志免审批，直接通知 CEO） */
+    @TableField("foreman_employee_id")
+    private Long foremanEmployeeId;
+
     /** 创建时间 */
     @TableField("created_at")
     private LocalDateTime createdAt;

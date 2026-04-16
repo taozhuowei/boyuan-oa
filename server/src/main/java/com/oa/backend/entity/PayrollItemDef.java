@@ -24,6 +24,9 @@ public class PayrollItemDef {
     /** 类型：EARNING（收入）| DEDUCTION（扣款） */
     private String type;
 
+    /** 分类：EARNING（应发收入）| DEDUCTION（扣减项）| OTHER（其它）— 工资条分段展示 */
+    private String category;
+
     /** 显示顺序 */
     private Integer displayOrder;
 

@@ -12,7 +12,11 @@ import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.FormRecordMapper;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.ApprovalFlowService;
+import com.oa.backend.service.ConstructionAttendanceService;
 import com.oa.backend.service.FormService;
+import com.oa.backend.service.NotificationService;
+import com.oa.backend.entity.Project;
+import com.oa.backend.mapper.ProjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +42,9 @@ public class WorkLogController {
     private final EmployeeMapper employeeMapper;
     private final FormRecordMapper formRecordMapper;
     private final ObjectMapper objectMapper;
+    private final ConstructionAttendanceService attendanceService;
+    private final ProjectMapper projectMapper;
+    private final NotificationService notificationService;
     // FormService provides getDetail() to build a full response after status change
 
     /**
@@ -45,7 +52,7 @@ public class WorkLogController {
      * 权限：劳工（WORKER）
      */
     @PostMapping
-    @PreAuthorize("hasRole('WORKER')")
+    @PreAuthorize("hasAnyRole('WORKER','PROJECT_MANAGER','CEO')")
     public ResponseEntity<FormRecordResponse> submitLog(
             @Valid @RequestBody FormSubmitRequest request,
             Authentication authentication) {
@@ -59,7 +66,62 @@ public class WorkLogController {
         } catch (JsonProcessingException e) {
             return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(formService.submitForm(submitterId, "LOG", formDataJson, request.remark()));
+
+        // 设计 §8.3：未配置工长 → PM 自填免审批，直接通知 CEO；否则走标准 LOG 审批流
+        Long projectId = extractLong(request.formData(), "projectId");
+        Project project = projectId != null ? projectMapper.selectById(projectId) : null;
+        boolean foremanAbsent = project != null && project.getForemanEmployeeId() == null;
+        boolean submitterIsPm = authentication.getAuthorities().stream()
+                .anyMatch(a -> "ROLE_PROJECT_MANAGER".equals(a.getAuthority())
+                        || "ROLE_CEO".equals(a.getAuthority()));
+
+        FormRecordResponse resp;
+        if (foremanAbsent && submitterIsPm) {
+            // 直接创建 APPROVED form_record（无 approval flow），写入出勤，通知 CEO
+            FormRecord fr = new FormRecord();
+            fr.setFormType("LOG");
+            fr.setSubmitterId(submitterId);
+            fr.setFormData(formDataJson);
+            fr.setStatus("APPROVED");
+            fr.setCurrentNodeOrder(0);
+            fr.setRemark(request.remark());
+            fr.setCreatedAt(java.time.LocalDateTime.now());
+            fr.setUpdatedAt(java.time.LocalDateTime.now());
+            fr.setDeleted(0);
+            formRecordMapper.insert(fr);
+            attendanceService.recordFromLogForm(fr, projectId, "LOG");
+            notifyCeoOfPmSelfLog(projectId, fr.getId(), submitterId);
+            resp = formService.getDetail(fr.getId(), submitterId);
+        } else {
+            resp = formService.submitForm(submitterId, "LOG", formDataJson, request.remark());
+            // 标准流程：先按 PENDING/APPROVING 写入出勤；驳回后通过 softDeleteByForm 撤回
+            if (projectId != null && resp != null) {
+                FormRecord persisted = formRecordMapper.selectById(resp.id());
+                if (persisted != null) attendanceService.recordFromLogForm(persisted, projectId, "LOG");
+            }
+        }
+        return ResponseEntity.ok(resp);
+    }
+
+    private Long extractLong(java.util.Map<String, Object> data, String key) {
+        if (data == null) return null;
+        Object v = data.get(key);
+        if (v == null) return null;
+        if (v instanceof Number n) return n.longValue();
+        try { return Long.parseLong(v.toString()); } catch (NumberFormatException e) { return null; }
+    }
+
+    private void notifyCeoOfPmSelfLog(Long projectId, Long formId, Long submitterId) {
+        try {
+            List<Employee> ceos = employeeMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Employee>()
+                            .eq(Employee::getRoleCode, "ceo").eq(Employee::getDeleted, 0));
+            for (Employee c : ceos) {
+                notificationService.send(c.getId(), "PM 自填施工日志",
+                        String.format("项目 #%s 由 PM #%s 自填日志（无工长，无需审批）", projectId, submitterId),
+                        "SYSTEM", "FORM_RECORD", formId);
+            }
+        } catch (Exception ignored) {}
     }
 
     /**

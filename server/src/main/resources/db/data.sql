@@ -82,15 +82,18 @@ MERGE INTO system_config (config_key, config_value, description) KEY (config_key
 -- ============================================
 MERGE INTO form_type_def (code, name, is_enabled, is_system) KEY (code) VALUES
 ('PAYROLL_BONUS', '临时薪资调整', TRUE, TRUE),
-('PAYROLL_CORRECTION', '薪资更正', TRUE, TRUE);
+('PAYROLL_CORRECTION', '薪资更正', TRUE, TRUE),
+('PAYROLL_REVENUE_CHANGE', '营收金额变更', TRUE, TRUE);
 
 MERGE INTO approval_flow_def (id, business_type, version, is_active) KEY (id) VALUES
 (5, 'PAYROLL_BONUS', 1, TRUE),
-(6, 'PAYROLL_CORRECTION', 1, TRUE);
+(6, 'PAYROLL_CORRECTION', 1, TRUE),
+(7, 'PAYROLL_REVENUE_CHANGE', 1, TRUE);
 
 MERGE INTO approval_flow_node (id, flow_id, node_order, node_name, approval_mode, approver_type, approver_ref, skip_condition) KEY (id) VALUES
 (8, 5, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL),
-(9, 6, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL);
+(9, 6, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL),
+(10, 7, 1, '对方审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL);
 
 MERGE INTO system_config (config_key, config_value, description) KEY (config_key) VALUES
 ('payroll_bonus_approval_required', 'false', '临时薪资调整是否需要 CEO 审批');
