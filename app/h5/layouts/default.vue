@@ -130,6 +130,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/construction-log', label: '施工日志', path: '/construction-log' },
     { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
+    { key: '/expense/records', label: '报销记录', path: '/expense/records' },
     { key: '/retention', label: '数据保留', path: '/retention' },
     { key: '/operation-logs', label: '操作日志', path: '/operation-logs' },
     { key: '/config', label: '系统配置', path: '/config' }
@@ -141,6 +142,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
     { key: '/injury', label: '工伤理赔', path: '/injury' },
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
+    { key: '/expense/records', label: '报销记录', path: '/expense/records' },
     { key: '/directory', label: '通讯录导入', path: '/directory' }
   ],
   project_manager: [
@@ -158,14 +160,16 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/org', label: '组织架构', path: '/org' },
     { key: '/positions', label: '岗位管理', path: '/positions' },
     { key: '/attendance', label: '考勤管理', path: '/attendance' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
+    { key: '/expense/records', label: '报销记录', path: '/expense/records' }
   ],
   department_manager: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/todo', label: '审批中心', path: '/todo' },
     { key: '/team', label: '团队成员', path: '/team' },
     { key: '/attendance', label: '考勤管理', path: '/attendance' },
-    { key: '/employees', label: '员工管理', path: '/employees' }
+    { key: '/employees', label: '员工管理', path: '/employees' },
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
   ],
   worker: [
     { key: '/', label: '工作台', path: '/' },
@@ -180,7 +184,8 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/', label: '工作台', path: '/' },
     { key: '/todo', label: '审批中心', path: '/todo' },
     { key: '/projects', label: '项目管理', path: '/projects' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
+    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
+    { key: '/expense/records', label: '报销记录', path: '/expense/records' }
   ],
   employee: [
     { key: '/', label: '工作台', path: '/' },

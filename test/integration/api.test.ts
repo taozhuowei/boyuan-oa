@@ -262,3 +262,78 @@ describe('M5 V5 - 薪资构成扩展', () => {
     expect(denied.status).toBe(403)
   })
 })
+
+// ─── Phase B - 联调冒烟测试 ───────────────────────────────────────────────────
+
+describe('Phase B - 联调冒烟测试', () => {
+  it('TC-B1-01: 员工请假 → CEO 审批链通过 → 状态 APPROVED', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    await post('/dev/reset', {})
+
+    const submit = await post<any>('/attendance/leave', {
+      formType: 'LEAVE',
+      formData: { leaveType: 'SICK', startDate: '2026-05-01', endDate: '2026-05-01', reason: '身体不适' }
+    }, workerToken)
+    expect(submit.status).toBe(200)
+    const formId = (submit.body as any).id ?? (submit.body as any).formId
+    expect(formId).toBeTruthy()
+
+    const pmApprove = await post<any>(`/attendance/${formId}/approve`, { action: 'APPROVE', comment: '同意' }, pmToken)
+    expect(pmApprove.status).toBe(200)
+
+    const ceoApprove = await post<any>(`/attendance/${formId}/approve`, { action: 'APPROVE', comment: '批准' }, ceoToken)
+    expect(ceoApprove.status).toBe(200)
+
+    const records = await get<any[]>('/attendance/records', workerToken)
+    expect(records.status).toBe(200)
+    const record = (records.body as any[]).find((r: any) => (r.id ?? r.formId) === formId)
+    expect(record).toBeTruthy()
+    expect(record.status).toBe('APPROVED')
+  })
+
+  it('TC-B1-02: 劳工提交施工日志 → PM 审批通过 → 状态 APPROVED', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    await post('/dev/reset', {})
+
+    const submit = await post<any>('/logs/construction-logs', {
+      formData: { projectId: 1, logDate: '2026-05-01', workContent: '安装空调外机', manCount: 5 }
+    }, workerToken)
+    expect(submit.status).toBe(200)
+    const formId = (submit.body as any).id ?? (submit.body as any).formId
+    expect(formId).toBeTruthy()
+
+    const approve = await post<any>(`/logs/${formId}/approve`, { comment: '审批通过' }, pmToken)
+    expect(approve.status).toBe(200)
+
+    const records = await get<any[]>('/logs/records', workerToken)
+    expect(records.status).toBe(200)
+    const record = (records.body as any[]).find((r: any) => (r.id ?? r.formId) === formId)
+    expect(record).toBeTruthy()
+    expect(record.status).toBe('APPROVED')
+  })
+
+  it('TC-B1-03: CEO 工作台摘要数据非空', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<any>('/workbench/summary', ceoToken)
+    expect(status).toBe(200)
+    expect(typeof (body as any).unreadNotificationCount).toBe('number')
+    expect((body as any).activeProjectCount).toBeGreaterThanOrEqual(0)
+  })
+
+  it('TC-B1-04: 财务创建薪资周期 → 返回 OPEN 状态', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    await post('/dev/reset', {})
+
+    const financeToken = await loginAs('finance.demo')
+    const create = await post<any>('/payroll/cycles', { period: '2026-05' }, financeToken)
+    expect(create.status).toBe(200)
+    const cycleId = (create.body as any).id
+    expect(cycleId).toBeTruthy()
+    expect((create.body as any).status).toBe('OPEN')
+
+    const list = await get<any[]>('/payroll/cycles', financeToken)
+    expect(list.status).toBe(200)
+    const found = (list.body as any[]).find((c: any) => c.id === cycleId || c.period === '2026-05')
+    expect(found).toBeTruthy()
+  })
+})
