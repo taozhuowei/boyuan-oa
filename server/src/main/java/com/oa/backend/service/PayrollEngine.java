@@ -216,15 +216,17 @@ public class PayrollEngine {
         BigDecimal overtimeBase = resolveRateBase(emp, comps, comps.overtimeBaseType, comps.overtimeBaseAmount);
         BigDecimal leaveBase = resolveRateBase(emp, comps, comps.leaveBaseType, null);
 
-        BigDecimal overtimeHours = calculateOvertimeHours(emp.getId(), cycle.getStartDate(), cycle.getEndDate());
+        OvertimeBreakdown otb = calculateOvertimeBreakdown(emp.getId(), cycle.getStartDate(), cycle.getEndDate());
+        BigDecimal overtimeHours = otb.weekday.add(otb.weekend).add(otb.holiday);
         BigDecimal leaveHours = calculateLeaveHours(emp.getId(), cycle.getStartDate(), cycle.getEndDate());
 
         BigDecimal overtimeHourlyRate = hourlyRate(overtimeBase);
         BigDecimal leaveHourlyRate = hourlyRate(leaveBase);
 
-        // 简化：加班统一按 1.5 倍计（实际应按工作日/周末/节假日拆分，后续扩展）
-        BigDecimal overtimePay = overtimeHourlyRate.multiply(overtimeHours)
-                .multiply(BigDecimal.valueOf(1.5))
+        // 设计 §6.4：加班按 工作日/周末/节假日 倍率分别计算
+        BigDecimal overtimePay = overtimeHourlyRate.multiply(otb.weekday).multiply(comps.overtimeRateWeekday)
+                .add(overtimeHourlyRate.multiply(otb.weekend).multiply(comps.overtimeRateWeekend))
+                .add(overtimeHourlyRate.multiply(otb.holiday).multiply(comps.overtimeRateHoliday))
                 .setScale(2, RoundingMode.HALF_UP);
         BigDecimal leaveDeduct = leaveHourlyRate.multiply(leaveHours).setScale(2, RoundingMode.HALF_UP);
 
@@ -286,8 +288,12 @@ public class PayrollEngine {
             saveSlipItem(slip.getId(), defs.performanceBonus.getId(), performanceBonus, "绩效奖金");
         }
         if (overtimePay.compareTo(BigDecimal.ZERO) > 0) {
-            saveSlipItem(slip.getId(), defs.overtime.getId(), overtimePay,
-                    "加班费 " + overtimeHours + " 小时 × " + overtimeHourlyRate + " × 1.5");
+            String breakdown = String.format("加班费 工作日%s × %s 倍 + 周末%s × %s 倍 + 节假日%s × %s 倍 (基数 %s/小时)",
+                    otb.weekday, comps.overtimeRateWeekday,
+                    otb.weekend, comps.overtimeRateWeekend,
+                    otb.holiday, comps.overtimeRateHoliday,
+                    overtimeHourlyRate);
+            saveSlipItem(slip.getId(), defs.overtime.getId(), overtimePay, breakdown);
         }
         if (leaveDeduct.compareTo(BigDecimal.ZERO) > 0) {
             saveSlipItem(slip.getId(), defs.leaveDeduct.getId(), leaveDeduct.negate(),
@@ -316,7 +322,7 @@ public class PayrollEngine {
     }
 
     /**
-     * 解析员工薪资固定项：基本工资 / 岗位工资 / 绩效奖金 / 加班基数类型 / 社保模式等。
+     * 解析员工薪资固定项：基本工资 / 岗位工资 / 绩效奖金 / 加班基数 + 倍率 / 社保模式等。
      * 优先级：position_level override > position default。
      */
     private SalaryComponents resolveFixedComponents(Employee emp) {
@@ -333,6 +339,9 @@ public class PayrollEngine {
                 : BigDecimal.ZERO;
         c.overtimeBaseType = pos.getOvertimeBaseType();
         c.overtimeBaseAmount = pos.getOvertimeBaseAmount();
+        c.overtimeRateWeekday = firstNonNull(pos.getOvertimeRateWeekday(), BigDecimal.valueOf(1.5));
+        c.overtimeRateWeekend = firstNonNull(pos.getOvertimeRateWeekend(), BigDecimal.valueOf(2.0));
+        c.overtimeRateHoliday = firstNonNull(pos.getOvertimeRateHoliday(), BigDecimal.valueOf(3.0));
         c.leaveBaseType = pos.getLeaveDeductBaseType();
         c.socialInsuranceMode = pos.getSocialInsuranceMode();
 
@@ -382,7 +391,15 @@ public class PayrollEngine {
 
     // ── Private helpers ───────────────────────────────────────────────────
 
-    private BigDecimal calculateOvertimeHours(Long employeeId, LocalDate start, LocalDate end) {
+    /**
+     * 加班时长按工作日/周末/节假日分桶累计。
+     * 桶归属判定（设计 §6.4）：
+     *   1. 优先使用 form_data.overtimeType（用户提交时勾选"工作日加班/周末加班/节假日加班"）
+     *   2. 其次按日期是否周末判定（DayOfWeek SAT/SUN → weekend，否则 weekday）
+     *   3. holiday 仅当 overtimeType 明确标记为 节假日 时计入；无国家节假日表，避免误判
+     */
+    OvertimeBreakdown calculateOvertimeBreakdown(Long employeeId, LocalDate start, LocalDate end) {
+        OvertimeBreakdown out = new OvertimeBreakdown();
         List<FormRecord> records = formRecordMapper.selectList(
                 new LambdaQueryWrapper<FormRecord>()
                         .eq(FormRecord::getSubmitterId, employeeId)
@@ -391,7 +408,6 @@ public class PayrollEngine {
                         .eq(FormRecord::getDeleted, 0)
         );
 
-        BigDecimal total = BigDecimal.ZERO;
         for (FormRecord r : records) {
             try {
                 if (r.getFormData() == null) continue;
@@ -399,17 +415,42 @@ public class PayrollEngine {
                         new TypeReference<Map<String, Object>>() {});
                 String startTimeStr = (String) data.get("startTime");
                 String endTimeStr = (String) data.get("endTime");
-                if (startTimeStr != null && endTimeStr != null) {
-                    int[] st = parseTime(startTimeStr);
-                    int[] et = parseTime(endTimeStr);
-                    double hours = (et[0] * 60 + et[1] - st[0] * 60 - st[1]) / 60.0;
-                    if (hours > 0) total = total.add(BigDecimal.valueOf(hours));
+                String dateStr = (String) data.get("date");
+                String overtimeType = (String) data.get("overtimeType");
+                if (startTimeStr == null || endTimeStr == null) continue;
+                int[] st = parseTime(startTimeStr);
+                int[] et = parseTime(endTimeStr);
+                double hours = (et[0] * 60 + et[1] - st[0] * 60 - st[1]) / 60.0;
+                if (hours <= 0) continue;
+                LocalDate date = null;
+                if (dateStr != null && dateStr.length() >= 10) {
+                    try { date = LocalDate.parse(dateStr.substring(0, 10)); } catch (Exception ignored) {}
                 }
+                if (date != null && (date.isBefore(start) || date.isAfter(end))) continue;
+                BigDecimal bucket = BigDecimal.valueOf(hours);
+                String t = overtimeType == null ? "" : overtimeType;
+                boolean isHoliday = "HOLIDAY".equals(t) || "节假日加班".equals(t) || "holiday".equalsIgnoreCase(t);
+                boolean isWeekend = "WEEKEND".equals(t) || "周末加班".equals(t) || "weekend".equalsIgnoreCase(t)
+                        || (date != null && (date.getDayOfWeek() == java.time.DayOfWeek.SATURDAY
+                                || date.getDayOfWeek() == java.time.DayOfWeek.SUNDAY));
+                if (isHoliday) out.holiday = out.holiday.add(bucket);
+                else if (isWeekend) out.weekend = out.weekend.add(bucket);
+                else out.weekday = out.weekday.add(bucket);
             } catch (Exception e) {
                 log.warn("解析加班时长失败: formId={}", r.getId(), e);
             }
         }
-        return total.setScale(1, RoundingMode.HALF_UP);
+        out.weekday = out.weekday.setScale(1, RoundingMode.HALF_UP);
+        out.weekend = out.weekend.setScale(1, RoundingMode.HALF_UP);
+        out.holiday = out.holiday.setScale(1, RoundingMode.HALF_UP);
+        return out;
+    }
+
+    /** 加班分桶结果：weekday/weekend/holiday 小时数 */
+    static class OvertimeBreakdown {
+        BigDecimal weekday = BigDecimal.ZERO;
+        BigDecimal weekend = BigDecimal.ZERO;
+        BigDecimal holiday = BigDecimal.ZERO;
     }
 
     private BigDecimal calculateLeaveHours(Long employeeId, LocalDate start, LocalDate end) {
@@ -564,6 +605,9 @@ public class PayrollEngine {
         BigDecimal performanceBonus = BigDecimal.ZERO;
         String overtimeBaseType;
         BigDecimal overtimeBaseAmount;
+        BigDecimal overtimeRateWeekday = BigDecimal.valueOf(1.5);
+        BigDecimal overtimeRateWeekend = BigDecimal.valueOf(2.0);
+        BigDecimal overtimeRateHoliday = BigDecimal.valueOf(3.0);
         String leaveBaseType;
         String socialInsuranceMode;
     }
