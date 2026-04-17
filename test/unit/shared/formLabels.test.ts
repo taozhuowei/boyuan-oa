@@ -15,7 +15,7 @@ import {
   FIELD_LABELS,
   LEAVE_TYPE_LABELS,
   OVERTIME_TYPE_LABELS,
-} from '../utils/formLabels'
+} from '@shared/utils/formLabels'
 
 describe('formLabels', () => {
   describe('getFieldLabel', () => {

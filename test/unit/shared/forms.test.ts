@@ -7,8 +7,8 @@
  * 测试覆盖场景：未登录用户、OFFICE 员工、劳工（无工长）、劳工（持有工长第二角色）、中文 employeeType。
  */
 import { describe, it, expect } from 'vitest'
-import { getAvailableFormOptions } from '../utils'
-import type { SessionUser } from '../types'
+import { getAvailableFormOptions } from '@shared/utils'
+import type { SessionUser } from '@shared/types'
 
 // 辅助：构造最小 SessionUser
 function makeUser(overrides: Partial<SessionUser> = {}): SessionUser {

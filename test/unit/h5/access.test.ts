@@ -9,15 +9,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // 必须在导入 access 之前声明，Vitest 会自动 hoist vi.mock
-vi.mock('../utils/http', () => ({ request: vi.fn() }))
+vi.mock('@/utils/http', () => ({ request: vi.fn() }))
 
-import { request } from '../utils/http'
+import { request } from '@/utils/http'
 import {
   loginWithAccount,
   fetchRoles,
   saveRole,
   deleteRole
-} from '../utils/access'
+} from '@/utils/access'
 import { roleNameMap, defaultTestAccounts } from '@shared/types'
 
 const mockRequest = vi.mocked(request)

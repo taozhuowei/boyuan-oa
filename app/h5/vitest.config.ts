@@ -4,14 +4,15 @@ import { resolve } from 'path'
 export default defineConfig({
   resolve: {
     alias: {
+      '@': resolve(__dirname, '.'),
       '@shared': resolve(__dirname, '../shared')
     }
   },
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['test/**/*.{test,spec}.{js,ts}'],
-    setupFiles: ['test/setup.ts'],
+    include: ['../../test/unit/h5/**/*.{test,spec}.{js,ts}'],
+    setupFiles: ['../../test/unit/h5/setup.ts'],
     reporters: ['verbose'],
     coverage: {
       provider: 'v8',

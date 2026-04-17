@@ -166,7 +166,8 @@
   4. 运行 `yarn workspace oa-h5 test && yarn workspace oa-mp test` 确认所有单元测试仍通过
 - **验收点**：`app/` 目录下无任何 `*.test.ts` 文件；两个 workspace 测试均通过
 - **验收流程**：`git ls-files app/ | grep ".test.ts"` 输出为空；`yarn workspace oa-h5 test` 通过
-- **状态**：`[ ]`
+- **实施补记**：迁移后发现 stores.user.test.ts 因跨目录 import 导致 pinia 双实例问题（测试文件在 test/unit/mp，stores 在 app/mp/src，两条不同 import path 解析出两个 pinia 副本）。解决：app/mp/vitest.config.ts 增加 `resolve.alias.pinia` 强制解析到同一物理文件；同时加 `server.fs.allow: ['../..']` 允许 vitest 访问仓库根。H5 21/21 通过，MP 69/69 通过。
+- **状态**：`[>]`
 
 #### A-CLEAN-02 前端页面目录 kebab-case 命名违规
 - **目标**：Nuxt 3 基于文件路由，目录名即 URL，kebab-case 违反 snake_case 命名规范
