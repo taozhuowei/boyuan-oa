@@ -391,7 +391,7 @@
 
 #### A-AUDIT-TEST — 单元测试层预存技术债
 
-- `[ ]` **A-AUDIT-TEST-01** 修复 Backend 单元测试编译失败 — Phase A 前就存在的预存 bug：`ProjectServiceImplTest.java` / `EmployeeServiceImplTest.java` 使用了旧 DTO 构造签名，V11/V13 扩展 DTO 字段后 `mvn test-compile` 失败，`mvn test` 整体阻塞。更新两个测试类的构造函数调用，补齐新字段（多数可传 null）；确保 `mvn test` 全量通过（已有的 Integration Test 500 同时修或至少定位）
+- `[>]` **A-AUDIT-TEST-01** 修复 Backend 单元测试编译失败 — Phase A 前就存在的预存 bug：`ProjectServiceImplTest.java` / `EmployeeServiceImplTest.java` 使用了旧 DTO 构造签名，V11/V13 扩展 DTO 字段后 `mvn test-compile` 失败，`mvn test` 整体阻塞。更新两个测试类的构造函数调用，补齐新字段（多数可传 null）；确保 `mvn test` 全量通过（已有的 Integration Test 500 同时修或至少定位）
 
 ---
 
