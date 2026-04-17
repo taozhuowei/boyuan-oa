@@ -6,25 +6,29 @@
 
 /**
  * Page access whitelist — maps each restricted route to the roles that MAY access it.
- * Routes not listed here are accessible to all authenticated users (e.g. /todo, /).
- * Uses role codes returned by the backend (e.g. 'ceo', 'hr', 'finance', 'project_manager', 'employee', 'worker').
+ * Routes not listed here are accessible to all authenticated users (e.g. /workbench, /me, /notifications, /todo, /forms, /expense/apply, /expense/records).
+ * Role codes returned by the backend: 'ceo', 'hr', 'finance', 'project_manager', 'department_manager', 'employee', 'worker', 'general_manager', 'ops'.
+ * Source of truth: DESIGN.md §5.
  */
 const PAGE_ACCESS: Record<string, string[]> = {
   '/config':           ['ceo'],
   '/org':              ['ceo', 'hr'],
   '/role':             ['ceo'],
-  // employees: CEO/HR manage; finance/PM/dept-manager also have it in their menus
   '/employees':        ['ceo', 'hr', 'finance', 'project_manager', 'department_manager'],
-  // positions: CEO manages structure; HR manages assignments
   '/positions':        ['ceo', 'hr'],
   '/retention':        ['ceo'],
-  '/operation-logs':   ['ceo'],
-  // payroll: finance/CEO manage cycles; worker/employee view their own slips
+  '/allowances':       ['ceo'],
+  '/leave-types':      ['ceo', 'hr'],
+  '/directory':        ['ceo', 'hr', 'finance'],
+  '/team':             ['ceo', 'hr', 'project_manager', 'department_manager'],
+  '/operation-logs':   ['ceo', 'ops'],
+  '/data-export':      ['ceo', 'ops'],
+  '/data-viewer':      ['ceo', 'ops'],
+  '/attendance':       ['ceo', 'hr', 'finance', 'project_manager', 'department_manager', 'employee', 'worker'],
   '/payroll':          ['ceo', 'finance', 'worker', 'employee'],
-  '/projects':         ['ceo', 'finance', 'project_manager', 'employee'],
+  '/projects':         ['ceo', 'finance', 'project_manager', 'employee', 'general_manager'],
   '/construction-log': ['ceo', 'project_manager', 'worker'],
-  // injury: finance records claims; worker submits reports; CEO oversees
-  '/injury':           ['ceo', 'finance', 'worker'],
+  '/injury':           ['ceo', 'finance', 'worker', 'project_manager'],
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {

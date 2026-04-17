@@ -82,9 +82,10 @@
   3. 复核 11 条已有路由的角色清单是否与 DESIGN.md §5 一致，有偏差同步修正
   4. 逐条 curl 或浏览器验证：worker 访问 `/payroll` 放行（worker 可看本人工资条）、employee 访问 `/operation-logs` 被重定向、employee 访问 `/data-export` 被重定向
   - 注：步骤2中的 kebab-case 路由 key 使用当前实际路由名。A-CLEAN-02 完成目录重命名后会在其"全局替换引用"步骤中统一改为 snake_case，此处无需重复修改。
+  - **实施策略**：对"全员可访问"的路由（`/workbench`、`/notifications`、`/me`、`/me/password`、`/forms`、`/expense/apply`、`/expense/records`、`/todo`、`/`）不加入 PAGE_ACCESS 白名单，沿用守卫默认语义"未列入 = 所有已登录用户放行"。仅对需要角色限制的路由显式加入白名单。ops 角色除 `/operation-logs`、`/data-export`、`/data-viewer`、`/notifications` 外的访问拦截，交由 Phase B B-FEAT-19 完成。
 - **验收点**：`PAGE_ACCESS` 条目覆盖全部业务页面；越权访问统一重定向
 - **验收流程**：employee.demo 登录 → 直接输入 `/data-export` URL → 重定向到首页；worker.demo → `/payroll` → 重定向
-- **状态**：`[ ]`
+- **状态**：`[~]`
 
 ---
 
