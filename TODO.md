@@ -214,7 +214,31 @@
 - **验收流程**：命令输出为空；代码 review 无 TODO 注释残留
 - **状态**：`[ ]`
 
-#### A-CLEAN-06 过大文件与单一职责违规审查
+#### A-CLEAN-06 vitest 配置文件整理
+- **目标**：当前存在 5 个 vitest 配置文件，其中 1 个是冗余死文件，1 个从未被任何 script 或 CI 接入，A-CLEAN-01（测试文件迁移）完成后所有 include 路径将失效，须一并修正
+- **范围**：`vitest.integration.config.ts`（根目录）、`app/mp/vitest.integration.config.ts`、`app/h5/vitest.config.ts`、`app/mp/vitest.config.ts`、`app/shared/vitest.config.ts`
+- **现状分析**
+  - `vitest.integration.config.ts`（根目录）：指向 `test/integration/**`，无 script，无 CI，**冗余，删除**
+  - `app/mp/vitest.integration.config.ts`：真正工作的集成测试配置，放在 `app/` 下是为了 Yarn workspace node_modules 解析，无 script，无 CI，**保留但须接入**
+  - `app/h5/vitest.config.ts`：H5 单元测试，已接入 CI，**保留**；A-CLEAN-01 后 include 路径须从 `test/**` 改为 `../../test/unit/h5/**`
+  - `app/mp/vitest.config.ts`：MP 单元测试，已接入 CI（A-OPS-02 跳过中），**保留**；A-CLEAN-01 后 include 路径须同步修正
+  - `app/shared/vitest.config.ts`：shared 单元测试，**无 script，无 CI，从未被执行**，须接入；A-CLEAN-01 后 include 路径须修正
+  - 注：单元测试配置必须保留在各 workspace 目录，因为使用 `resolve(__dirname, ...)` 解析 `@shared` 别名，移走会断
+- **步骤**（须在 A-CLEAN-01 测试文件迁移完成后执行）
+  1. 删除根目录 `vitest.integration.config.ts`
+  2. 更新 `app/h5/vitest.config.ts` 的 `include`：`test/**` → `../../test/unit/h5/**`；`setupFiles` 路径同步更新
+  3. 更新 `app/mp/vitest.config.ts` 的 `include`：`test/**` → `../../test/unit/mp/**`，`../shared/test/**` → `../../test/unit/shared/**`；`setupFiles` 路径同步更新
+  4. 更新 `app/shared/vitest.config.ts` 的 `include`：`test/**` → `../../test/unit/shared/**`
+  5. 在根 `package.json` scripts 中补充：
+     - `"test:unit:h5": "yarn workspace oa-h5 test"`
+     - `"test:unit:mp": "yarn workspace oa-mp test"`
+     - `"test:integration": "cd app && npx vitest run --config mp/vitest.integration.config.ts"`
+  6. 验证三个配置都能独立执行：`yarn test:unit:h5`、`yarn test:integration`
+- **验收点**：根目录无 `vitest.integration.config.ts`；`yarn test:unit:h5` 和 `yarn test:integration` 命令可用且测试通过；`app/shared/vitest.config.ts` 的测试可执行
+- **验收流程**：执行上述三条命令，均有输出且无报错
+- **状态**：`[ ]`（前置条件：A-CLEAN-01 完成）
+
+#### A-CLEAN-07 过大文件与单一职责违规审查
 - **目标**：识别并拆分超过合理规模的文件，确保单一职责
 - **范围**：`app/h5/pages/`、`server/src/main/java/com/oa/backend/controller/`
 - **步骤**
@@ -751,6 +775,18 @@
   - `GET /payroll/slips?cycleId={id}`（employee 本人）→ 200，仅本人工资条
   - `POST /payroll/slips/{id}/confirm`（employee）→ 200
   - 验收：薪资发放主链 API 层验证
+
+- `[ ]` **C-INT-09 测试运行基础设施补全**
+  - 前置条件：A-CLEAN-06 完成（vitest 配置整理 + scripts 补充）
+  - 在 CI `.github/workflows/ci.yml` 中补充 `integration-test` job：
+    - 启动后端服务（`mvn spring-boot:run`，dev profile）
+    - 等待后端就绪（`wait-on http://localhost:8080/api/health`）
+    - 执行 `yarn test:integration`
+  - 在 CI 中补充 `unit-test-shared` job：
+    - 执行 `yarn workspace oa-shared test`（或等效命令）
+    - 上传 coverage 报告到 Artifacts
+  - 确认 `frontend-h5-test` job 中 h5 coverage 报告也被上传
+  - 验收：CI 新增两个 job 均绿；`yarn test:integration` 本地可执行并输出测试结果
 
 ---
 
