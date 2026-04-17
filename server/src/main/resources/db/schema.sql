@@ -104,6 +104,8 @@ CREATE TABLE IF NOT EXISTS leave_type_def (
     is_enabled BOOLEAN DEFAULT TRUE,
     is_system BOOLEAN DEFAULT FALSE,
     display_order INT DEFAULT 0,
+    quota_days INT DEFAULT 0,
+    deduction_basis VARCHAR(20) DEFAULT 'DAILY_SALARY',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted INT DEFAULT 0
@@ -135,6 +137,9 @@ CREATE TABLE IF NOT EXISTS employee (
     daily_subsidy DECIMAL(12,2),
     expense_limit DECIMAL(12,2),
     performance_ratio DECIMAL(5,2),
+    gender VARCHAR(10),
+    id_card_no VARCHAR(18),
+    birth_date DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted INT DEFAULT 0
@@ -150,6 +155,10 @@ CREATE TABLE IF NOT EXISTS project (
     log_cycle_days INT DEFAULT 1,
     log_report_cycle_days INT DEFAULT 1,
     foreman_employee_id BIGINT,
+    contract_no VARCHAR(100),
+    contract_attachment_id BIGINT,
+    client_name VARCHAR(100),
+    project_description TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted INT DEFAULT 0
@@ -834,3 +843,20 @@ CREATE TABLE IF NOT EXISTS project_material_cost (
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted INT DEFAULT 0
 );
+
+-- ─────────────────────────────────────────────────────────────────
+-- Indexes on high-traffic columns (mirror Flyway V14__add_indexes.sql)
+-- Kept in sync so dev (schema.sql) and prod (Flyway) behave identically
+-- ─────────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS idx_form_record_submitter_id ON form_record(submitter_id);
+CREATE INDEX IF NOT EXISTS idx_form_record_project_id   ON form_record(project_id);
+CREATE INDEX IF NOT EXISTS idx_form_record_status       ON form_record(status);
+CREATE INDEX IF NOT EXISTS idx_approval_record_form_id     ON approval_record(form_id);
+CREATE INDEX IF NOT EXISTS idx_approval_record_approver_id ON approval_record(approver_id);
+CREATE INDEX IF NOT EXISTS idx_notification_recipient_id ON notification(recipient_id);
+CREATE INDEX IF NOT EXISTS idx_notification_is_read      ON notification(is_read);
+CREATE INDEX IF NOT EXISTS idx_payroll_slip_employee_id ON payroll_slip(employee_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_slip_cycle_id    ON payroll_slip(cycle_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_slip_item_slip_id ON payroll_slip_item(slip_id);
+CREATE INDEX IF NOT EXISTS idx_employee_department_id ON employee(department_id);
+CREATE INDEX IF NOT EXISTS idx_employee_role_code     ON employee(role_code);

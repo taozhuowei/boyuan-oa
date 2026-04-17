@@ -45,7 +45,7 @@
   3. curl 测试：employee A token 访问 employee B 上传的附件 `GET /api/attachments/{id}` 返回 403
 - **验收点**：无 token 访问附件返回 401；跨用户访问返回 403
 - **验收流程**：curl 两个场景（无 token、跨用户 token），均返回预期状态码
-- **状态**：`[~]`
+- **状态**：`[>]`
 
 #### A-SEC-02 WorkbenchController 无权限注解
 - **目标**：工作台接口未认证可访问，须强制认证
@@ -56,7 +56,7 @@
   3. curl 测试：无 token 访问 `GET /api/workbench/summary` 返回 401
 - **验收点**：无 token 访问 workbench 接口返回 401
 - **验收流程**：`curl /api/workbench/summary`（不带 Authorization）→ 401
-- **状态**：`[~]`
+- **状态**：`[>]`
 
 #### A-SEC-03 前端路由守卫覆盖不全
 - **目标**：`PAGE_ACCESS` 当前仅覆盖 11 条路由（/config, /org, /role, /employees, /positions, /retention, /operation-logs, /payroll, /projects, /construction-log, /injury），其余业务页面对所有已登录用户全开
@@ -85,7 +85,7 @@
   - **实施策略**：对"全员可访问"的路由（`/workbench`、`/notifications`、`/me`、`/me/password`、`/forms`、`/expense/apply`、`/expense/records`、`/todo`、`/`）不加入 PAGE_ACCESS 白名单，沿用守卫默认语义"未列入 = 所有已登录用户放行"。仅对需要角色限制的路由显式加入白名单。ops 角色除 `/operation-logs`、`/data-export`、`/data-viewer`、`/notifications` 外的访问拦截，交由 Phase B B-FEAT-19 完成。
 - **验收点**：`PAGE_ACCESS` 条目覆盖全部业务页面；越权访问统一重定向
 - **验收流程**：employee.demo 登录 → 直接输入 `/data-export` URL → 重定向到首页；worker.demo → `/payroll` → 重定向
-- **状态**：`[~]`
+- **状态**：`[>]`
 
 ---
 
@@ -107,7 +107,8 @@
   4. `EXPLAIN` 关键查询（如 `SELECT * FROM form_record WHERE submitter_id = ?`）确认命中索引
 - **验收点**：V14 迁移在两种数据库均成功；`EXPLAIN` 显示 Index Scan（PG）或 INDEX 关键字（H2）
 - **验收流程**：启动后端，查看 Flyway 日志确认 V14 applied；执行 `EXPLAIN` 语句
-- **状态**：`[~]`
+- **实施补记**：本任务附带修复了一个 Phase A 前就存在的预存 bug — `db/schema.sql`（dev 用）未同步 V11/V12/V13 的 ALTER TABLE（project.contract_no/client_name/..、leave_type_def.quota_days/deduction_basis、employee.gender/id_card_no/birth_date），导致 dev 启动后 `/auth/login` 触发 BadSqlGrammarException（Column "gender" not found）返回 500。现将 V11/V12/V13 的列和 V14 的索引都补入 `schema.sql`，让 dev（schema.sql）与 prod（Flyway）等价。后续更彻底的方案（dev 也走 Flyway 单一 source）在 B-INFRA-01 跟进。
+- **状态**：`[>]`（dev H2 端启动无错 + curl 登录/业务接口返回 200 / 401 符合预期；prod PostgreSQL 的 Flyway V14 应用待 Phase E 生产部署时验证）
 
 ---
 
@@ -124,7 +125,7 @@
 - **验收点**：发起手机变更不完成，超过 TTL 后 Map 中无该条目；`jmap -histo` 显示 Map size 不随时间无限增长
 - **验收流程**：单元测试通过；代码 review 确认无裸 ConcurrentHashMap
 - **实施**：方案 B（@Scheduled 定时清理，零新依赖）。每 10 分钟执行 `cleanupExpiredPhoneChangeEntries()` 遍历 3 个 Map 移除过期条目。@EnableScheduling 已在 `OaBackendApplication.java:23` 开启。
-- **状态**：`[~]`
+- **状态**：`[>]`
 
 #### A-CODE-02 WorkbenchController 直持 Mapper（业务逻辑渗入 Controller）
 - **目标**：WorkbenchController 跨 4 个 Mapper 直接查询，绕过 Service 层
@@ -135,7 +136,7 @@
   3. 其余 Controller（AuthController/OrgController/AttachmentController）标记为技术债，在 Phase B 迭代中逐步整理（不在本任务范围）
 - **验收点**：WorkbenchController 中无直接 Mapper 字段注入；代码 grep 确认
 - **验收流程**：`grep -r "Mapper" WorkbenchController.java` 输出为空（无 Mapper 直接注入）；API 功能不回退（curl `/api/workbench/summary` 返回 200）
-- **状态**：`[~]`
+- **状态**：`[>]`
 
 #### A-CODE-03 缺全局异常处理器
 - **目标**：各 Controller 错误响应格式不统一，BUG-E03 Toast 暴露 HTTP 字符串的根本原因
@@ -147,7 +148,7 @@
   4. 同步修复 `pages/me/password.vue` catch 块（`message.error(error.data?.message || '密码修改失败，请检查当前密码是否正确')`）
 - **验收点**：所有 4xx 错误均返回统一 JSON 结构；`/me/password` Toast 显示业务语言
 - **验收流程**：curl 一个必填校验失败场景，响应体为 `{"code": 400, "message": "..."}`；前端密码错误时 Toast 无 HTTP 格式字符串
-- **状态**：`[~]`
+- **状态**：`[>]`
 
 ---
 
@@ -185,7 +186,7 @@
 - **验收点**：`app/h5/pages/` 无连字符目录；所有路由可正常访问
 - **验收流程**：`ls app/h5/pages/ | grep "-"` 输出为空；浏览器访问 `/construction_log`、`/data_export`、`/data_viewer`、`/leave_types`、`/operation_logs` 均正常加载
 - **实施范围**：前端页面目录/文件重命名 + 所有前端路由引用（auth.global.ts、default.vue、navigateTo）同步更新 + WorkbenchService 返回的菜单 path 字段同步。**保留不改**：后端 API URL（`/config/leave-types`、`/logs/construction-logs`、`/operation-logs`，属于后端路径，非本次范围）、CSS 类名（`.construction-log-page` 等，行业惯例）、data-catch 测试标记、WorkbenchService MenuItem.code 字段（内部标识）。
-- **状态**：`[~]`
+- **状态**：`[>]`
 
 #### A-CLEAN-03 临时测试脚本与产物已提交到 git
 - **目标**：一次性测试脚本、运行产物、截图无 CI 入口，不是持久测试资产，应从 git 清除
@@ -712,6 +713,19 @@
 - `[?]` 施工日志模板 `/construction_log/templates` — 工作项模板 CRUD
 - `[?]` 通知中心 `/notifications` — 分类 Tab + 标记已读
 - `[?]` 数据保留 `/retention` — 保留期配置与清理预览
+
+---
+
+### B-INFRA — 开发环境基础设施
+
+#### B-INFRA-01 统一 dev/prod 数据库初始化路径
+- **目标**：消除 `db/schema.sql`（dev 用）与 `db/migration/V*.sql`（prod Flyway 用）双写不同步风险
+- **背景**：Phase A A-DB-01 实施中发现 schema.sql 落后 V11/V12/V13 字段，需要手动补齐。长期看每新增一个 Flyway migration 都要同步改 schema.sql，容易遗漏
+- **方案**（择一）
+  - 方案 A：dev 也启用 Flyway（禁用 `spring.sql.init`），V1-Vn 全跑；种子数据合并到 `V2__init_data.sql`
+  - 方案 B：保留双写但加自动化校验（CI 对比 schema.sql 列与 V* migration 推导的列）
+- **验收点**：V 号迁移新增后，dev 启动无需手动改 schema.sql；或 CI 能自动发现漂移
+- **状态**：`[ ]`
 
 ---
 
