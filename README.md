@@ -35,8 +35,8 @@
 ## 快速开始
 
 ```bash
-# 后端
-cd server && mvn spring-boot:run
+# 后端（dev profile 启用 H2 console + show-sql + DEBUG 日志）
+cd server && mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 # H5 前端
 cd app/h5 && npm run dev

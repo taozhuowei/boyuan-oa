@@ -62,17 +62,21 @@ src/main/java/com/oa/backend/
 
 生产环境通过 Flyway 管理 schema 演进，文件位于 `src/main/resources/db/migration/`：
 
-| 文件 | 说明 |
-|------|------|
-| `V1__init_schema.sql` | 初始化 35+ 张表 |
-| `V2__init_data.sql` | 种子数据（角色、审批流模板等） |
-| `V3__expense_module.sql` | 费用报销模块 |
-| `V4__fix_expense_flow.sql` | 修复报销审批流 |
-| `V5__payroll_composition.sql` | 薪资构成与工资条 |
-| `V6__payroll_correction.sql` | 薪资更正 |
-| `V7__second_role_aftersale_material_delegation_hr_fields.sql` | 二线角色、售后、材料、委托、HR 字段 |
-| `V8__revenue_insurance_cost.sql` | 项目营收与保险成本 |
-| `V9__construction_attendance_and_audit.sql` | 施工考勤与审计 |
+- `V1__init_schema.sql` — 初始化 35+ 张表
+- `V2__init_data.sql` — 种子数据（角色、审批流模板等）
+- `V3__expense_module.sql` — 费用报销模块
+- `V4__fix_expense_flow.sql` — 修复报销审批流
+- `V5__payroll_composition.sql` — 薪资构成与工资条
+- `V6__payroll_correction.sql` — 薪资更正
+- `V7__second_role_aftersale_material_delegation_hr_fields.sql` — 二线角色、售后、材料、委托、HR 字段
+- `V8__revenue_insurance_cost.sql` — 项目营收与保险成本
+- `V9__construction_attendance_and_audit.sql` — 施工考勤与审计
+- `V10__department_manager_role.sql` — 新增部门经理角色
+- `V11__project_extra_fields.sql` — 项目表补充字段
+- `V12__leave_type_quota.sql` — 请假类型配额
+- `V13__employee_extra_fields.sql` — 员工表补充字段
+- `V14__add_indexes.sql` — 数据库索引优化
+- `V15__add_ops_role.sql` — 新增 ops（运维）角色种子，与 data.sql 和 SetupService 保持一致
 
 ---
 

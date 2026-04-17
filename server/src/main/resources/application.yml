@@ -34,21 +34,21 @@ spring:
     username: sa
     password:
 
+  # H2 console is dev-only. Enable it via application-dev.yml
+  # (run with: -Dspring-boot.run.profiles=dev). Default runs must NOT
+  # expose /h2-console.
   h2:
     console:
-      enabled: true
-      path: /h2-console
-      settings:
-        web-allow-others: false
+      enabled: false
 
   jpa:
     hibernate:
       ddl-auto: none
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
-        format_sql: true
+        format_sql: false
 
   sql:
     init:
@@ -80,10 +80,10 @@ jwt:
   expiration: 86400000  # 24小时
   issuer: oa-backend
 
-# 日志配置
+# 日志配置（dev profile 会把 com.oa 提到 DEBUG，见 application-dev.yml）
 logging:
   level:
-    com.oa: DEBUG
+    com.oa: INFO
     org.springframework.security: WARN
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

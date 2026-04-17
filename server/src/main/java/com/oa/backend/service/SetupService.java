@@ -293,7 +293,7 @@ public class SetupService {
     }
 
     private Long createOpsAccount(SetupRequest request) {
-        ensureRoleExists("ops", "运营总监", "负责运营管理相关业务");
+        ensureRoleExists("ops", "运维", "系统运维，仅访问运维工具与操作日志，不参与业务流程");
 
         Employee ops = new Employee();
         ops.setEmployeeNo("OPS001");

@@ -11,7 +11,7 @@ INSERT INTO department (id, parent_id, name, sort) VALUES
 (4, NULL, '运营管理部', 4),
 (5, NULL, '施工一部', 5);
 
--- 角色数据（7条）- 使用 MERGE INTO 避免重复
+-- 角色数据（9条）- 使用 MERGE INTO 避免重复
 MERGE INTO sys_role (id, role_code, role_name, description, status, is_system)
 KEY (id) VALUES
 (1, 'employee', '员工', '发起和查看本人业务单据，查看并确认工资条。', 1, 1),
@@ -21,7 +21,8 @@ KEY (id) VALUES
 (5, 'worker', '劳工', '施工现场工作人员，可使用施工日志和工伤补偿相关功能。', 1, 1),
 (6, 'hr', '人力资源', '维护人员与薪资配置，执行结算、复核异议、导出数据。', 1, 1),
 (7, 'general_manager', '总经理', '介于 CEO 与各部门负责人之间；可加入审批流末端链；可见全项目但不可见考勤/薪资/HR 档案。', 1, 1),
-(8, 'department_manager', '部门经理', '员工考勤审批、部门管理，可查看本部门员工基本信息与考勤记录。', 1, 1);
+(8, 'department_manager', '部门经理', '员工考勤审批、部门管理，可查看本部门员工基本信息与考勤记录。', 1, 1),
+(9, 'ops', '运维', '系统运维，仅访问运维工具与操作日志，不参与业务流程', 1, 1);
 
 -- ============================================
 -- Phase 3: 项目种子数据

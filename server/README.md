@@ -20,7 +20,8 @@ mvn clean compile
 mvn test
 
 # 启动开发服务器（H2 内存库，自动加载种子数据）
-mvn spring-boot:run
+# dev profile 启用 H2 console + show-sql + DEBUG 日志
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 
 # 打包
 mvn clean package
