@@ -366,7 +366,7 @@
 
 #### A-AUDIT-INFRA — 开发环境基础设施（原 B-INFRA 搬回）
 
-- `[ ]` **A-AUDIT-INFRA-01** 统一 dev/prod 数据库初始化路径 — 消除 `db/schema.sql`（dev）与 `db/migration/V*.sql`（prod Flyway）双写不同步风险。方案择一：(A) dev 也启用 Flyway，禁用 `spring.sql.init`，V1-Vn 全跑，种子数据合并到 V2；(B) 保留双写但加 CI 自动化校验对比漂移。验收：新增 V 号迁移后 dev 启动无需手动改 schema.sql
+- `[>]` **A-AUDIT-INFRA-01** 统一 dev/prod 数据库初始化路径 — 采用方案 B：CI 新增 migration-validate job，PostgreSQL 15 容器运行全部 V*.sql 迁移，每次 push 自动校验。方案 A（dev 启 Flyway）因 V2 ON CONFLICT 与 H2 2.2.224 不兼容暂不可行；commit e3e80c1
 
 #### A-AUDIT-DEBT — 架构拆分（原 B-DEBT 搬回，7 项）
 
@@ -374,8 +374,8 @@
 - `[ ]` **A-AUDIT-DEBT-02** `payroll/index.vue` 拆分 — 1246 行拆为周期管理 / 结算操作 / 工资条查看三个独立组件；拆分后 finance 周期→结算→发放链路完整
 - `[ ]` **A-AUDIT-DEBT-03** `attendance/index.vue` 按 Tab 拆分 — 914 行拆为请假 / 加班 / 我的记录 / 发起加班通知四个 Tab 组件（注意 A-AUDIT-FIX-02 已引入 ?tab= query 激活逻辑，保留）
 - `[ ]` **A-AUDIT-DEBT-04** `config/index.vue` 按配置域拆分 — 567 行拆为企业信息 / 发薪日 / 数据保留 / 审批流 / 假期配置各自独立抽屉或子页面
-- `[ ]` **A-AUDIT-DEBT-05** AuthController 按流程拆分 — 530 行新建 `PasswordResetController`（密码重置三步）、`PhoneChangeController`（手机号变更三步，协同已抽出的 PhoneChangeService）；AuthController 仅保留 `/login`、`/logout`、`/me`、`/change-password`；接口路径不变（前端无需改）
-- `[ ]` **A-AUDIT-DEBT-06** ProjectController 按业务域拆分 — 458 行拆为基础 CRUD / 成员（Member）/ 里程碑（Milestone）/ 成本（Cost）/ 营收（Revenue）各自独立 Controller；接口路径保持 `/projects/**` 不变
+- `[~]` **A-AUDIT-DEBT-05** AuthController 按流程拆分 — 530 行新建 `PasswordResetController`（密码重置三步）、`PhoneChangeController`（手机号变更三步，协同已抽出的 PhoneChangeService）；AuthController 仅保留 `/login`、`/logout`、`/me`、`/change-password`；接口路径不变（前端无需改）
+- `[~]` **A-AUDIT-DEBT-06** ProjectController 按业务域拆分 — 458 行拆为基础 CRUD / 成员（Member）/ 里程碑（Milestone）/ 成本（Cost）/ 营收（Revenue）各自独立 Controller；接口路径保持 `/projects/**` 不变
 - `[ ]` **A-AUDIT-DEBT-07** Controller 层批量下沉 Service — 全仓另有 32 个 Controller 直持 Mapper（13 处直接在 Controller 体内 `return Mapper.selectList()`）。范围：AllowanceController / Payroll 系列 / Project 系列 / AuthController / RoleController / SecondRoleController / Attendance 系列 / LeaveTypeController / AfterSaleController / InjuryController / MaterialCostController / FormController / NotificationController / OperationLogController / OrgController / DepartmentController / EmployeeController / SignatureController / SystemConfigController / SetupController / DevController / TestController。原则：每个 Controller 对应一个 Service，Mapper 仅从 Service 注入；13 处 `return selectList` 封装为 `listXxx()` Service 方法。验收：`grep -rn "private final.*Mapper" server/.../controller/` 输出为空
 
 #### A-AUDIT-FOLLOWUP — 审计中发现的非阻塞小项（收敛清理）
