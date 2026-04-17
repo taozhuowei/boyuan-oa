@@ -55,7 +55,7 @@ class ProjectServiceImplTest {
     @DisplayName("create：新项目 status=ACTIVE，logCycleDays 默认 1")
     void create_normal_setsActiveStatus() {
         when(projectMapper.insert(any())).thenReturn(1);
-        ProjectCreateRequest req = new ProjectCreateRequest("测试项目", LocalDate.now(), null);
+        ProjectCreateRequest req = new ProjectCreateRequest("测试项目", LocalDate.now(), null, null, null, null, null);
 
         Project result = service.create(req);
 
@@ -70,7 +70,7 @@ class ProjectServiceImplTest {
     @DisplayName("create：logCycleDays 传入时使用传入值")
     void create_withLogCycleDays_usesProvidedValue() {
         when(projectMapper.insert(any())).thenReturn(1);
-        ProjectCreateRequest req = new ProjectCreateRequest("项目B", null, 7);
+        ProjectCreateRequest req = new ProjectCreateRequest("项目B", null, 7, null, null, null, null);
 
         Project result = service.create(req);
 
@@ -244,7 +244,7 @@ class ProjectServiceImplTest {
     @DisplayName("create：成功创建项目，insert返回1，状态为ACTIVE")
     void create_success_returnsProjectWithActiveStatus() {
         when(projectMapper.insert(any())).thenReturn(1);
-        ProjectCreateRequest req = new ProjectCreateRequest("新项目", LocalDate.now(), 5);
+        ProjectCreateRequest req = new ProjectCreateRequest("新项目", LocalDate.now(), 5, null, null, null, null);
 
         Project result = service.create(req);
 
@@ -260,7 +260,7 @@ class ProjectServiceImplTest {
     @DisplayName("update：项目不存在时抛出 IllegalArgumentException")
     void update_notFound_throwsException() {
         when(projectMapper.selectOne(any())).thenReturn(null);
-        ProjectUpdateRequest req = new ProjectUpdateRequest("新名称", null, null, null, null);
+        ProjectUpdateRequest req = new ProjectUpdateRequest("新名称", null, null, null, null, null, null, null, null);
 
         assertThrows(IllegalArgumentException.class, () -> service.update(99L, req));
     }
@@ -276,7 +276,11 @@ class ProjectServiceImplTest {
             LocalDate.of(2024, 1, 1),
             LocalDate.of(2024, 12, 31),
             7,
-            3
+            3,
+            null,
+            null,
+            null,
+            null
         );
 
         service.update(1L, req);

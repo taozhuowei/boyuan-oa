@@ -57,6 +57,9 @@ class AuthControllerTest {
     @MockBean
     private com.oa.backend.mapper.SecondRoleAssignmentMapper secondRoleAssignmentMapper;
 
+    @MockBean
+    private com.oa.backend.service.PhoneChangeService phoneChangeService;
+
     /**
      * 测试开发环境登录接口
      *
