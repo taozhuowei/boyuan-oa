@@ -109,12 +109,12 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 > Do NOT trust any "what is done" list in this or any other file.
 > Last manual test: 2026-04-17 — 25 bugs found (recorded in TODO.md Phase B).
 > TODO.md was fully rewritten 2026-04-17 into a 7-phase roadmap (A→G).
-> **Current active phase: Phase A (architecture governance + cleanup).**
-> **Phase A coding status (2026-04-18): all 46 tasks at `[>]` — code complete, pending three-layer validation before `[x]`.**
+> **Phase A complete — all 46 tasks `[x]`, validated 2026-04-18 via three-layer automated acceptance.**
+> **Current active phase: Phase B (feature completeness + bug fixes).**
 
 ### 7-Phase Roadmap (see TODO.md for full detail)
-- Phase A — Architecture governance + cleanup (CURRENT — coding done, validation pending)
-- Phase B — Feature completeness + bug fixes
+- Phase A — Architecture governance + cleanup (COMPLETE — all 46 tasks `[x]`, validated 2026-04-18)
+- Phase B — Feature completeness + bug fixes (CURRENT)
 - Phase C — Full test coverage + Claude black-box self-test
 - Phase D — Human browser acceptance
 - Phase E — Production deploy + ALL engineering standards (git/PR/branch/SemVer/CHANGELOG/RUNBOOK)
@@ -124,14 +124,12 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 ### Known critical facts
 - Flyway migrations: V1–V16 exist. Next new migration = **V17**.
   V14 = DB indexes, V15 = ops role, V16 = gm→general_manager data migration.
-- Page dir rename still pending (Phase A, task A-CLEAN-02 at `[>]`): kebab-case → snake_case.
-  Affected: construction-log→construction_log, data-export→data_export, data-viewer→data_viewer, leave-types→leave_types, operation-logs→operation_logs.
-  After rename, all route keys in auth.global.ts and ROLE_MENUS must use snake_case paths.
-- Controller layer Mapper injections: code fix applied in A-AUDIT-DEBT-07 (pending curl validation).
-  Acceptance check: `grep -rn "private final.*Mapper" server/.../controller/` must return empty.
-- Large Vue files split: projects/[id].vue, payroll/index.vue, attendance/index.vue, config/index.vue
-  all split into parent + sub-components in commit 5bd4c69 (pending agent review validation).
-- auth.global.ts PAGE_ACCESS: code fix applied in A-SEC-03 (pending curl validation).
+- Page dir rename complete (A-CLEAN-02 `[x]`): construction_log, data_export, data_viewer, leave_types, operation_logs.
+  All route keys in auth.global.ts and ROLE_MENUS use snake_case paths.
+- Controller layer Mapper injections removed (A-AUDIT-DEBT-07 `[x]`): all 32 controllers cleaned.
+- Large Vue files split (A-AUDIT-FOLLOWUP `[x]`): projects/[id].vue, payroll/index.vue, attendance/index.vue, config/index.vue.
+- auth.global.ts PAGE_ACCESS routes complete (A-SEC-03 `[x]`).
+- WorkbenchService quick-action paths use `/forms?type=leave` and `/forms?type=overtime`.
 
 ### Tech stack
 - H5: Nuxt 3, Ant Design Vue (antd), TypeScript, Pinia, Vitest

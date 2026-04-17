@@ -60,6 +60,7 @@ public class WorkLogController {
         try {
             formDataJson = objectMapper.writeValueAsString(request.formData());
         } catch (JsonProcessingException e) {
+            log.warn("序列化 formData 失败 type={}", "LOG", e);
             return ResponseEntity.badRequest().build();
         }
 
@@ -138,6 +139,7 @@ public class WorkLogController {
         try {
             formDataJson = objectMapper.writeValueAsString(request.formData());
         } catch (JsonProcessingException e) {
+            log.warn("序列化 formData 失败 type={}", "INJURY", e);
             return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok(formService.submitForm(submitterId, "INJURY", formDataJson, request.remark()));
@@ -229,6 +231,7 @@ public class WorkLogController {
         try {
             formDataJson = objectMapper.writeValueAsString(request.formData());
         } catch (JsonProcessingException e) {
+            log.warn("序列化 formData 失败 type={}", "LOG", e);
             return ResponseEntity.badRequest().build();
         }
         return ResponseEntity.ok(formService.submitForm(submitterId, "LOG", formDataJson, request.remark()));

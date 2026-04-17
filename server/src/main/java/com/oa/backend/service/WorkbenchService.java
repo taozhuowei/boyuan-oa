@@ -115,8 +115,8 @@ public class WorkbenchService {
         String role = extractRole(authentication);
         List<WorkbenchConfigResponse.MenuItem> menus = buildMenus(role);
         List<WorkbenchConfigResponse.QuickAction> quickActions = Arrays.asList(
-                new WorkbenchConfigResponse.QuickAction("leave", "请假", "calendar", "/forms/leave", true),
-                new WorkbenchConfigResponse.QuickAction("overtime", "加班", "clock-circle", "/forms/overtime", true),
+                new WorkbenchConfigResponse.QuickAction("leave", "请假", "calendar", "/forms?type=leave", true),
+                new WorkbenchConfigResponse.QuickAction("overtime", "加班", "clock-circle", "/forms?type=overtime", true),
                 new WorkbenchConfigResponse.QuickAction("notification", "通知", "bell", "/notifications", true)
         );
         WorkbenchConfigResponse.DashboardWidgets widgets = new WorkbenchConfigResponse.DashboardWidgets(

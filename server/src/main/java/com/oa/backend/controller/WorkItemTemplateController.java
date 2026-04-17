@@ -127,6 +127,7 @@ public class WorkItemTemplateController {
         try {
             return objectMapper.writeValueAsString(items);
         } catch (JsonProcessingException e) {
+            log.warn("序列化工单模板条目失败，返回空数组", e);
             return "[]";
         }
     }

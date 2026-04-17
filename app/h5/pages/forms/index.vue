@@ -137,6 +137,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { request } from '~/utils/http'
 import { getFieldLabel, getLeaveTypeLabel, getOvertimeTypeLabel, getExpenseTypeLabel, formatFormSummary } from '../../../shared/utils/formLabels'
 
@@ -277,7 +278,16 @@ async function loadForms() {
   }
 }
 
-onMounted(loadForms)
+onMounted(() => {
+  // Pre-select tab based on ?type= query param from workbench quick-action links.
+  // Supported values: 'leave' and 'overtime'; anything else is ignored.
+  const route = useRoute()
+  const type = route.query.type
+  if (type === 'leave' || type === 'overtime') {
+    activeTab.value = type
+  }
+  loadForms()
+})
 </script>
 
 <style scoped>
