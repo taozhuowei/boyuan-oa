@@ -76,7 +76,7 @@ test.describe('E2E-04 项目经理主线', () => {
 
     // 分配成功后列表刷新，worker.demo 行应出现
     await page.waitForTimeout(1_000)
-    await expect(page.getByTestId('member-row-worker.demo')).toBeVisible({ timeout: 10_000 })
+    await expect(page.getByTestId('member-row-5')).toBeVisible({ timeout: 10_000 })
 
     await context.close()
   })
