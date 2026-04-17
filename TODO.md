@@ -296,7 +296,7 @@
   3. 推送一次测试，确认 CI 三个 job 为：backend-test（绿）、frontend-h5-test（绿）、frontend-mp-test（跳过/无）
 - **验收点**：push main 后 CI 全绿；无 `frontend-mp-test` 失败记录
 - **验收流程**：GitHub Actions 页面确认 workflow 状态
-- **状态**：`[ ]`
+- **状态**：`[x]`
 
 ---
 

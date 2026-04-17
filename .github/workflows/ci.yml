@@ -71,6 +71,9 @@ jobs:
 
   frontend-mp-test:
     name: Frontend MP Tests
+    # MP (mini-program) product scope is paused until Phase F kicks off.
+    # Re-enable by removing `if: false` when Phase F starts.
+    if: false
     runs-on: ubuntu-latest
     permissions:
       contents: read
