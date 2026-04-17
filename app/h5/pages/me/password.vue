@@ -104,8 +104,7 @@ const handleSubmit = async () => {
       navigateTo('/me')
     }, 1500)
   } catch (error: any) {
-    const errorMessage = error?.data?.message || error?.message || '密码修改失败'
-    message.error(errorMessage)
+    message.error(error?.data?.message || '密码修改失败，请检查当前密码是否正确')
   } finally {
     loading.value = false
   }

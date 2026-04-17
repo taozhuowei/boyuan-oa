@@ -147,7 +147,7 @@
   4. 同步修复 `pages/me/password.vue` catch 块（`message.error(error.data?.message || '密码修改失败，请检查当前密码是否正确')`）
 - **验收点**：所有 4xx 错误均返回统一 JSON 结构；`/me/password` Toast 显示业务语言
 - **验收流程**：curl 一个必填校验失败场景，响应体为 `{"code": 400, "message": "..."}`；前端密码错误时 Toast 无 HTTP 格式字符串
-- **状态**：`[ ]`
+- **状态**：`[~]`
 
 ---
 
