@@ -1,0 +1,113 @@
+{
+  "ceo": {
+    "/config": [
+      "404 /api/config/company-name",
+      "404 /api/config/retention-period",
+      "404 /api/config/payroll-cycle"
+    ],
+    "/attendance": [
+      "404 /api/config/leave-types"
+    ]
+  },
+  "hr": {
+    "/": [
+      "403 /api/forms/todo",
+      "403 /api/employees?size=1",
+      "403 /api/employees?size=1",
+      "403 /api/forms/todo"
+    ],
+    "/employees": [
+      "403 /api/employees?page=0&size=20",
+      "403 /api/positions",
+      "403 /api/forms/todo"
+    ],
+    "/leave-types": [
+      "403 /api/forms/todo",
+      "404 /api/config/leave-types/all"
+    ],
+    "/attendance": [
+      "404 /api/config/leave-types",
+      "403 /api/forms/todo"
+    ],
+    "/directory": [
+      "403 /api/forms/todo"
+    ],
+    "/positions": [
+      "403 /api/forms/todo",
+      "403 /api/positions"
+    ],
+    "/forms": [
+      "403 /api/forms/todo"
+    ],
+    "/me": [
+      "403 /api/forms/todo"
+    ]
+  },
+  "finance": {
+    "/injury": [
+      "403 /api/logs/records"
+    ],
+    "/expense/apply": [
+      "500 /api/expense/types",
+      "500 /api/expense/types"
+    ]
+  },
+  "pm": {
+    "/team": [
+      "403 /api/team/members"
+    ],
+    "/attendance": [
+      "404 /api/config/leave-types"
+    ]
+  },
+  "dept_manager": {
+    "/": [
+      "403 /api/employees?size=1",
+      "403 /api/employees?size=1"
+    ],
+    "/attendance": [
+      "404 /api/config/leave-types"
+    ]
+  },
+  "employee": {
+    "/": [
+      "403 /api/employees?size=1",
+      "403 /api/forms/todo",
+      "403 /api/employees?size=1",
+      "403 /api/forms/todo"
+    ],
+    "/attendance": [
+      "404 /api/config/leave-types",
+      "403 /api/forms/todo"
+    ],
+    "/expense/apply": [
+      "403 /api/forms/todo",
+      "500 /api/expense/types",
+      "500 /api/expense/types"
+    ],
+    "/forms": [
+      "403 /api/forms/todo"
+    ],
+    "/me": [
+      "403 /api/forms/todo"
+    ]
+  },
+  "worker": {
+    "/": [
+      "403 /api/forms/todo",
+      "403 /api/employees?size=1",
+      "403 /api/forms/todo",
+      "403 /api/employees?size=1"
+    ],
+    "/attendance": [
+      "403 /api/forms/todo",
+      "404 /api/config/leave-types"
+    ],
+    "/forms": [
+      "403 /api/forms/todo"
+    ],
+    "/me": [
+      "403 /api/forms/todo"
+    ]
+  }
+}

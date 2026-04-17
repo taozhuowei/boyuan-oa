@@ -1,0 +1,349 @@
+[
+  {
+    "id": "S01_uninit_root",
+    "desc": "未初始化访问/ → 实际: http://localhost:4134/setup",
+    "passed": true,
+    "screenshot": "edge_000_S01_uninit_root.png",
+    "url": "http://localhost:4134/setup"
+  },
+  {
+    "id": "S02_uninit_login",
+    "desc": "未初始化访问/login → 实际: http://localhost:4134/setup",
+    "passed": true,
+    "screenshot": "edge_001_S02_uninit_login.png",
+    "url": "http://localhost:4134/setup"
+  },
+  {
+    "id": "S03_step1_empty",
+    "desc": "空提交→Toast: \"请输入CEO姓名\"",
+    "passed": true,
+    "screenshot": "edge_002_S03_step1_empty.png",
+    "url": "http://localhost:4134/setup",
+    "toast": "请输入CEO姓名"
+  },
+  {
+    "id": "S04_step1_no_phone",
+    "desc": "填名不填手机→Toast: \"请输入CEO手机号\"",
+    "passed": true,
+    "screenshot": "edge_003_S04_step1_no_phone.png",
+    "url": "http://localhost:4134/setup",
+    "toast": "请输入CEO手机号"
+  },
+  {
+    "id": "S05_step1_pw_short",
+    "desc": "密码3位→Toast: \"密码至少8位\"",
+    "passed": true,
+    "screenshot": "edge_004_S05_step1_pw_short.png",
+    "url": "http://localhost:4134/setup",
+    "toast": "密码至少8位"
+  },
+  {
+    "id": "S06_step1_pw_mismatch",
+    "desc": "密码不一致→Toast: \"两次输入的密码不一致\"",
+    "passed": true,
+    "screenshot": "edge_005_S06_step1_pw_mismatch.png",
+    "url": "http://localhost:4134/setup",
+    "toast": "两次输入的密码不一致"
+  },
+  {
+    "id": "S07_step1_invalid_phone",
+    "desc": "非数字手机号→Toast: \"\"",
+    "passed": false,
+    "screenshot": "edge_006_S07_step1_invalid_phone.png",
+    "url": "http://localhost:4134/setup",
+    "toast": "",
+    "note": "BUG: 手机号\"abcdefghijk\"未被格式校验，Toast=\"\"（系统接受非数字手机号）"
+  },
+  {
+    "id": "S08_step1_to_step2",
+    "desc": "第1步有效→进入第2步: true",
+    "passed": true,
+    "screenshot": "edge_007_S08_step1_to_step2.png",
+    "url": "http://localhost:4134/setup"
+  },
+  {
+    "id": "S09_step2_to_step3",
+    "desc": "第2步→第3步（可选人员）",
+    "passed": true,
+    "screenshot": "edge_008_S09_step2_to_step3.png",
+    "url": "http://localhost:4134/setup"
+  },
+  {
+    "id": "S10_step3_skip",
+    "desc": "第3步跳过→确认页",
+    "passed": true,
+    "screenshot": "edge_009_S10_step3_skip.png",
+    "url": "http://localhost:4134/setup"
+  },
+  {
+    "id": "S11_step4_submit",
+    "desc": "第4步提交→恢复码页: false，Toast: \"\"",
+    "passed": false,
+    "screenshot": "edge_010_S11_step4_submit.png",
+    "url": "http://localhost:4134/setup"
+  },
+  {
+    "id": "L01_empty_both",
+    "desc": "空用户名+空密码 | blocked=true toast=\"\" formErrs=2",
+    "passed": true,
+    "screenshot": "edge_011_L01_empty_both.png",
+    "url": "http://localhost:4134/login",
+    "toast": "",
+    "formErrors": [
+      "请输入工号或手机号",
+      "请输入密码"
+    ]
+  },
+  {
+    "id": "L02_empty_username",
+    "desc": "空用户名+有效密码 | blocked=true toast=\"\" formErrs=1",
+    "passed": true,
+    "screenshot": "edge_012_L02_empty_username.png",
+    "url": "http://localhost:4134/login",
+    "toast": "",
+    "formErrors": [
+      "请输入工号或手机号"
+    ]
+  },
+  {
+    "id": "L03_empty_password",
+    "desc": "有效用户名+空密码 | blocked=true toast=\"\" formErrs=1",
+    "passed": true,
+    "screenshot": "edge_013_L03_empty_password.png",
+    "url": "http://localhost:4134/login",
+    "toast": "",
+    "formErrors": [
+      "请输入密码"
+    ]
+  },
+  {
+    "id": "L04_wrong_username",
+    "desc": "不存在用户名 | blocked=true toast=\"\" formErrs=0",
+    "passed": true,
+    "screenshot": "edge_014_L04_wrong_username.png",
+    "url": "http://localhost:4134/login",
+    "toast": "",
+    "formErrors": []
+  },
+  {
+    "id": "L05_wrong_password",
+    "desc": "正确用户名+错误密码 | blocked=true toast=\"\" formErrs=0",
+    "passed": true,
+    "screenshot": "edge_015_L05_wrong_password.png",
+    "url": "http://localhost:4134/login",
+    "toast": "",
+    "formErrors": []
+  },
+  {
+    "id": "L06_sql_injection",
+    "desc": "SQL注入 | blocked=true toast=\"\" formErrs=0",
+    "passed": true,
+    "screenshot": "edge_016_L06_sql_injection.png",
+    "url": "http://localhost:4134/login",
+    "toast": "",
+    "formErrors": []
+  },
+  {
+    "id": "L07_xss_username",
+    "desc": "XSS用户名 | blocked=true toast=\"\" formErrs=0",
+    "passed": true,
+    "screenshot": "edge_017_L07_xss_username.png",
+    "url": "http://localhost:4134/login",
+    "toast": "",
+    "formErrors": []
+  },
+  {
+    "id": "L08_long_username",
+    "desc": "300字符超长用户名 | blocked=true toast=\"\" formErrs=0",
+    "passed": true,
+    "screenshot": "edge_018_L08_long_username.png",
+    "url": "http://localhost:4134/login",
+    "toast": "",
+    "formErrors": []
+  },
+  {
+    "id": "L09_valid_login",
+    "desc": "正常登录ceo.demo/123456 | blocked=false toast=\"\" formErrs=0",
+    "passed": true,
+    "screenshot": "edge_019_L09_valid_login.png",
+    "url": "http://localhost:4134/",
+    "toast": "",
+    "formErrors": []
+  },
+  {
+    "id": "L10_unauth_access",
+    "desc": "未登录访问/employees→实际: http://localhost:4134/login",
+    "passed": true,
+    "screenshot": "edge_020_L10_unauth_access.png",
+    "url": "http://localhost:4134/login"
+  },
+  {
+    "id": "L11_escalation_operation-logs",
+    "desc": "employee越权访问/operation-logs→blocked=true，实际:http://localhost:4134/",
+    "passed": true,
+    "screenshot": "edge_021_L11_escalation_operation-logs.png",
+    "url": "http://localhost:4134/"
+  },
+  {
+    "id": "L11_escalation_config",
+    "desc": "employee越权访问/config→blocked=true，实际:http://localhost:4134/",
+    "passed": true,
+    "screenshot": "edge_022_L11_escalation_config.png",
+    "url": "http://localhost:4134/"
+  },
+  {
+    "id": "L11_escalation_role",
+    "desc": "employee越权访问/role→blocked=true，实际:http://localhost:4134/",
+    "passed": true,
+    "screenshot": "edge_023_L11_escalation_role.png",
+    "url": "http://localhost:4134/"
+  },
+  {
+    "id": "L11_escalation_data-export",
+    "desc": "employee越权访问/data-export→blocked=false，实际:http://localhost:4134/data-export",
+    "passed": false,
+    "screenshot": "edge_024_L11_escalation_data-export.png",
+    "url": "http://localhost:4134/data-export"
+  },
+  {
+    "id": "L11_escalation_employees",
+    "desc": "employee越权访问/employees→blocked=true，实际:http://localhost:4134/",
+    "passed": true,
+    "screenshot": "edge_025_L11_escalation_employees.png",
+    "url": "http://localhost:4134/"
+  },
+  {
+    "id": "F_P01_pw_empty",
+    "desc": "密码表单空提交→errs:3个，Toast:\"\"",
+    "passed": true,
+    "screenshot": "edge_026_F_P01_pw_empty.png",
+    "url": "http://localhost:4134/me/password",
+    "toast": "",
+    "formErrors": [
+      "请输入当前密码",
+      "请输入新密码",
+      "请确认新密码"
+    ]
+  },
+  {
+    "id": "F_P02_pw_wrong_current",
+    "desc": "错误当前密码→Toast:\"[POST] \"/api/auth/change-password\": 400 Bad Request\"，应提示密码不正确",
+    "passed": false,
+    "screenshot": "edge_027_F_P02_pw_wrong_current.png",
+    "url": "http://localhost:4134/me/password",
+    "toast": "[POST] \"/api/auth/change-password\": 400 Bad Request",
+    "note": "BUG: 错误当前密码提交无明确错误提示，Toast=\"[POST] \"/api/auth/change-password\": 400 Bad Request\""
+  },
+  {
+    "id": "F_P03_pw_confirm_mismatch",
+    "desc": "确认密码不一致→errs:1个\"两次输入的密码不一致\"，Toast:\"\"",
+    "passed": true,
+    "screenshot": "edge_028_F_P03_pw_confirm_mismatch.png",
+    "url": "http://localhost:4134/me/password",
+    "toast": "",
+    "formErrors": [
+      "两次输入的密码不一致"
+    ]
+  },
+  {
+    "id": "F_P04_pw_too_short",
+    "desc": "3字符新密码→errs:1个，Toast:\"\"，应有长度校验",
+    "passed": true,
+    "screenshot": "edge_029_F_P04_pw_too_short.png",
+    "url": "http://localhost:4134/me/password",
+    "toast": "",
+    "formErrors": [
+      "密码长度至少6位"
+    ]
+  },
+  {
+    "id": "F_E01_employee_empty",
+    "desc": "新增员工空提交→0个错误:，Toast:\"请填写姓名\"",
+    "passed": true,
+    "screenshot": "edge_030_F_E01_employee_empty.png",
+    "url": "http://localhost:4134/employees",
+    "formErrors": [],
+    "toast": "请填写姓名"
+  },
+  {
+    "id": "F_E02_employee_invalid_id",
+    "desc": "5位身份证号→errs:，Toast:\"请填写姓名\"",
+    "passed": false,
+    "screenshot": "edge_031_F_E02_employee_invalid_id.png",
+    "url": "http://localhost:4134/employees",
+    "formErrors": [],
+    "note": "BUG: 无效身份证格式未被前端校验"
+  },
+  {
+    "id": "F_E03_employee_xss_name",
+    "desc": "XSS姓名输入，input实际值:\"<script>alert('xss')</script>\"",
+    "passed": null,
+    "screenshot": "edge_032_F_E03_employee_xss_name.png",
+    "url": "http://localhost:4134/employees",
+    "inputValue": "<script>alert('xss')</script>",
+    "note": "INFO: 前端接受XSS输入（依赖后端转义），需验证后端存储和展示是否安全"
+  },
+  {
+    "id": "F_X01_expense_empty",
+    "desc": "报销申请空提交→6个错误，Toast:\"\"",
+    "passed": true,
+    "screenshot": "edge_033_F_X01_expense_empty.png",
+    "url": "http://localhost:4134/expense/apply",
+    "formErrors": [
+      "请选择报销类型",
+      "请选择类型",
+      "请选择日期",
+      "请输入金额",
+      "请输入总金额",
+      "请上传至少一张发票"
+    ],
+    "toast": ""
+  },
+  {
+    "id": "F_X02_expense_negative",
+    "desc": "金额=-100，input实际值:\"-100\"",
+    "passed": false,
+    "screenshot": "edge_034_F_X02_expense_negative.png",
+    "url": "http://localhost:4134/expense/apply",
+    "inputValue": "-100",
+    "note": "BUG: 负数金额未被前端输入控件拦截"
+  },
+  {
+    "id": "F_X03_expense_zero",
+    "desc": "金额=0提交→errs:请选择报销类型|请选择类型|请选择日期|请输入总金额|请上传至少一张发票，Toast:\"\"",
+    "passed": false,
+    "screenshot": "edge_035_F_X03_expense_zero.png",
+    "url": "http://localhost:4134/expense/apply",
+    "formErrors": [
+      "请选择报销类型",
+      "请选择类型",
+      "请选择日期",
+      "请输入总金额",
+      "请上传至少一张发票"
+    ],
+    "toast": "",
+    "note": "BUG: 金额=0未被前端校验"
+  },
+  {
+    "id": "F_X04_expense_huge",
+    "desc": "金额=99亿，input接受:\"9999999999\"",
+    "passed": null,
+    "screenshot": "edge_036_F_X04_expense_huge.png",
+    "url": "http://localhost:4134/expense/apply",
+    "note": "需确认是否有金额上限校验"
+  },
+  {
+    "id": "F_A01_leave_empty",
+    "desc": "请假申请空提交→errs:4个，Toast:\"\"",
+    "passed": true,
+    "screenshot": "edge_037_F_A01_leave_empty.png",
+    "url": "http://localhost:4134/attendance",
+    "formErrors": [
+      "请选择假种",
+      "请选择开始日期",
+      "请选择结束日期",
+      "请填写原因"
+    ],
+    "toast": ""
+  }
+]
