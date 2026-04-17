@@ -76,6 +76,7 @@
      - `/me`：所有角色
      - `/workbench`：所有角色
   2. 逐条 curl 或浏览器验证：worker 访问 `/payroll` 被重定向，employee 访问 `/operation-logs` 被重定向
+  - 注：步骤1中的路由 key 使用当前实际路由名（kebab-case）。A-CLEAN-02 完成目录重命名后，A-CLEAN-02 的"全局替换引用"步骤会自动将这些 key 更新为 snake_case，无需在此重复修改。
 - **验收点**：`PAGE_ACCESS` 条目覆盖全部业务页面；越权访问统一重定向
 - **验收流程**：employee.demo 登录 → 直接输入 `/data-export` URL → 重定向到首页；worker.demo → `/payroll` → 重定向
 - **状态**：`[ ]`
@@ -155,9 +156,9 @@
   1. 将文件迁移至：`test/unit/h5/`、`test/unit/mp/`、`test/unit/shared/`
   2. 同步更新各 `vitest.config.ts` 中的 `include` 路径
   3. 删除 `app/h5/test/`、`app/mp/test/`、`app/shared/test/` 空目录
-  4. 运行 `yarn test` 确认所有测试仍通过
-- **验收点**：`app/` 目录下无任何 `*.test.ts` 文件；`yarn test` 全通过
-- **验收流程**：`git ls-files app/ | grep ".test.ts"` 输出为空；`yarn test` 通过
+  4. 运行 `yarn workspace oa-h5 test && yarn workspace oa-mp test` 确认所有单元测试仍通过
+- **验收点**：`app/` 目录下无任何 `*.test.ts` 文件；两个 workspace 测试均通过
+- **验收流程**：`git ls-files app/ | grep ".test.ts"` 输出为空；`yarn workspace oa-h5 test` 通过
 - **状态**：`[ ]`
 
 #### A-CLEAN-02 前端页面目录 kebab-case 命名违规
@@ -229,13 +230,9 @@
   2. 更新 `app/h5/vitest.config.ts` 的 `include`：`test/**` → `../../test/unit/h5/**`；`setupFiles` 路径同步更新
   3. 更新 `app/mp/vitest.config.ts` 的 `include`：`test/**` → `../../test/unit/mp/**`，`../shared/test/**` → `../../test/unit/shared/**`；`setupFiles` 路径同步更新
   4. 更新 `app/shared/vitest.config.ts` 的 `include`：`test/**` → `../../test/unit/shared/**`
-  5. 在根 `package.json` scripts 中补充：
-     - `"test:unit:h5": "yarn workspace oa-h5 test"`
-     - `"test:unit:mp": "yarn workspace oa-mp test"`
-     - `"test:integration": "cd app && npx vitest run --config mp/vitest.integration.config.ts"`
-  6. 验证三个配置都能独立执行：`yarn test:unit:h5`、`yarn test:integration`
-- **验收点**：根目录无 `vitest.integration.config.ts`；`yarn test:unit:h5` 和 `yarn test:integration` 命令可用且测试通过；`app/shared/vitest.config.ts` 的测试可执行
-- **验收流程**：执行上述三条命令，均有输出且无报错
+  5. 验证各配置路径生效：`yarn workspace oa-h5 test`、`yarn workspace oa-mp test` 均有测试输出且通过
+- **验收点**：根目录无 `vitest.integration.config.ts`；各 workspace test 命令执行后有测试输出；`app/shared/vitest.config.ts` 的测试被包含在 `yarn workspace oa-mp test` 中（mp config 已含 shared 路径）
+- **验收流程**：`ls vitest.integration.config.ts` 报 not found；`yarn workspace oa-h5 test` 通过
 - **状态**：`[ ]`（前置条件：A-CLEAN-01 完成）
 
 #### A-CLEAN-07 过大文件与单一职责违规审查
@@ -777,16 +774,19 @@
   - 验收：薪资发放主链 API 层验证
 
 - `[ ]` **C-INT-09 测试运行基础设施补全**
-  - 前置条件：A-CLEAN-06 完成（vitest 配置整理 + scripts 补充）
-  - 在 CI `.github/workflows/ci.yml` 中补充 `integration-test` job：
+  - 前置条件：A-CLEAN-06 完成（vitest 配置整理）
+  - 步骤1 — 根 `package.json` 补充 scripts：
+    - `"test:unit:h5": "yarn workspace oa-h5 test"`
+    - `"test:unit:mp": "yarn workspace oa-mp test"`
+    - `"test:integration": "cd app && npx vitest run --config mp/vitest.integration.config.ts"`
+  - 步骤2 — 本地验证：`yarn test:integration` 可执行且有测试输出
+  - 步骤3 — CI `.github/workflows/ci.yml` 补充 `integration-test` job：
     - 启动后端服务（`mvn spring-boot:run`，dev profile）
     - 等待后端就绪（`wait-on http://localhost:8080/api/health`）
     - 执行 `yarn test:integration`
-  - 在 CI 中补充 `unit-test-shared` job：
-    - 执行 `yarn workspace oa-shared test`（或等效命令）
-    - 上传 coverage 报告到 Artifacts
-  - 确认 `frontend-h5-test` job 中 h5 coverage 报告也被上传
-  - 验收：CI 新增两个 job 均绿；`yarn test:integration` 本地可执行并输出测试结果
+  - 步骤4 — CI 补充 shared 单元测试：确认 `frontend-mp-test`（Phase F 恢复后）已包含 shared 测试（mp vitest config 包含 shared 路径，无需独立 job）
+  - 步骤5 — 确认 `frontend-h5-test` job 上传 coverage 报告到 Artifacts
+  - 验收：`yarn test:integration` 本地可执行；CI `integration-test` job 绿
 
 ---
 
@@ -926,8 +926,7 @@
   2. 配置 `.commitlintrc.json` 或 `commitlint.config.js`，CI 强制校验 commit message 格式
 - **验收点**：不符合格式的 commit message 在 CI 中失败
 - **验收流程**：尝试 push 一个格式错误的 commit，CI 报错
-
-- `[ ]` **E-STD-01 状态**：`[ ]`
+- **状态**：`[ ]`
 
 #### E-STD-02 PR 模板 + 代码审查 Checklist
 - **目标**：标准化 PR 提交和审查流程
@@ -941,8 +940,7 @@
   2. 新建 `.github/CODE_REVIEW_CHECKLIST.md`：5 个横切验证维度（后端权限/路由守卫/菜单入口/运行时数据/字段完整性）+ 安全规范要点
 - **验收点**：PR 提交时自动填充模板；审查 Checklist 可操作
 - **验收流程**：新建一个测试 PR，确认模板自动出现
-
-- `[ ]` **E-STD-02 状态**：`[ ]`
+- **状态**：`[ ]`
 
 #### E-STD-03 Issue 模板
 - **目标**：Bug 报告和功能请求有统一格式
@@ -951,8 +949,7 @@
   2. 新建 `.github/ISSUE_TEMPLATE/feature_request.md`：功能描述、用户场景、设计稿链接、验收标准
 - **验收点**：新建 Issue 时出现类型选择界面
 - **验收流程**：GitHub 新建 Issue 验证
-
-- `[ ]` **E-STD-03 状态**：`[ ]`
+- **状态**：`[ ]`
 
 #### E-STD-04 SemVer + CHANGELOG
 - **目标**：版本号管理与发布记录规范化
@@ -963,8 +960,7 @@
   4. CI：push tag `v*` 时自动触发发布 workflow（构建 + 上传 artifacts）
 - **验收点**：`CHANGELOG.md` 存在且 v1.0.0 条目完整；tag `v1.0.0` 触发 CI 发布流程
 - **验收流程**：打 tag 后查看 CI Actions
-
-- `[ ]` **E-STD-04 状态**：`[ ]`
+- **状态**：`[ ]`
 
 #### E-STD-05 RUNBOOK（操作手册）
 - **目标**：生产环境操作步骤文档化，任何人可独立执行
@@ -979,8 +975,7 @@
   2. RUNBOOK 中的所有命令必须在本地验证可执行
 - **验收点**：`docs/RUNBOOK.md` 存在；新人按 RUNBOOK 可独立完成部署
 - **验收流程**：Claude 按 RUNBOOK 步骤执行一次完整部署流程
-
-- `[ ]` **E-STD-05 状态**：`[ ]`
+- **状态**：`[ ]`
 
 ---
 
