@@ -1,9 +1,8 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.entity.ProjectInsuranceDef;
-import com.oa.backend.mapper.ProjectInsuranceDefMapper;
 import com.oa.backend.service.InsuranceCostService;
+import com.oa.backend.service.ProjectInsuranceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,6 +18,7 @@ import java.util.Map;
 /**
  * 项目保险条目 Controller（设计 §8.4 保险成本）。
  * 配置由财务维护；项目经理 / CEO / 总经理可读。
+ * 条目 CRUD 委托给 {@link ProjectInsuranceService}；
  * 成本聚合（GET /summary）通过 {@link InsuranceCostService} 从 construction_attendance 真实出勤数据计算。
  *
  * 路由：
@@ -34,17 +33,13 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ProjectInsuranceController {
 
-    private final ProjectInsuranceDefMapper mapper;
+    private final ProjectInsuranceService insuranceService;
     private final InsuranceCostService costService;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('CEO','GENERAL_MANAGER','FINANCE','PROJECT_MANAGER')")
     public ResponseEntity<List<ProjectInsuranceDef>> list(@PathVariable Long projectId) {
-        return ResponseEntity.ok(mapper.selectList(
-                new LambdaQueryWrapper<ProjectInsuranceDef>()
-                        .eq(ProjectInsuranceDef::getProjectId, projectId)
-                        .eq(ProjectInsuranceDef::getDeleted, 0)
-                        .orderByAsc(ProjectInsuranceDef::getEffectiveDate)));
+        return ResponseEntity.ok(insuranceService.listByProjectId(projectId));
     }
 
     @PostMapping
@@ -62,38 +57,30 @@ public class ProjectInsuranceController {
         d.setDailyRate(req.dailyRate());
         d.setEffectiveDate(req.effectiveDate());
         d.setRemark(req.remark());
-        d.setCreatedAt(LocalDateTime.now());
-        d.setUpdatedAt(LocalDateTime.now());
-        mapper.insert(d);
-        return ResponseEntity.ok(d);
+        return ResponseEntity.ok(insuranceService.createInsurance(d));
     }
 
     @PutMapping("/{itemId}")
     @PreAuthorize("hasAnyRole('CEO','FINANCE')")
-    public ResponseEntity<?> update(@PathVariable Long projectId, @PathVariable Long itemId, @RequestBody InsuranceRequest req) {
-        ProjectInsuranceDef d = mapper.selectById(itemId);
-        if (d == null || d.getDeleted() == 1 || !d.getProjectId().equals(projectId)) {
-            return ResponseEntity.notFound().build();
-        }
+    public ResponseEntity<?> update(@PathVariable Long projectId, @PathVariable Long itemId,
+                                    @RequestBody InsuranceRequest req) {
+        ProjectInsuranceDef d = insuranceService.getByIdAndProject(itemId, projectId);
+        if (d == null) return ResponseEntity.notFound().build();
         if (req.insuranceName() != null) d.setInsuranceName(req.insuranceName());
         if (req.scope() != null) d.setScope(req.scope());
         if (req.scopeTargetId() != null) d.setScopeTargetId(req.scopeTargetId());
         if (req.dailyRate() != null) d.setDailyRate(req.dailyRate());
         if (req.effectiveDate() != null) d.setEffectiveDate(req.effectiveDate());
         if (req.remark() != null) d.setRemark(req.remark());
-        d.setUpdatedAt(LocalDateTime.now());
-        mapper.updateById(d);
-        return ResponseEntity.ok(d);
+        return ResponseEntity.ok(insuranceService.updateInsurance(d));
     }
 
     @DeleteMapping("/{itemId}")
     @PreAuthorize("hasAnyRole('CEO','FINANCE')")
     public ResponseEntity<?> delete(@PathVariable Long projectId, @PathVariable Long itemId) {
-        ProjectInsuranceDef d = mapper.selectById(itemId);
-        if (d == null || d.getDeleted() == 1 || !d.getProjectId().equals(projectId)) {
-            return ResponseEntity.notFound().build();
-        }
-        mapper.deleteById(itemId);
+        ProjectInsuranceDef d = insuranceService.getByIdAndProject(itemId, projectId);
+        if (d == null) return ResponseEntity.notFound().build();
+        insuranceService.deleteInsurance(itemId);
         return ResponseEntity.ok(Map.of("message", "已删除", "id", itemId));
     }
 
@@ -107,11 +94,7 @@ public class ProjectInsuranceController {
         LocalDate e = endDate != null ? endDate : LocalDate.now();
 
         // 加载条目（含元数据）+ 真实出勤聚合
-        List<ProjectInsuranceDef> defs = mapper.selectList(
-                new LambdaQueryWrapper<ProjectInsuranceDef>()
-                        .eq(ProjectInsuranceDef::getProjectId, projectId)
-                        .eq(ProjectInsuranceDef::getDeleted, 0)
-                        .orderByAsc(ProjectInsuranceDef::getEffectiveDate));
+        List<ProjectInsuranceDef> defs = insuranceService.listByProjectId(projectId);
         List<InsuranceCostService.ItemCost> costs = costService.computeAll(projectId, s, e);
         Map<Long, InsuranceCostService.ItemCost> byDef = new HashMap<>();
         for (InsuranceCostService.ItemCost c : costs) byDef.put(c.defId(), c);

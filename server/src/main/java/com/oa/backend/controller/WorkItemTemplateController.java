@@ -1,15 +1,11 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oa.backend.dto.WorkItemTemplateRequest;
 import com.oa.backend.dto.WorkItemTemplateResponse;
-import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.WorkItemTemplate;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.mapper.WorkItemTemplateMapper;
-import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.WorkItemTemplateService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -34,8 +30,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class WorkItemTemplateController {
 
-    private final WorkItemTemplateMapper templateMapper;
-    private final EmployeeMapper employeeMapper;
+    private final WorkItemTemplateService workItemTemplateService;
     private final ObjectMapper objectMapper;
 
     /** 查询所有模板（含项目级和全局模板） */
@@ -43,13 +38,7 @@ public class WorkItemTemplateController {
     @PreAuthorize("hasAnyRole('CEO','PROJECT_MANAGER','WORKER')")
     public ResponseEntity<List<WorkItemTemplateResponse>> list(
             @RequestParam(required = false) Long projectId) {
-        LambdaQueryWrapper<WorkItemTemplate> qw = new LambdaQueryWrapper<WorkItemTemplate>()
-                .eq(WorkItemTemplate::getDeleted, 0)
-                .orderByDesc(WorkItemTemplate::getCreatedAt);
-        if (projectId != null) {
-            qw.eq(WorkItemTemplate::getProjectId, projectId);
-        }
-        return ResponseEntity.ok(templateMapper.selectList(qw).stream()
+        return ResponseEntity.ok(workItemTemplateService.listTemplatesByProjectId(projectId).stream()
                 .map(this::toResponse)
                 .collect(Collectors.toList()));
     }
@@ -60,9 +49,9 @@ public class WorkItemTemplateController {
     public ResponseEntity<WorkItemTemplateResponse> create(
             @Valid @RequestBody WorkItemTemplateRequest req,
             Authentication auth) {
-        Long creatorId = getEmployeeId(auth);
+        Long creatorId = workItemTemplateService.resolveEmployeeId(auth);
         WorkItemTemplate tmpl = buildTemplate(req, creatorId, null);
-        templateMapper.insert(tmpl);
+        workItemTemplateService.saveTemplate(tmpl);
         return ResponseEntity.ok(toResponse(tmpl));
     }
 
@@ -72,15 +61,15 @@ public class WorkItemTemplateController {
     public ResponseEntity<WorkItemTemplateResponse> update(
             @PathVariable Long id,
             @Valid @RequestBody WorkItemTemplateRequest req) {
-        WorkItemTemplate existing = templateMapper.selectById(id);
-        if (existing == null || existing.getDeleted() != 0) {
+        WorkItemTemplate existing = workItemTemplateService.getActiveTemplate(id);
+        if (existing == null) {
             return ResponseEntity.notFound().build();
         }
         existing.setName(req.name());
         existing.setProjectId(req.projectId());
         existing.setItems(serializeItems(req.items()));
         existing.setUpdatedAt(LocalDateTime.now());
-        templateMapper.updateById(existing);
+        workItemTemplateService.updateTemplate(existing);
         return ResponseEntity.ok(toResponse(existing));
     }
 
@@ -88,13 +77,13 @@ public class WorkItemTemplateController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('CEO','PROJECT_MANAGER')")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        WorkItemTemplate existing = templateMapper.selectById(id);
-        if (existing == null || existing.getDeleted() != 0) {
+        WorkItemTemplate existing = workItemTemplateService.getActiveTemplate(id);
+        if (existing == null) {
             return ResponseEntity.notFound().build();
         }
         existing.setDeleted(1);
         existing.setUpdatedAt(LocalDateTime.now());
-        templateMapper.updateById(existing);
+        workItemTemplateService.updateTemplate(existing);
         return ResponseEntity.noContent().build();
     }
 
@@ -108,13 +97,13 @@ public class WorkItemTemplateController {
             @PathVariable Long id,
             @Valid @RequestBody WorkItemTemplateRequest req,
             Authentication auth) {
-        WorkItemTemplate original = templateMapper.selectById(id);
-        if (original == null || original.getDeleted() != 0) {
+        WorkItemTemplate original = workItemTemplateService.getActiveTemplate(id);
+        if (original == null) {
             return ResponseEntity.notFound().build();
         }
-        Long creatorId = getEmployeeId(auth);
+        Long creatorId = workItemTemplateService.resolveEmployeeId(auth);
         WorkItemTemplate derived = buildTemplate(req, creatorId, id);
-        templateMapper.insert(derived);
+        workItemTemplateService.saveTemplate(derived);
         return ResponseEntity.ok(toResponse(derived));
     }
 
@@ -163,9 +152,4 @@ public class WorkItemTemplateController {
                 tmpl.getCreatedBy(), items, tmpl.getDerivedFrom(), tmpl.getCreatedAt());
     }
 
-    private Long getEmployeeId(Authentication auth) {
-        if (auth == null) return null;
-        Employee emp = SecurityUtils.getEmployeeFromUsername(auth.getName(), employeeMapper);
-        return emp != null ? emp.getId() : null;
-    }
 }

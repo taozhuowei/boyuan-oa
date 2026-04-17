@@ -1,9 +1,7 @@
 package com.oa.backend.controller;
 
-import com.oa.backend.entity.ExportBackupTask;
 import com.oa.backend.entity.RetentionPolicy;
 import com.oa.backend.entity.RetentionReminder;
-import com.oa.backend.mapper.ExportBackupTaskMapper;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.RetentionService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,7 +37,6 @@ import java.util.Map;
 public class RetentionController {
 
     private final RetentionService retentionService;
-    private final ExportBackupTaskMapper exportTaskMapper;
 
     /**
      * 获取数据保留策略列表。

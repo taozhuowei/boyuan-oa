@@ -3,6 +3,7 @@ package com.oa.backend.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.oa.backend.dto.ProjectCreateRequest;
 import com.oa.backend.dto.ProjectMemberRequest;
+import com.oa.backend.dto.ProjectResponse;
 import com.oa.backend.dto.ProjectUpdateRequest;
 import com.oa.backend.entity.Project;
 import com.oa.backend.entity.ProjectMember;
@@ -91,4 +92,13 @@ public interface ProjectService {
      * @param project 项目实体
      */
     void updateById(Project project);
+
+    /**
+     * 构建项目成员信息列表，包含员工编号和姓名（通过 EmployeeMapper 补全）。
+     * 从 controller 迁移此逻辑以消除 controller 对 EmployeeMapper 的直接依赖。
+     *
+     * @param projectId 项目 ID
+     * @return 成员信息列表（含员工编号和姓名）
+     */
+    List<ProjectResponse.ProjectMemberInfo> buildMemberInfos(Long projectId);
 }

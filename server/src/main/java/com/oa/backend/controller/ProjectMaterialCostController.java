@@ -1,12 +1,7 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.entity.ProjectMaterialCost;
-import com.oa.backend.entity.SecondRoleAssignment;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.mapper.ProjectMaterialCostMapper;
-import com.oa.backend.mapper.SecondRoleAssignmentMapper;
-import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.ProjectMaterialCostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -15,38 +10,32 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 项目实体成本（物料/设备直接成本）Controller。
  * 录入权限：PM / 财务 / CEO / 总经理 / 项目下持有 MATERIAL_MANAGER 第二角色的员工。
+ * 业务逻辑委托给 {@link ProjectMaterialCostService}。
  */
 @RestController
 @RequestMapping("/projects/{projectId}/material-costs")
 @RequiredArgsConstructor
 public class ProjectMaterialCostController {
 
-    private final ProjectMaterialCostMapper costMapper;
-    private final SecondRoleAssignmentMapper secondRoleMapper;
-    private final EmployeeMapper employeeMapper;
+    private final ProjectMaterialCostService costService;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<ProjectMaterialCost>> list(@PathVariable Long projectId) {
-        return ResponseEntity.ok(costMapper.selectList(
-                new LambdaQueryWrapper<ProjectMaterialCost>()
-                        .eq(ProjectMaterialCost::getProjectId, projectId)
-                        .eq(ProjectMaterialCost::getDeleted, 0)
-                        .orderByDesc(ProjectMaterialCost::getOccurredOn)));
+        return ResponseEntity.ok(costService.listCostsByProjectId(projectId));
     }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('CEO','GENERAL_MANAGER','PROJECT_MANAGER','FINANCE','EMPLOYEE')")
     public ResponseEntity<?> create(@PathVariable Long projectId, @RequestBody CostRequest req, Authentication auth) {
-        Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
-        if (!canRecord(me, projectId, auth)) {
+        Long me = costService.resolveEmployeeId(auth.getName());
+        if (!costService.canRecord(me, projectId, auth)) {
             return ResponseEntity.status(403).body(Map.of("message", "无权录入此项目实体成本"));
         }
         if (req.itemName() == null || req.itemName().isBlank()
@@ -63,22 +52,17 @@ public class ProjectMaterialCostController {
         c.setUnitPrice(req.unitPrice());
         c.setOccurredOn(req.occurredOn());
         c.setRemark(req.remark());
-        c.setRecordedBy(me);
-        c.setCreatedAt(LocalDateTime.now());
-        c.setUpdatedAt(LocalDateTime.now());
-        costMapper.insert(c);
-        return ResponseEntity.ok(c);
+        return ResponseEntity.ok(costService.createCost(c, me));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('CEO','GENERAL_MANAGER','PROJECT_MANAGER','FINANCE','EMPLOYEE')")
-    public ResponseEntity<?> update(@PathVariable Long projectId, @PathVariable Long id, @RequestBody CostRequest req, Authentication auth) {
-        ProjectMaterialCost c = costMapper.selectById(id);
-        if (c == null || c.getDeleted() == 1 || !c.getProjectId().equals(projectId)) {
-            return ResponseEntity.notFound().build();
-        }
-        Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
-        if (!canRecord(me, projectId, auth)) {
+    public ResponseEntity<?> update(@PathVariable Long projectId, @PathVariable Long id,
+                                    @RequestBody CostRequest req, Authentication auth) {
+        ProjectMaterialCost c = costService.getCostByIdAndProject(id, projectId);
+        if (c == null) return ResponseEntity.notFound().build();
+        Long me = costService.resolveEmployeeId(auth.getName());
+        if (!costService.canRecord(me, projectId, auth)) {
             return ResponseEntity.status(403).body(Map.of("message", "无权修改"));
         }
         if (req.itemName() != null) c.setItemName(req.itemName());
@@ -88,34 +72,16 @@ public class ProjectMaterialCostController {
         if (req.unitPrice() != null) c.setUnitPrice(req.unitPrice());
         if (req.occurredOn() != null) c.setOccurredOn(req.occurredOn());
         if (req.remark() != null) c.setRemark(req.remark());
-        c.setUpdatedAt(LocalDateTime.now());
-        costMapper.updateById(c);
-        return ResponseEntity.ok(c);
+        return ResponseEntity.ok(costService.updateCost(c));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('CEO','PROJECT_MANAGER','FINANCE')")
     public ResponseEntity<?> delete(@PathVariable Long projectId, @PathVariable Long id) {
-        ProjectMaterialCost c = costMapper.selectById(id);
-        if (c == null || c.getDeleted() == 1 || !c.getProjectId().equals(projectId)) {
-            return ResponseEntity.notFound().build();
-        }
-        costMapper.deleteById(id);
+        ProjectMaterialCost c = costService.getCostByIdAndProject(id, projectId);
+        if (c == null) return ResponseEntity.notFound().build();
+        costService.deleteCost(id);
         return ResponseEntity.ok(Map.of("message", "已删除", "id", id));
-    }
-
-    private boolean canRecord(Long employeeId, Long projectId, Authentication auth) {
-        if (employeeId == null) return false;
-        if (SecurityUtils.isCEO(auth) || SecurityUtils.isProjectManager(auth) || SecurityUtils.isFinance(auth)) return true;
-        if (auth.getAuthorities().stream().anyMatch(a -> "ROLE_GENERAL_MANAGER".equals(a.getAuthority()))) return true;
-        Long count = secondRoleMapper.selectCount(
-                new LambdaQueryWrapper<SecondRoleAssignment>()
-                        .eq(SecondRoleAssignment::getEmployeeId, employeeId)
-                        .eq(SecondRoleAssignment::getRoleCode, "MATERIAL_MANAGER")
-                        .eq(SecondRoleAssignment::getProjectId, projectId)
-                        .eq(SecondRoleAssignment::getRevoked, false)
-                        .eq(SecondRoleAssignment::getDeleted, 0));
-        return count != null && count > 0;
     }
 
     public record CostRequest(

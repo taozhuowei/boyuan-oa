@@ -1,23 +1,20 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.entity.AllowanceConfig;
 import com.oa.backend.entity.AllowanceDef;
-import com.oa.backend.mapper.AllowanceConfigMapper;
-import com.oa.backend.mapper.AllowanceDefMapper;
+import com.oa.backend.service.AllowanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 补贴项（allowance_def）及三级覆盖配置（allowance_config）控制器。
+ * 底层 Mapper 操作均委托给 AllowanceService。
  *
  * 读：allowance_def 及配置均属于薪资敏感数据，仅 CEO/HR/FINANCE 可查。
  * 写：HR / CEO。
@@ -35,19 +32,14 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AllowanceController {
 
-    private final AllowanceDefMapper defMapper;
-    private final AllowanceConfigMapper configMapper;
+    private final AllowanceService allowanceService;
 
     // ── allowance_def ────────────────────────────────────────────────
 
     @GetMapping
     @PreAuthorize("hasAnyRole('CEO','HR','FINANCE')")
     public ResponseEntity<List<AllowanceDef>> list() {
-        return ResponseEntity.ok(defMapper.selectList(
-                new LambdaQueryWrapper<AllowanceDef>()
-                        .eq(AllowanceDef::getDeleted, 0)
-                        .orderByAsc(AllowanceDef::getDisplayOrder)
-        ));
+        return ResponseEntity.ok(allowanceService.listAllDefs());
     }
 
     @PostMapping
@@ -59,55 +51,37 @@ public class AllowanceController {
         if (req.name() == null || req.name().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "name 不能为空"));
         }
-        AllowanceDef existing = defMapper.selectOne(
-                new LambdaQueryWrapper<AllowanceDef>()
-                        .eq(AllowanceDef::getCode, req.code())
-                        .eq(AllowanceDef::getDeleted, 0)
-        );
-        if (existing != null) {
+        if (allowanceService.isCodeDuplicate(req.code())) {
             return ResponseEntity.badRequest().body(Map.of("message", "code 已存在: " + req.code()));
         }
-
-        AllowanceDef def = new AllowanceDef();
-        def.setCode(req.code());
-        def.setName(req.name());
-        def.setDescription(req.description());
-        def.setDisplayOrder(req.displayOrder() != null ? req.displayOrder() : 0);
-        def.setIsEnabled(req.isEnabled() == null || req.isEnabled());
-        def.setIsSystem(false);
-        def.setCreatedAt(LocalDateTime.now());
-        def.setUpdatedAt(LocalDateTime.now());
-        defMapper.insert(def);
+        AllowanceDef def = allowanceService.createDef(
+                req.code(), req.name(), req.description(), req.displayOrder(), req.isEnabled());
         return ResponseEntity.ok(def);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('CEO','HR')")
     public ResponseEntity<?> update(@PathVariable Long id, @RequestBody DefRequest req) {
-        AllowanceDef def = defMapper.selectById(id);
-        if (def == null || (def.getDeleted() != null && def.getDeleted() == 1)) {
+        AllowanceDef def = allowanceService.findDefById(id);
+        if (def == null) {
             return ResponseEntity.notFound().build();
         }
-        if (req.name() != null) def.setName(req.name());
-        if (req.description() != null) def.setDescription(req.description());
-        if (req.displayOrder() != null) def.setDisplayOrder(req.displayOrder());
-        if (req.isEnabled() != null) def.setIsEnabled(req.isEnabled());
-        def.setUpdatedAt(LocalDateTime.now());
-        defMapper.updateById(def);
-        return ResponseEntity.ok(def);
+        AllowanceDef updated = allowanceService.updateDef(
+                id, req.name(), req.description(), req.displayOrder(), req.isEnabled());
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('CEO','HR')")
     public ResponseEntity<?> delete(@PathVariable Long id) {
-        AllowanceDef def = defMapper.selectById(id);
-        if (def == null || (def.getDeleted() != null && def.getDeleted() == 1)) {
+        AllowanceDef def = allowanceService.findDefById(id);
+        if (def == null) {
             return ResponseEntity.notFound().build();
         }
         if (Boolean.TRUE.equals(def.getIsSystem())) {
             return ResponseEntity.badRequest().body(Map.of("message", "系统内置项不可删除"));
         }
-        defMapper.deleteById(id);
+        allowanceService.deleteDef(id);
         return ResponseEntity.ok(Map.of("message", "已删除", "id", id));
     }
 
@@ -116,13 +90,7 @@ public class AllowanceController {
     @GetMapping("/{id}/configs")
     @PreAuthorize("hasAnyRole('CEO','HR','FINANCE')")
     public ResponseEntity<List<AllowanceConfig>> listConfigs(@PathVariable Long id) {
-        return ResponseEntity.ok(configMapper.selectList(
-                new LambdaQueryWrapper<AllowanceConfig>()
-                        .eq(AllowanceConfig::getAllowanceDefId, id)
-                        .eq(AllowanceConfig::getDeleted, 0)
-                        .orderByAsc(AllowanceConfig::getScope)
-                        .orderByAsc(AllowanceConfig::getScopeTargetId)
-        ));
+        return ResponseEntity.ok(allowanceService.listConfigs(id));
     }
 
     /**
@@ -131,10 +99,9 @@ public class AllowanceController {
      */
     @PutMapping("/{id}/configs")
     @PreAuthorize("hasAnyRole('CEO','HR')")
-    @Transactional
     public ResponseEntity<?> saveConfigs(@PathVariable Long id, @RequestBody List<ConfigItem> items) {
-        AllowanceDef def = defMapper.selectById(id);
-        if (def == null || (def.getDeleted() != null && def.getDeleted() == 1)) {
+        AllowanceDef def = allowanceService.findDefById(id);
+        if (def == null) {
             return ResponseEntity.notFound().build();
         }
 
@@ -154,28 +121,11 @@ public class AllowanceController {
             }
         }
 
-        // 软删旧的
-        List<AllowanceConfig> old = configMapper.selectList(
-                new LambdaQueryWrapper<AllowanceConfig>()
-                        .eq(AllowanceConfig::getAllowanceDefId, id)
-                        .eq(AllowanceConfig::getDeleted, 0)
-        );
-        for (AllowanceConfig o : old) {
-            configMapper.deleteById(o.getId());
-        }
-
-        // 写入新的
-        LocalDateTime now = LocalDateTime.now();
-        for (ConfigItem it : items) {
-            AllowanceConfig c = new AllowanceConfig();
-            c.setAllowanceDefId(id);
-            c.setScope(it.scope());
-            c.setScopeTargetId(it.scopeTargetId());
-            c.setAmount(it.amount());
-            c.setCreatedAt(now);
-            c.setUpdatedAt(now);
-            configMapper.insert(c);
-        }
+        // Convert controller records to service records
+        List<AllowanceService.ConfigItem> serviceItems = items.stream()
+                .map(it -> new AllowanceService.ConfigItem(it.scope(), it.scopeTargetId(), it.amount()))
+                .toList();
+        allowanceService.replaceConfigs(id, serviceItems);
 
         return ResponseEntity.ok(Map.of("message", "已保存", "count", items.size()));
     }

@@ -1,13 +1,11 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.FormRecord;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.mapper.FormRecordMapper;
 import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.TeamService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -29,8 +27,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TeamController {
 
-    private final EmployeeMapper employeeMapper;
-    private final FormRecordMapper formRecordMapper;
+    private final TeamService teamService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/members")
@@ -41,7 +38,7 @@ public class TeamController {
             return ResponseEntity.ok(new ArrayList<>());
         }
 
-        Employee manager = employeeMapper.selectById(managerId);
+        Employee manager = teamService.findEmployeeById(managerId);
         if (manager == null || manager.getDepartmentId() == null) {
             return ResponseEntity.ok(new ArrayList<>());
         }
@@ -49,13 +46,7 @@ public class TeamController {
         Long departmentId = manager.getDepartmentId();
         LocalDateTime monthStart = LocalDate.now().withDayOfMonth(1).atStartOfDay();
 
-        List<Employee> members = employeeMapper.selectList(
-                new LambdaQueryWrapper<Employee>()
-                        .eq(Employee::getDepartmentId, departmentId)
-                        .eq(Employee::getAccountStatus, "ACTIVE")
-                        .eq(Employee::getDeleted, 0)
-                        .ne(Employee::getId, managerId)
-        );
+        List<Employee> members = teamService.listActiveDepartmentMembers(departmentId, managerId);
 
         List<TeamMemberResponse> result = members.stream().map(emp -> {
             TeamMemberResponse dto = new TeamMemberResponse();
@@ -68,14 +59,7 @@ public class TeamController {
             double leaveDays = 0.0;
             double overtimeHours = 0.0;
 
-            List<FormRecord> forms = formRecordMapper.selectList(
-                    new LambdaQueryWrapper<FormRecord>()
-                            .eq(FormRecord::getSubmitterId, emp.getId())
-                            .in(FormRecord::getFormType, "LEAVE", "OVERTIME")
-                            .eq(FormRecord::getStatus, "APPROVED")
-                            .ge(FormRecord::getCreatedAt, monthStart)
-                            .eq(FormRecord::getDeleted, 0)
-            );
+            List<FormRecord> forms = teamService.listApprovedLeaveAndOvertimeForms(emp.getId(), monthStart);
 
             for (FormRecord form : forms) {
                 if (form.getFormData() == null || form.getFormData().isBlank()) {

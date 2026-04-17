@@ -6,14 +6,7 @@ import com.oa.backend.dto.EmployeeCreateRequest;
 import com.oa.backend.dto.EmployeeResponse;
 import com.oa.backend.dto.EmployeeUpdateRequest;
 import com.oa.backend.dto.SalaryOverrideRequest;
-import java.math.BigDecimal;
-import com.oa.backend.entity.Department;
 import com.oa.backend.entity.Employee;
-import com.oa.backend.entity.Role;
-import com.oa.backend.mapper.DepartmentMapper;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.mapper.RoleMapper;
-import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +19,7 @@ import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -38,10 +32,6 @@ import java.util.Map;
 public class EmployeeController {
 
     private final EmployeeService employeeService;
-    private final DepartmentMapper departmentMapper;
-    private final RoleMapper roleMapper;
-    private final com.oa.backend.mapper.EmergencyContactMapper emergencyContactMapper;
-    private final EmployeeMapper employeeMapper;
 
     /**
      * 获取员工列表（分页）
@@ -64,7 +54,7 @@ public class EmployeeController {
 
         // 转换为响应DTO（根据调用者身份脱敏）
         // Resolve currentEmployeeId once to avoid N+1 DB queries inside toResponse per element.
-        Long currentEmployeeId = SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper);
+        Long currentEmployeeId = employeeService.resolveEmployeeIdByUsername(authentication.getName());
         Map<String, Object> result = new HashMap<>();
         result.put("content", employeePage.getRecords().stream()
                 .map(e -> toResponse(e, currentEmployeeId, authentication)).toList());
@@ -188,7 +178,7 @@ public class EmployeeController {
      */
     private EmployeeResponse toResponse(Employee employee, Authentication authentication) {
         Long currentEmployeeId = authentication != null
-                ? SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper)
+                ? employeeService.resolveEmployeeIdByUsername(authentication.getName())
                 : null;
         return toResponse(employee, currentEmployeeId, authentication);
     }
@@ -215,50 +205,13 @@ public class EmployeeController {
         final boolean selfFinal = isSelf;
         final boolean idCardVisible = isSelf || canSeeIdCard;
         // 查询角色名称（响应辅助字段，失败不阻塞主流程）
-        String roleName = employee.getRoleCode();
-        try {
-            Role role = roleMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Role>()
-                    .eq("role_code", employee.getRoleCode())
-            );
-            if (role != null && role.getRoleName() != null) {
-                roleName = role.getRoleName();
-            }
-        } catch (Exception e) {
-            // 保留原因：响应辅助字段查询失败兜底为 roleCode
-            log.warn("EmployeeDetail: failed to load role name for employeeId={}", employee.getId(), e);
-        }
+        String roleName = employeeService.findRoleNameByCode(employee.getRoleCode());
 
-        // 查询部门名称（同上，失败不阻塞主流程）
-        String departmentName = "";
-        if (employee.getDepartmentId() != null) {
-            try {
-                Department dept = departmentMapper.selectById(employee.getDepartmentId());
-                if (dept != null && dept.getName() != null) {
-                    departmentName = dept.getName();
-                }
-            } catch (Exception e) {
-                // 保留原因：响应辅助字段查询失败兜底为空
-                log.warn("EmployeeDetail: failed to load department name for employeeId={}, departmentId={}",
-                        employee.getId(), employee.getDepartmentId(), e);
-            }
-        }
+        // 查询部门名称（响应辅助字段，失败不阻塞主流程）
+        String departmentName = employeeService.findDepartmentNameById(employee.getDepartmentId());
 
         // 紧急联系人列表（失败兜底为空列表）
-        java.util.List<EmployeeResponse.EmergencyContact> contacts = new java.util.ArrayList<>();
-        try {
-            java.util.List<com.oa.backend.entity.EmergencyContact> rows = emergencyContactMapper.selectList(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.oa.backend.entity.EmergencyContact>()
-                            .eq(com.oa.backend.entity.EmergencyContact::getEmployeeId, employee.getId())
-                            .eq(com.oa.backend.entity.EmergencyContact::getDeleted, 0));
-            for (com.oa.backend.entity.EmergencyContact ec : rows) {
-                contacts.add(new EmployeeResponse.EmergencyContact(
-                        ec.getId(), ec.getName(), ec.getPhone(), ec.getAddress()));
-            }
-        } catch (Exception e) {
-            // 保留原因：紧急联系人查询失败兜底为空，不阻塞员工详情主流程
-            log.warn("EmployeeDetail: failed to load emergency contacts for employeeId={}", employee.getId(), e);
-        }
+        List<EmployeeResponse.EmergencyContact> contacts = employeeService.findEmergencyContacts(employee.getId());
 
         return new EmployeeResponse(
             employee.getId(),

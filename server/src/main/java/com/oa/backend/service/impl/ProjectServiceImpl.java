@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oa.backend.dto.ProjectCreateRequest;
 import com.oa.backend.dto.ProjectMemberRequest;
+import com.oa.backend.dto.ProjectResponse;
 import com.oa.backend.dto.ProjectUpdateRequest;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.Project;
@@ -247,5 +248,21 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public void updateById(Project project) {
         projectMapper.updateById(project);
+    }
+
+    @Override
+    public List<ProjectResponse.ProjectMemberInfo> buildMemberInfos(Long projectId) {
+        List<ProjectMember> members = getMembers(projectId);
+        return members.stream()
+                .map(m -> {
+                    Employee emp = employeeMapper.selectById(m.getEmployeeId());
+                    return new ProjectResponse.ProjectMemberInfo(
+                            m.getEmployeeId(),
+                            emp != null ? emp.getEmployeeNo() : "",
+                            emp != null ? emp.getName() : "",
+                            m.getRole()
+                    );
+                })
+                .toList();
     }
 }

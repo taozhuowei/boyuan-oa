@@ -5,14 +5,20 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.dto.EmployeeCreateRequest;
+import com.oa.backend.dto.EmployeeResponse;
 import com.oa.backend.dto.EmployeeUpdateRequest;
 import com.oa.backend.dto.SalaryOverrideRequest;
+import com.oa.backend.entity.Department;
 import com.oa.backend.entity.EmergencyContact;
 import com.oa.backend.entity.Employee;
+import com.oa.backend.entity.Role;
+import com.oa.backend.mapper.DepartmentMapper;
 import com.oa.backend.mapper.EmergencyContactMapper;
 import com.oa.backend.mapper.EmployeeMapper;
+import com.oa.backend.mapper.RoleMapper;
 import com.oa.backend.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,17 +26,22 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 /**
  * 员工服务实现类
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmployeeServiceImpl implements EmployeeService {
 
     private final EmployeeMapper employeeMapper;
     private final EmergencyContactMapper emergencyContactMapper;
+    private final DepartmentMapper departmentMapper;
+    private final RoleMapper roleMapper;
     private final PasswordEncoder passwordEncoder;
 
     @Override
@@ -335,5 +346,64 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setUpdatedAt(LocalDateTime.now());
         employeeMapper.updateById(employee);
         return employee;
+    }
+
+    @Override
+    public Long resolveEmployeeIdByUsername(String username) {
+        Employee employee = employeeMapper.selectOne(
+                new LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getEmployeeNo, username)
+                        .eq(Employee::getDeleted, 0));
+        return employee != null ? employee.getId() : null;
+    }
+
+    @Override
+    public String findRoleNameByCode(String roleCode) {
+        if (roleCode == null) return null;
+        try {
+            Role role = roleMapper.selectOne(
+                    new LambdaQueryWrapper<Role>()
+                            .eq(Role::getRoleCode, roleCode));
+            if (role != null && role.getRoleName() != null) {
+                return role.getRoleName();
+            }
+        } catch (Exception e) {
+            log.warn("EmployeeService: failed to load role name for roleCode={}", roleCode, e);
+        }
+        // 查询失败时兜底返回原 roleCode
+        return roleCode;
+    }
+
+    @Override
+    public String findDepartmentNameById(Long departmentId) {
+        if (departmentId == null) return "";
+        try {
+            Department dept = departmentMapper.selectById(departmentId);
+            if (dept != null && dept.getName() != null) {
+                return dept.getName();
+            }
+        } catch (Exception e) {
+            log.warn("EmployeeService: failed to load department name for departmentId={}", departmentId, e);
+        }
+        // 查询失败时兜底返回空字符串
+        return "";
+    }
+
+    @Override
+    public List<EmployeeResponse.EmergencyContact> findEmergencyContacts(Long employeeId) {
+        List<EmployeeResponse.EmergencyContact> result = new ArrayList<>();
+        try {
+            List<com.oa.backend.entity.EmergencyContact> rows = emergencyContactMapper.selectList(
+                    new LambdaQueryWrapper<com.oa.backend.entity.EmergencyContact>()
+                            .eq(com.oa.backend.entity.EmergencyContact::getEmployeeId, employeeId)
+                            .eq(com.oa.backend.entity.EmergencyContact::getDeleted, 0));
+            for (com.oa.backend.entity.EmergencyContact ec : rows) {
+                result.add(new EmployeeResponse.EmergencyContact(
+                        ec.getId(), ec.getName(), ec.getPhone(), ec.getAddress()));
+            }
+        } catch (Exception e) {
+            log.warn("EmployeeService: failed to load emergency contacts for employeeId={}", employeeId, e);
+        }
+        return result;
     }
 }

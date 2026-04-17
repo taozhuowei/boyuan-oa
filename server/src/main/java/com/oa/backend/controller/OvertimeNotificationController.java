@@ -3,10 +3,7 @@ package com.oa.backend.controller;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.OvertimeNotification;
 import com.oa.backend.entity.OvertimeResponse;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.mapper.OvertimeNotificationMapper;
-import com.oa.backend.mapper.OvertimeResponseMapper;
-import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.OvertimeNotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,9 +33,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OvertimeNotificationController {
 
-    private final OvertimeNotificationMapper notificationMapper;
-    private final OvertimeResponseMapper responseMapper;
-    private final EmployeeMapper employeeMapper;
+    private final OvertimeNotificationService overtimeNotificationService;
 
     /**
      * 发起加班通知
@@ -51,7 +46,7 @@ public class OvertimeNotificationController {
             @RequestBody CreateNotificationRequest req,
             Authentication authentication) {
 
-        Employee initiator = resolveEmployee(authentication);
+        Employee initiator = overtimeNotificationService.resolveEmployee(authentication);
         if (initiator == null) return ResponseEntity.badRequest().build();
 
         OvertimeNotification notification = new OvertimeNotification();
@@ -65,7 +60,7 @@ public class OvertimeNotificationController {
         notification.setCreatedAt(LocalDateTime.now());
         notification.setUpdatedAt(LocalDateTime.now());
         notification.setDeleted(0);
-        notificationMapper.insert(notification);
+        overtimeNotificationService.saveNotification(notification);
         return ResponseEntity.ok(notification);
     }
 
@@ -75,18 +70,14 @@ public class OvertimeNotificationController {
      */
     @GetMapping
     public ResponseEntity<List<NotificationWithResponse>> list(Authentication authentication) {
-        Employee employee = resolveEmployee(authentication);
+        Employee employee = overtimeNotificationService.resolveEmployee(authentication);
         if (employee == null) return ResponseEntity.badRequest().build();
 
         // 查找员工所在项目的所有通知（简化：查全部，实际应按 project_member 过滤）
-        List<OvertimeNotification> all = notificationMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OvertimeNotification>()
-                        .eq(OvertimeNotification::getDeleted, 0)
-                        .orderByDesc(OvertimeNotification::getCreatedAt)
-        );
+        List<OvertimeNotification> all = overtimeNotificationService.listAllNotifications();
 
         List<NotificationWithResponse> result = all.stream().map(n -> {
-            OvertimeResponse resp = responseMapper.findByNotificationAndEmployee(n.getId(), employee.getId());
+            OvertimeResponse resp = overtimeNotificationService.findResponse(n.getId(), employee.getId());
             return new NotificationWithResponse(n, resp);
         }).toList();
 
@@ -100,12 +91,12 @@ public class OvertimeNotificationController {
     @GetMapping("/initiated")
     @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO')")
     public ResponseEntity<List<NotificationWithResponses>> listInitiated(Authentication authentication) {
-        Employee initiator = resolveEmployee(authentication);
+        Employee initiator = overtimeNotificationService.resolveEmployee(authentication);
         if (initiator == null) return ResponseEntity.badRequest().build();
 
-        List<OvertimeNotification> notifications = notificationMapper.findByInitiatorId(initiator.getId());
+        List<OvertimeNotification> notifications = overtimeNotificationService.listNotificationsByInitiator(initiator.getId());
         List<NotificationWithResponses> result = notifications.stream().map(n -> {
-            List<OvertimeResponse> responses = responseMapper.findByNotificationId(n.getId());
+            List<OvertimeResponse> responses = overtimeNotificationService.listResponsesByNotification(n.getId());
             return new NotificationWithResponses(n, responses);
         }).toList();
 
@@ -123,7 +114,7 @@ public class OvertimeNotificationController {
             @RequestBody RespondRequest req,
             Authentication authentication) {
 
-        OvertimeNotification notification = notificationMapper.selectById(id);
+        OvertimeNotification notification = overtimeNotificationService.findNotificationById(id);
         if (notification == null || notification.getDeleted() == 1) {
             return ResponseEntity.notFound().build();
         }
@@ -133,18 +124,18 @@ public class OvertimeNotificationController {
             return ResponseEntity.badRequest().build();
         }
 
-        Employee employee = resolveEmployee(authentication);
+        Employee employee = overtimeNotificationService.resolveEmployee(authentication);
         if (employee == null) return ResponseEntity.badRequest().build();
 
         // 幂等：已响应则更新
-        OvertimeResponse existing = responseMapper.findByNotificationAndEmployee(id, employee.getId());
+        OvertimeResponse existing = overtimeNotificationService.findResponse(id, employee.getId());
         OvertimeResponse response;
         if (existing != null) {
             existing.setAccepted(req.accepted());
             existing.setRejectReason(req.rejectReason());
             existing.setRejectApprovalStatus(req.accepted() ? null : "PENDING");
             existing.setUpdatedAt(LocalDateTime.now());
-            responseMapper.updateById(existing);
+            overtimeNotificationService.updateResponse(existing);
             response = existing;
         } else {
             response = new OvertimeResponse();
@@ -156,16 +147,9 @@ public class OvertimeNotificationController {
             response.setCreatedAt(LocalDateTime.now());
             response.setUpdatedAt(LocalDateTime.now());
             response.setDeleted(0);
-            responseMapper.insert(response);
+            overtimeNotificationService.saveResponse(response);
         }
         return ResponseEntity.ok(response);
-    }
-
-    // ── Helper ────────────────────────────────────────────────────────────
-
-    private Employee resolveEmployee(Authentication authentication) {
-        if (authentication == null) return null;
-        return SecurityUtils.getEmployeeFromUsername(authentication.getName(), employeeMapper);
     }
 
     // ── Request / Response types ──────────────────────────────────────────

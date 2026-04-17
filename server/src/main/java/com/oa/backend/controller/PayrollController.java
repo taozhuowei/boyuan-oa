@@ -1,27 +1,29 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.oa.backend.entity.*;
+import com.oa.backend.entity.PayrollAdjustment;
+import com.oa.backend.entity.PayrollCycle;
+import com.oa.backend.entity.PayrollSlip;
 import com.oa.backend.exception.BusinessException;
-import com.oa.backend.mapper.*;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.PayrollCorrectionService;
+import com.oa.backend.service.PayrollCycleService;
 import com.oa.backend.service.PayrollEngine;
+import com.oa.backend.service.PayrollSlipService;
 import com.oa.backend.service.SignatureService;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 /**
  * 薪酬系统控制器
  * 职责：工资周期管理（Finance/CEO）、工资条查看与确认/异议（Employee/Worker）。
+ * 业务逻辑委托 {@link PayrollEngine}、{@link PayrollCycleService}、
+ * {@link PayrollSlipService}、{@link SignatureService}、{@link PayrollCorrectionService}。
  *
  * 路由概览：
  * - GET  /payroll/cycles                   查询所有工资周期（Finance/CEO）
@@ -29,26 +31,24 @@ import java.util.Map;
  * - POST /payroll/cycles/{id}/open-window  开放申报窗口（Finance/CEO）
  * - POST /payroll/cycles/{id}/precheck     预结算检查（Finance/CEO）
  * - POST /payroll/cycles/{id}/settle       正式结算（Finance/CEO）
+ * - POST /payroll/cycles/{id}/unlock       CEO 解锁已结算周期
  * - GET  /payroll/slips                    查询工资条（员工看自己，Finance/CEO 按周期查全部）
- * - GET  /payroll/slips/{id}               工资条详情含明细（权限同上）
+ * - GET  /payroll/slips/{id}               工资条详情含明细
  * - POST /payroll/slips/{id}/confirm       员工确认工资条（Employee/Worker）
  * - POST /payroll/slips/{id}/dispute       员工提出异议（Employee/Worker）
+ * - POST /payroll/slips/{id}/correction    Finance 发起更正
+ * - GET  /payroll/corrections              列出更正记录（Finance/CEO）
  */
-@Slf4j
 @RestController
 @RequestMapping("/payroll")
 @RequiredArgsConstructor
 public class PayrollController {
 
     private final PayrollEngine payrollEngine;
-    private final PayrollCycleMapper cycleMapper;
-    private final PayrollSlipMapper slipMapper;
-    private final PayrollSlipItemMapper slipItemMapper;
-    private final PayrollItemDefMapper itemDefMapper;
-    private final EmployeeMapper employeeMapper;
+    private final PayrollCycleService payrollCycleService;
+    private final PayrollSlipService payrollSlipService;
     private final SignatureService signatureService;
     private final PayrollCorrectionService correctionService;
-    private final com.oa.backend.service.NotificationService notificationService;
 
     // ── 周期管理（Finance/CEO） ──────────────────────────────────────────────
 
@@ -58,12 +58,7 @@ public class PayrollController {
     @GetMapping("/cycles")
     @PreAuthorize("hasAnyRole('FINANCE','CEO')")
     public ResponseEntity<List<PayrollCycle>> listCycles() {
-        List<PayrollCycle> cycles = cycleMapper.selectList(
-                new LambdaQueryWrapper<PayrollCycle>()
-                        .eq(PayrollCycle::getDeleted, 0)
-                        .orderByDesc(PayrollCycle::getPeriod)
-        );
-        return ResponseEntity.ok(cycles);
+        return ResponseEntity.ok(payrollCycleService.listCycles());
     }
 
     /**
@@ -86,7 +81,6 @@ public class PayrollController {
 
     /**
      * 开放申报窗口，进入 WINDOW_OPEN 状态。
-     * 窗口到期后由 Scheduler 自动关闭，无手动关闭接口。
      */
     @PostMapping("/cycles/{id}/open-window")
     @PreAuthorize("hasAnyRole('FINANCE','CEO')")
@@ -100,7 +94,7 @@ public class PayrollController {
     }
 
     /**
-     * 预结算检查：返回检查项列表，前端展示并让用户决定是否继续结算。
+     * 预结算检查：返回检查项列表。
      */
     @PostMapping("/cycles/{id}/precheck")
     @PreAuthorize("hasAnyRole('FINANCE','CEO')")
@@ -130,40 +124,21 @@ public class PayrollController {
 
     /**
      * CEO 解锁已结算周期（设计 §6.6）：仅 CEO，无需审批；操作日志自动记录；通知财务。
-     * 解锁后周期回到 WINDOW_CLOSED，财务可重新结算或更正。
      */
     @PostMapping("/cycles/{id}/unlock")
     @PreAuthorize("hasRole('CEO')")
     @com.oa.backend.annotation.OperationLogRecord(action = "PAYROLL_CYCLE_UNLOCK", targetType = "PAYROLL_CYCLE")
     public ResponseEntity<?> unlock(@PathVariable Long id, Authentication auth) {
-        PayrollCycle cycle = cycleMapper.selectById(id);
-        if (cycle == null || (cycle.getDeleted() != null && cycle.getDeleted() == 1)) {
+        PayrollCycleService.UnlockResult result = payrollCycleService.unlock(id);
+        if (result instanceof PayrollCycleService.UnlockResult.Ok ok) {
+            return ResponseEntity.ok(ok.cycle());
+        } else if (result instanceof PayrollCycleService.UnlockResult.NotFound) {
             return ResponseEntity.notFound().build();
-        }
-        if (!"SETTLED".equals(cycle.getStatus()) && !"LOCKED".equals(cycle.getStatus())) {
+        } else {
+            PayrollCycleService.UnlockResult.BadState bad = (PayrollCycleService.UnlockResult.BadState) result;
             return ResponseEntity.badRequest().body(Map.of(
-                    "message", "周期当前状态 [" + cycle.getStatus() + "] 不需要解锁"));
+                "message", "周期当前状态 [" + bad.currentStatus() + "] 不需要解锁"));
         }
-        cycle.setStatus("WINDOW_CLOSED");
-        cycle.setLockedAt(null);
-        cycle.setUpdatedAt(LocalDateTime.now());
-        cycleMapper.updateById(cycle);
-
-        // 通知所有 finance 角色
-        try {
-            List<com.oa.backend.entity.Employee> finances = employeeMapper.selectList(
-                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.oa.backend.entity.Employee>()
-                            .eq(com.oa.backend.entity.Employee::getRoleCode, "finance")
-                            .eq(com.oa.backend.entity.Employee::getDeleted, 0));
-            for (com.oa.backend.entity.Employee f : finances) {
-                notificationService.send(f.getId(), "薪资周期已被 CEO 解锁",
-                        "周期 " + cycle.getPeriod() + " 已解锁，请重新核对并结算。",
-                        "PAYROLL", "PAYROLL_CYCLE", id);
-            }
-        } catch (Exception e) {
-            log.error("解锁薪资周期后通知财务失败 cycleId={}", id, e);
-        }
-        return ResponseEntity.ok(cycle);
     }
 
     // ── 工资条（分角色权限） ────────────────────────────────────────────────
@@ -183,74 +158,46 @@ public class PayrollController {
             if (cycleId == null) {
                 return ResponseEntity.badRequest().body(Map.of("message", "Finance/CEO 查询工资条时 cycleId 为必填"));
             }
-            List<PayrollSlip> slips = slipMapper.findByCycleId(cycleId);
-            return ResponseEntity.ok(slips);
+            return ResponseEntity.ok(payrollSlipService.listByCycleId(cycleId));
         }
 
-        // Employee/Worker 只能查自己的
-        Long employeeId = SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper);
+        Long employeeId = payrollSlipService.resolveEmployeeId(authentication.getName());
         if (employeeId == null) {
             return ResponseEntity.status(403).body(Map.of("message", "无法识别当前用户"));
         }
-        List<PayrollSlip> slips = slipMapper.findByEmployeeId(employeeId);
-        return ResponseEntity.ok(slips);
+        return ResponseEntity.ok(payrollSlipService.listByEmployeeId(employeeId));
     }
 
     /**
      * 查询工资条详情（含明细项）。
-     * - Employee/Worker 只能查看自己的工资条
-     * - Finance/CEO 可查看任意工资条
      */
     @GetMapping("/slips/{id}")
     @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER','FINANCE','CEO')")
     public ResponseEntity<?> getSlip(@PathVariable Long id, Authentication authentication) {
-        PayrollSlip slip = slipMapper.selectById(id);
-        if (slip == null || slip.getDeleted() == 1) {
+        PayrollSlip slip = payrollSlipService.findById(id);
+        if (slip == null) {
             return ResponseEntity.notFound().build();
         }
 
-        // 员工只能看自己的
         if (!SecurityUtils.hasFinanceAccess(authentication)) {
-            Long employeeId = SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper);
+            Long employeeId = payrollSlipService.resolveEmployeeId(authentication.getName());
             if (!slip.getEmployeeId().equals(employeeId)) {
                 return ResponseEntity.status(403).body(Map.of("message", "无权查看此工资条"));
             }
         }
 
-        // 查询明细
-        List<PayrollSlipItem> items = slipItemMapper.findBySlipId(id);
-        // 为明细补充定义名称（type、name）
-        List<Map<String, Object>> enrichedItems = items.stream().map(item -> {
-            PayrollItemDef def = itemDefMapper.selectById(item.getItemDefId());
-            return Map.<String, Object>of(
-                    "id", item.getId(),
-                    "itemDefId", item.getItemDefId(),
-                    "name", def != null ? def.getName() : "未知",
-                    "type", def != null ? def.getType() : "",
-                    "amount", item.getAmount(),
-                    "remark", item.getRemark() != null ? item.getRemark() : ""
-            );
-        }).toList();
-
-        return ResponseEntity.ok(Map.of("slip", slip, "items", enrichedItems));
+        return ResponseEntity.ok(Map.of("slip", slip, "items", payrollSlipService.listEnrichedItems(id)));
     }
 
     /**
      * 员工确认工资条（电子签名版）。
-     * 需要验证 PIN 码，成功后生成存证链记录。
-     * 仅 PUBLISHED 状态的工资条可被确认。
-     *
-     * @param id             工资条 ID
-     * @param request        确认请求 { "pin": "123456" }
-     * @param authentication 当前用户认证信息
-     * @return 确认结果，包含存证链 ID
      */
     @PostMapping("/slips/{id}/confirm")
     @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER')")
     public ResponseEntity<?> confirmSlip(@PathVariable Long id,
                                           @RequestBody ConfirmSlipRequest request,
                                           Authentication authentication) {
-        PayrollSlip slip = getOwnSlip(id, authentication);
+        PayrollSlip slip = payrollSlipService.getOwnSlip(id, authentication);
         if (slip == null) {
             return ResponseEntity.status(403).body(Map.of("message", "无权操作此工资条"));
         }
@@ -260,19 +207,16 @@ public class PayrollController {
             return ResponseEntity.status(403).body(Map.of("message", "无法识别当前用户"));
         }
 
-        // 验证是否已绑定签名
         if (!signatureService.isBound(employeeId)) {
             return ResponseEntity.badRequest().body(Map.of("message", "请先绑定电子签名"));
         }
-
-        // 验证 PIN 码
         if (request == null || request.pin() == null || request.pin().isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("message", "请输入 PIN 码"));
         }
 
         try {
             Long evidenceId = signatureService.confirmPayrollSlip(employeeId, id, request.pin());
-            PayrollSlip confirmed = slipMapper.selectById(id);
+            PayrollSlip confirmed = payrollSlipService.findById(id);
             return ResponseEntity.ok(Map.of(
                     "message", "已确认",
                     "slipId", id,
@@ -280,16 +224,12 @@ public class PayrollController {
                     "slip", confirmed
             ));
         } catch (IllegalStateException e) {
-            // IllegalArgumentException 交给 GlobalExceptionHandler（已 400）
-            // IllegalStateException 语义也是业务冲突（如状态不允许），统一 400
             throw new BusinessException(400, e.getMessage());
         }
     }
 
     /**
      * 员工对工资条提出异议。
-     * 请求体：{ "reason": "基本工资金额有误" }
-     * 仅 PUBLISHED 状态的工资条可提出异议。
      */
     @PostMapping("/slips/{id}/dispute")
     @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER')")
@@ -298,60 +238,30 @@ public class PayrollController {
             @RequestBody DisputeRequest request,
             Authentication authentication) {
 
-        PayrollSlip slip = getOwnSlip(id, authentication);
+        PayrollSlip slip = payrollSlipService.getOwnSlip(id, authentication);
         if (slip == null) {
             return ResponseEntity.status(403).body(Map.of("message", "无权操作此工资条"));
         }
-        if (!"PUBLISHED".equals(slip.getStatus())) {
+
+        PayrollSlip updated = payrollSlipService.dispute(slip);
+        if (updated == null) {
             return ResponseEntity.badRequest().body(Map.of(
                     "message", "工资条状态为 [" + slip.getStatus() + "]，仅 PUBLISHED 状态可提出异议"));
         }
-
-        slip.setStatus("DISPUTED");
-        slip.setUpdatedAt(LocalDateTime.now());
-        slipMapper.updateById(slip);
-        return ResponseEntity.ok(Map.of("message", "异议已提交", "slip", slip));
+        return ResponseEntity.ok(Map.of("message", "异议已提交", "slip", updated));
     }
-
-    // ── Private helpers ───────────────────────────────────────────────────
-
-    /**
-     * 获取属于当前员工的工资条，不属于则返回 null。
-     */
-    private PayrollSlip getOwnSlip(Long slipId, Authentication authentication) {
-        PayrollSlip slip = slipMapper.selectById(slipId);
-        if (slip == null || slip.getDeleted() == 1) return null;
-
-        Long employeeId = SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper);
-        if (employeeId == null || !slip.getEmployeeId().equals(employeeId)) return null;
-
-        return slip;
-    }
-
-    // ── Inner request records ─────────────────────────────────────────────
-
-    /** 创建工资周期请求 */
-    public record CreateCycleRequest(String period) {}
-
-    /** 异议请求 */
-    public record DisputeRequest(String reason) {}
-
-    /** 确认工资条请求 */
-    public record ConfirmSlipRequest(String pin) {}
 
     // ── 薪资更正（Finance 发起 → CEO 审批） ───────────────────────────────────
 
     /**
-     * Finance 发起更正：填写 reason + 更正项（部分或全部 item_def_id 的新金额）。
-     * 创建 form_record（PAYROLL_CORRECTION）+ payroll_adjustment（PENDING）。
-     * CEO 在 /todo 通过审批后，下次访问 /payroll/corrections 会自动应用。
+     * Finance 发起更正。
      */
     @PostMapping("/slips/{id}/correction")
     @PreAuthorize("hasRole('FINANCE')")
     public ResponseEntity<?> createCorrection(@PathVariable Long id,
                                               @RequestBody CorrectionRequest req,
                                               Authentication auth) {
-        Long financeId = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        Long financeId = payrollSlipService.resolveEmployeeId(auth.getName());
         if (financeId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "无法识别当前用户"));
         }
@@ -369,7 +279,7 @@ public class PayrollController {
     }
 
     /**
-     * 列出更正记录（自动同步 form 状态：APPROVED 的会就地应用、REJECTED 的更新 status）。
+     * 列出更正记录（自动同步 form 状态）。
      */
     @GetMapping("/corrections")
     @PreAuthorize("hasAnyRole('FINANCE','CEO')")
@@ -379,6 +289,20 @@ public class PayrollController {
         return ResponseEntity.ok(correctionService.list(cycleId, employeeId));
     }
 
+    // ── Inner request records ─────────────────────────────────────────────
+
+    /** 创建工资周期请求 */
+    public record CreateCycleRequest(String period) {}
+
+    /** 异议请求 */
+    public record DisputeRequest(String reason) {}
+
+    /** 确认工资条请求 */
+    public record ConfirmSlipRequest(String pin) {}
+
+    /** 更正请求 */
     public record CorrectionRequest(String reason, List<CorrectionItemPayload> corrections) {}
+
+    /** 更正项 */
     public record CorrectionItemPayload(Long itemDefId, java.math.BigDecimal amount, String remark) {}
 }

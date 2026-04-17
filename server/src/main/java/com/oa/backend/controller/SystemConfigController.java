@@ -1,8 +1,6 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.oa.backend.entity.SystemConfig;
-import com.oa.backend.mapper.SystemConfigMapper;
+import com.oa.backend.service.SystemConfigService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -35,7 +33,7 @@ public class SystemConfigController {
     /** 默认值：小时 */
     private static final String DEFAULT_UNIT = "HOUR";
 
-    private final SystemConfigMapper configMapper;
+    private final SystemConfigService systemConfigService;
 
     /**
      * 获取考勤计量单位配置
@@ -154,22 +152,11 @@ public class SystemConfigController {
     // ── Helpers ────────────────────────────────────────────────────────────
 
     private String getConfigValue(String key, String defaultValue) {
-        SystemConfig config = configMapper.selectById(key);
-        return config != null ? config.getConfigValue() : defaultValue;
+        return systemConfigService.getConfigValue(key, defaultValue);
     }
 
     private void upsertConfig(String key, String value, String description) {
-        SystemConfig existing = configMapper.selectById(key);
-        if (existing != null) {
-            existing.setConfigValue(value);
-            configMapper.updateById(existing);
-        } else {
-            SystemConfig config = new SystemConfig();
-            config.setConfigKey(key);
-            config.setConfigValue(value);
-            config.setDescription(description);
-            configMapper.insert(config);
-        }
+        systemConfigService.upsertConfig(key, value, description);
     }
 
     // ── Request / Response types ─────────────────────────────────────────

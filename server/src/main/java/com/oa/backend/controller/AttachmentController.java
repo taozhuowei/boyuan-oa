@@ -1,11 +1,8 @@
 package com.oa.backend.controller;
 
 import com.oa.backend.entity.AttachmentMeta;
-import com.oa.backend.entity.Employee;
-import com.oa.backend.mapper.AttachmentMetaMapper;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.AttachmentAccessService;
+import com.oa.backend.service.AttachmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,7 +38,8 @@ import java.util.UUID;
  *       按 ID 鉴权下载文件流。
  * 存储路径：${oa.upload-dir}/YYYY-MM-DD/{uuid}{ext}
  *
- * 访问控制（下载）委托给 AttachmentAccessService（见任务 A-AUDIT-FIX-03）
+ * AttachmentMetaMapper 和 EmployeeMapper 已迁移至 AttachmentService；
+ * 访问控制（下载）委托给 AttachmentAccessService。
  * 上传类型校验：MIME 白名单 + 扩展名白名单 + 前 8 字节 magic bytes 基本一致性校验
  */
 @Slf4j
@@ -50,8 +48,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AttachmentController {
 
-    private final AttachmentMetaMapper attachmentMetaMapper;
-    private final EmployeeMapper employeeMapper;
+    private final AttachmentService attachmentService;
     private final AttachmentAccessService attachmentAccessService;
 
     @Value("${oa.upload-dir:./uploads}")
@@ -126,19 +123,14 @@ public class AttachmentController {
         // 计算 MD5
         String md5 = calcMd5(Files.readAllBytes(target));
 
-        // 记录元数据
-        Long uploaderId = getEmployeeId(auth);
-        AttachmentMeta meta = new AttachmentMeta();
-        meta.setBusinessType(businessType);
-        meta.setBusinessId(businessId);
-        meta.setFileName(sanitizeFileName(file.getOriginalFilename()));
-        meta.setStoragePath(today + "/" + storedName);
-        meta.setFileMd5(md5);
-        meta.setFileSize(file.getSize());
-        meta.setMimeType(clientMime);
-        meta.setUploadedBy(uploaderId);
-        meta.setUploadedAt(LocalDateTime.now());
-        attachmentMetaMapper.insert(meta);
+        // 记录元数据（委托给 AttachmentService）
+        Long uploaderId = attachmentService.resolveEmployeeIdByUsername(
+                auth != null ? auth.getName() : null);
+        AttachmentMeta meta = attachmentService.saveAttachmentMeta(
+                businessType, businessId,
+                sanitizeFileName(file.getOriginalFilename()),
+                today + "/" + storedName,
+                md5, file.getSize(), clientMime, uploaderId);
 
         log.info("Attachment uploaded: id={}, path={}", meta.getId(), meta.getStoragePath());
         return ResponseEntity.ok(Map.of(
@@ -159,12 +151,13 @@ public class AttachmentController {
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Resource> download(@PathVariable Long id, Authentication auth) throws MalformedURLException {
-        AttachmentMeta meta = attachmentMetaMapper.selectById(id);
+        AttachmentMeta meta = attachmentService.findById(id);
         if (meta == null) {
             return ResponseEntity.notFound().build();
         }
 
-        Long currentEmployeeId = getEmployeeId(auth);
+        Long currentEmployeeId = attachmentService.resolveEmployeeIdByUsername(
+                auth != null ? auth.getName() : null);
         if (!attachmentAccessService.canAccess(meta, auth, currentEmployeeId)) {
             return ResponseEntity.status(403).build();
         }
@@ -217,12 +210,6 @@ public class AttachmentController {
             log.warn("Attachment: MD5 algorithm not available on this JVM, skip md5 calculation", e);
             return "";
         }
-    }
-
-    private Long getEmployeeId(Authentication auth) {
-        if (auth == null) return null;
-        Employee emp = SecurityUtils.getEmployeeFromUsername(auth.getName(), employeeMapper);
-        return emp != null ? emp.getId() : null;
     }
 
     /**

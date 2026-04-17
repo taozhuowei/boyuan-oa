@@ -1,7 +1,7 @@
 package com.oa.backend.controller;
 
 import com.oa.backend.entity.CleanupTask;
-import com.oa.backend.mapper.CleanupTaskMapper;
+import com.oa.backend.service.CleanupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,7 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CleanupController {
 
-    private final CleanupTaskMapper cleanupTaskMapper;
+    private final CleanupService cleanupService;
 
     /**
      * 获取所有清理任务列表。
@@ -37,7 +37,6 @@ public class CleanupController {
     @GetMapping
     @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<List<CleanupTask>> listCleanupTasks() {
-        List<CleanupTask> tasks = cleanupTaskMapper.findAllActive();
-        return ResponseEntity.ok(tasks);
+        return ResponseEntity.ok(cleanupService.listAllCleanupTasks());
     }
 }

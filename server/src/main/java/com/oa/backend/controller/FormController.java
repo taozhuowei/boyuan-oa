@@ -2,9 +2,6 @@ package com.oa.backend.controller;
 
 import com.oa.backend.dto.FormApprovalRequest;
 import com.oa.backend.dto.FormRecordResponse;
-import com.oa.backend.entity.Employee;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.ApprovalFlowService;
 import com.oa.backend.service.FormService;
 import jakarta.validation.Valid;
@@ -28,7 +25,6 @@ public class FormController {
 
     private final FormService formService;
     private final ApprovalFlowService approvalFlowService;
-    private final EmployeeMapper employeeMapper;
 
     /**
      * 获取待审批列表
@@ -129,23 +125,15 @@ public class FormController {
      * 获取当前登录员工的 ID
      */
     private Long getCurrentEmployeeId(Authentication authentication) {
-        if (authentication == null) {
-            return null;
-        }
-        String username = authentication.getName();
-        Employee employee = SecurityUtils.getEmployeeFromUsername(username, employeeMapper);
-        return employee != null ? employee.getId() : null;
+        if (authentication == null) return null;
+        return formService.resolveEmployeeIdByUsername(authentication.getName());
     }
 
     /**
      * 获取当前登录员工的角色代码
      */
     private String getCurrentRoleCode(Authentication authentication) {
-        if (authentication == null) {
-            return null;
-        }
-        String username = authentication.getName();
-        Employee employee = SecurityUtils.getEmployeeFromUsername(username, employeeMapper);
-        return employee != null ? employee.getRoleCode() : null;
+        if (authentication == null) return null;
+        return formService.resolveRoleCodeByUsername(authentication.getName());
     }
 }

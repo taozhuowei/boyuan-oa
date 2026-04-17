@@ -5,10 +5,8 @@ import com.oa.backend.dto.ProjectCreateRequest;
 import com.oa.backend.dto.ProjectResponse;
 import com.oa.backend.dto.ProjectStatusRequest;
 import com.oa.backend.dto.ProjectUpdateRequest;
-import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.Project;
 import com.oa.backend.entity.ProjectMember;
-import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.security.JwtTokenService;
 import com.oa.backend.service.ProjectService;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +30,6 @@ public class ProjectController {
 
     private final ProjectService projectService;
     private final JwtTokenService jwtTokenService;
-    private final EmployeeMapper employeeMapper;
 
     /**
      * 从 Authorization 头解析当前用户 ID。
@@ -63,23 +60,15 @@ public class ProjectController {
     }
 
     /**
-     * 构建 ProjectResponse，从 ProjectService 获取成员列表后组装。
+     * 构建 ProjectResponse。成员信息通过 ProjectService.buildMemberInfos() 获取，
+     * 避免 controller 直接依赖 EmployeeMapper。
      *
-     * @param includeMembers 为 false 时 memberInfos 字段为 null（列表页减少查询量）
+     * @param includeMembers 为 false 时 members 字段为 null（列表页减少查询量）
      */
     ProjectResponse buildProjectResponse(Project project, boolean includeMembers) {
         List<ProjectMember> members = projectService.getMembers(project.getId());
-        List<ProjectResponse.ProjectMemberInfo> memberInfos = members.stream()
-            .map(m -> {
-                Employee emp = employeeMapper.selectById(m.getEmployeeId());
-                return new ProjectResponse.ProjectMemberInfo(
-                    m.getEmployeeId(),
-                    emp != null ? emp.getEmployeeNo() : "",
-                    emp != null ? emp.getName() : "",
-                    m.getRole()
-                );
-            })
-            .toList();
+        List<ProjectResponse.ProjectMemberInfo> memberInfos =
+                includeMembers ? projectService.buildMemberInfos(project.getId()) : null;
 
         return new ProjectResponse(
             project.getId(),
@@ -96,7 +85,7 @@ public class ProjectController {
             project.getCreatedAt(),
             project.getUpdatedAt(),
             members.size(),
-            includeMembers ? memberInfos : null
+            memberInfos
         );
     }
 

@@ -1,12 +1,8 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.dto.InjuryClaimRequest;
-import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.InjuryClaim;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.mapper.InjuryClaimMapper;
-import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.InjuryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -27,17 +23,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class InjuryClaimController {
 
-    private final InjuryClaimMapper injuryClaimMapper;
-    private final EmployeeMapper employeeMapper;
+    private final InjuryService injuryService;
 
     /** 查询所有工伤理赔记录（财务/CEO 可查） */
     @GetMapping
     @PreAuthorize("hasAnyRole('FINANCE','CEO')")
     public ResponseEntity<List<InjuryClaim>> list() {
-        return ResponseEntity.ok(injuryClaimMapper.selectList(
-                new LambdaQueryWrapper<InjuryClaim>()
-                        .eq(InjuryClaim::getDeleted, 0)
-                        .orderByDesc(InjuryClaim::getCreatedAt)));
+        return ResponseEntity.ok(injuryService.listAllClaims());
     }
 
     /**
@@ -60,7 +52,7 @@ public class InjuryClaimController {
         claim.setCreatedAt(LocalDateTime.now());
         claim.setUpdatedAt(LocalDateTime.now());
         claim.setDeleted(0);
-        injuryClaimMapper.insert(claim);
+        injuryService.saveClaim(claim);
         return ResponseEntity.ok(claim);
     }
 }

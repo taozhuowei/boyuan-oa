@@ -1,8 +1,8 @@
 package com.oa.backend.controller;
 
 import com.oa.backend.entity.ExportBackupTask;
-import com.oa.backend.mapper.ExportBackupTaskMapper;
 import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.BackupService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -27,7 +27,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class BackupController {
 
-    private final ExportBackupTaskMapper exportTaskMapper;
+    private final BackupService backupService;
 
     /**
      * 获取当前用户的导出任务列表。
@@ -45,7 +45,7 @@ public class BackupController {
             return ResponseEntity.status(403).body(Map.of("message", "无法识别当前用户"));
         }
 
-        List<ExportBackupTask> tasks = exportTaskMapper.findByInitiatorId(initiatorId);
+        List<ExportBackupTask> tasks = backupService.listExportTasksByInitiator(initiatorId);
         return ResponseEntity.ok(tasks);
     }
 }

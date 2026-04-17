@@ -1,30 +1,26 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.entity.ApprovalFlowDef;
 import com.oa.backend.entity.ApprovalFlowNode;
-import com.oa.backend.mapper.ApprovalFlowDefMapper;
-import com.oa.backend.mapper.ApprovalFlowNodeMapper;
+import com.oa.backend.service.ApprovalFlowService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 审批流配置控制器
  * 提供审批流定义的查询与更新接口，仅 CEO 可操作（系统配置权限）。
+ * 底层 Mapper 操作均委托给 ApprovalFlowService。
  */
 @RestController
 @RequestMapping("/approval/flows")
 @RequiredArgsConstructor
 public class ApprovalFlowController {
 
-    private final ApprovalFlowDefMapper approvalFlowDefMapper;
-    private final ApprovalFlowNodeMapper approvalFlowNodeMapper;
+    private final ApprovalFlowService approvalFlowService;
 
     /**
      * 获取所有审批流定义及其节点列表
@@ -33,10 +29,9 @@ public class ApprovalFlowController {
     @GetMapping
     @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<List<FlowWithNodes>> listFlows() {
-        List<ApprovalFlowDef> defs = approvalFlowDefMapper.selectList(
-                new LambdaQueryWrapper<ApprovalFlowDef>().eq(ApprovalFlowDef::getDeleted, 0));
+        List<ApprovalFlowDef> defs = approvalFlowService.listFlowDefs();
         List<FlowWithNodes> result = defs.stream().map(def -> {
-            List<ApprovalFlowNode> nodes = approvalFlowNodeMapper.findByFlowId(def.getId());
+            List<ApprovalFlowNode> nodes = approvalFlowService.listNodesByFlowId(def.getId());
             return new FlowWithNodes(def, nodes);
         }).toList();
         return ResponseEntity.ok(result);
@@ -49,11 +44,11 @@ public class ApprovalFlowController {
     @GetMapping("/{businessType}")
     @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<FlowWithNodes> getFlow(@PathVariable String businessType) {
-        ApprovalFlowDef def = approvalFlowDefMapper.findActiveByBusinessType(businessType.toUpperCase());
+        ApprovalFlowDef def = approvalFlowService.findActiveFlowDefByBusinessType(businessType.toUpperCase());
         if (def == null) {
             return ResponseEntity.notFound().build();
         }
-        List<ApprovalFlowNode> nodes = approvalFlowNodeMapper.findByFlowId(def.getId());
+        List<ApprovalFlowNode> nodes = approvalFlowService.listNodesByFlowId(def.getId());
         return ResponseEntity.ok(new FlowWithNodes(def, nodes));
     }
 
@@ -69,38 +64,18 @@ public class ApprovalFlowController {
             @PathVariable String businessType,
             @RequestBody UpdateFlowRequest request) {
 
-        ApprovalFlowDef def = approvalFlowDefMapper.findActiveByBusinessType(businessType.toUpperCase());
+        ApprovalFlowDef def = approvalFlowService.findActiveFlowDefByBusinessType(businessType.toUpperCase());
         if (def == null) {
             return ResponseEntity.notFound().build();
         }
 
-        // Soft-delete existing nodes for this flow
-        List<ApprovalFlowNode> existing = approvalFlowNodeMapper.findByFlowId(def.getId());
-        for (ApprovalFlowNode node : existing) {
-            node.setDeleted(1);
-            node.setUpdatedAt(LocalDateTime.now());
-            approvalFlowNodeMapper.updateById(node);
-        }
+        // Convert controller request records to service spec records
+        List<ApprovalFlowService.ApprovalFlowNodeSpec> specs = request.nodes().stream()
+                .map(n -> new ApprovalFlowService.ApprovalFlowNodeSpec(
+                        n.nodeName(), n.approverType(), n.approverRef(), n.skipCondition()))
+                .toList();
 
-        // Insert new nodes
-        int order = 1;
-        for (NodeSpec spec : request.nodes()) {
-            ApprovalFlowNode node = new ApprovalFlowNode();
-            node.setFlowId(def.getId());
-            node.setNodeOrder(order++);
-            node.setNodeName(spec.nodeName());
-            node.setApprovalMode("SEQUENTIAL");
-            node.setApproverType(spec.approverType());
-            node.setApproverRef(spec.approverRef());
-            node.setSkipCondition(spec.skipCondition());
-            node.setCreatedAt(LocalDateTime.now());
-            node.setUpdatedAt(LocalDateTime.now());
-            node.setDeleted(0);
-            approvalFlowNodeMapper.insert(node);
-        }
-
-        // Return updated state
-        List<ApprovalFlowNode> updated = approvalFlowNodeMapper.findByFlowId(def.getId());
+        List<ApprovalFlowNode> updated = approvalFlowService.replaceFlowNodes(def.getId(), specs);
         return ResponseEntity.ok(new FlowWithNodes(def, updated));
     }
 

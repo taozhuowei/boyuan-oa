@@ -2,8 +2,6 @@ package com.oa.backend.controller;
 
 import com.oa.backend.entity.TemporaryDelegation;
 import com.oa.backend.exception.BusinessException;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.TemporaryDelegationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -29,13 +27,12 @@ import java.util.Map;
 public class TemporaryDelegationController {
 
     private final TemporaryDelegationService service;
-    private final EmployeeMapper employeeMapper;
 
     @GetMapping
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<List<TemporaryDelegation>> listMine(@RequestParam(defaultValue = "delegator") String as,
                                                               Authentication auth) {
-        Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        Long me = service.resolveEmployeeIdByUsername(auth.getName());
         return ResponseEntity.ok(service.listMine(me, !"delegate".equalsIgnoreCase(as)));
     }
 
@@ -43,7 +40,7 @@ public class TemporaryDelegationController {
     @PreAuthorize("isAuthenticated()")
     @com.oa.backend.annotation.OperationLogRecord(action = "DELEGATION_CREATE", targetType = "DELEGATION")
     public ResponseEntity<?> create(@RequestBody DelegationRequest req, Authentication auth) {
-        Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        Long me = service.resolveEmployeeIdByUsername(auth.getName());
         try {
             TemporaryDelegation d = service.create(
                     me, req.delegatePhone(), req.scope(),
@@ -58,7 +55,7 @@ public class TemporaryDelegationController {
     @PreAuthorize("isAuthenticated()")
     @com.oa.backend.annotation.OperationLogRecord(action = "DELEGATION_REVOKE", targetType = "DELEGATION")
     public ResponseEntity<?> revoke(@PathVariable Long id, Authentication auth) {
-        Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        Long me = service.resolveEmployeeIdByUsername(auth.getName());
         try {
             boolean ok = service.revoke(id, me);
             return ok ? ResponseEntity.ok(Map.of("message", "已撤销", "id", id))

@@ -49,13 +49,7 @@ class AuthControllerTest {
     private com.oa.backend.security.ResetCodeStore resetCodeStore;
 
     @MockBean
-    private com.oa.backend.mapper.RoleMapper roleMapper;
-
-    @MockBean
-    private com.oa.backend.mapper.DepartmentMapper departmentMapper;
-
-    @MockBean
-    private com.oa.backend.mapper.SecondRoleAssignmentMapper secondRoleAssignmentMapper;
+    private com.oa.backend.service.AuthDataService authDataService;
 
     @MockBean
     private com.oa.backend.service.PhoneChangeService phoneChangeService;
@@ -116,8 +110,8 @@ class AuthControllerTest {
 
         given(employeeService.authenticate("finance.demo", "123456"))
             .willReturn(Optional.of(employee));
-        given(roleMapper.selectOne(org.mockito.Mockito.any()))
-            .willReturn(role);
+        given(authDataService.resolveRoleName(org.mockito.Mockito.eq("finance"), org.mockito.Mockito.any(), org.mockito.Mockito.any()))
+            .willReturn("财务");
 
         mockMvc.perform(post("/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)

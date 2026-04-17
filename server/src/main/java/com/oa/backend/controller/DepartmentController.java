@@ -1,12 +1,9 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.oa.backend.dto.DepartmentRequest;
 import com.oa.backend.dto.DepartmentResponse;
 import com.oa.backend.entity.Department;
-import com.oa.backend.entity.Employee;
-import com.oa.backend.mapper.DepartmentMapper;
-import com.oa.backend.mapper.EmployeeMapper;
+import com.oa.backend.service.DepartmentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,8 +22,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DepartmentController {
 
-    private final DepartmentMapper departmentMapper;
-    private final EmployeeMapper employeeMapper;
+    private final DepartmentService departmentService;
 
     /**
      * 获取所有部门（树形结构）
@@ -35,39 +31,15 @@ public class DepartmentController {
     @GetMapping
     public ResponseEntity<List<DepartmentResponse>> listDepartments() {
         // 1. 查所有未删除部门
-        QueryWrapper<Department> wrapper = new QueryWrapper<>();
-        wrapper.eq("deleted", 0);
-        wrapper.orderByAsc("sort", "id");
-        List<Department> departments = departmentMapper.selectList(wrapper);
+        List<Department> departments = departmentService.listAllActiveDepartments();
 
         // 2. 统计每个部门的员工数
-        Map<Long, Integer> employeeCountMap = countEmployeesByDepartment();
+        Map<Long, Integer> employeeCountMap = departmentService.countEmployeesByDepartment();
 
         // 3. 构建树形结构
         List<DepartmentResponse> tree = buildDepartmentTree(departments, employeeCountMap);
 
         return ResponseEntity.ok(tree);
-    }
-
-    /**
-     * 统计每个部门的员工数
-     */
-    private Map<Long, Integer> countEmployeesByDepartment() {
-        QueryWrapper<Employee> countWrapper = new QueryWrapper<>();
-        countWrapper.select("department_id, count(*) as count")
-            .eq("deleted", 0)
-            .eq("account_status", "ACTIVE")
-            .groupBy("department_id");
-        
-        List<Map<String, Object>> countResult = employeeMapper.selectMaps(countWrapper);
-        
-        return countResult.stream()
-            .filter(m -> m.get("department_id") != null)
-            .collect(Collectors.toMap(
-                m -> ((Number) m.get("department_id")).longValue(),
-                m -> ((Number) m.get("count")).intValue(),
-                (a, b) -> a
-            ));
     }
 
     /**
@@ -147,7 +119,7 @@ public class DepartmentController {
         department.setUpdatedAt(now);
         department.setDeleted(0);
 
-        departmentMapper.insert(department);
+        departmentService.createDepartment(department);
 
         return ResponseEntity.status(HttpStatus.CREATED)
             .body(new DepartmentResponse(
@@ -170,9 +142,9 @@ public class DepartmentController {
     public ResponseEntity<DepartmentResponse> updateDepartment(
             @PathVariable Long id,
             @RequestBody DepartmentRequest request) {
-        
-        Department department = departmentMapper.selectById(id);
-        if (department == null || department.getDeleted() == 1) {
+
+        Department department = departmentService.findActiveById(id);
+        if (department == null) {
             return ResponseEntity.notFound().build();
         }
 
@@ -186,11 +158,10 @@ public class DepartmentController {
             department.setSort(request.sort());
         }
 
-        department.setUpdatedAt(LocalDateTime.now());
-        departmentMapper.updateById(department);
+        departmentService.updateDepartment(department);
 
         // 重新统计员工数
-        Map<Long, Integer> employeeCountMap = countEmployeesByDepartment();
+        Map<Long, Integer> employeeCountMap = departmentService.countEmployeesByDepartment();
 
         return ResponseEntity.ok(new DepartmentResponse(
             department.getId(),
@@ -211,34 +182,23 @@ public class DepartmentController {
     @PreAuthorize("hasRole('CEO')")
     @com.oa.backend.annotation.OperationLogRecord(action = "DEPT_DELETE", targetType = "DEPARTMENT")
     public ResponseEntity<Void> deleteDepartment(@PathVariable Long id) {
-        Department department = departmentMapper.selectById(id);
-        if (department == null || department.getDeleted() == 1) {
+        Department department = departmentService.findActiveById(id);
+        if (department == null) {
             return ResponseEntity.notFound().build();
         }
 
         // 检查是否有直属员工
-        QueryWrapper<Employee> employeeWrapper = new QueryWrapper<>();
-        employeeWrapper.eq("department_id", id)
-            .eq("deleted", 0)
-            .eq("account_status", "ACTIVE");
-        Long employeeCount = employeeMapper.selectCount(employeeWrapper);
-        if (employeeCount > 0) {
+        if (departmentService.hasActiveEmployees(id)) {
             throw new IllegalArgumentException("该部门有员工，无法删除");
         }
 
         // 检查是否有子部门
-        QueryWrapper<Department> childWrapper = new QueryWrapper<>();
-        childWrapper.eq("parent_id", id)
-            .eq("deleted", 0);
-        Long childCount = departmentMapper.selectCount(childWrapper);
-        if (childCount > 0) {
+        if (departmentService.hasActiveChildDepartments(id)) {
             throw new IllegalArgumentException("该部门有子部门，无法删除");
         }
 
         // 软删除
-        department.setDeleted(1);
-        department.setUpdatedAt(LocalDateTime.now());
-        departmentMapper.updateById(department);
+        departmentService.softDeleteDepartment(department);
 
         return ResponseEntity.noContent().build();
     }

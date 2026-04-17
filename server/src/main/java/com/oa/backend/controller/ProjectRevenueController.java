@@ -1,11 +1,8 @@
 package com.oa.backend.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.entity.ProjectMilestone;
 import com.oa.backend.exception.BusinessException;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.mapper.ProjectMilestoneMapper;
-import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.ProjectRevenueService;
 import com.oa.backend.service.RevenueChangeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,8 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,26 +27,23 @@ import java.util.Map;
  *   GET /projects/{id}/revenue                列出该项目里程碑（含合同金额 + 收款）
  *   PUT /projects/{id}/revenue/{milestoneId}  财务/CEO 更新收款状态与金额
  *   GET /projects/{id}/revenue/summary        汇总（合同合计 / 已收 / 待收）
+ *
+ * 业务逻辑委托给 {@link ProjectRevenueService}（查询/更新）和 {@link RevenueChangeService}（变更审批流）。
  */
 @RestController
 @RequestMapping("/projects/{projectId}/revenue")
 @RequiredArgsConstructor
 public class ProjectRevenueController {
 
-    private final ProjectMilestoneMapper milestoneMapper;
+    private final ProjectRevenueService revenueService;
     private final RevenueChangeService revenueChangeService;
-    private final EmployeeMapper employeeMapper;
 
     @GetMapping
     @PreAuthorize("hasAnyRole('CEO','GENERAL_MANAGER','FINANCE','PROJECT_MANAGER')")
     public ResponseEntity<List<ProjectMilestone>> list(@PathVariable Long projectId) {
         // 自动同步已审批的合同金额变更
         revenueChangeService.syncApprovedChanges(projectId);
-        return ResponseEntity.ok(milestoneMapper.selectList(
-                new LambdaQueryWrapper<ProjectMilestone>()
-                        .eq(ProjectMilestone::getProjectId, projectId)
-                        .eq(ProjectMilestone::getDeleted, 0)
-                        .orderByAsc(ProjectMilestone::getSort)));
+        return ResponseEntity.ok(revenueService.listMilestonesForRevenue(projectId));
     }
 
     /**
@@ -63,10 +55,8 @@ public class ProjectRevenueController {
     public ResponseEntity<?> update(@PathVariable Long projectId,
                                     @PathVariable Long milestoneId,
                                     @RequestBody RevenueUpdateRequest req) {
-        ProjectMilestone m = milestoneMapper.selectById(milestoneId);
-        if (m == null || m.getDeleted() == 1 || !m.getProjectId().equals(projectId)) {
-            return ResponseEntity.notFound().build();
-        }
+        ProjectMilestone m = revenueService.getMilestoneByIdAndProject(milestoneId, projectId);
+        if (m == null) return ResponseEntity.notFound().build();
         if (req.contractAmount() != null
                 && (m.getContractAmount() == null || req.contractAmount().compareTo(m.getContractAmount()) != 0)) {
             return ResponseEntity.badRequest().body(Map.of(
@@ -76,9 +66,7 @@ public class ProjectRevenueController {
         if (req.actualReceiptAmount() != null) m.setActualReceiptAmount(req.actualReceiptAmount());
         if (req.receiptDate() != null) m.setReceiptDate(req.receiptDate());
         if (req.receiptRemark() != null) m.setReceiptRemark(req.receiptRemark());
-        m.setUpdatedAt(LocalDateTime.now());
-        milestoneMapper.updateById(m);
-        return ResponseEntity.ok(m);
+        return ResponseEntity.ok(revenueService.updateReceiptFields(m));
     }
 
     /** 发起合同金额变更（设计 §8.5 跨方审批） */
@@ -88,7 +76,7 @@ public class ProjectRevenueController {
                                                    @PathVariable Long milestoneId,
                                                    @RequestBody ContractChangeRequest req,
                                                    Authentication auth) {
-        Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        Long me = revenueService.resolveEmployeeId(auth.getName());
         String role = auth.getAuthorities().stream()
                 .map(a -> a.getAuthority())
                 .anyMatch("ROLE_FINANCE"::equals) ? "FINANCE" : "PROJECT_MANAGER";
@@ -106,7 +94,7 @@ public class ProjectRevenueController {
     public ResponseEntity<?> cancelChange(@PathVariable Long projectId,
                                           @PathVariable Long milestoneId,
                                           Authentication auth) {
-        Long me = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        Long me = revenueService.resolveEmployeeId(auth.getName());
         try {
             revenueChangeService.cancelChange(milestoneId, me);
             return ResponseEntity.ok(Map.of("message", "已撤销"));
@@ -120,22 +108,7 @@ public class ProjectRevenueController {
     @PreAuthorize("hasAnyRole('CEO','GENERAL_MANAGER','FINANCE','PROJECT_MANAGER')")
     public ResponseEntity<Map<String, Object>> summary(@PathVariable Long projectId) {
         revenueChangeService.syncApprovedChanges(projectId);
-        List<ProjectMilestone> list = milestoneMapper.selectList(
-                new LambdaQueryWrapper<ProjectMilestone>()
-                        .eq(ProjectMilestone::getProjectId, projectId)
-                        .eq(ProjectMilestone::getDeleted, 0));
-        BigDecimal contractTotal = BigDecimal.ZERO, received = BigDecimal.ZERO;
-        for (ProjectMilestone m : list) {
-            if (m.getContractAmount() != null) contractTotal = contractTotal.add(m.getContractAmount());
-            if ("RECEIVED".equals(m.getReceiptStatus()) && m.getActualReceiptAmount() != null) {
-                received = received.add(m.getActualReceiptAmount());
-            }
-        }
-        Map<String, Object> out = new HashMap<>();
-        out.put("contractTotal", contractTotal);
-        out.put("received", received);
-        out.put("pending", contractTotal.subtract(received));
-        return ResponseEntity.ok(out);
+        return ResponseEntity.ok(revenueService.summarizeRevenue(projectId));
     }
 
     public record RevenueUpdateRequest(

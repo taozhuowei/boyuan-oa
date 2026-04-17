@@ -3,14 +3,10 @@ package com.oa.backend.controller;
 import com.oa.backend.dto.AuthLoginRequest;
 import com.oa.backend.dto.AuthLoginResponse;
 import com.oa.backend.dto.AuthPasswordLoginRequest;
-import com.oa.backend.entity.Department;
 import com.oa.backend.entity.Employee;
-import com.oa.backend.entity.Role;
-import com.oa.backend.mapper.DepartmentMapper;
-import com.oa.backend.mapper.RoleMapper;
-import com.oa.backend.mapper.SecondRoleAssignmentMapper;
 import com.oa.backend.security.JwtTokenService;
 import com.oa.backend.service.AccessManagementService;
+import com.oa.backend.service.AuthDataService;
 import com.oa.backend.service.EmployeeService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +24,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -37,6 +32,7 @@ import java.util.Optional;
  * 负责处理用户登录、登出、当前用户信息查询以及密码修改。
  * 密码重置流程（忘记密码）由 PasswordResetController 负责。
  * 手机号变更流程由 PhoneChangeController 负责。
+ * 辅助数据查询（角色名/部门名/第二角色）委托 {@link AuthDataService}。
  */
 @Slf4j
 @RestController
@@ -47,10 +43,8 @@ public class AuthController {
     private final JwtTokenService jwtTokenService;
     private final AccessManagementService accessManagementService;
     private final EmployeeService employeeService;
-    private final RoleMapper roleMapper;
-    private final DepartmentMapper departmentMapper;
+    private final AuthDataService authDataService;
     private final PasswordEncoder passwordEncoder;
-    private final SecondRoleAssignmentMapper secondRoleAssignmentMapper;
 
     /**
      * 职责：处理用户密码登录请求，验证用户身份并返回JWT令牌
@@ -60,9 +54,8 @@ public class AuthController {
      */
     @PostMapping("/login")
     public ResponseEntity<AuthLoginResponse> login(@Valid @RequestBody AuthPasswordLoginRequest request) {
-        // 使用 EmployeeService 进行真实认证
         Optional<Employee> employeeOpt = employeeService.authenticate(
-            request.username(), 
+            request.username(),
             request.password()
         );
 
@@ -72,7 +65,6 @@ public class AuthController {
 
         Employee employee = employeeOpt.get();
 
-        // 生成JWT令牌
         String token = jwtTokenService.generateToken(
             employee.getEmployeeNo(),
             employee.getId(),
@@ -81,48 +73,11 @@ public class AuthController {
             employee.getName()
         );
 
-        // 查询角色名称（登录响应的辅助字段，失败不应阻塞主流程）
-        String roleName = employee.getRoleCode();
-        try {
-            Role role = roleMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Role>()
-                    .eq("role_code", employee.getRoleCode())
-            );
-            if (role != null && role.getRoleName() != null) {
-                roleName = role.getRoleName();
-            }
-        } catch (Exception e) {
-            // 保留原因：登录响应辅助字段查询失败时兜底为 roleCode，不阻塞主流程
-            log.warn("Login: failed to load role name for employeeId={}, fallback to roleCode", employee.getId(), e);
-        }
-
-        // 查询部门名称（同上，失败不阻塞登录）
-        String departmentName = "";
-        if (employee.getDepartmentId() != null) {
-            try {
-                Department dept = departmentMapper.selectById(employee.getDepartmentId());
-                if (dept != null && dept.getName() != null) {
-                    departmentName = dept.getName();
-                }
-            } catch (Exception e) {
-                // 保留原因：登录响应辅助字段查询失败时兜底为空，不阻塞主流程
-                log.warn("Login: failed to load department name for employeeId={}, departmentId={}",
-                        employee.getId(), employee.getDepartmentId(), e);
-            }
-        }
-
-        List<String> secondRoles = Collections.emptyList();
-        try {
-            secondRoles = secondRoleAssignmentMapper.selectList(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<com.oa.backend.entity.SecondRoleAssignment>()
-                    .eq(com.oa.backend.entity.SecondRoleAssignment::getEmployeeId, employee.getId())
-                    .ne(com.oa.backend.entity.SecondRoleAssignment::getRevoked, true)
-                    .eq(com.oa.backend.entity.SecondRoleAssignment::getDeleted, 0)
-            ).stream().map(com.oa.backend.entity.SecondRoleAssignment::getRoleCode).toList();
-        } catch (Exception e) {
-            // 保留原因：第二角色查询失败兜底为空列表，不阻塞登录主流程
-            log.warn("Failed to query second roles for employee {}", employee.getId(), e);
-        }
+        String roleName = authDataService.resolveRoleName(
+            employee.getRoleCode(), employee.getRoleCode(), employee.getId());
+        String departmentName = authDataService.resolveDepartmentName(
+            employee.getDepartmentId(), employee.getId());
+        java.util.List<String> secondRoles = authDataService.resolveSecondRoles(employee.getId());
 
         return ResponseEntity.ok(new AuthLoginResponse(
             token,
@@ -161,7 +116,7 @@ public class AuthController {
             token,
             "Bearer",
             "DEV_LOGIN",
-            null,  // dev-login 没有真实 userId
+            null,
             user.username(),
             user.displayName(),
             user.roleCode(),
@@ -170,16 +125,6 @@ public class AuthController {
             user.employeeType(),
             Collections.emptyList()
         ));
-    }
-
-    private Long getCurrentUserId(String authorization) {
-        if (authorization == null || !authorization.startsWith("Bearer ")) {
-            return null;
-        }
-        String token = authorization.substring(7);
-        return jwtTokenService.verify(token)
-            .map(decodedJWT -> decodedJWT.getClaim("userId").asLong())
-            .orElse(null);
     }
 
     /**
@@ -242,35 +187,10 @@ public class AuthController {
         Employee employee = employeeService.findById(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
 
-        // 查询角色名称（响应辅助字段，查询失败不阻塞主流程）
-        String roleName = employee.getRoleCode();
-        try {
-            Role role = roleMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<Role>()
-                    .eq("role_code", employee.getRoleCode())
-            );
-            if (role != null && role.getRoleName() != null) {
-                roleName = role.getRoleName();
-            }
-        } catch (Exception e) {
-            // 保留原因：响应辅助字段查询失败兜底为 roleCode，不阻塞主流程
-            log.warn("Failed to load role name for employeeId={}, fallback to roleCode", employee.getId(), e);
-        }
-
-        // 查询部门名称（同上，失败不阻塞主流程）
-        String departmentName = "";
-        if (employee.getDepartmentId() != null) {
-            try {
-                Department dept = departmentMapper.selectById(employee.getDepartmentId());
-                if (dept != null && dept.getName() != null) {
-                    departmentName = dept.getName();
-                }
-            } catch (Exception e) {
-                // 保留原因：响应辅助字段查询失败兜底为空，不阻塞主流程
-                log.warn("Failed to load department name for employeeId={}, departmentId={}",
-                        employee.getId(), employee.getDepartmentId(), e);
-            }
-        }
+        String roleName = authDataService.resolveRoleName(
+            employee.getRoleCode(), employee.getRoleCode(), employee.getId());
+        String departmentName = authDataService.resolveDepartmentName(
+            employee.getDepartmentId(), employee.getId());
 
         Map<String, Object> response = new java.util.HashMap<>();
         response.put("employeeId", employee.getId());
@@ -286,4 +206,15 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    // ── Private helpers ──────────────────────────────────────────────────────
+
+    private Long getCurrentUserId(String authorization) {
+        if (authorization == null || !authorization.startsWith("Bearer ")) {
+            return null;
+        }
+        String token = authorization.substring(7);
+        return jwtTokenService.verify(token)
+            .map(decodedJWT -> decodedJWT.getClaim("userId").asLong())
+            .orElse(null);
+    }
 }

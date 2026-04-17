@@ -35,6 +35,80 @@ public class ApprovalFlowService {
     private final NotificationService notificationService;
     private final TemporaryDelegationService delegationService;
 
+    // ── ApprovalFlow configuration methods (moved from ApprovalFlowController) ──
+
+    /**
+     * 查询所有审批流定义（已过滤软删除）
+     */
+    public List<ApprovalFlowDef> listFlowDefs() {
+        return approvalFlowDefMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<ApprovalFlowDef>()
+                        .eq(ApprovalFlowDef::getDeleted, 0));
+    }
+
+    /**
+     * 根据业务类型查询激活的审批流定义；未找到返回 null
+     */
+    public ApprovalFlowDef findActiveFlowDefByBusinessType(String businessType) {
+        return approvalFlowDefMapper.findActiveByBusinessType(businessType);
+    }
+
+    /**
+     * 查询指定 flowId 的节点列表（按 nodeOrder 升序）
+     */
+    public List<ApprovalFlowNode> listNodesByFlowId(Long flowId) {
+        return approvalFlowNodeMapper.findByFlowId(flowId);
+    }
+
+    /**
+     * 全量替换指定审批流的节点配置。
+     * 策略：软删除旧节点，插入新节点列表。
+     *
+     * @param flowId    审批流定义 ID
+     * @param nodeSpecs 新节点规格列表，每项包含 nodeName/approverType/approverRef/skipCondition
+     */
+    @Transactional
+    public List<ApprovalFlowNode> replaceFlowNodes(Long flowId, List<ApprovalFlowNodeSpec> nodeSpecs) {
+        // 软删除现有节点
+        List<ApprovalFlowNode> existing = approvalFlowNodeMapper.findByFlowId(flowId);
+        for (ApprovalFlowNode node : existing) {
+            node.setDeleted(1);
+            node.setUpdatedAt(LocalDateTime.now());
+            approvalFlowNodeMapper.updateById(node);
+        }
+        // 插入新节点
+        int order = 1;
+        for (ApprovalFlowNodeSpec spec : nodeSpecs) {
+            ApprovalFlowNode node = new ApprovalFlowNode();
+            node.setFlowId(flowId);
+            node.setNodeOrder(order++);
+            node.setNodeName(spec.nodeName());
+            node.setApprovalMode("SEQUENTIAL");
+            node.setApproverType(spec.approverType());
+            node.setApproverRef(spec.approverRef());
+            node.setSkipCondition(spec.skipCondition());
+            node.setCreatedAt(LocalDateTime.now());
+            node.setUpdatedAt(LocalDateTime.now());
+            node.setDeleted(0);
+            approvalFlowNodeMapper.insert(node);
+        }
+        return approvalFlowNodeMapper.findByFlowId(flowId);
+    }
+
+    /**
+     * 节点规格（controller → service 的数据传输结构）
+     *
+     * @param nodeName      节点名称
+     * @param approverType  审批人类型：DIRECT_SUPERVISOR / ROLE / DESIGNATED
+     * @param approverRef   角色代码或员工 ID
+     * @param skipCondition 跳过条件（nullable JSON）
+     */
+    public record ApprovalFlowNodeSpec(
+            String nodeName,
+            String approverType,
+            String approverRef,
+            String skipCondition) {}
+
     /**
      * 初始化审批流
      * 加载激活的流程定义，评估 skipCondition，设置第一个有效节点，设置表单状态为 PENDING

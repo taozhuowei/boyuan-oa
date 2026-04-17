@@ -180,6 +180,30 @@ public class ExpenseService {
     }
 
     /**
+     * 根据用户名（employee_no）解析员工 ID；供 controller 使用，避免直接注入 EmployeeMapper
+     */
+    public Long resolveEmployeeIdByUsername(String username) {
+        if (username == null) return null;
+        Employee employee = employeeMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getEmployeeNo, username)
+                        .eq(Employee::getDeleted, 0));
+        return employee != null ? employee.getId() : null;
+    }
+
+    /**
+     * 根据用户名（employee_no）解析角色代码；供 controller 使用，避免直接注入 EmployeeMapper
+     */
+    public String resolveRoleCodeByUsername(String username) {
+        if (username == null) return null;
+        Employee employee = employeeMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getEmployeeNo, username)
+                        .eq(Employee::getDeleted, 0));
+        return employee != null ? employee.getRoleCode() : null;
+    }
+
+    /**
      * 获取费用类型名称
      */
     private String getExpenseTypeName(String expenseType) {

@@ -177,6 +177,30 @@ public class FormService {
     }
 
     /**
+     * 根据用户名（employee_no）解析员工 ID；供 controller 使用，避免直接注入 EmployeeMapper
+     */
+    public Long resolveEmployeeIdByUsername(String username) {
+        if (username == null) return null;
+        Employee employee = employeeMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getEmployeeNo, username)
+                        .eq(Employee::getDeleted, 0));
+        return employee != null ? employee.getId() : null;
+    }
+
+    /**
+     * 根据用户名（employee_no）解析角色代码；供 controller 使用，避免直接注入 EmployeeMapper
+     */
+    public String resolveRoleCodeByUsername(String username) {
+        if (username == null) return null;
+        Employee employee = employeeMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getEmployeeNo, username)
+                        .eq(Employee::getDeleted, 0));
+        return employee != null ? employee.getRoleCode() : null;
+    }
+
+    /**
      * 构建表单记录响应
      */
     private FormRecordResponse buildFormRecordResponse(FormRecord formRecord) {

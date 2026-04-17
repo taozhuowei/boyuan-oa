@@ -1,9 +1,7 @@
 package com.oa.backend.controller;
 
 import com.oa.backend.entity.SalaryConfirmationAgreement;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.mapper.SalaryConfirmationAgreementMapper;
-import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.SalaryConfirmationAgreementService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,7 +12,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
@@ -34,8 +31,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SalaryConfirmationAgreementController {
 
-    private final SalaryConfirmationAgreementMapper agreementMapper;
-    private final EmployeeMapper employeeMapper;
+    private final SalaryConfirmationAgreementService salaryAgreementService;
 
     /**
      * 上传新的工资确认协议版本。
@@ -65,24 +61,11 @@ public class SalaryConfirmationAgreementController {
         }
 
         // 获取当前登录用户的员工 ID
-        Long employeeId = SecurityUtils.getEmployeeIdFromUsername(
-                authentication.getName(),
-                employeeMapper
-        );
+        Long employeeId = salaryAgreementService.resolveEmployeeIdByUsername(authentication.getName());
 
-        // 将现有所有协议设为非激活状态
-        agreementMapper.deactivateAll();
-
-        // 创建新协议记录
-        SalaryConfirmationAgreement agreement = new SalaryConfirmationAgreement();
-        agreement.setVersion(request.version());
-        agreement.setContent(request.content());
-        agreement.setIsActive(true);
-        agreement.setUploadedBy(employeeId);
-        agreement.setCreatedAt(LocalDateTime.now());
-        agreement.setUpdatedAt(LocalDateTime.now());
-
-        agreementMapper.insert(agreement);
+        // 将现有所有协议设为非激活状态，再插入新版本（由 Service 事务保证原子性）
+        SalaryConfirmationAgreement agreement = salaryAgreementService.uploadNewVersion(
+                request.version(), request.content(), employeeId);
         return ResponseEntity.ok(agreement);
     }
 
@@ -97,7 +80,7 @@ public class SalaryConfirmationAgreementController {
     @GetMapping("/current")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<?> getCurrentAgreement() {
-        SalaryConfirmationAgreement agreement = agreementMapper.findActive();
+        SalaryConfirmationAgreement agreement = salaryAgreementService.findCurrentAgreement();
         if (agreement == null) {
             return ResponseEntity.notFound().build();
         }

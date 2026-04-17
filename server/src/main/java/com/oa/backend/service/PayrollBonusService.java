@@ -205,6 +205,18 @@ public class PayrollBonusService {
         }
     }
 
+    /**
+     * 根据用户名（employee_no）解析员工 ID；供 controller 使用，避免直接注入 EmployeeMapper
+     */
+    public Long resolveEmployeeIdByUsername(String username) {
+        if (username == null) return null;
+        Employee emp = employeeMapper.selectOne(
+                new LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getEmployeeNo, username)
+                        .eq(Employee::getDeleted, 0));
+        return emp != null ? emp.getId() : null;
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────
 
     private String buildFormData(PayrollBonus bonus, Employee emp, PayrollCycle cycle) {

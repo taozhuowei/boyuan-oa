@@ -3,10 +3,8 @@ package com.oa.backend.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oa.backend.dto.*;
-import com.oa.backend.entity.Employee;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.ApprovalFlowService;
+import com.oa.backend.service.AttendanceService;
 import com.oa.backend.service.FormService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +15,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Collections;
 
 /**
  * 考勤系统控制器
@@ -30,7 +27,7 @@ public class AttendanceController {
 
     private final FormService formService;
     private final ApprovalFlowService approvalFlowService;
-    private final EmployeeMapper employeeMapper;
+    private final AttendanceService attendanceService;
     private final ObjectMapper objectMapper;
 
     /**
@@ -207,24 +204,14 @@ public class AttendanceController {
      * 获取当前登录员工的 ID
      */
     private Long getCurrentEmployeeId(Authentication authentication) {
-        if (authentication == null) {
-            return null;
-        }
-        String username = authentication.getName();
-        Employee employee = SecurityUtils.getEmployeeFromUsername(username, employeeMapper);
-        return employee != null ? employee.getId() : null;
+        return attendanceService.resolveEmployeeId(authentication);
     }
 
     /**
      * 获取当前登录员工的角色代码
      */
     private String getCurrentRoleCode(Authentication authentication) {
-        if (authentication == null) {
-            return null;
-        }
-        String username = authentication.getName();
-        Employee employee = SecurityUtils.getEmployeeFromUsername(username, employeeMapper);
-        return employee != null ? employee.getRoleCode() : null;
+        return attendanceService.resolveRoleCode(authentication);
     }
 
     private FormConfigResponse buildLeaveConfig() {

@@ -2,8 +2,6 @@ package com.oa.backend.controller;
 
 import com.oa.backend.entity.PayrollBonus;
 import com.oa.backend.exception.BusinessException;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.PayrollBonusService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -31,7 +29,6 @@ import java.util.Map;
 public class PayrollBonusController {
 
     private final PayrollBonusService bonusService;
-    private final EmployeeMapper employeeMapper;
 
     @GetMapping("/payroll/cycles/{cycleId}/bonuses")
     @PreAuthorize("hasAnyRole('FINANCE','CEO')")
@@ -44,7 +41,7 @@ public class PayrollBonusController {
     public ResponseEntity<?> create(@PathVariable Long cycleId,
                                     @RequestBody CreateBonusRequest req,
                                     Authentication auth) {
-        Long creatorId = SecurityUtils.getEmployeeIdFromUsername(auth.getName(), employeeMapper);
+        Long creatorId = bonusService.resolveEmployeeIdByUsername(auth.getName());
         if (creatorId == null) {
             return ResponseEntity.status(401).body(Map.of("message", "无法识别当前用户"));
         }

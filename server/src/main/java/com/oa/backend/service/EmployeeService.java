@@ -2,10 +2,12 @@ package com.oa.backend.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.oa.backend.dto.EmployeeCreateRequest;
+import com.oa.backend.dto.EmployeeResponse;
 import com.oa.backend.dto.EmployeeUpdateRequest;
 import com.oa.backend.dto.SalaryOverrideRequest;
 import com.oa.backend.entity.Employee;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -78,4 +80,24 @@ public interface EmployeeService {
      * 应用薪资覆盖
      */
     Employee applySalaryOverride(Long id, SalaryOverrideRequest request);
+
+    /**
+     * 根据用户名（employee_no）解析员工 ID；用于 controller 脱离 EmployeeMapper 直注入
+     */
+    Long resolveEmployeeIdByUsername(String username);
+
+    /**
+     * 根据角色代码查询角色名称（响应辅助字段，未找到返回 roleCode 本身）
+     */
+    String findRoleNameByCode(String roleCode);
+
+    /**
+     * 根据部门 ID 查询部门名称（响应辅助字段，未找到返回空字符串）
+     */
+    String findDepartmentNameById(Long departmentId);
+
+    /**
+     * 查询员工的紧急联系人列表（已过滤软删除）
+     */
+    List<EmployeeResponse.EmergencyContact> findEmergencyContacts(Long employeeId);
 }

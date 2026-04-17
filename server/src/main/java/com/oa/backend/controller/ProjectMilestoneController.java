@@ -4,11 +4,7 @@ import com.oa.backend.entity.ConstructionLogSummary;
 import com.oa.backend.entity.Project;
 import com.oa.backend.entity.ProjectMilestone;
 import com.oa.backend.entity.ProjectProgressLog;
-import com.oa.backend.mapper.ConstructionLogSummaryMapper;
-import com.oa.backend.mapper.EmployeeMapper;
-import com.oa.backend.mapper.ProjectMilestoneMapper;
-import com.oa.backend.mapper.ProjectProgressLogMapper;
-import com.oa.backend.security.SecurityUtils;
+import com.oa.backend.service.ProjectMilestoneService;
 import com.oa.backend.service.ProjectService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -26,6 +22,7 @@ import java.util.Map;
  * 项目里程碑、进度记录、Dashboard、施工汇总控制器。
  * 负责：里程碑 CRUD、每日进度录入、项目 Dashboard 数据、施工日志汇总报告。
  * 项目基础 CRUD 见 ProjectController。
+ * 业务逻辑委托给 {@link ProjectMilestoneService}；项目基础查询通过 {@link ProjectService}。
  */
 @RestController
 @RequestMapping("/projects")
@@ -33,10 +30,7 @@ import java.util.Map;
 public class ProjectMilestoneController {
 
     private final ProjectService projectService;
-    private final EmployeeMapper employeeMapper;
-    private final ProjectMilestoneMapper milestoneMapper;
-    private final ProjectProgressLogMapper progressLogMapper;
-    private final ConstructionLogSummaryMapper summaryMapper;
+    private final ProjectMilestoneService milestoneService;
 
     // ── 里程碑管理 ────────────────────────────────────────────────────────
 
@@ -47,7 +41,7 @@ public class ProjectMilestoneController {
     @GetMapping("/{id}/milestones")
     @PreAuthorize("hasAnyRole('EMPLOYEE','FINANCE','PROJECT_MANAGER','CEO','WORKER')")
     public ResponseEntity<List<ProjectMilestone>> listMilestones(@PathVariable Long id) {
-        return ResponseEntity.ok(milestoneMapper.findByProjectId(id));
+        return ResponseEntity.ok(milestoneService.listMilestonesByProjectId(id));
     }
 
     /**
@@ -67,11 +61,7 @@ public class ProjectMilestoneController {
         milestone.setProjectId(id);
         milestone.setName(request.name());
         milestone.setSort(request.sort() != null ? request.sort() : 0);
-        milestone.setCreatedAt(LocalDateTime.now());
-        milestone.setUpdatedAt(LocalDateTime.now());
-        milestone.setDeleted(0);
-        milestoneMapper.insert(milestone);
-        return ResponseEntity.status(HttpStatus.CREATED).body(milestone);
+        return ResponseEntity.status(HttpStatus.CREATED).body(milestoneService.createMilestone(milestone));
     }
 
     /**
@@ -85,16 +75,12 @@ public class ProjectMilestoneController {
             @PathVariable Long id,
             @PathVariable Long milestoneId,
             @RequestBody MilestoneRequest request) {
-        ProjectMilestone milestone = milestoneMapper.selectById(milestoneId);
-        if (milestone == null || milestone.getDeleted() == 1 || !milestone.getProjectId().equals(id)) {
-            return ResponseEntity.notFound().build();
-        }
+        ProjectMilestone milestone = milestoneService.getMilestoneByIdAndProject(milestoneId, id);
+        if (milestone == null) return ResponseEntity.notFound().build();
         if (request.name() != null) milestone.setName(request.name());
         if (request.sort() != null) milestone.setSort(request.sort());
         milestone.setActualCompletionDate(request.actualCompletionDate());
-        milestone.setUpdatedAt(LocalDateTime.now());
-        milestoneMapper.updateById(milestone);
-        return ResponseEntity.ok(milestone);
+        return ResponseEntity.ok(milestoneService.updateMilestone(milestone));
     }
 
     /**
@@ -106,13 +92,8 @@ public class ProjectMilestoneController {
     public ResponseEntity<Void> deleteMilestone(
             @PathVariable Long id,
             @PathVariable Long milestoneId) {
-        ProjectMilestone milestone = milestoneMapper.selectById(milestoneId);
-        if (milestone == null || !milestone.getProjectId().equals(id)) {
-            return ResponseEntity.notFound().build();
-        }
-        milestone.setDeleted(1);
-        milestone.setUpdatedAt(LocalDateTime.now());
-        milestoneMapper.updateById(milestone);
+        boolean found = milestoneService.deleteMilestone(milestoneId, id);
+        if (!found) return ResponseEntity.notFound().build();
         return ResponseEntity.noContent().build();
     }
 
@@ -129,17 +110,14 @@ public class ProjectMilestoneController {
             @PathVariable Long id,
             @RequestBody ProgressRequest request,
             Authentication authentication) {
-        Long pmId = SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper);
+        Long pmId = milestoneService.resolveEmployeeId(authentication.getName());
         ProjectProgressLog log = new ProjectProgressLog();
         log.setProjectId(id);
         log.setPmId(pmId);
         log.setMilestoneId(request.milestoneId());
         log.setCompletedAt(request.completedAt() != null ? request.completedAt() : LocalDateTime.now());
         log.setNote(request.note());
-        log.setCreatedAt(LocalDateTime.now());
-        log.setUpdatedAt(LocalDateTime.now());
-        progressLogMapper.insert(log);
-        return ResponseEntity.status(HttpStatus.CREATED).body(log);
+        return ResponseEntity.status(HttpStatus.CREATED).body(milestoneService.recordProgress(log));
     }
 
     // ── Dashboard ─────────────────────────────────────────────────────────
@@ -153,13 +131,11 @@ public class ProjectMilestoneController {
     @PreAuthorize("hasAnyRole('EMPLOYEE','FINANCE','PROJECT_MANAGER','CEO','WORKER')")
     public ResponseEntity<?> getDashboard(@PathVariable Long id) {
         Project project = projectService.getById(id);
-        if (project == null) {
-            return ResponseEntity.notFound().build();
-        }
+        if (project == null) return ResponseEntity.notFound().build();
 
-        List<ProjectMilestone> milestones = milestoneMapper.findByProjectId(id);
-        List<ProjectProgressLog> progressLogs = progressLogMapper.findByProjectId(id);
-        List<ConstructionLogSummary> summaries = summaryMapper.findByProjectId(id);
+        List<ProjectMilestone> milestones = milestoneService.listMilestonesByProjectId(id);
+        List<ProjectProgressLog> progressLogs = milestoneService.listProgressLogsByProjectId(id);
+        List<ConstructionLogSummary> summaries = milestoneService.listSummariesByProjectId(id);
 
         long completedMilestones = milestones.stream()
                 .filter(m -> m.getActualCompletionDate() != null).count();
@@ -196,9 +172,9 @@ public class ProjectMilestoneController {
             @PathVariable Long id,
             @RequestBody SummaryRequest request,
             Authentication authentication) {
-        Long pmId = SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper);
+        Long pmId = milestoneService.resolveEmployeeId(authentication.getName());
 
-        List<ProjectMilestone> milestones = milestoneMapper.findByProjectId(id);
+        List<ProjectMilestone> milestones = milestoneService.listMilestonesByProjectId(id);
         long completedCount = milestones.stream()
                 .filter(m -> m.getActualCompletionDate() != null).count();
 
@@ -211,13 +187,10 @@ public class ProjectMilestoneController {
         summary.setPmNote(request.pmNote());
         // 标记已通知（实际通知由 M9 NotificationService 实现）
         summary.setCeoNotifiedAt(LocalDateTime.now());
-        summary.setCreatedAt(LocalDateTime.now());
-        summary.setUpdatedAt(LocalDateTime.now());
-        summary.setDeleted(0);
-        summaryMapper.insert(summary);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                Map.of("summary", summary, "message", "汇总报告已生成，CEO 已收到通知")
+                Map.of("summary", milestoneService.createConstructionSummary(summary),
+                        "message", "汇总报告已生成，CEO 已收到通知")
         );
     }
 
