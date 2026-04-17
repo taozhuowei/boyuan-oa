@@ -59,24 +59,29 @@
 - **状态**：`[ ]`
 
 #### A-SEC-03 前端路由守卫覆盖不全
-- **目标**：`PAGE_ACCESS` 仅覆盖 13 条路由，大量业务页面对所有已登录用户全开
+- **目标**：`PAGE_ACCESS` 当前仅覆盖 11 条路由（/config, /org, /role, /employees, /positions, /retention, /operation-logs, /payroll, /projects, /construction-log, /injury），其余业务页面对所有已登录用户全开
 - **范围**：`app/h5/middleware/auth.global.ts`
 - **步骤**
-  1. 对照 DESIGN.md 各角色章节，逐一补全以下路由的角色限制：
+  1. 对照 DESIGN.md §5（各角色权限章节）确认每条路由应有的角色清单；清单与设计文档冲突时以 DESIGN.md 为准
+  2. 补全以下未覆盖路由的角色限制（参考清单，以 DESIGN.md §5 为最终依据）：
      - `/attendance`：ceo, hr, finance, project_manager, department_manager, employee, worker
-     - `/expense/apply`：employee, finance, ceo
-     - `/expense/records`：employee, finance, ceo
+     - `/expense/apply`：所有角色（全员可发起报销）
+     - `/expense/records`：ceo, finance, employee, worker, project_manager, department_manager, hr
      - `/forms`：所有角色
-     - `/team`：department_manager, project_manager, ceo, hr
-     - `/construction-log`：worker, project_manager, ceo
-     - `/injury`：worker, finance, ceo
-     - `/data-export`：ceo（BUG-E02 已记录，此任务统一补全）
-     - `/data-viewer`：ceo
+     - `/team`：ceo, hr, project_manager, department_manager
+     - `/data-export`：ceo（路径 key 待 A-CLEAN-02 改为 `/data_export`）
+     - `/data-viewer`：ceo（路径 key 待 A-CLEAN-02 改为 `/data_viewer`）
+     - `/leave-types`：hr（路径 key 待 A-CLEAN-02 改为 `/leave_types`）
      - `/notifications`：所有角色
-     - `/me`：所有角色
+     - `/me`、`/me/password`：所有角色
      - `/workbench`：所有角色
-  2. 逐条 curl 或浏览器验证：worker 访问 `/payroll` 被重定向，employee 访问 `/operation-logs` 被重定向
-  - 注：步骤1中的路由 key 使用当前实际路由名（kebab-case）。A-CLEAN-02 完成目录重命名后，A-CLEAN-02 的"全局替换引用"步骤会自动将这些 key 更新为 snake_case，无需在此重复修改。
+     - `/todo`：ceo, finance, project_manager, department_manager, hr
+     - `/allowances`：ceo
+     - `/directory`：ceo, hr, finance
+     - `/setup`：保持公共路由（仅未初始化时可达）
+  3. 复核 11 条已有路由的角色清单是否与 DESIGN.md §5 一致，有偏差同步修正
+  4. 逐条 curl 或浏览器验证：worker 访问 `/payroll` 放行（worker 可看本人工资条）、employee 访问 `/operation-logs` 被重定向、employee 访问 `/data-export` 被重定向
+  - 注：步骤2中的 kebab-case 路由 key 使用当前实际路由名。A-CLEAN-02 完成目录重命名后会在其"全局替换引用"步骤中统一改为 snake_case，此处无需重复修改。
 - **验收点**：`PAGE_ACCESS` 条目覆盖全部业务页面；越权访问统一重定向
 - **验收流程**：employee.demo 登录 → 直接输入 `/data-export` URL → 重定向到首页；worker.demo → `/payroll` → 重定向
 - **状态**：`[ ]`
@@ -178,15 +183,16 @@
 - **验收流程**：`ls app/h5/pages/ | grep "-"` 输出为空；浏览器访问 `/construction_log`、`/data_export`、`/data_viewer`、`/leave_types`、`/operation_logs` 均正常加载
 - **状态**：`[ ]`
 
-#### A-CLEAN-03 临时测试脚本已提交到 git
-- **目标**：一次性测试脚本无 CI 入口，不是持久测试资产，应从 git 清除
-- **范围**：
-  - `test/manual-test-2026-04-17/run_tests.js`
-  - `test/manual-test-2026-04-17/run_edge_tests.js`
-  - `test/manual-test-2026-04-17/run_network_trace.js`
+#### A-CLEAN-03 临时测试脚本与产物已提交到 git
+- **目标**：一次性测试脚本、运行产物、截图无 CI 入口，不是持久测试资产，应从 git 清除
+- **范围**：`test/manual-test-2026-04-17/` 下所有非 Markdown 文件
+  - 脚本：`run_tests.js`、`run_edge_tests.js`、`run_network_trace.js`
+  - 运行产物：`edge_results.json`、`issues.json`、`network_failures.json`
+  - 截图目录：`screenshots/`
+  - 保留：`TEST_REPORT.md` 及同目录其他 `*.md`
 - **步骤**
-  1. `git rm` 三个脚本文件（保留同目录 `*.md` 文档文件）
-  2. 确认无其他散落的一次性脚本（全局 grep `TODO:`, `FIXME:` 无关脚本引用）
+  1. `git rm` 上述 3 个 js + 3 个 json + `screenshots/` 整个目录
+  2. 确认无其他散落的一次性脚本（全局 grep 无关脚本引用）
 - **验收点**：`git ls-files test/manual-test-2026-04-17/` 仅含 `*.md` 文件
 - **验收流程**：命令输出仅为 markdown 文件路径
 - **状态**：`[ ]`
