@@ -23,6 +23,10 @@ app:
     expiration: 86400000
   signature:
     aes-key: ${SIGNATURE_AES_KEY}
+  # 生产跨域白名单，逗号分隔。未设置 CORS_ORIGINS 时为空，拒绝所有跨域请求。
+  # 示例：CORS_ORIGINS=https://oa.example.com,https://admin.example.com
+  cors:
+    origins: ${CORS_ORIGINS:}
 
 oa:
   upload-dir: ${OA_UPLOAD_DIR:/var/oa/uploads}

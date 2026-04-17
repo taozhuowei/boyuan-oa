@@ -120,6 +120,7 @@ src/main/resources/
 - Flyway 启用，`spring.sql.init.mode = never`
 - 附件上传目录通过 `OA_UPLOAD_DIR` 配置
 - `JWT_SECRET` 与 `SIGNATURE_AES_KEY` 均强制从环境变量读取，无 fallback
+- `CORS_ORIGINS` 必须显式配置为逗号分隔的允许跨域源列表（如 `https://oa.example.com,https://admin.example.com`）。未配置则生产环境拒绝所有跨域请求；dev 环境默认放行 `localhost:*`/`127.0.0.1:*`
 
 启动方式：
 

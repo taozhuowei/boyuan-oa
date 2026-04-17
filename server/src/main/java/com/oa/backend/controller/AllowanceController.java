@@ -19,11 +19,11 @@ import java.util.Map;
 /**
  * 补贴项（allowance_def）及三级覆盖配置（allowance_config）控制器。
  *
- * 读：所有认证用户可查 allowance_def 列表（前端下拉/展示用）；配置列表仅 HR/CEO 可查。
+ * 读：allowance_def 及配置均属于薪资敏感数据，仅 CEO/HR/FINANCE 可查。
  * 写：HR / CEO。
  *
  * Routes:
- *   GET    /allowances                          列表（所有认证用户）
+ *   GET    /allowances                          列表（CEO/HR/FINANCE）
  *   POST   /allowances                          创建
  *   PUT    /allowances/{id}                     更新
  *   DELETE /allowances/{id}                     软删除（系统项不可删）
@@ -41,7 +41,7 @@ public class AllowanceController {
     // ── allowance_def ────────────────────────────────────────────────
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAnyRole('CEO','HR','FINANCE')")
     public ResponseEntity<List<AllowanceDef>> list() {
         return ResponseEntity.ok(defMapper.selectList(
                 new LambdaQueryWrapper<AllowanceDef>()

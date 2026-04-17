@@ -11,12 +11,16 @@ import com.oa.backend.entity.Department;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.Role;
 import com.oa.backend.mapper.DepartmentMapper;
+import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.RoleMapper;
+import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.*;
 
@@ -35,6 +39,7 @@ public class EmployeeController {
     private final DepartmentMapper departmentMapper;
     private final RoleMapper roleMapper;
     private final com.oa.backend.mapper.EmergencyContactMapper emergencyContactMapper;
+    private final EmployeeMapper employeeMapper;
 
     /**
      * 获取员工列表（分页）
@@ -49,14 +54,16 @@ public class EmployeeController {
             @RequestParam(required = false) String roleCode,
             @RequestParam(required = false) String employeeType,
             @RequestParam(required = false) String accountStatus,
-            @RequestParam(required = false) Long departmentId) {
+            @RequestParam(required = false) Long departmentId,
+            Authentication authentication) {
 
         IPage<Employee> employeePage = employeeService.listEmployees(
             page, size, keyword, roleCode, employeeType, accountStatus, departmentId);
 
-        // 转换为响应DTO
+        // 转换为响应DTO（根据调用者身份脱敏）
+        final Authentication auth = authentication;
         Map<String, Object> result = new HashMap<>();
-        result.put("content", employeePage.getRecords().stream().map(this::toResponse).toList());
+        result.put("content", employeePage.getRecords().stream().map(e -> toResponse(e, auth)).toList());
         result.put("totalElements", employeePage.getTotal());
         result.put("totalPages", employeePage.getPages());
         result.put("number", employeePage.getCurrent());
@@ -71,9 +78,9 @@ public class EmployeeController {
      */
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('CEO','FINANCE','PROJECT_MANAGER')")
-    public ResponseEntity<EmployeeResponse> getEmployee(@PathVariable Long id) {
+    public ResponseEntity<EmployeeResponse> getEmployee(@PathVariable Long id, Authentication authentication) {
         return employeeService.findById(id)
-            .map(emp -> ResponseEntity.ok(toResponse(emp)))
+            .map(emp -> ResponseEntity.ok(toResponse(emp, authentication)))
             .orElse(ResponseEntity.notFound().build());
     }
 
@@ -83,9 +90,10 @@ public class EmployeeController {
      */
     @PostMapping
     @PreAuthorize("hasRole('CEO')")
-    public ResponseEntity<EmployeeResponse> createEmployee(@Valid @RequestBody EmployeeCreateRequest request) {
+    public ResponseEntity<EmployeeResponse> createEmployee(@Valid @RequestBody EmployeeCreateRequest request,
+                                                           Authentication authentication) {
         Employee employee = employeeService.createEmployee(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(employee));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toResponse(employee, authentication));
     }
 
     /**
@@ -97,9 +105,10 @@ public class EmployeeController {
     @OperationLogRecord(action = "UPDATE_EMPLOYEE", targetType = "EMPLOYEE")
     public ResponseEntity<EmployeeResponse> updateEmployee(
             @PathVariable Long id,
-            @RequestBody EmployeeUpdateRequest request) {
+            @RequestBody EmployeeUpdateRequest request,
+            Authentication authentication) {
         Employee employee = employeeService.updateEmployee(id, request);
-        return ResponseEntity.ok(toResponse(employee));
+        return ResponseEntity.ok(toResponse(employee, authentication));
     }
 
     /**
@@ -123,13 +132,14 @@ public class EmployeeController {
     @PreAuthorize("hasRole('CEO')")
     public ResponseEntity<EmployeeResponse> updateAccountStatus(
             @PathVariable Long id,
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request,
+            Authentication authentication) {
         String status = request.get("accountStatus");
         if (!"ACTIVE".equals(status) && !"DISABLED".equals(status)) {
             throw new IllegalArgumentException("账号状态必须是 ACTIVE 或 DISABLED");
         }
         Employee employee = employeeService.updateAccountStatus(id, status);
-        return ResponseEntity.ok(toResponse(employee));
+        return ResponseEntity.ok(toResponse(employee, authentication));
     }
 
     /**
@@ -155,15 +165,39 @@ public class EmployeeController {
     @PreAuthorize("hasAnyRole('FINANCE','CEO')")
     public ResponseEntity<EmployeeResponse> updateSalaryOverride(
             @PathVariable Long id,
-            @RequestBody SalaryOverrideRequest request) {
+            @RequestBody SalaryOverrideRequest request,
+            Authentication authentication) {
         Employee employee = employeeService.applySalaryOverride(id, request);
-        return ResponseEntity.ok(toResponse(employee));
+        return ResponseEntity.ok(toResponse(employee, authentication));
     }
 
     /**
-     * 将 Employee 实体转换为 EmployeeResponse DTO
+     * 将 Employee 实体转换为 EmployeeResponse DTO（按调用者身份脱敏）。
+     *
+     * 脱敏规则：
+     *  - idCardNo：仅本人、CEO、HR 可见；其他角色返回 null
+     *  - isDefaultPassword：仅本人可见；查看他人时返回 null，避免向攻击者暴露弱默认密码状态
+     *
+     * 保留字段结构（record 不变），仅将敏感字段置 null 以维持向后兼容。
      */
-    private EmployeeResponse toResponse(Employee employee) {
+    private EmployeeResponse toResponse(Employee employee, Authentication authentication) {
+        boolean isSelf = false;
+        boolean canSeeIdCard = false;
+        if (authentication != null) {
+            Long currentEmployeeId = SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper);
+            if (currentEmployeeId != null && currentEmployeeId.equals(employee.getId())) {
+                isSelf = true;
+            }
+            for (GrantedAuthority ga : authentication.getAuthorities()) {
+                String a = ga.getAuthority();
+                if ("ROLE_CEO".equals(a) || "ROLE_HR".equals(a)) {
+                    canSeeIdCard = true;
+                    break;
+                }
+            }
+        }
+        final boolean selfFinal = isSelf;
+        final boolean idCardVisible = isSelf || canSeeIdCard;
         // 查询角色名称
         String roleName = employee.getRoleCode();
         try {
@@ -221,7 +255,7 @@ public class EmployeeController {
             employee.getAccountStatus(),
             employee.getEntryDate(),
             employee.getLeaveDate(),
-            employee.getIsDefaultPassword(),
+            selfFinal ? employee.getIsDefaultPassword() : null,
             employee.getBaseSalaryOverride(),
             employee.getPerformanceBaseOverride(),
             employee.getSalaryOverrideNote(),
@@ -234,7 +268,7 @@ public class EmployeeController {
             employee.getCreatedAt(),
             employee.getUpdatedAt(),
             employee.getGender(),
-            employee.getIdCardNo(),
+            idCardVisible ? employee.getIdCardNo() : null,
             employee.getBirthDate()
         );
     }

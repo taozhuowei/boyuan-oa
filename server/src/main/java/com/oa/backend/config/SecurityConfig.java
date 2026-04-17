@@ -19,8 +19,10 @@
 package com.oa.backend.config;
 
 import com.oa.backend.security.JwtAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -36,12 +38,28 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.DispatcherType;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+
+    /**
+     * 生产环境允许的跨域源，逗号分隔。示例：https://oa.example.com,https://admin.example.com
+     * 生产部署必须显式设置 CORS_ORIGINS 环境变量，未设置则生产环境拒绝所有跨域请求。
+     */
+    @Value("${app.cors.origins:}")
+    private String corsOriginsProp;
+
+    private final Environment environment;
+
+    public SecurityConfig(Environment environment) {
+        this.environment = environment;
+    }
 
     /**
      * 密码编码器Bean
@@ -77,10 +95,26 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Allow all localhost ports in dev; production origins are restricted via SecurityConfig-prod or reverse proxy
-        configuration.setAllowedOriginPatterns(Arrays.asList(
-            "http://localhost:*", "http://127.0.0.1:*"
-        ));
+
+        // 按 profile 区分跨域策略：
+        // - prod：仅允许 app.cors.origins（CORS_ORIGINS env）列表中的源，未配置则拒绝所有跨域
+        // - 其他（dev/test/默认）：放行 localhost/127.0.0.1 全部端口，便于本地开发
+        boolean isProd = Arrays.asList(environment.getActiveProfiles()).contains("prod");
+        if (isProd) {
+            List<String> origins = new ArrayList<>();
+            if (corsOriginsProp != null && !corsOriginsProp.isBlank()) {
+                for (String o : corsOriginsProp.split(",")) {
+                    String trimmed = o.trim();
+                    if (!trimmed.isEmpty()) origins.add(trimmed);
+                }
+            }
+            // 未配置时保持为空列表（拒绝所有跨域）；显式设置以抑制 Spring 默认放行行为
+            configuration.setAllowedOrigins(origins.isEmpty() ? Collections.emptyList() : origins);
+        } else {
+            configuration.setAllowedOriginPatterns(Arrays.asList(
+                "http://localhost:*", "http://127.0.0.1:*"
+            ));
+        }
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
