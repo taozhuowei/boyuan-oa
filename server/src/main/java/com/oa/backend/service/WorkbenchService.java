@@ -228,6 +228,7 @@ public class WorkbenchService {
                     new WorkbenchConfigResponse.MenuItem("org", "组织架构", "apartment", "/org", true, null),
                     new WorkbenchConfigResponse.MenuItem("positions", "岗位管理", "idcard", "/positions", true, null),
                     new WorkbenchConfigResponse.MenuItem("allowances", "补贴配置", "idcard", "/allowances", true, null),
+                    new WorkbenchConfigResponse.MenuItem("leave_types", "假期配额", "calendar", "/leave_types", true, null),
                     new WorkbenchConfigResponse.MenuItem("role", "角色管理", "user-switch", "/role", true, null),
                     new WorkbenchConfigResponse.MenuItem("projects", "项目管理", "project", "/projects", true, null),
                     new WorkbenchConfigResponse.MenuItem("payroll", "薪资管理", "money", "/payroll", true, null),
