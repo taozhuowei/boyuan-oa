@@ -1,897 +1,141 @@
 <template>
-  <!-- Attendance page — shows personal attendance records; sub-tabs for leave/overtime requests -->
+  <!-- Attendance page — tab switcher with ?tab= URL parameter support -->
   <!-- PM/CEO additionally see: 发起通知 + 已发起 tabs -->
   <div class="attendance-page">
     <h2 class="page-title">考勤管理</h2>
 
     <a-card>
-      <a-tabs v-model:activeKey="activeTab" @change="onTabChange">
+      <a-tabs v-model:activeKey="active_tab" @change="onTabChange">
         <a-tab-pane key="records" tab="我的记录" />
         <a-tab-pane key="leave" tab="请假申请" data-catch="attendance-tab-leave" />
         <a-tab-pane key="overtime" tab="加班申报" />
         <a-tab-pane key="self-report" tab="自补加班" />
         <a-tab-pane key="notifications" tab="加班通知" />
-        <a-tab-pane v-if="isPmOrCeo" key="notify-create" tab="发起通知" />
-        <a-tab-pane v-if="isPmOrCeo" key="notify-initiated" tab="已发起" />
+        <a-tab-pane v-if="is_pm_or_ceo" key="notify-create" tab="发起通知" />
+        <a-tab-pane v-if="is_pm_or_ceo" key="notify-initiated" tab="已发起" />
       </a-tabs>
 
-      <!-- 我的记录 -->
-      <template v-if="activeTab === 'records'">
-        <a-table
-          data-catch="attendance-records-table"
-          :columns="recordColumns"
-          :data-source="records"
-          :loading="loadingRecords"
-          :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
-          row-key="id"
-          size="small"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'submitTime'">
-              {{ formatDate(record.submitTime) }}
-            </template>
-            <template v-if="column.key === 'summary'">
-              {{ getSummary(record as FormRecord) }}
-            </template>
-            <template v-if="column.key === 'status'">
-              <a-tag :color="statusColor(record.status)">{{ statusLabel(record.status) }}</a-tag>
-            </template>
-            <template v-if="column.key === 'action'">
-              <a-button type="link" size="small" @click="viewRecord(record as FormRecord)">查看</a-button>
-            </template>
-          </template>
-        </a-table>
-      </template>
+      <MyRecordsTab
+        v-if="active_tab === 'records'"
+        ref="records_tab_ref"
+        @resubmit-leave="onResubmitLeave"
+        @resubmit-overtime="onResubmitOvertime"
+      />
 
-      <!-- 请假申请 -->
-      <template v-if="activeTab === 'leave'">
-        <a-form
-          :model="leaveForm"
-          layout="vertical"
-          style="max-width: 480px"
-          @finish="submitLeave"
-        >
-          <a-form-item label="假种" name="leaveType" :rules="[{ required: true, message: '请选择假种' }]">
-            <a-select v-model:value="leaveForm.leaveType" placeholder="请选择" data-catch="form-leave-type">
-              <a-select-option v-for="lt in leaveTypes" :key="lt.code" :value="lt.name">{{ lt.name }}</a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item label="开始日期" name="startDate" :rules="[{ required: true, message: '请选择开始日期' }]">
-            <a-date-picker v-model:value="leaveForm.startDate" style="width: 100%" placeholder="请选择日期" data-catch="form-leave-start-date" />
-          </a-form-item>
-          <a-form-item label="结束日期" name="endDate" :rules="[{ required: true, message: '请选择结束日期' }]">
-            <a-date-picker v-model:value="leaveForm.endDate" style="width: 100%" placeholder="请选择日期" data-catch="form-leave-end-date" />
-          </a-form-item>
-          <a-form-item label="请假时长">
-            <span style="color: #555;">{{ leaveDuration ?? '请先选择开始和结束日期' }}</span>
-          </a-form-item>
-          <a-form-item label="请假原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
-            <a-textarea v-model:value="leaveForm.reason" :rows="3" />
-          </a-form-item>
-          <a-form-item>
-            <a-checkbox v-model:checked="leaveForm.retroactive">追溯申请（补录历史请假）</a-checkbox>
-          </a-form-item>
-          <a-form-item label="附件（可选）">
-            <customized-file-upload
-              ref="leaveFileRef"
-              business-type="LEAVE"
-              :max-count="3"
-              accept="image/*,.pdf"
-              hint="可上传病假单、证明材料等，最多 3 个"
-              @change="files => leaveForm.attachmentIds = files.map(f => f.attachmentId)"
-            />
-          </a-form-item>
+      <LeaveTab
+        v-if="active_tab === 'leave'"
+        :prefill="leave_prefill"
+        @submitted="onFormSubmitted"
+      />
 
-          <a-divider style="margin: 8px 0;" />
-          <a-form-item>
-            <a-checkbox v-model:checked="leaveForm.enableDelegation">启用临时委托（请假期间，由代办人代为处理我的审批事务）</a-checkbox>
-          </a-form-item>
-          <template v-if="leaveForm.enableDelegation">
-            <a-form-item label="代办人手机号" :rules="[{ required: true, message: '请填写代办人手机号' }]">
-              <a-input v-model:value="leaveForm.delegatePhone" placeholder="必填" />
-            </a-form-item>
-            <a-form-item label="委托范围（可选）">
-              <a-select v-model:value="leaveForm.delegateScope" allow-clear placeholder="留空 = 所有审批事务">
-                <a-select-option value="LEAVE">仅请假</a-select-option>
-                <a-select-option value="OVERTIME">仅加班</a-select-option>
-              </a-select>
-            </a-form-item>
-          </template>
+      <OvertimeTab
+        v-if="active_tab === 'overtime' || active_tab === 'self-report'"
+        :mode="active_tab as 'overtime' | 'self-report'"
+        :prefill="overtime_prefill"
+        @submitted="onFormSubmitted"
+      />
 
-          <a-form-item>
-            <a-button type="primary" html-type="submit" :loading="submittingLeave" data-catch="leave-form-submit">
-              提交申请
-            </a-button>
-          </a-form-item>
-        </a-form>
-      </template>
+      <!-- Employee notification view + PM/CEO initiated list -->
+      <OvertimeNotifyTab
+        v-if="active_tab === 'notifications' || active_tab === 'notify-initiated'"
+        ref="notify_tab_ref"
+        :mode="active_tab as 'notifications' | 'notify-initiated'"
+      />
 
-      <!-- 加班申报 -->
-      <template v-if="activeTab === 'overtime'">
-        <a-form
-          :model="overtimeForm"
-          layout="vertical"
-          style="max-width: 480px"
-          @finish="submitOvertime"
-        >
-          <a-form-item label="加班日期" name="date" :rules="[{ required: true, message: '请选择日期' }]">
-            <a-date-picker v-model:value="overtimeForm.date" style="width: 100%" placeholder="请选择日期" />
-          </a-form-item>
-          <a-form-item label="开始时间" name="startTime" :rules="[{ required: true, message: '请选择开始时间' }]">
-            <a-time-picker v-model:value="overtimeForm.startTime" format="HH:mm" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="结束时间" name="endTime" :rules="[{ required: true, message: '请选择结束时间' }]">
-            <a-time-picker v-model:value="overtimeForm.endTime" format="HH:mm" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="加班时长">
-            <span style="color: #555;">{{ overtimeDuration ?? '请先选择开始和结束时间' }}</span>
-          </a-form-item>
-          <a-form-item label="加班类型" name="overtimeType">
-            <a-select v-model:value="overtimeForm.overtimeType" placeholder="请选择">
-              <a-select-option value="周末加班">周末加班</a-select-option>
-              <a-select-option value="节假日加班">节假日加班</a-select-option>
-              <a-select-option value="工作日加班">工作日加班</a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item label="说明" name="reason">
-            <a-textarea v-model:value="overtimeForm.reason" :rows="3" />
-          </a-form-item>
-          <a-form-item label="附件（可选）">
-            <customized-file-upload
-              ref="overtimeFileRef"
-              business-type="OVERTIME"
-              :max-count="3"
-              accept="image/*,.pdf"
-              hint="可上传相关证明，最多 3 个"
-              @change="files => overtimeForm.attachmentIds = files.map(f => f.attachmentId)"
-            />
-          </a-form-item>
-          <a-form-item>
-            <a-button type="primary" html-type="submit" :loading="submittingOvertime" data-catch="attendance-overtime-submit">
-              提交申报
-            </a-button>
-          </a-form-item>
-        </a-form>
-      </template>
-
-      <!-- 自补加班 — 补申报历史加班，走审批流 -->
-      <template v-if="activeTab === 'self-report'">
-        <a-form
-          :model="selfReportForm"
-          layout="vertical"
-          style="max-width: 480px"
-          @finish="submitSelfReport"
-        >
-          <a-form-item label="加班日期" name="date" :rules="[{ required: true, message: '请选择日期' }]">
-            <a-date-picker v-model:value="selfReportForm.date" style="width: 100%" placeholder="请选择日期" />
-          </a-form-item>
-          <a-form-item label="开始时间" name="startTime" :rules="[{ required: true, message: '请选择开始时间' }]">
-            <a-time-picker v-model:value="selfReportForm.startTime" format="HH:mm" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="结束时间" name="endTime" :rules="[{ required: true, message: '请选择结束时间' }]">
-            <a-time-picker v-model:value="selfReportForm.endTime" format="HH:mm" style="width: 100%" />
-          </a-form-item>
-          <a-form-item label="加班类型" name="overtimeType" :rules="[{ required: true, message: '请选择类型' }]">
-            <a-select v-model:value="selfReportForm.overtimeType" placeholder="请选择">
-              <a-select-option value="WEEKDAY">工作日加班</a-select-option>
-              <a-select-option value="WEEKEND">周末加班</a-select-option>
-              <a-select-option value="HOLIDAY">节假日加班</a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item label="补申报原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
-            <a-textarea v-model:value="selfReportForm.reason" :rows="3" placeholder="请说明未能及时申报的原因" />
-          </a-form-item>
-          <a-form-item>
-            <a-button type="primary" html-type="submit" :loading="submittingSelfReport" data-catch="attendance-selfreport-submit">
-              提交申请
-            </a-button>
-          </a-form-item>
-        </a-form>
-      </template>
-
-      <!-- 加班通知 Tab — 员工/劳工查看收到的加班通知，可确认或拒绝 -->
-      <template v-if="activeTab === 'notifications'">
-        <a-table
-          :columns="notifColumns"
-          :data-source="notifications"
-          :loading="loadingNotifs"
-          :pagination="{ pageSize: 20 }"
-          row-key="notification.id"
-          size="small"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'date'">
-              {{ record.notification.overtimeDate }}
-            </template>
-            <template v-if="column.key === 'type'">
-              {{ overtimeTypeLabel(record.notification.overtimeType) }}
-            </template>
-            <template v-if="column.key === 'content'">
-              {{ record.notification.content }}
-            </template>
-            <template v-if="column.key === 'status'">
-              <template v-if="record.myResponse">
-                <a-tag :color="record.myResponse.accepted ? 'success' : 'error'">
-                  {{ record.myResponse.accepted ? '已确认' : '已拒绝' }}
-                </a-tag>
-              </template>
-              <a-tag v-else color="processing">待响应</a-tag>
-            </template>
-            <template v-if="column.key === 'action'">
-              <template v-if="!record.myResponse && record.notification.status !== 'ARCHIVED'">
-                <a-space>
-                  <a-button size="small" type="primary" @click="respondNotif(record.notification.id, true, '')">确认</a-button>
-                  <a-button size="small" danger @click="openRejectModal(record.notification.id)">拒绝</a-button>
-                </a-space>
-              </template>
-              <span v-else class="text-muted">—</span>
-            </template>
-          </template>
-        </a-table>
-      </template>
-
-      <!-- 发起通知 Tab — PM/CEO 创建加班通知 -->
-      <template v-if="activeTab === 'notify-create'">
-        <a-form
-          :model="notifyForm"
-          layout="vertical"
-          style="max-width: 480px"
-          @finish="submitNotification"
-        >
-          <a-form-item label="加班日期" name="overtimeDate" :rules="[{ required: true, message: '请选择日期' }]">
-            <a-date-picker v-model:value="notifyForm.overtimeDate" style="width: 100%" placeholder="请选择日期" />
-          </a-form-item>
-          <a-form-item label="加班类型" name="overtimeType" :rules="[{ required: true, message: '请选择类型' }]">
-            <a-select v-model:value="notifyForm.overtimeType" placeholder="请选择">
-              <a-select-option value="WEEKDAY">工作日加班</a-select-option>
-              <a-select-option value="WEEKEND">周末加班</a-select-option>
-              <a-select-option value="HOLIDAY">节假日加班</a-select-option>
-            </a-select>
-          </a-form-item>
-          <a-form-item label="通知内容" name="content" :rules="[{ required: true, message: '请填写通知内容' }]">
-            <a-textarea v-model:value="notifyForm.content" :rows="3" placeholder="说明加班安排、要求等" />
-          </a-form-item>
-          <a-form-item>
-            <a-button type="primary" html-type="submit" :loading="submittingNotification">
-              发送通知
-            </a-button>
-          </a-form-item>
-        </a-form>
-      </template>
-
-      <!-- 已发起 Tab — PM/CEO 查看自己发起的通知及响应情况 -->
-      <template v-if="activeTab === 'notify-initiated'">
-        <a-table
-          :columns="initiatedColumns"
-          :data-source="initiatedNotifs"
-          :loading="loadingInitiated"
-          :pagination="{ pageSize: 20 }"
-          row-key="notification.id"
-          size="small"
-          :expand-row-by-click="true"
-        >
-          <template #bodyCell="{ column, record }">
-            <template v-if="column.key === 'date'">
-              {{ record.notification.overtimeDate }}
-            </template>
-            <template v-if="column.key === 'type'">
-              {{ overtimeTypeLabel(record.notification.overtimeType) }}
-            </template>
-            <template v-if="column.key === 'content'">
-              {{ record.notification.content }}
-            </template>
-            <template v-if="column.key === 'status'">
-              <a-tag :color="notifStatusColor(record.notification.status)">
-                {{ notifStatusLabel(record.notification.status) }}
-              </a-tag>
-            </template>
-            <template v-if="column.key === 'responseCount'">
-              {{ record.responses.length }} 人响应
-            </template>
-          </template>
-          <template #expandedRowRender="{ record }">
-            <div v-if="record.responses.length === 0" class="no-response-tip">暂无响应</div>
-            <a-table
-              v-else
-              :columns="responseDetailColumns"
-              :data-source="record.responses"
-              :pagination="false"
-              row-key="id"
-              size="small"
-            >
-              <template #bodyCell="{ column: col, record: resp }">
-                <template v-if="col.key === 'accepted'">
-                  <a-tag :color="resp.accepted ? 'success' : 'error'">
-                    {{ resp.accepted ? '已确认' : '已拒绝' }}
-                  </a-tag>
-                </template>
-                <template v-if="col.key === 'rejectReason'">
-                  {{ resp.rejectReason || '—' }}
-                </template>
-              </template>
-            </a-table>
-          </template>
-        </a-table>
-      </template>
+      <!-- PM/CEO: create a new overtime notification -->
+      <OvertimeNotifyCreateTab
+        v-if="active_tab === 'notify-create'"
+        @submitted="onNotificationSent"
+      />
     </a-card>
-
-    <!-- 拒绝加班通知弹窗 -->
-    <a-modal
-      v-model:open="rejectModalVisible"
-      title="拒绝原因"
-      @ok="confirmReject"
-      ok-text="确认拒绝"
-      cancel-text="取消"
-    >
-      <a-textarea v-model:value="rejectReason" placeholder="请填写拒绝原因（必填）" :rows="3" />
-    </a-modal>
-
-    <!-- 记录详情弹窗 -->
-    <a-modal
-      v-model:open="detailVisible"
-      :title="selectedRecord ? `${selectedRecord.formTypeName} · 详情` : '详情'"
-      width="500px"
-      :footer="null"
-    >
-      <div v-if="selectedRecord" class="record-detail">
-        <a-descriptions :column="2" size="small" bordered>
-          <a-descriptions-item label="类型">{{ selectedRecord.formTypeName }}</a-descriptions-item>
-          <a-descriptions-item label="状态">
-            <a-tag :color="statusColor(selectedRecord.status)">{{ statusLabel(selectedRecord.status) }}</a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="提交时间" :span="2">{{ formatDate(selectedRecord.submitTime) }}</a-descriptions-item>
-          <template v-for="(val, key) in selectedRecord.formData" :key="key">
-            <a-descriptions-item :label="getFieldLabel(String(key))" :span="2">
-              {{ formatFormValue(key as string, val) }}
-            </a-descriptions-item>
-          </template>
-          <a-descriptions-item v-if="selectedRecord.remark" label="备注" :span="2">{{ selectedRecord.remark }}</a-descriptions-item>
-          <a-descriptions-item v-if="selectedRecord.status === 'REJECTED'" label="驳回原因" :span="2">
-            <span style="color: #ff4d4f">{{ getRejectReason(selectedRecord) }}</span>
-          </a-descriptions-item>
-        </a-descriptions>
-
-        <div v-if="selectedRecord.status === 'REJECTED' && canResubmit(selectedRecord)" class="resubmit-row">
-          <a-button type="primary" data-catch="attendance-record-resubmit-btn" @click="resubmitRecord(selectedRecord)">
-            重新发起
-          </a-button>
-        </div>
-      </div>
-    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
-import { request } from '~/utils/http'
+/**
+ * Attendance page — layout, tab switching, and ?tab= URL query parameter support
+ *
+ * Purpose: thin coordinator that owns only the active tab key and cross-tab
+ * communication (resubmit flow from MyRecordsTab → LeaveTab / OvertimeTab).
+ * All business logic lives in the individual tab components.
+ *
+ * Data flow:
+ *   - ?tab=<key> URL parameter sets initial tab on mount (A-AUDIT-FIX-02 compat)
+ *   - MyRecordsTab emits resubmit-leave / resubmit-overtime → parent fills prefill
+ *     prop and switches active tab so the target form pre-populates
+ *   - After any form submission, switches back to records tab and reloads the list
+ */
+import { ref, computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '~/stores/user'
-import dayjs, { type Dayjs } from 'dayjs'
-import customParseFormat from 'dayjs/plugin/customParseFormat'
-dayjs.extend(customParseFormat)
-import {
-  getFieldLabel,
-  getLeaveTypeLabel,
-  getOvertimeTypeLabel,
-  formatFormSummary
-} from '../../../shared/utils/formLabels'
+import MyRecordsTab from './tabs/MyRecordsTab.vue'
+import LeaveTab from './tabs/LeaveTab.vue'
+import OvertimeTab from './tabs/OvertimeTab.vue'
+import OvertimeNotifyTab from './tabs/OvertimeNotifyTab.vue'
+import OvertimeNotifyCreateTab from './tabs/OvertimeNotifyCreateTab.vue'
 
-interface OvertimeNotifRecord {
-  notification: {
-    id: number
-    projectId?: number
-    initiatorId: number
-    overtimeDate: string
-    overtimeType: string
-    content: string
-    status: string
-  }
-  myResponse: {
-    accepted: boolean
-    rejectReason?: string
-    rejectApprovalStatus?: string
-  } | null
-}
-
-interface OvertimeResponse {
-  id: number
-  employeeId: number
-  accepted: boolean
-  rejectReason?: string
-  rejectApprovalStatus?: string
-}
-
-interface InitiatedNotifRecord {
-  notification: {
-    id: number
-    overtimeDate: string
-    overtimeType: string
-    content: string
-    status: string
-  }
-  responses: OvertimeResponse[]
-}
-
-interface ApprovalHistory {
-  nodeName?: string
-  approver?: string
-  action?: string
-  comment?: string
-  time?: string
-}
-
-interface FormRecord {
-  id: number
-  formType: string
-  formTypeName: string
-  submitTime: string
-  status: string
-  formData?: Record<string, unknown>
-  remark?: string
-  history?: ApprovalHistory[]
-}
-
-const userStore = useUserStore()
+const user_store = useUserStore()
 const route = useRoute()
-const isPmOrCeo = computed(() => {
-  const role = userStore.userInfo?.role ?? ''
+const router = useRouter()
+
+const is_pm_or_ceo = computed(() => {
+  const role = user_store.userInfo?.role ?? ''
   return role === 'project_manager' || role === 'ceo' || role === 'department_manager'
 })
 
-// 初始 Tab：允许通过 ?tab=xxx 激活（用于 /forms/leave、/forms/overtime 等快捷入口转发），合法值见下；非法值回退到 records
+// Valid tab keys; invalid ?tab= values fall back to 'records'
 const VALID_TABS = ['records', 'leave', 'overtime', 'self-report', 'notifications', 'notify-create', 'notify-initiated'] as const
-const initialTab = (() => {
+type TabKey = typeof VALID_TABS[number]
+
+const initial_tab = (() => {
   const q = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
-  return typeof q === 'string' && (VALID_TABS as readonly string[]).includes(q) ? q : 'records'
+  return typeof q === 'string' && (VALID_TABS as readonly string[]).includes(q) ? q as TabKey : 'records'
 })()
-const activeTab = ref(initialTab)
-const loadingRecords = ref(false)
-const records = ref<FormRecord[]>([])
-const submittingLeave = ref(false)
-const submittingOvertime = ref(false)
-const submittingSelfReport = ref(false)
-const submittingNotification = ref(false)
 
-const leaveForm = ref<{
-  leaveType: string | undefined
-  startDate: Dayjs | undefined
-  endDate: Dayjs | undefined
-  reason: string
-  enableDelegation: boolean
-  delegatePhone: string
-  delegateScope: string | undefined
-  retroactive: boolean
-  attachmentIds: number[]
-}>({ leaveType: undefined, startDate: undefined, endDate: undefined, reason: '',
-     enableDelegation: false, delegatePhone: '', delegateScope: undefined,
-     retroactive: false, attachmentIds: [] })
+const active_tab = ref<TabKey>(initial_tab)
 
-const leaveFileRef = ref<{ clear: () => void } | null>(null)
-const leaveTypes = ref<Array<{ code: string; name: string }>>([])
+// Cross-tab prefill state for resubmit flow (MyRecordsTab → form tabs)
+const leave_prefill = ref<{ leaveType: string | undefined; startDate: string | undefined; endDate: string | undefined; reason: string } | null>(null)
+const overtime_prefill = ref<{ date: string | undefined; startTime: string | undefined; endTime: string | undefined; overtimeType: string | undefined; reason: string } | null>(null)
 
-async function loadLeaveTypes() {
-  try {
-    const data = await request<Array<{ code: string; name: string }>>({ url: '/config/leave-types' })
-    leaveTypes.value = data ?? []
-  } catch {
-    leaveTypes.value = []
-  }
-}
+// Template refs for exposing child methods
+const records_tab_ref = ref<InstanceType<typeof MyRecordsTab> | null>(null)
+const notify_tab_ref = ref<InstanceType<typeof OvertimeNotifyTab> | null>(null)
 
-const leaveDuration = computed(() => {
-  const s = leaveForm.value.startDate
-  const e = leaveForm.value.endDate
-  if (s && e && e.diff(s, 'day') >= 0) {
-    return `${e.diff(s, 'day') + 1} 天`
-  }
-  return null
-})
-
-const overtimeForm = ref<{
-  date: Dayjs | undefined
-  startTime: Dayjs | undefined
-  endTime: Dayjs | undefined
-  overtimeType: string | undefined
-  reason: string
-  attachmentIds: number[]
-}>({ date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '', attachmentIds: [] })
-
-const overtimeFileRef = ref<{ clear: () => void } | null>(null)
-const overtimeDuration = computed(() => {
-  const s = overtimeForm.value.startTime
-  const e = overtimeForm.value.endTime
-  if (s && e) {
-    const mins = e.diff(s, 'minute')
-    if (mins > 0) {
-      const h = Math.floor(mins / 60)
-      const m = mins % 60
-      return m > 0 ? `${h} 小时 ${m} 分钟` : `${h} 小时`
-    }
-  }
-  return null
-})
-
-const selfReportForm = ref<{
-  date: Dayjs | undefined
-  startTime: Dayjs | undefined
-  endTime: Dayjs | undefined
-  overtimeType: string | undefined
-  reason: string
-}>({ date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '' })
-
-const notifyForm = ref<{
-  overtimeDate: Dayjs | undefined
-  overtimeType: string | undefined
-  content: string
-}>({ overtimeDate: undefined, overtimeType: undefined, content: '' })
-
-const recordColumns = [
-  { title: '日期', key: 'submitTime', width: 100 },
-  { title: '类型', dataIndex: 'formTypeName', key: 'formTypeName', width: 90 },
-  { title: '摘要', key: 'summary' },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '操作', key: 'action', width: 80 }
-]
-
-const detailVisible = ref(false)
-const selectedRecord = ref<FormRecord | null>(null)
-
-// 加班通知（员工接收）
-const loadingNotifs = ref(false)
-const notifications = ref<OvertimeNotifRecord[]>([])
-const rejectModalVisible = ref(false)
-const rejectReason = ref('')
-const pendingRejectId = ref<number | null>(null)
-
-const notifColumns = [
-  { title: '加班日期', key: 'date', width: 110 },
-  { title: '类型', key: 'type', width: 100 },
-  { title: '说明', key: 'content' },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '操作', key: 'action', width: 130 }
-]
-
-// 已发起通知（PM/CEO 视图）
-const loadingInitiated = ref(false)
-const initiatedNotifs = ref<InitiatedNotifRecord[]>([])
-
-const initiatedColumns = [
-  { title: '加班日期', key: 'date', width: 110 },
-  { title: '类型', key: 'type', width: 100 },
-  { title: '通知内容', key: 'content' },
-  { title: '状态', key: 'status', width: 90 },
-  { title: '响应', key: 'responseCount', width: 90 }
-]
-
-const responseDetailColumns = [
-  { title: '员工ID', dataIndex: 'employeeId', key: 'employeeId', width: 90 },
-  { title: '响应', key: 'accepted', width: 80 },
-  { title: '拒绝原因', key: 'rejectReason' }
-]
-
-function overtimeTypeLabel(t: string) {
-  const map: Record<string, string> = { WEEKDAY: '工作日加班', WEEKEND: '周末加班', HOLIDAY: '节假日加班' }
-  return map[t] ?? t
-}
-
-function notifStatusColor(s: string) {
-  if (s === 'ARCHIVED') return 'default'
-  if (s === 'NOTIFIED') return 'processing'
-  return 'default'
-}
-
-function notifStatusLabel(s: string) {
-  const map: Record<string, string> = { NOTIFIED: '待响应', ARCHIVED: '已归档' }
-  return map[s] ?? s
-}
-
+/** Clear prefill state when manually navigating away from form tabs; keep ?tab= in sync */
 function onTabChange(key: string | number) {
-  if (key === 'notifications') loadNotifications()
-  if (key === 'notify-initiated') loadInitiatedNotifs()
+  if (key !== 'leave') leave_prefill.value = null
+  if (key !== 'overtime') overtime_prefill.value = null
+  router.replace({ query: { ...route.query, tab: String(key) } })
 }
 
-async function loadNotifications() {
-  loadingNotifs.value = true
-  try {
-    const list = await request<OvertimeNotifRecord[]>({ url: '/overtime-notifications' })
-    notifications.value = list ?? []
-  } catch {
-    notifications.value = []
-  } finally {
-    loadingNotifs.value = false
-  }
+/** Called by MyRecordsTab when user clicks 重新发起 on a rejected leave record */
+function onResubmitLeave(data: { leaveType: string | undefined; startDate: string | undefined; endDate: string | undefined; reason: string }) {
+  leave_prefill.value = data
+  active_tab.value = 'leave'
 }
 
-async function loadInitiatedNotifs() {
-  loadingInitiated.value = true
-  try {
-    const list = await request<InitiatedNotifRecord[]>({ url: '/overtime-notifications/initiated' })
-    initiatedNotifs.value = list ?? []
-  } catch {
-    initiatedNotifs.value = []
-  } finally {
-    loadingInitiated.value = false
-  }
+/** Called by MyRecordsTab when user clicks 重新发起 on a rejected overtime record */
+function onResubmitOvertime(data: { date: string | undefined; startTime: string | undefined; endTime: string | undefined; overtimeType: string | undefined; reason: string }) {
+  overtime_prefill.value = data
+  active_tab.value = 'overtime'
 }
 
-async function respondNotif(id: number, accepted: boolean, reason: string) {
-  try {
-    await request({
-      url: `/overtime-notifications/${id}/respond`,
-      method: 'POST',
-      body: { accepted, rejectReason: reason }
-    })
-    await loadNotifications()
-  } catch (e: unknown) {
-    alert((e as Error).message ?? '操作失败')
-  }
+/** Called after LeaveTab or OvertimeTab submits successfully: go to records and reload */
+async function onFormSubmitted() {
+  active_tab.value = 'records'
+  // nextTick-equivalent: allow records_tab_ref to mount before calling loadRecords
+  await new Promise(resolve => setTimeout(resolve, 0))
+  records_tab_ref.value?.loadRecords()
 }
 
-function openRejectModal(id: number) {
-  pendingRejectId.value = id
-  rejectReason.value = ''
-  rejectModalVisible.value = true
+/** Called after OvertimeNotifyCreateTab sends a notification: switch to notify-initiated */
+async function onNotificationSent() {
+  active_tab.value = 'notify-initiated'
+  // Allow OvertimeNotifyTab to mount, then reload its list
+  await new Promise(resolve => setTimeout(resolve, 0))
+  notify_tab_ref.value?.loadInitiatedNotifs()
 }
-
-async function confirmReject() {
-  if (!pendingRejectId.value || !rejectReason.value.trim()) {
-    alert('请填写拒绝原因')
-    return
-  }
-  await respondNotif(pendingRejectId.value, false, rejectReason.value)
-  rejectModalVisible.value = false
-}
-
-/** 格式化日期，精确到天 */
-function formatDate(t: string | undefined) {
-  if (!t) return '—'
-  return t.replace('T', ' ').slice(0, 10)
-}
-
-/** 生成摘要文字 */
-function getSummary(record: FormRecord): string {
-  return formatFormSummary(record.formType, record.formData) || record.formTypeName || ''
-}
-
-/** 格式化表单字段值（将枚举值转换为中文） */
-function formatFormValue(key: string, value: unknown): string {
-  if (value === null || value === undefined) return '—'
-  // 请假类型转换为中文
-  if (key === 'leaveType') {
-    return getLeaveTypeLabel(String(value)) || String(value)
-  }
-  // 加班类型转换为中文
-  if (key === 'overtimeType') {
-    return getOvertimeTypeLabel(String(value)) || String(value)
-  }
-  return String(value)
-}
-
-function statusColor(status: string) {
-  if (status === 'APPROVED') return 'success'
-  if (status === 'REJECTED') return 'error'
-  if (status === 'PENDING' || status === 'APPROVING') return 'processing'
-  return 'default'
-}
-
-function statusLabel(status: string) {
-  const map: Record<string, string> = {
-    PENDING: '审批中', APPROVING: '审批中',
-    APPROVED: '已通过', REJECTED: '已驳回',
-    ARCHIVED: '已归档', RECALLED: '已撤回'
-  }
-  return map[status] ?? status
-}
-
-async function viewRecord(record: FormRecord) {
-  selectedRecord.value = record
-  detailVisible.value = true
-  // 拉取审批历史，用于展示驳回原因
-  try {
-    const detail = await request<FormRecord>({ url: `/forms/${record.id}` })
-    if (detail) {
-      selectedRecord.value = { ...record, history: detail.history, formData: detail.formData ?? record.formData }
-    }
-  } catch {
-    // 忽略，详情已能展示基本信息
-  }
-}
-
-function getRejectReason(record: FormRecord): string {
-  const history = record.history ?? []
-  const rejectStep = [...history].reverse().find(h => h.action === 'REJECT')
-  return rejectStep?.comment || '—'
-}
-
-function canResubmit(record: FormRecord): boolean {
-  return record.formType === 'LEAVE' || record.formType === 'OVERTIME'
-}
-
-function resubmitRecord(record: FormRecord) {
-  const data = record.formData ?? {}
-  if (record.formType === 'LEAVE') {
-    leaveForm.value = {
-      leaveType: (data.leaveType as string) ?? undefined,
-      startDate: data.startDate ? dayjs(data.startDate as string) : undefined,
-      endDate: data.endDate ? dayjs(data.endDate as string) : undefined,
-      reason: record.remark ?? '',
-      enableDelegation: false,
-      delegatePhone: '',
-      delegateScope: undefined,
-      retroactive: false,
-      attachmentIds: []
-    }
-    activeTab.value = 'leave'
-  } else if (record.formType === 'OVERTIME') {
-    overtimeForm.value = {
-      date: data.date ? dayjs(data.date as string) : undefined,
-      startTime: data.startTime ? dayjs(data.startTime as string, 'HH:mm') : undefined,
-      endTime: data.endTime ? dayjs(data.endTime as string, 'HH:mm') : undefined,
-      overtimeType: (data.overtimeType as string) ?? undefined,
-      reason: record.remark ?? '',
-      attachmentIds: []
-    }
-    activeTab.value = 'overtime'
-  }
-  detailVisible.value = false
-}
-
-async function loadRecords() {
-  loadingRecords.value = true
-  try {
-    const list = await request<FormRecord[]>({ url: '/attendance/records' })
-    records.value = list ?? []
-  } catch {
-    records.value = []
-  } finally {
-    loadingRecords.value = false
-  }
-}
-
-async function submitLeave() {
-  submittingLeave.value = true
-  try {
-    await request({
-      url: '/attendance/leave',
-      method: 'POST',
-      body: {
-        formType: 'LEAVE',
-        formData: {
-          leaveType: leaveForm.value.leaveType,
-          startDate: leaveForm.value.startDate?.format('YYYY-MM-DD'),
-          endDate: leaveForm.value.endDate?.format('YYYY-MM-DD'),
-          days: (() => {
-            const s = leaveForm.value.startDate
-            const e = leaveForm.value.endDate
-            if (s && e) return e.diff(s, 'day') + 1
-            return 1
-          })(),
-          retroactive: leaveForm.value.retroactive,
-          attachmentIds: leaveForm.value.attachmentIds
-        },
-        remark: leaveForm.value.reason
-      }
-    })
-    // 临时委托：在请假提交成功后另起接口创建委托
-    if (leaveForm.value.enableDelegation && leaveForm.value.delegatePhone.trim() && leaveForm.value.endDate) {
-      try {
-        await request({
-          url: '/delegations',
-          method: 'POST',
-          body: {
-            delegatePhone: leaveForm.value.delegatePhone.trim(),
-            scope: leaveForm.value.delegateScope || null,
-            startsAt: leaveForm.value.startDate ? `${leaveForm.value.startDate.format('YYYY-MM-DD')}T00:00:00` : null,
-            expiresAt: `${leaveForm.value.endDate.format('YYYY-MM-DD')}T23:59:59`
-          }
-        })
-      } catch {
-        alert('请假已提交，但临时委托创建失败，请到委托管理手动创建')
-      }
-    }
-    leaveFileRef.value?.clear()
-    leaveForm.value = { leaveType: undefined, startDate: undefined, endDate: undefined, reason: '',
-                        enableDelegation: false, delegatePhone: '', delegateScope: undefined,
-                        retroactive: false, attachmentIds: [] }
-    activeTab.value = 'records'
-    await loadRecords()
-  } catch (e: unknown) {
-    const msg = (e as Error).message ?? '提交失败'
-    alert(msg)
-  } finally {
-    submittingLeave.value = false
-  }
-}
-
-async function submitOvertime() {
-  submittingOvertime.value = true
-  try {
-    await request({
-      url: '/attendance/overtime',
-      method: 'POST',
-      body: {
-        formType: 'OVERTIME',
-        formData: {
-          date: overtimeForm.value.date?.format('YYYY-MM-DD'),
-          startTime: overtimeForm.value.startTime?.format('HH:mm'),
-          endTime: overtimeForm.value.endTime?.format('HH:mm'),
-          overtimeType: overtimeForm.value.overtimeType,
-          attachmentIds: overtimeForm.value.attachmentIds
-        },
-        remark: overtimeForm.value.reason
-      }
-    })
-    overtimeFileRef.value?.clear()
-    overtimeForm.value = { date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '', attachmentIds: [] }
-    activeTab.value = 'records'
-    await loadRecords()
-  } catch (e: unknown) {
-    const msg = (e as Error).message ?? '提交失败'
-    alert(msg)
-  } finally {
-    submittingOvertime.value = false
-  }
-}
-
-async function submitSelfReport() {
-  submittingSelfReport.value = true
-  try {
-    await request({
-      url: '/attendance/overtime-self-report',
-      method: 'POST',
-      body: {
-        formType: 'OVERTIME',
-        formData: {
-          date: selfReportForm.value.date?.format('YYYY-MM-DD'),
-          startTime: selfReportForm.value.startTime?.format('HH:mm'),
-          endTime: selfReportForm.value.endTime?.format('HH:mm'),
-          overtimeType: selfReportForm.value.overtimeType
-        },
-        remark: selfReportForm.value.reason
-      }
-    })
-    selfReportForm.value = { date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '' }
-    activeTab.value = 'records'
-    await loadRecords()
-  } catch (e: unknown) {
-    const msg = (e as Error).message ?? '提交失败'
-    alert(msg)
-  } finally {
-    submittingSelfReport.value = false
-  }
-}
-
-async function submitNotification() {
-  submittingNotification.value = true
-  try {
-    await request({
-      url: '/overtime-notifications',
-      method: 'POST',
-      body: {
-        overtimeDate: notifyForm.value.overtimeDate?.format('YYYY-MM-DD'),
-        overtimeType: notifyForm.value.overtimeType,
-        content: notifyForm.value.content
-      }
-    })
-    notifyForm.value = { overtimeDate: undefined, overtimeType: undefined, content: '' }
-    activeTab.value = 'notify-initiated'
-    await loadInitiatedNotifs()
-  } catch (e: unknown) {
-    const msg = (e as Error).message ?? '发送失败'
-    alert(msg)
-  } finally {
-    submittingNotification.value = false
-  }
-}
-
-onMounted(() => {
-  loadRecords()
-  loadLeaveTypes()
-  // 若通过 ?tab=xxx 进入需要拉远端数据的 Tab，此处主动触发一次加载
-  if (initialTab === 'notifications') loadNotifications()
-  if (initialTab === 'notify-initiated') loadInitiatedNotifs()
-})
-
 </script>
 
 <style scoped>
@@ -905,21 +149,4 @@ onMounted(() => {
   margin: 0 0 16px 0;
   color: #003466;
 }
-
-.record-detail {
-  padding: 4px 0;
-}
-
-.no-response-tip {
-  padding: 8px 16px;
-  color: #999;
-  font-size: 13px;
-}
-
-.resubmit-row {
-  margin-top: 16px;
-  text-align: right;
-}
-
-/* Removed flex constraints to allow natural content flow */
 </style>

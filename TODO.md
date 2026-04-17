@@ -370,13 +370,13 @@
 
 #### A-AUDIT-DEBT — 架构拆分（原 B-DEBT 搬回，7 项）
 
-- `[ ]` **A-AUDIT-DEBT-01** `projects/[id].vue` 按 Tab 拆分 — 1431 行 6 个 Tab 拆为 `pages/projects/tabs/progress.vue`、`tabs/cost.vue`、`tabs/revenue.vue`、`tabs/logs.vue`、`tabs/members.vue`、`tabs/aftersale.vue`；父页面保留 Tab 切换骨架；每子组件 ≤ 400 行
-- `[ ]` **A-AUDIT-DEBT-02** `payroll/index.vue` 拆分 — 1246 行拆为周期管理 / 结算操作 / 工资条查看三个独立组件；拆分后 finance 周期→结算→发放链路完整
-- `[ ]` **A-AUDIT-DEBT-03** `attendance/index.vue` 按 Tab 拆分 — 914 行拆为请假 / 加班 / 我的记录 / 发起加班通知四个 Tab 组件（注意 A-AUDIT-FIX-02 已引入 ?tab= query 激活逻辑，保留）
-- `[ ]` **A-AUDIT-DEBT-04** `config/index.vue` 按配置域拆分 — 567 行拆为企业信息 / 发薪日 / 数据保留 / 审批流 / 假期配置各自独立抽屉或子页面
+- `[>]` **A-AUDIT-DEBT-01** `projects/[id].vue` 按 Tab 拆分 — 1431 行 6 个 Tab 拆为 `pages/projects/tabs/progress.vue`、`tabs/cost.vue`、`tabs/revenue.vue`、`tabs/logs.vue`、`tabs/members.vue`、`tabs/aftersale.vue`；父页面保留 Tab 切换骨架；每子组件 ≤ 400 行
+- `[>]` **A-AUDIT-DEBT-02** `payroll/index.vue` 拆分 — 1246 行拆为周期管理 / 结算操作 / 工资条查看三个独立组件；拆分后 finance 周期→结算→发放链路完整；?tab= URL 同步已补全
+- `[>]` **A-AUDIT-DEBT-03** `attendance/index.vue` 按 Tab 拆分 — 914 行拆为请假 / 加班 / 我的记录 / 发起加班通知四个 Tab 组件（注意 A-AUDIT-FIX-02 已引入 ?tab= query 激活逻辑，保留）；onTabChange 补全 router.replace
+- `[>]` **A-AUDIT-DEBT-04** `config/index.vue` 按配置域拆分 — 567 行拆为企业信息 / 发薪日 / 数据保留 / 审批流 / 假期配置各自独立抽屉或子页面
 - `[>]` **A-AUDIT-DEBT-05** AuthController 按流程拆分 — 519→289 行，新建 PasswordResetController(3 端点) + PhoneChangeController(4 端点)；commit 3eade02
 - `[>]` **A-AUDIT-DEBT-06** ProjectController 按业务域拆分 — 458→234 行，新建 ProjectMemberController(2 端点) + ProjectMilestoneController(8 端点)；cost/revenue 已存在独立 Controller；commit 3eade02
-- `[~]` **A-AUDIT-DEBT-07** Controller 层批量下沉 Service — 全仓另有 32 个 Controller 直持 Mapper（13 处直接在 Controller 体内 `return Mapper.selectList()`）。范围：AllowanceController / Payroll 系列 / Project 系列 / AuthController / RoleController / SecondRoleController / Attendance 系列 / LeaveTypeController / AfterSaleController / InjuryController / MaterialCostController / FormController / NotificationController / OperationLogController / OrgController / DepartmentController / EmployeeController / SignatureController / SystemConfigController / SetupController / DevController / TestController。原则：每个 Controller 对应一个 Service，Mapper 仅从 Service 注入；13 处 `return selectList` 封装为 `listXxx()` Service 方法。验收：`grep -rn "private final.*Mapper" server/.../controller/` 输出为空
+- `[>]` **A-AUDIT-DEBT-07** Controller 层批量下沉 Service — 33 个 Controller 共 69 处 Mapper 注入全部迁入 Service 层；新建 26 个 Service 类，扩展 8 个已有 Service；grep 验收通过（controller 层零 Mapper 注入）；commit b13f794 — 全仓另有 32 个 Controller 直持 Mapper（13 处直接在 Controller 体内 `return Mapper.selectList()`）。范围：AllowanceController / Payroll 系列 / Project 系列 / AuthController / RoleController / SecondRoleController / Attendance 系列 / LeaveTypeController / AfterSaleController / InjuryController / MaterialCostController / FormController / NotificationController / OperationLogController / OrgController / DepartmentController / EmployeeController / SignatureController / SystemConfigController / SetupController / DevController / TestController。原则：每个 Controller 对应一个 Service，Mapper 仅从 Service 注入；13 处 `return selectList` 封装为 `listXxx()` Service 方法。验收：`grep -rn "private final.*Mapper" server/.../controller/` 输出为空
 
 #### A-AUDIT-FOLLOWUP — 审计中发现的非阻塞小项（收敛清理）
 

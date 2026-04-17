@@ -18,172 +18,39 @@
 
         <!-- 周期管理 -->
         <template v-if="activeTab === 'cycles'">
-          <div class="tab-actions" style="margin-bottom: 12px;">
-            <a-button type="primary" @click="showCreateCycleModal = true">+ 创建周期</a-button>
-            <a-button style="margin-left: 8px;" @click="loadCycles" :loading="loadingCycles">刷新</a-button>
-          </div>
-          <a-table
-            :columns="cycleColumns"
-            :data-source="cycles"
-            :loading="loadingCycles"
-            row-key="id"
-            size="small"
-            :pagination="{ pageSize: 10 }"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'status'">
-                <a-tag data-catch="payroll-cycle-status" :color="cycleStatusColor(record.status)">{{ cycleStatusLabel(record.status) }}</a-tag>
-              </template>
-              <template v-if="column.key === 'action'">
-                <a-button
-                  v-if="record.status === 'OPEN'"
-                  type="link"
-                  size="small"
-                  :data-catch="'payroll-cycle-open-btn-' + record.id"
-                  @click="doOpenWindow(record.id as number)"
-                >开放申报窗口</a-button>
-                <a-button
-                  v-if="['OPEN','WINDOW_OPEN','WINDOW_CLOSED'].includes(record.status as string)"
-                  type="link"
-                  size="small"
-                  @click="selectCycleForSettle(record as unknown as PayrollCycle)"
-                >结算</a-button>
-              </template>
-            </template>
-          </a-table>
+          <PayrollCycles
+            @select-for-settle="onSelectCycleForSettle"
+            @cycles-updated="onCyclesUpdated"
+          />
         </template>
 
         <!-- 结算操作 -->
         <template v-if="activeTab === 'settle'">
-          <div style="max-width: 480px; margin-top: 8px;">
-            <a-form layout="vertical">
-              <a-form-item label="选择周期">
-                <a-select
-                  :value="selectedCycleId ?? undefined"
-                  placeholder="请选择工资周期"
-                  :options="settleableCycles"
-                  :loading="loadingCycles"
-                  @change="(v) => { selectedCycleId = v as number; precheckResult = null }"
-                />
-              </a-form-item>
-            </a-form>
-
-            <a-space>
-              <a-button
-                data-catch="payroll-settle-precheck-btn"
-                :disabled="!selectedCycleId"
-                :loading="precheckLoading"
-                @click="doPrecheck"
-              >预结算检查</a-button>
-              <a-button
-                data-catch="payroll-settle-run-btn"
-                type="primary"
-                :disabled="!selectedCycleId || !precheckPassed"
-                :loading="settleLoading"
-                @click="doSettle"
-              >正式结算</a-button>
-            </a-space>
-
-            <template v-if="precheckResult !== null">
-              <a-divider />
-              <a-alert
-                :type="precheckPassed ? 'success' : 'warning'"
-                :message="precheckPassed ? '所有检查项通过，可执行结算' : '存在未通过检查项'"
-                show-icon
-                style="margin-bottom: 12px;"
-              />
-              <a-list size="small" :data-source="precheckResult">
-                <template #renderItem="{ item }">
-                  <a-list-item>
-                    <a-space>
-                      <span :style="{ color: item.pass ? '#52c41a' : '#ff4d4f' }">
-                        {{ item.pass ? '✓' : '✗' }}
-                      </span>
-                      <span>{{ item.label }}</span>
-                      <span v-if="!item.pass" style="color: #ff4d4f; font-size: 12px;">{{ item.message }}</span>
-                    </a-space>
-                  </a-list-item>
-                </template>
-              </a-list>
-            </template>
-          </div>
+          <PayrollSettle
+            :settleableCycles="settleableCycles"
+            :loadingCycles="loadingCycles"
+            :preselectedCycleId="preselectedCycleId"
+            @settled="onSettled"
+          />
         </template>
 
         <!-- 工资条查看（Finance/CEO 按周期查全员） -->
         <template v-if="activeTab === 'slips'">
-          <div style="margin-bottom: 12px;">
-            <a-select
-              data-catch="payroll-slips-cycle-select"
-              :value="selectedCycleIdForSlips ?? undefined"
-              placeholder="请选择工资周期"
-              :options="cycleOptions"
-              :loading="loadingCycles"
-              style="width: 200px; margin-right: 8px;"
-              @change="(v) => { selectedCycleIdForSlips = v as number; loadSlipsByCycle() }"
-            />
-            <a-button :loading="loadingSlips" @click="loadSlipsByCycle" :disabled="!selectedCycleIdForSlips">查询</a-button>
-          </div>
-          <a-table
-            data-catch="payroll-all-slips-table"
-            :columns="financeSlipColumns"
-            :data-source="slips"
-            :loading="loadingSlips"
-            row-key="id"
-            size="small"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'status'">
-                <a-tag :color="slipStatusColor(record.status)">{{ slipStatusLabel(record.status) }}</a-tag>
-              </template>
-              <template v-if="column.key === 'netPay'">
-                ¥{{ formatAmount(record.netPay) }}
-              </template>
-              <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" :data-catch="'payroll-slip-row-detail-btn-' + record.id" @click="openSlipDetail(record as unknown as PayrollSlip)">详情</a-button>
-              </template>
-            </template>
-          </a-table>
+          <PayrollSlips
+            :cycleOptions="cycleOptions"
+            :loadingCycles="loadingCycles"
+            @open-slip-detail="openSlipDetail"
+          />
         </template>
 
         <!-- 临时补贴/奖金管理 -->
         <template v-if="activeTab === 'bonuses'">
-          <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
-            <a-select
-              :value="selectedBonusCycleId ?? undefined"
-              placeholder="请选择工资周期"
-              :options="cycleOptions"
-              :loading="loadingCycles"
-              style="width: 220px"
-              @change="(v) => { selectedBonusCycleId = v as number; loadBonuses() }"
-            />
-            <a-button type="primary" size="small" :disabled="!selectedBonusCycleId || !isFinance" @click="openBonusModal">+ 录入</a-button>
-            <a-tag v-if="bonusApprovalRequired" color="orange">需 CEO 审批</a-tag>
-            <a-tag v-else color="green">直接生效（通知 CEO）</a-tag>
-          </div>
-          <a-table
-            :columns="bonusColumns"
-            :data-source="bonuses"
-            :loading="loadingBonuses"
-            row-key="id"
-            size="small"
-          >
-            <template #bodyCell="{ column, record }">
-              <template v-if="column.key === 'type'">
-                <a-tag :color="record.type === 'EARNING' ? 'green' : 'red'">{{ record.type === 'EARNING' ? '补贴/奖金' : '扣款' }}</a-tag>
-              </template>
-              <template v-if="column.key === 'amount'">
-                ¥{{ formatAmount(record.amount) }}
-              </template>
-              <template v-if="column.key === 'status'">
-                <a-tag :color="bonusStatusColor(record.status)">{{ bonusStatusLabel(record.status) }}</a-tag>
-              </template>
-              <template v-if="column.key === 'action'">
-                <a-popconfirm title="确定删除该条目？" @confirm="deleteBonus(record.id)">
-                  <a-button v-if="isFinance || role === 'ceo'" type="link" danger size="small">删除</a-button>
-                </a-popconfirm>
-              </template>
-            </template>
-          </a-table>
+          <PayrollBonuses
+            :cycleOptions="cycleOptions"
+            :loadingCycles="loadingCycles"
+            :isFinance="isFinance"
+            :role="role"
+          />
         </template>
 
         <!-- 薪资更正记录 -->
@@ -251,255 +118,36 @@
       </a-card>
     </template>
 
-    <!-- 创建周期 Modal -->
-    <a-modal
-      v-model:open="showCreateCycleModal"
-      title="创建工资周期"
-      :confirm-loading="creatingCycle"
-      @ok="doCreateCycle"
-      @cancel="createCycleForm.period = ''"
-      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
-      :okButtonProps="({ 'data-catch': 'payroll-cycle-create-ok' } as unknown as ButtonProps)"
-    >
-      <a-form layout="vertical">
-        <a-form-item label="周期（格式：YYYY-MM）">
-          <a-input v-model:value="createCycleForm.period" placeholder="例：2026-04" />
-        </a-form-item>
-      </a-form>
-    </a-modal>
-
-    <!-- PIN 输入 Modal -->
-    <a-modal
-      v-model:open="showPinModal"
-      title="请输入 PIN 码确认"
-      :confirm-loading="confirmingSlip"
-      @ok="submitPinConfirm"
-      @cancel="closePinModal"
-      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
-      :okButtonProps="({ 'data-catch': 'payroll-sign-confirm-btn' } as unknown as ButtonProps)"
-    >
-      <a-form layout="vertical">
-        <a-form-item
-          label="PIN 码"
-          :validate-status="pinError ? 'error' : ''"
-          :help="pinError"
-        >
-          <a-input
-            v-model:value="pinInput"
-            type="password"
-            placeholder="请输入您的 PIN 码"
-            :maxlength="6"
-            @press-enter="submitPinConfirm"
-          />
-        </a-form-item>
-      </a-form>
-      <p class="pin-hint">
-        首次确认工资条需要先
-        <a @click="goToSignatureBind">绑定签名</a>
-      </p>
-    </a-modal>
-
-    <!-- 签名绑定提示 Modal -->
-    <a-modal
-      v-model:open="showBindPromptModal"
-      title="需要绑定签名"
-      :footer="null"
-    >
-      <a-result status="warning" title="您尚未绑定签名">
-        <template #subTitle>
-          <p>确认工资条需要先绑定手写签名并设置 PIN 码</p>
-        </template>
-        <template #extra>
-          <a-button type="primary" @click="goToSignatureBind">去绑定签名</a-button>
-          <a-button @click="showBindPromptModal = false">稍后再说</a-button>
-        </template>
-      </a-result>
-    </a-modal>
-
-    <!-- 工资条详情 Modal -->
-    <a-modal
+    <!-- 工资条详情（含 PIN / 签名绑定 / 更正 Modal，财务和员工共用） -->
+    <PayrollSlipDetail
       v-model:open="showSlipDetail"
-      :title="`工资条详情`"
-      :footer="null"
-      width="560px"
-    >
-      <template v-if="slipDetail">
-        <a-descriptions bordered size="small" :column="1" style="margin-bottom: 12px;">
-          <a-descriptions-item label="周期">{{ slipDetail.slip.cycleId }}</a-descriptions-item>
-          <a-descriptions-item label="状态">
-            <a-tag :color="slipStatusColor(slipDetail.slip.status)">
-              {{ slipStatusLabel(slipDetail.slip.status) }}
-            </a-tag>
-          </a-descriptions-item>
-          <a-descriptions-item label="实发合计">
-            <strong>¥{{ formatAmount(slipDetail.slip.netPay) }}</strong>
-          </a-descriptions-item>
-        </a-descriptions>
-
-        <!-- 明细列表（设计 §6.5：分两段展示，应发 / 扣减 / 实发） -->
-        <a-divider style="margin: 8px 0;">应发收入</a-divider>
-        <div v-for="item in earningItems" :key="'e-' + item.id" class="slip-item-row">
-          <span class="slip-item-name">{{ item.name }}</span>
-          <span class="slip-item-amount" style="color: #333">+¥{{ formatAmount(item.amount) }}</span>
-        </div>
-        <div v-if="earningItems.length === 0" class="slip-empty-tip">无</div>
-        <div class="slip-item-row slip-subtotal">
-          <span>应发合计</span>
-          <strong>¥{{ formatAmount(earningTotal) }}</strong>
-        </div>
-
-        <a-divider style="margin: 12px 0;">扣减项</a-divider>
-        <div v-for="item in deductionItems" :key="'d-' + item.id" class="slip-item-row">
-          <span class="slip-item-name">{{ item.name }}</span>
-          <span class="slip-item-amount" style="color: #ff4d4f">-¥{{ formatAmount(Math.abs(Number(item.amount))) }}</span>
-        </div>
-        <div v-if="deductionItems.length === 0" class="slip-empty-tip">无</div>
-        <div class="slip-item-row slip-subtotal">
-          <span>扣减合计</span>
-          <strong style="color: #ff4d4f">¥{{ formatAmount(deductionTotal) }}</strong>
-        </div>
-
-        <a-divider style="margin: 12px 0;" />
-        <div class="slip-item-row slip-total">
-          <span>实发合计</span>
-          <strong>¥{{ formatAmount(slipDetail.slip.netPay) }}</strong>
-        </div>
-
-        <!-- 员工操作按钮（仅 PUBLISHED 状态，且为自己的工资条） -->
-        <template v-if="!isFinanceOrCeo && slipDetail.slip.status === 'PUBLISHED'">
-          <a-divider style="margin: 12px 0;" />
-          <a-space style="width: 100%; justify-content: center;">
-            <a-button type="primary" :loading="confirmingSlip" @click="doConfirm">确认收到</a-button>
-            <a-button danger :loading="disputingSlip" @click="showDisputeInput = !showDisputeInput">提出异议</a-button>
-          </a-space>
-          <template v-if="showDisputeInput">
-            <a-textarea
-              v-model:value="disputeReason"
-              placeholder="请说明异议原因"
-              :rows="3"
-              style="margin-top: 8px;"
-            />
-            <a-button
-              type="primary"
-              danger
-              block
-              style="margin-top: 8px;"
-              :disabled="!disputeReason.trim()"
-              :loading="disputingSlip"
-              @click="doDispute"
-            >提交异议</a-button>
-          </template>
-        </template>
-
-        <!-- 财务操作按钮：发起更正（PUBLISHED/CONFIRMED/DISPUTED 状态可发起；SUPERSEDED 不可） -->
-        <template v-if="isFinance && ['PUBLISHED','CONFIRMED','DISPUTED'].includes(slipDetail.slip.status)">
-          <a-divider style="margin: 12px 0;" />
-          <a-space style="width: 100%; justify-content: center;">
-            <a-button data-catch="payroll-correction-open-btn" @click="openCorrectionModal">发起更正</a-button>
-          </a-space>
-        </template>
-      </template>
-      <a-spin v-else :spinning="loadingSlipDetail" tip="加载中..." />
-    </a-modal>
-
-    <!-- 薪资更正发起 Modal -->
-    <a-modal
-      v-model:open="showCorrectionModal"
-      title="发起薪资更正"
-      :confirm-loading="submittingCorrection"
-      width="640px"
-      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
-      :okButtonProps="({ 'data-catch': 'correction-submit-btn' } as unknown as ButtonProps)"
-      @ok="submitCorrection"
-      @cancel="showCorrectionModal = false"
-    >
-      <p style="color: #999; margin-bottom: 12px;">
-        修改下方任意工资项的金额（保持空白则不变），并填写更正原因。提交后由 CEO 审批通过后生效，原工资条将被标记 SUPERSEDED，新版本号 +1。
-      </p>
-      <div v-for="row in correctionRows" :key="row.itemDefId" class="correction-row">
-        <span class="correction-name">{{ row.name }}</span>
-        <a-input-number
-          v-model:value="row.newAmount"
-          :precision="2"
-          :placeholder="`原 ${row.originalAmount}`"
-          style="width: 160px"
-        />
-        <a-input v-model:value="row.remark" placeholder="备注（可选）" style="flex: 1; margin-left: 8px;" />
-      </div>
-      <a-form-item label="更正原因" required style="margin-top: 16px;">
-        <a-textarea data-catch="correction-reason-input" v-model:value="correctionReason" :rows="3" placeholder="必填" />
-      </a-form-item>
-    </a-modal>
-
-    <!-- 临时补贴/奖金 录入 Modal -->
-    <a-modal
-      v-model:open="showBonusModal"
-      title="录入临时补贴/奖金"
-      :confirm-loading="creatingBonus"
-      @ok="submitBonus"
-      @cancel="showBonusModal = false"
-      width="520px"
-    >
-      <a-form layout="vertical" :model="bonusForm">
-        <a-form-item label="员工" required>
-          <a-select
-            v-model:value="bonusForm.employeeId"
-            placeholder="选择员工"
-            :options="employeeOptions"
-            show-search
-            option-filter-prop="label"
-          />
-        </a-form-item>
-        <a-form-item label="名称" required>
-          <a-input v-model:value="bonusForm.name" placeholder="如 春节奖金 / 罚款" />
-        </a-form-item>
-        <a-row :gutter="16">
-          <a-col :span="12">
-            <a-form-item label="类型" required>
-              <a-select v-model:value="bonusForm.type">
-                <a-select-option value="EARNING">补贴/奖金（加）</a-select-option>
-                <a-select-option value="DEDUCTION">扣款（减）</a-select-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-          <a-col :span="12">
-            <a-form-item label="金额" required>
-              <a-input-number v-model:value="bonusForm.amount" :min="0.01" :precision="2" style="width: 100%" />
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-form-item label="备注">
-          <a-textarea v-model:value="bonusForm.remark" :rows="2" placeholder="可选" />
-        </a-form-item>
-        <a-alert
-          v-if="bonusApprovalRequired"
-          type="warning"
-          show-icon
-          message="本条目需经 CEO 审批通过后方可计入结算"
-        />
-        <a-alert
-          v-else
-          type="info"
-          show-icon
-          message="录入后立即生效；系统会通知 CEO 知晓"
-        />
-      </a-form>
-    </a-modal>
+      :slip="activeSlip"
+      :isFinanceOrCeo="isFinanceOrCeo"
+      :isFinance="isFinance"
+      @slip-action-done="loadMySlips"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 /**
- * 薪资管理页面
- * 职责：分角色展示薪资功能
- * - 财务/CEO：创建周期、开放申报窗口、预结算检查、正式结算、查看全员工资条
- * - 员工/劳工：查看本人工资条列表与详情，支持确认与异议
+ * 薪资管理页面（父层）
+ * 职责：分角色展示薪资功能；持有共享 cycles 状态；协调子组件间的 Tab 跳转
+ * - 财务/CEO：周期管理、结算操作、工资条查看、临时补贴/奖金（均由子组件承载）
+ *             + 更正记录（内联，逻辑简单）
+ * - 员工/劳工：工资条列表（内联）
+ * - 共用：工资条详情 Modal 组（PayrollSlipDetail）
  */
 import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
-import type { ButtonProps } from 'ant-design-vue'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
+import { useRoute, useRouter } from 'vue-router'
+import PayrollCycles from './components/PayrollCycles.vue'
+import PayrollSettle from './components/PayrollSettle.vue'
+import PayrollSlips from './components/PayrollSlips.vue'
+import PayrollBonuses from './components/PayrollBonuses.vue'
+import PayrollSlipDetail from './components/PayrollSlipDetail.vue'
 
 // ── 类型定义 ──────────────────────────────────────────────────
 
@@ -524,137 +172,6 @@ interface PayrollSlip {
   period?: string  // 前端拼接用
 }
 
-interface SlipItem {
-  id: number
-  itemDefId: number
-  name: string
-  type: string
-  amount: number | string
-  remark: string
-}
-
-interface SlipDetail {
-  slip: PayrollSlip
-  items: SlipItem[]
-}
-
-interface PrecheckItem {
-  key: string
-  label: string
-  pass: boolean
-  message?: string
-}
-
-// ── 状态 ─────────────────────────────────────────────────────
-
-const userStore = useUserStore()
-const role = computed(() => userStore.userInfo?.role ?? '')
-const isFinanceOrCeo = computed(() => ['finance', 'ceo'].includes(role.value))
-
-const activeTab = ref('cycles')
-
-// 周期管理
-const cycles = ref<PayrollCycle[]>([])
-const loadingCycles = ref(false)
-const showCreateCycleModal = ref(false)
-const creatingCycle = ref(false)
-const createCycleForm = ref({ period: '' })
-
-// 结算操作
-const selectedCycleId = ref<number | undefined>(undefined)
-const precheckLoading = ref(false)
-const settleLoading = ref(false)
-const precheckResult = ref<PrecheckItem[] | null>(null)
-const precheckPassed = computed(() =>
-  precheckResult.value !== null && precheckResult.value.every(i => i.pass)
-)
-
-// 工资条
-const slips = ref<PayrollSlip[]>([])
-const loadingSlips = ref(false)
-const selectedCycleIdForSlips = ref<number | undefined>(undefined)
-
-// 工资条详情
-const showSlipDetail = ref(false)
-const slipDetail = ref<SlipDetail | null>(null)
-const loadingSlipDetail = ref(false)
-
-// 工资条按 type 分组（设计 §6.5）
-const earningItems = computed<SlipItem[]>(() =>
-  (slipDetail.value?.items ?? []).filter(it => it.type === 'EARNING' && Number(it.amount) > 0)
-)
-const deductionItems = computed<SlipItem[]>(() =>
-  (slipDetail.value?.items ?? []).filter(it => it.type === 'DEDUCTION' || Number(it.amount) < 0)
-)
-const earningTotal = computed(() =>
-  earningItems.value.reduce((s, it) => s + Number(it.amount), 0)
-)
-const deductionTotal = computed(() =>
-  deductionItems.value.reduce((s, it) => s + Math.abs(Number(it.amount)), 0)
-)
-const confirmingSlip = ref(false)
-const disputingSlip = ref(false)
-const showDisputeInput = ref(false)
-const disputeReason = ref('')
-
-// PIN 确认相关
-const showPinModal = ref(false)
-const pinInput = ref('')
-const pinError = ref('')
-
-// 签名绑定提示
-const showBindPromptModal = ref(false)
-
-// 临时补贴/奖金
-interface PayrollBonus {
-  id: number
-  cycleId: number
-  employeeId: number
-  name: string
-  amount: number | string
-  type: 'EARNING' | 'DEDUCTION'
-  status: 'PENDING' | 'APPROVED' | 'REJECTED'
-  remark?: string
-  formId?: number | null
-  createdBy?: number
-  createdAt?: string
-}
-
-interface EmployeeOption { id: number; name: string; employeeNo: string }
-
-const isFinance = computed(() => role.value === 'finance')
-const selectedBonusCycleId = ref<number | undefined>(undefined)
-const bonuses = ref<PayrollBonus[]>([])
-const loadingBonuses = ref(false)
-const bonusApprovalRequired = ref(false)
-const employeesForBonus = ref<EmployeeOption[]>([])
-const employeeOptions = computed(() => employeesForBonus.value.map(e => ({
-  value: e.id, label: `${e.name} (${e.employeeNo})`
-})))
-const showBonusModal = ref(false)
-const creatingBonus = ref(false)
-const bonusForm = ref<{ employeeId: number | undefined; name: string; amount: number | undefined; type: 'EARNING' | 'DEDUCTION'; remark: string }>({
-  employeeId: undefined, name: '', amount: undefined, type: 'EARNING', remark: ''
-})
-
-const bonusColumns = [
-  { title: '员工 ID', dataIndex: 'employeeId', key: 'employeeId', width: 100 },
-  { title: '名称', dataIndex: 'name', key: 'name' },
-  { title: '类型', key: 'type', width: 110 },
-  { title: '金额', key: 'amount', width: 120 },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '备注', dataIndex: 'remark', key: 'remark' },
-  { title: '操作', key: 'action', width: 90 }
-]
-
-function bonusStatusLabel(s: string) {
-  return ({ PENDING: '待审批', APPROVED: '已批准', REJECTED: '已驳回' } as Record<string, string>)[s] ?? s
-}
-function bonusStatusColor(s: string) {
-  return ({ PENDING: 'orange', APPROVED: 'green', REJECTED: 'red' } as Record<string, string>)[s] ?? 'default'
-}
-
-// 薪资更正
 interface PayrollCorrection {
   id: number
   cycleId: number
@@ -668,214 +185,61 @@ interface PayrollCorrection {
   createdAt?: string
 }
 
-interface CorrectionRow {
-  itemDefId: number
-  name: string
-  originalAmount: string | number
-  newAmount: number | undefined
-  remark: string
+// ── 角色 ──────────────────────────────────────────────────────
+
+const userStore = useUserStore()
+const role = computed(() => userStore.userInfo?.role ?? '')
+const isFinanceOrCeo = computed(() => ['finance', 'ceo'].includes(role.value))
+const isFinance = computed(() => role.value === 'finance')
+
+const route = useRoute()
+const router = useRouter()
+
+// ── 共享 Tab 状态 ──────────────────────────────────────────────
+
+const VALID_PAYROLL_TABS = ['cycles', 'settle', 'slips', 'bonuses', 'corrections'] as const
+type PayrollTabKey = typeof VALID_PAYROLL_TABS[number]
+
+const initial_tab = (() => {
+  const q = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
+  return typeof q === 'string' && (VALID_PAYROLL_TABS as readonly string[]).includes(q) ? q as PayrollTabKey : 'cycles'
+})()
+
+const activeTab = ref<PayrollTabKey>(initial_tab)
+
+// ── 共享 cycles 状态（PayrollSettle / PayrollSlips / PayrollBonuses 需要） ──
+
+const cycles = ref<PayrollCycle[]>([])
+const loadingCycles = ref(false)
+
+const cycleOptions = computed(() =>
+  cycles.value.map(c => ({ label: c.period, value: c.id }))
+)
+
+const settleableCycles = computed(() =>
+  cycles.value
+    .filter(c => ['OPEN', 'WINDOW_OPEN', 'WINDOW_CLOSED'].includes(c.status))
+    .map(c => ({ label: `${c.period}（${cycleStatusLabel(c.status)}）`, value: c.id }))
+)
+
+// PayrollCycles 子组件每次加载完成后更新此处共享列表
+function onCyclesUpdated(updated: PayrollCycle[]) {
+  cycles.value = updated
 }
 
-const corrections = ref<PayrollCorrection[]>([])
-const loadingCorrections = ref(false)
-const showCorrectionModal = ref(false)
-const submittingCorrection = ref(false)
-const correctionRows = ref<CorrectionRow[]>([])
-const correctionReason = ref('')
-const correctionTargetSlipId = ref<number | undefined>(undefined)
+// PayrollCycles 子组件点击"结算"时通知父层切换 Tab 并预填周期
+const preselectedCycleId = ref<number | undefined>(undefined)
 
-const correctionColumns = [
-  { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
-  { title: '原工资条', dataIndex: 'slipId', key: 'slipId', width: 100 },
-  { title: '员工 ID', dataIndex: 'employeeId', key: 'employeeId', width: 100 },
-  { title: '原因', dataIndex: 'reason', key: 'reason' },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '是否应用', key: 'applied', width: 100 },
-  { title: '新工资条', dataIndex: 'newSlipId', key: 'newSlipId', width: 100 },
-  { title: '发起时间', key: 'createdAt', width: 160 }
-]
-
-function formatTime(t: string | undefined) {
-  if (!t) return '—'
-  return t.replace('T', ' ').slice(0, 16)
+function onSelectCycleForSettle(cycleId: number) {
+  preselectedCycleId.value = cycleId
+  activeTab.value = 'settle'
+  router.replace({ query: { ...route.query, tab: 'settle' } })
 }
 
-// ── 表格列定义 ─────────────────────────────────────────────
-
-const cycleColumns = [
-  { title: '周期', dataIndex: 'period', key: 'period' },
-  { title: '状态', dataIndex: 'status', key: 'status' },
-  { title: '申报窗口截止', dataIndex: 'windowEndDate', key: 'windowEndDate' },
-  { title: '发薪日', dataIndex: 'payDate', key: 'payDate' },
-  { title: '操作', key: 'action' },
-]
-
-const financeSlipColumns = [
-  { title: '工资条 ID', dataIndex: 'id', key: 'id' },
-  { title: '员工 ID', dataIndex: 'employeeId', key: 'employeeId' },
-  { title: '状态', dataIndex: 'status', key: 'status' },
-  { title: '实发', dataIndex: 'netPay', key: 'netPay' },
-  { title: '操作', key: 'action' },
-]
-
-// ── 生命周期 ──────────────────────────────────────────────
-
-onMounted(() => {
-  if (isFinanceOrCeo.value) {
-    loadCycles()
-  } else {
-    loadMySlips()
-  }
-})
-
-function onTabChange(key: string) {
-  activeTab.value = key
-  if (key === 'cycles' && cycles.value.length === 0) loadCycles()
-  if (key === 'slips' && cycles.value.length === 0) loadCycles()
-  if (key === 'bonuses') {
-    if (cycles.value.length === 0) loadCycles()
-    loadBonusApprovalConfig()
-    if (employeesForBonus.value.length === 0) loadEmployeesForBonus()
-  }
-  if (key === 'corrections') loadCorrections()
-}
-
-// ── 临时补贴/奖金 ─────────────────────────────────────────
-
-async function loadBonusApprovalConfig() {
-  try {
-    const data = await request<{ approvalRequired: boolean }>({ url: '/payroll/bonus-approval-config' })
-    bonusApprovalRequired.value = !!data.approvalRequired
-  } catch {
-    bonusApprovalRequired.value = false
-  }
-}
-
-async function loadEmployeesForBonus() {
-  try {
-    const page = await request<{ content: EmployeeOption[] }>({ url: '/employees?size=500' })
-    employeesForBonus.value = page?.content ?? []
-  } catch {
-    employeesForBonus.value = []
-  }
-}
-
-async function loadBonuses() {
-  if (!selectedBonusCycleId.value) { bonuses.value = []; return }
-  loadingBonuses.value = true
-  try {
-    const data = await request<PayrollBonus[]>({ url: `/payroll/cycles/${selectedBonusCycleId.value}/bonuses` })
-    bonuses.value = data ?? []
-  } catch {
-    bonuses.value = []
-  } finally {
-    loadingBonuses.value = false
-  }
-}
-
-function openBonusModal() {
-  bonusForm.value = { employeeId: undefined, name: '', amount: undefined, type: 'EARNING', remark: '' }
-  showBonusModal.value = true
-}
-
-async function submitBonus() {
-  if (!selectedBonusCycleId.value) { message.warning('请先选择周期'); return }
-  if (!bonusForm.value.employeeId) { message.warning('请选择员工'); return }
-  if (!bonusForm.value.name.trim()) { message.warning('请填写名称'); return }
-  if (!bonusForm.value.amount || bonusForm.value.amount <= 0) { message.warning('金额必须为正数'); return }
-  creatingBonus.value = true
-  try {
-    await request({
-      url: `/payroll/cycles/${selectedBonusCycleId.value}/bonuses`,
-      method: 'POST',
-      body: bonusForm.value
-    })
-    message.success(bonusApprovalRequired.value ? '已提交，等待 CEO 审批' : '已录入并通知 CEO')
-    showBonusModal.value = false
-    await loadBonuses()
-  } catch {
-    // handled by request util
-  } finally {
-    creatingBonus.value = false
-  }
-}
-
-async function deleteBonus(id: number) {
-  try {
-    await request({ url: `/payroll/bonuses/${id}`, method: 'DELETE' })
-    message.success('已删除')
-    await loadBonuses()
-  } catch {
-    // handled
-  }
-}
-
-// ── 薪资更正 ─────────────────────────────────────────────
-
-async function loadCorrections() {
-  loadingCorrections.value = true
-  try {
-    const data = await request<PayrollCorrection[]>({ url: '/payroll/corrections' })
-    corrections.value = data ?? []
-  } catch {
-    corrections.value = []
-  } finally {
-    loadingCorrections.value = false
-  }
-}
-
-function openCorrectionModal() {
-  if (!slipDetail.value) return
-  correctionTargetSlipId.value = slipDetail.value.slip.id
-  correctionReason.value = ''
-  correctionRows.value = slipDetail.value.items.map(it => ({
-    itemDefId: it.itemDefId,
-    name: it.name,
-    originalAmount: formatAmount(it.amount),
-    newAmount: undefined,
-    remark: ''
-  }))
-  showCorrectionModal.value = true
-}
-
-async function submitCorrection() {
-  if (!correctionTargetSlipId.value) return
-  if (!correctionReason.value.trim()) {
-    message.warning('请填写更正原因')
-    return
-  }
-  const dirty = correctionRows.value.filter(r => r.newAmount != null || (r.remark && r.remark.trim() !== ''))
-  if (dirty.length === 0) {
-    message.warning('请至少修改一项金额或备注')
-    return
-  }
-  submittingCorrection.value = true
-  try {
-    await request({
-      url: `/payroll/slips/${correctionTargetSlipId.value}/correction`,
-      method: 'POST',
-      body: {
-        reason: correctionReason.value,
-        corrections: dirty.map(r => ({
-          itemDefId: r.itemDefId,
-          amount: r.newAmount,
-          remark: r.remark
-        }))
-      }
-    })
-    message.success('已发起更正，待 CEO 审批')
-    showCorrectionModal.value = false
-    showSlipDetail.value = false
-  } catch {
-    // handled
-  } finally {
-    submittingCorrection.value = false
-  }
-}
-
-// ── 周期管理 ──────────────────────────────────────────────
-
-async function loadCycles() {
+// PayrollSettle 子组件结算成功后通知父层
+async function onSettled() {
+  preselectedCycleId.value = undefined
+  // 刷新共享 cycles 列表，供 settleableCycles / cycleOptions 更新
   loadingCycles.value = true
   try {
     const data = await request<PayrollCycle[]>({ url: '/payroll/cycles' })
@@ -885,99 +249,21 @@ async function loadCycles() {
   } finally {
     loadingCycles.value = false
   }
+  activeTab.value = 'cycles'
 }
 
-async function doCreateCycle() {
-  const period = createCycleForm.value.period.trim()
-  if (!period) { message.warning('请填写周期，格式：YYYY-MM'); return }
-  creatingCycle.value = true
-  try {
-    await request({ url: '/payroll/cycles', method: 'POST', body: { period } })
-    message.success('周期创建成功')
-    showCreateCycleModal.value = false
-    createCycleForm.value.period = ''
-    await loadCycles()
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string } }
-    message.error(err.data?.message ?? '创建失败')
-  } finally {
-    creatingCycle.value = false
-  }
+// ── Tab 切换 ─────────────────────────────────────────────────
+
+function onTabChange(key: string) {
+  activeTab.value = key as PayrollTabKey
+  if (key === 'corrections') loadCorrections()
+  router.replace({ query: { ...route.query, tab: key } })
 }
 
-async function doOpenWindow(cycleId: number) {
-  try {
-    await request({ url: `/payroll/cycles/${cycleId}/open-window`, method: 'POST' })
-    message.success('申报窗口已开放')
-    await loadCycles()
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string } }
-    message.error(err.data?.message ?? '操作失败')
-  }
-}
+// ── 员工视图：工资条列表 ────────────────────────────────────────
 
-function selectCycleForSettle(cycle: PayrollCycle) {
-  selectedCycleId.value = cycle.id
-  activeTab.value = 'settle'
-  precheckResult.value = null
-}
-
-// ── 结算 ──────────────────────────────────────────────────
-
-async function doPrecheck() {
-  if (!selectedCycleId.value) return
-  precheckLoading.value = true
-  precheckResult.value = null
-  try {
-    const res = await request<{ pass: boolean; items: PrecheckItem[] }>({
-      url: `/payroll/cycles/${selectedCycleId.value}/precheck`,
-      method: 'POST',
-    })
-    precheckResult.value = res.items
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string } }
-    message.error(err.data?.message ?? '预检请求失败')
-  } finally {
-    precheckLoading.value = false
-  }
-}
-
-async function doSettle() {
-  if (!selectedCycleId.value || !precheckPassed.value) return
-  settleLoading.value = true
-  try {
-    await request({ url: `/payroll/cycles/${selectedCycleId.value}/settle`, method: 'POST' })
-    message.success('结算完成')
-    precheckResult.value = null
-    selectedCycleId.value = undefined
-    await loadCycles()
-    activeTab.value = 'cycles'
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string } }
-    message.error(err.data?.message ?? '结算失败')
-  } finally {
-    settleLoading.value = false
-  }
-}
-
-// ── 工资条（Finance/CEO） ──────────────────────────────────
-
-async function loadSlipsByCycle() {
-  if (!selectedCycleIdForSlips.value) return
-  loadingSlips.value = true
-  try {
-    const data = await request<PayrollSlip[]>({
-      url: `/payroll/slips?cycleId=${selectedCycleIdForSlips.value}`,
-    })
-    slips.value = data
-  } catch {
-    message.error('加载工资条失败')
-  } finally {
-    loadingSlips.value = false
-  }
-}
-
-// ── 工资条（员工/劳工） ─────────────────────────────────────
+const slips = ref<PayrollSlip[]>([])
+const loadingSlips = ref(false)
 
 async function loadMySlips() {
   loadingSlips.value = true
@@ -991,150 +277,54 @@ async function loadMySlips() {
   }
 }
 
-// ── 工资条详情 ─────────────────────────────────────────────
+// ── 工资条详情入口（财务 / 员工共用，打开 PayrollSlipDetail） ──────
 
-async function openSlipDetail(slip: PayrollSlip) {
+const showSlipDetail = ref(false)
+const activeSlip = ref<PayrollSlip | null>(null)
+
+function openSlipDetail(slip: PayrollSlip) {
+  activeSlip.value = slip
   showSlipDetail.value = true
-  slipDetail.value = null
-  showDisputeInput.value = false
-  disputeReason.value = ''
-  loadingSlipDetail.value = true
+}
+
+// ── 薪资更正记录（内联，逻辑简单） ────────────────────────────────
+
+const corrections = ref<PayrollCorrection[]>([])
+const loadingCorrections = ref(false)
+
+const correctionColumns = [
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
+  { title: '原工资条', dataIndex: 'slipId', key: 'slipId', width: 100 },
+  { title: '员工 ID', dataIndex: 'employeeId', key: 'employeeId', width: 100 },
+  { title: '原因', dataIndex: 'reason', key: 'reason' },
+  { title: '状态', key: 'status', width: 100 },
+  { title: '是否应用', key: 'applied', width: 100 },
+  { title: '新工资条', dataIndex: 'newSlipId', key: 'newSlipId', width: 100 },
+  { title: '发起时间', key: 'createdAt', width: 160 }
+]
+
+async function loadCorrections() {
+  loadingCorrections.value = true
   try {
-    const detail = await request<SlipDetail>({ url: `/payroll/slips/${slip.id}` })
-    slipDetail.value = detail
+    const data = await request<PayrollCorrection[]>({ url: '/payroll/corrections' })
+    corrections.value = data ?? []
   } catch {
-    message.error('加载工资条详情失败')
-    showSlipDetail.value = false
+    corrections.value = []
   } finally {
-    loadingSlipDetail.value = false
+    loadingCorrections.value = false
   }
 }
 
-/**
- * 处理确认工资条按钮点击
- * 先检查签名绑定状态，再决定显示 PIN 输入框或绑定提示
- */
-async function doConfirm() {
-  if (!slipDetail.value) return
+// ── 生命周期 ──────────────────────────────────────────────────
 
-  // 先检查签名绑定状态
-  try {
-    const statusRes = await request<{ bound: boolean }>({
-      url: '/signature/status',
-      method: 'GET',
-    })
-
-    if (!statusRes.bound) {
-      // 未绑定，显示绑定提示
-      showBindPromptModal.value = true
-      return
-    }
-
-    // 已绑定，显示 PIN 输入框
-    pinInput.value = ''
-    pinError.value = ''
-    showPinModal.value = true
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string } }
-    message.error(err.data?.message ?? '检查签名状态失败')
+onMounted(() => {
+  // cycles 由 PayrollCycles 子组件自行加载，onCyclesUpdated 回填共享状态
+  if (!isFinanceOrCeo.value) {
+    loadMySlips()
   }
-}
+})
 
-/**
- * 提交 PIN 码确认工资条
- * POST /payroll/slips/{id}/confirm
- */
-async function submitPinConfirm() {
-  if (!slipDetail.value || !pinInput.value) {
-    pinError.value = '请输入 PIN 码'
-    return
-  }
-
-  confirmingSlip.value = true
-  pinError.value = ''
-
-  try {
-    const res = await request<{ slip: PayrollSlip }>({
-      url: `/payroll/slips/${slipDetail.value.slip.id}/confirm`,
-      method: 'POST',
-      body: { pin: pinInput.value },
-    })
-    slipDetail.value.slip.status = res.slip.status
-    message.success('工资条已确认')
-    showPinModal.value = false
-    await loadMySlips()
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string }; statusCode?: number }
-
-    if (err.statusCode === 400) {
-      // PIN 码错误
-      pinError.value = err.data?.message ?? 'PIN 码错误'
-    } else if (err.statusCode === 403) {
-      // 未绑定签名
-      showPinModal.value = false
-      showBindPromptModal.value = true
-      message.error('您尚未绑定签名，请先绑定')
-    } else {
-      message.error(err.data?.message ?? '确认失败')
-    }
-  } finally {
-    confirmingSlip.value = false
-  }
-}
-
-/**
- * 关闭 PIN 输入框
- */
-function closePinModal() {
-  showPinModal.value = false
-  pinInput.value = ''
-  pinError.value = ''
-}
-
-/**
- * 跳转到签名绑定页面
- */
-function goToSignatureBind() {
-  showBindPromptModal.value = false
-  showPinModal.value = false
-  navigateTo('/payroll/signature_bind')
-}
-
-async function doDispute() {
-  if (!slipDetail.value || !disputeReason.value.trim()) return
-  disputingSlip.value = true
-  try {
-    const res = await request<{ slip: PayrollSlip }>({
-      url: `/payroll/slips/${slipDetail.value.slip.id}/dispute`,
-      method: 'POST',
-      body: { reason: disputeReason.value.trim() },
-    })
-    slipDetail.value.slip.status = res.slip.status
-    showDisputeInput.value = false
-    disputeReason.value = ''
-    message.success('异议已提交')
-    await loadMySlips()
-  } catch (e: unknown) {
-    const err = e as { data?: { message?: string } }
-    message.error(err.data?.message ?? '提交异议失败')
-  } finally {
-    disputingSlip.value = false
-  }
-}
-
-// ── 辅助选项 ──────────────────────────────────────────────
-
-const cycleOptions = computed(() =>
-  cycles.value.map(c => ({ label: c.period, value: c.id }))
-)
-
-const settleableCycles = computed(() =>
-  cycles.value
-    .filter(c => ['OPEN', 'WINDOW_OPEN', 'WINDOW_CLOSED'].includes(c.status))
-    .map(c => ({ label: `${c.period}（${cycleStatusLabel(c.status)}）`, value: c.id }))
-)
-
-// ── 格式化工具 ─────────────────────────────────────────────
+// ── 格式化工具 ─────────────────────────────────────────────────
 
 function formatAmount(val: number | string | undefined): string {
   const n = Number(val ?? 0)
@@ -1142,43 +332,46 @@ function formatAmount(val: number | string | undefined): string {
 }
 
 function cycleStatusLabel(status: string): string {
-  return {
+  return ({
     OPEN: '待处理',
     WINDOW_OPEN: '申报中',
     WINDOW_CLOSED: '窗口已关闭',
     SETTLED: '已结算',
     LOCKED: '已锁定',
-  }[status] ?? status
-}
-
-function cycleStatusColor(status: string): string {
-  return {
-    OPEN: 'default',
-    WINDOW_OPEN: 'blue',
-    WINDOW_CLOSED: 'orange',
-    SETTLED: 'green',
-    LOCKED: 'purple',
-  }[status] ?? 'default'
+  } as Record<string, string>)[status] ?? status
 }
 
 function slipStatusLabel(status: string): string {
-  return {
+  return ({
     DRAFT: '草稿',
     PUBLISHED: '待确认',
     CONFIRMED: '已确认',
     DISPUTED: '异议中',
     SUPERSEDED: '已更正',
-  }[status] ?? status
+  } as Record<string, string>)[status] ?? status
 }
 
 function slipStatusColor(status: string): string {
-  return {
+  return ({
     DRAFT: 'default',
     PUBLISHED: 'blue',
     CONFIRMED: 'green',
     DISPUTED: 'red',
     SUPERSEDED: 'default',
-  }[status] ?? 'default'
+  } as Record<string, string>)[status] ?? 'default'
+}
+
+function bonusStatusLabel(s: string) {
+  return ({ PENDING: '待审批', APPROVED: '已批准', REJECTED: '已驳回' } as Record<string, string>)[s] ?? s
+}
+
+function bonusStatusColor(s: string) {
+  return ({ PENDING: 'orange', APPROVED: 'green', REJECTED: 'red' } as Record<string, string>)[s] ?? 'default'
+}
+
+function formatTime(t: string | undefined) {
+  if (!t) return '—'
+  return t.replace('T', ' ').slice(0, 16)
 }
 </script>
 
@@ -1191,60 +384,5 @@ function slipStatusColor(status: string): string {
   font-weight: 600;
   margin: 0 0 16px 0;
   color: #003466;
-}
-
-/* Removed flex constraints to allow natural content flow */
-.slip-item-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 4px 0;
-  font-size: 14px;
-}
-.slip-item-name {
-  color: #555;
-}
-.slip-item-amount {
-  font-variant-numeric: tabular-nums;
-}
-.slip-total {
-  font-weight: 600;
-  font-size: 15px;
-}
-.slip-subtotal {
-  font-weight: 500;
-  font-size: 14px;
-  border-top: 1px dashed #eee;
-  margin-top: 4px;
-  padding-top: 6px;
-}
-.slip-empty-tip {
-  color: #aaa;
-  font-size: 12px;
-  padding: 4px 0;
-}
-
-.pin-hint {
-  margin-top: 8px;
-  font-size: 13px;
-  color: #666;
-  text-align: center;
-}
-
-.pin-hint a {
-  color: #1890ff;
-  cursor: pointer;
-}
-
-.correction-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.correction-name {
-  width: 110px;
-  color: #333;
 }
 </style>
