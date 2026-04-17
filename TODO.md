@@ -243,7 +243,8 @@
   5. 验证各配置路径生效：`yarn workspace oa-h5 test`、`yarn workspace oa-mp test` 均有测试输出且通过
 - **验收点**：根目录无 `vitest.integration.config.ts`；各 workspace test 命令执行后有测试输出；`app/shared/vitest.config.ts` 的测试被包含在 `yarn workspace oa-mp test` 中（mp config 已含 shared 路径）
 - **验收流程**：`ls vitest.integration.config.ts` 报 not found；`yarn workspace oa-h5 test` 通过
-- **状态**：`[ ]`（前置条件：A-CLEAN-01 完成）
+- **实施补记**：A-CLEAN-01 时已把 include/setupFiles 路径更新到 `../../test/unit/**`。本任务只剩删除根目录冗余 `vitest.integration.config.ts` 一步。MP config 已含 shared 测试路径；H5/MP/Shared 三个 config 的 include 路径全部有效。
+- **状态**：`[>]`（前置条件：A-CLEAN-01 完成）
 
 #### A-CLEAN-07 过大文件与单一职责违规审查
 - **目标**：识别并拆分超过合理规模的文件，确保单一职责
