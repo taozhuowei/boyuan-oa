@@ -69,6 +69,46 @@ jobs:
       - name: Run H5 tests
         run: yarn workspace oa-h5 test
 
+  migration-validate:
+    name: Flyway Migration Validation (PostgreSQL)
+    # Validates that all V*.sql Flyway migrations apply cleanly to a real PostgreSQL instance.
+    # Catches drift between db/schema.sql (H2 dev) and db/migration/ (prod path) on every push.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: oa_validate
+          POSTGRES_USER: oa
+          POSTGRES_PASSWORD: oa_pw
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Flyway CLI
+        run: |
+          curl -fsSL https://repo1.maven.org/maven2/org/flywaydb/flyway-commandline/9.22.3/flyway-commandline-9.22.3-linux-x64.tar.gz \
+            | tar xz -C /opt
+          sudo ln -s /opt/flyway-9.22.3/flyway /usr/local/bin/flyway
+
+      - name: Run migrations against PostgreSQL
+        run: |
+          flyway \
+            -url="jdbc:postgresql://localhost:5432/oa_validate" \
+            -user=oa \
+            -password=oa_pw \
+            -locations="filesystem:server/src/main/resources/db/migration" \
+            migrate
+
   frontend-mp-test:
     name: Frontend MP Tests
     # MP (mini-program) product scope is paused until Phase F kicks off.

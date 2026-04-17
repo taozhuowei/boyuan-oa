@@ -384,7 +384,7 @@
 - `[x]` **A-AUDIT-FOLLOWUP-02** PhoneChangeService record 可见性收紧 — 不可做：PhoneChangeCodeEntry/TokenEntry 被 AuthController（不同包）直接引用，必须保持 public；无代码变更
 - `[>]` **A-AUDIT-FOLLOWUP-03** login.vue + app.vue 合并 `useCompanyName` composable — 抽 `composables/useCompanyName.ts`，双组件均改用 composable；commit 5f298b3
 - `[>]` **A-AUDIT-FOLLOWUP-04** `/me/profile` @Cacheable 性能优化 — 新增 CacheConfig + Caffeine + UserProfileService @Cacheable(TTL 60s)，WorkbenchService 委托给缓存 bean；commit 5f298b3
-- `[~]` **A-AUDIT-FOLLOWUP-05** 前端剩余 22 个 .vue 文件 `any` 清理 — A-AUDIT-CLEAN-02 只清了 6 个高频文件。剩余文件全量 grep `:\s*any\b\|\bas any\b`，逐一用 antd 官方类型 / `Record<string, unknown>` / 具体 interface 替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释
+- `[>]` **A-AUDIT-FOLLOWUP-05** 前端剩余 22 个 .vue 文件 `any` 清理 — 10 个文件 15 处处理完毕：3 处替换具体类型（FormRecord/AntdTreeDropInfo/Position），2 处 catch 改 unknown 并修 message 访问，10 处保留 as any 加原因注释（antd 类型限制）；commit 75f7b05 — A-AUDIT-CLEAN-02 只清了 6 个高频文件。剩余文件全量 grep `:\s*any\b\|\bas any\b`，逐一用 antd 官方类型 / `Record<string, unknown>` / 具体 interface 替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释
 - `[>]` **A-AUDIT-FOLLOWUP-06** `default.vue` `normalizePath` 死代码清理 — 删除 normalizePath 函数，buildMenuItems 改用 m.path 直传；commit 5f298b3
 - `[ ]` **A-AUDIT-FOLLOWUP-07** projects/[id].vue `member-row-` DOM id 变更同步 — A-AUDIT-CLEAN-02 里第二角色表 customRow 的 DOM id 从 `member-row-<username>` 改为 `member-row-<employeeId>`。如果有 e2e 选择器或手测脚本引用旧 id，同步更新
 - `[>]` **A-AUDIT-FOLLOWUP-08** 历史 `role_code='gm'` 数据迁移 — V16__migrate_gm_role.sql 已创建，幂等 UPDATE/DELETE；commit 5f298b3
