@@ -310,39 +310,39 @@
 
 #### A-AUDIT-SEC — 安全类
 
-- `[x]` **A-AUDIT-SEC-01** 短信验证码明文日志降级 — `AuthController.java:221,303,369` 三处 `log.info(".. code: {} ..")` 降级为 `log.debug`，且仅记脱敏手机号（如 `138****0000`），不落 code 本身
-- `[x]` **A-AUDIT-SEC-02** TestController Profile 收窄 — `TestController.java` 类级 `@Profile("!prod")` → `@Profile("dev")`，与 DevController 一致
-- `[x]` **A-AUDIT-SEC-03** EmployeeResponse 敏感字段脱敏 — `EmployeeResponse.java` 删除 `isDefaultPassword` 字段；`idCardNo` 仅 CEO/HR 可见（通过 service 层过滤），其余角色返回 `"****"` 或省略
-- `[x]` **A-AUDIT-SEC-04** CORS 按 profile 区分 — `SecurityConfig.java:81-86` localhost allow 只在 dev 生效；prod 从 `app.cors.origins` 环境变量读取
-- `[x]` **A-AUDIT-SEC-05** AllowanceController GET 权限收窄 — `AllowanceController.java:44` `@PreAuthorize("isAuthenticated()")` → `hasAnyRole('CEO','HR','FINANCE')`
+- `[>]` **A-AUDIT-SEC-01** 短信验证码明文日志降级 — `AuthController.java:221,303,369` 三处 `log.info(".. code: {} ..")` 降级为 `log.debug`，且仅记脱敏手机号（如 `138****0000`），不落 code 本身
+- `[>]` **A-AUDIT-SEC-02** TestController Profile 收窄 — `TestController.java` 类级 `@Profile("!prod")` → `@Profile("dev")`，与 DevController 一致
+- `[>]` **A-AUDIT-SEC-03** EmployeeResponse 敏感字段脱敏 — `EmployeeResponse.java` 删除 `isDefaultPassword` 字段；`idCardNo` 仅 CEO/HR 可见（通过 service 层过滤），其余角色返回 `"****"` 或省略
+- `[>]` **A-AUDIT-SEC-04** CORS 按 profile 区分 — `SecurityConfig.java:81-86` localhost allow 只在 dev 生效；prod 从 `app.cors.origins` 环境变量读取
+- `[>]` **A-AUDIT-SEC-05** AllowanceController GET 权限收窄 — `AllowanceController.java:44` `@PreAuthorize("isAuthenticated()")` → `hasAnyRole('CEO','HR','FINANCE')`
 
 #### A-AUDIT-CODE — 代码架构类
 
-- `[x]` **A-AUDIT-CODE-01** 角色码 `gm` → `general_manager` 统一 — `SetupService.java:317,325` 两处字符串改为 `"general_manager"`，消除与 V7/V10/data.sql/前端守卫的命名冲突
-- `[x]` **A-AUDIT-CODE-02** WorkbenchService demo 硬编码移除 — `WorkbenchService.java:62-88` 的 `buildUserProfile` switch 删除；改为通过 `EmployeeMapper` 查 `employee + department` 返回真实数据
-- `[x]` **A-AUDIT-CODE-03** 20+ Controller `e.getMessage()` 清理 — 目标文件：PayrollController（7 处）、SignatureController（2）、SetupController（4）、ProjectRevenueController（2）、PayrollBonusController（2）、TemporaryDelegationController（2）、RoleController（1）。删除 Controller 层 `try/catch` + `ResponseEntity.status(.).body(Map.of("message", e.getMessage()))` 模式，改为抛 `BusinessException` 或让异常传播到 `GlobalExceptionHandler`
-- `[x]` **A-AUDIT-CODE-04** GlobalExceptionHandler 补全 6 种异常 — 添加 `DataIntegrityViolationException(409)` / `MethodArgumentTypeMismatchException(400)` / `HttpMessageNotReadableException(400)` / `MaxUploadSizeExceededException(413)` / `AuthenticationException(401)` / `NoHandlerFoundException(404)` 的 `@ExceptionHandler`
-- `[x]` **A-AUDIT-CODE-05** @Scheduled 迁出 Controller — `AuthController.cleanupExpiredPhoneChangeEntries` 迁出到 `server/.../scheduler/PhoneChangeCleanupScheduler.java`；三个 Map 也一并转移，Controller 通过 Service 访问
-- `[x]` **A-AUDIT-CODE-06** 前后端菜单双源统一 — 以 `default.vue:ROLE_MENUS` 为单一来源，`WorkbenchService.buildMenus` 返回值**完全对齐**；修正 3 处已知漂移：ceo 菜单补 `/leave_types`、worker 菜单前后端 `/attendance` 统一、`employee` 显式 case（不再走 default）；所有 Unicode 转义（`"\u5de5\u4f5c\u53f0"` 等）改为中文字面量
-- `[x]` **A-AUDIT-CODE-07** WorkbenchSummary DTO 独立 — 新建 `dto/WorkbenchSummaryResponse.java`；删除 `WorkbenchService.WorkbenchSummary` 内部类；Controller 返回 `ResponseEntity<WorkbenchSummaryResponse>`（去 `ResponseEntity<?>`）
-- `[x]` **A-AUDIT-CODE-08** A-CODE-02 验收范围回退 + B-DEBT-07 — TODO.md A-CODE-02 已加"范围限定声明"（已完成）；本任务负责在 Phase B 新增 **B-DEBT-07 Controller 层批量下沉 Service**，列出剩余 32 个 Controller 清单
+- `[>]` **A-AUDIT-CODE-01** 角色码 `gm` → `general_manager` 统一 — `SetupService.java:317,325` 两处字符串改为 `"general_manager"`，消除与 V7/V10/data.sql/前端守卫的命名冲突
+- `[>]` **A-AUDIT-CODE-02** WorkbenchService demo 硬编码移除 — `WorkbenchService.java:62-88` 的 `buildUserProfile` switch 删除；改为通过 `EmployeeMapper` 查 `employee + department` 返回真实数据
+- `[>]` **A-AUDIT-CODE-03** 20+ Controller `e.getMessage()` 清理 — 目标文件：PayrollController（7 处）、SignatureController（2）、SetupController（4）、ProjectRevenueController（2）、PayrollBonusController（2）、TemporaryDelegationController（2）、RoleController（1）。删除 Controller 层 `try/catch` + `ResponseEntity.status(.).body(Map.of("message", e.getMessage()))` 模式，改为抛 `BusinessException` 或让异常传播到 `GlobalExceptionHandler`
+- `[>]` **A-AUDIT-CODE-04** GlobalExceptionHandler 补全 6 种异常 — 添加 `DataIntegrityViolationException(409)` / `MethodArgumentTypeMismatchException(400)` / `HttpMessageNotReadableException(400)` / `MaxUploadSizeExceededException(413)` / `AuthenticationException(401)` / `NoHandlerFoundException(404)` 的 `@ExceptionHandler`
+- `[>]` **A-AUDIT-CODE-05** @Scheduled 迁出 Controller — `AuthController.cleanupExpiredPhoneChangeEntries` 迁出到 `server/.../scheduler/PhoneChangeCleanupScheduler.java`；三个 Map 也一并转移，Controller 通过 Service 访问
+- `[>]` **A-AUDIT-CODE-06** 前后端菜单双源统一 — 以 `default.vue:ROLE_MENUS` 为单一来源，`WorkbenchService.buildMenus` 返回值**完全对齐**；修正 3 处已知漂移：ceo 菜单补 `/leave_types`、worker 菜单前后端 `/attendance` 统一、`employee` 显式 case（不再走 default）；所有 Unicode 转义（`"\u5de5\u4f5c\u53f0"` 等）改为中文字面量
+- `[>]` **A-AUDIT-CODE-07** WorkbenchSummary DTO 独立 — 新建 `dto/WorkbenchSummaryResponse.java`；删除 `WorkbenchService.WorkbenchSummary` 内部类；Controller 返回 `ResponseEntity<WorkbenchSummaryResponse>`（去 `ResponseEntity<?>`）
+- `[>]` **A-AUDIT-CODE-08** A-CODE-02 验收范围回退 + B-DEBT-07 — TODO.md A-CODE-02 已加"范围限定声明"（已完成）；本任务负责在 Phase B 新增 **B-DEBT-07 Controller 层批量下沉 Service**，列出剩余 32 个 Controller 清单
 
 #### A-AUDIT-FIX — Bug 修复
 
-- `[x]` **A-AUDIT-FIX-01** PayrollController `unlock` 吞异常 — `PayrollController.java:160` `catch (Exception ignored) {}` → 至少 `log.error("notify finance failed on cycleId={}", id, e);`
-- `[x]` **A-AUDIT-FIX-02** `/forms/leave` `/forms/overtime` 死链 — `WorkbenchService.java:94-95` quickActions path 改为 `/forms?type=leave` / `/forms?type=overtime`，且前端 `pages/forms/index.vue` 支持 query 参数初始化对应表单
-- `[x]` **A-AUDIT-FIX-03** Attachment 横向越权 + 文件类型白名单 — `AttachmentController.canAccess` 加业务归属校验：根据 `businessType`+`businessId` 查找 `form_record` / `injury_claim` 等表，验证当前用户是否为对应项目/部门审批人；上传加 MIME 白名单 `{pdf,jpg,jpeg,png,gif,webp,xlsx,docx}` + magic bytes 校验
+- `[>]` **A-AUDIT-FIX-01** PayrollController `unlock` 吞异常 — `PayrollController.java:160` `catch (Exception ignored) {}` → 至少 `log.error("notify finance failed on cycleId={}", id, e);`
+- `[>]` **A-AUDIT-FIX-02** `/forms/leave` `/forms/overtime` 死链 — `WorkbenchService.java:94-95` quickActions path 改为 `/forms?type=leave` / `/forms?type=overtime`，且前端 `pages/forms/index.vue` 支持 query 参数初始化对应表单
+- `[>]` **A-AUDIT-FIX-03** Attachment 横向越权 + 文件类型白名单 — `AttachmentController.canAccess` 加业务归属校验：根据 `businessType`+`businessId` 查找 `form_record` / `injury_claim` 等表，验证当前用户是否为对应项目/部门审批人；上传加 MIME 白名单 `{pdf,jpg,jpeg,png,gif,webp,xlsx,docx}` + magic bytes 校验
 
 #### A-AUDIT-CLEAN — 清理类
 
-- `[x]` **A-AUDIT-CLEAN-01** 登录页硬编码公司名 — `app/h5/pages/login.vue`（及 mp 对应页）从 `/api/setup/status` 读 `companyName`，消除硬编码"众维建筑工程有限公司"
-- `[x]` **A-AUDIT-CLEAN-02** TypeScript `any` 批量清理 — 28 个 `.vue` 页面里 158 处 `any` + 41 处 `as any`。重点文件：`employees/index.vue`、`attendance/index.vue`、`payroll/index.vue`、`config/index.vue`、`projects/[id].vue`、`role/index.vue` 等。用 antd 官方类型（`TableProps`、`ButtonProps`、`FormItemProps` 等）替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释说明
-- `[x]` **A-AUDIT-CLEAN-03** `slips.vue` 路径冲突清理 — `app/h5/pages/payroll/slips.vue` 当前是空转发页。删除该文件（Nuxt 不再生成 `/payroll/slips` 路由）；或若有用途，明示功能
-- `[x]` **A-AUDIT-CLEAN-04** `app/shared` vitest 配置去重 — `app/mp/vitest.config.ts` 已 include `../../test/unit/shared/**`，`app/shared/vitest.config.ts` 同路径重复。确认无 CI 依赖后删除 shared 配置，或给它分配独立用途（如仅跑 node 环境的纯函数测试）
+- `[>]` **A-AUDIT-CLEAN-01** 登录页硬编码公司名 — `app/h5/pages/login.vue`（及 mp 对应页）从 `/api/setup/status` 读 `companyName`，消除硬编码"众维建筑工程有限公司"
+- `[>]` **A-AUDIT-CLEAN-02** TypeScript `any` 批量清理 — 28 个 `.vue` 页面里 158 处 `any` + 41 处 `as any`。重点文件：`employees/index.vue`、`attendance/index.vue`、`payroll/index.vue`、`config/index.vue`、`projects/[id].vue`、`role/index.vue` 等。用 antd 官方类型（`TableProps`、`ButtonProps`、`FormItemProps` 等）替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释说明
+- `[>]` **A-AUDIT-CLEAN-03** `slips.vue` 路径冲突清理 — `app/h5/pages/payroll/slips.vue` 当前是空转发页。删除该文件（Nuxt 不再生成 `/payroll/slips` 路由）；或若有用途，明示功能
+- `[>]` **A-AUDIT-CLEAN-04** `app/shared` vitest 配置去重 — `app/mp/vitest.config.ts` 已 include `../../test/unit/shared/**`，`app/shared/vitest.config.ts` 同路径重复。确认无 CI 依赖后删除 shared 配置，或给它分配独立用途（如仅跑 node 环境的纯函数测试）
 
 #### A-AUDIT-OPS — 运维配置类
 
-- `[x]` **A-AUDIT-OPS-01** `server.error` 响应加固 — `application.yml` 新增：
+- `[>]` **A-AUDIT-OPS-01** `server.error` 响应加固 — `application.yml` 新增：
   ```yaml
   server:
     error:
@@ -351,11 +351,11 @@
       include-stacktrace: never
       include-exception: false
   ```
-- `[x]` **A-AUDIT-OPS-02** H2-console 移出默认配置 — 新建 `application-dev.yml` 保留 `spring.h2.console.enabled: true`；`application.yml` 删除此配置（或改为 `enabled: ${H2_CONSOLE_ENABLED:false}`）；避免 prod profile 未激活时误暴露
+- `[>]` **A-AUDIT-OPS-02** H2-console 移出默认配置 — 新建 `application-dev.yml` 保留 `spring.h2.console.enabled: true`；`application.yml` 删除此配置（或改为 `enabled: ${H2_CONSOLE_ENABLED:false}`）；避免 prod profile 未激活时误暴露
 
 #### A-AUDIT-DB — 数据种子类
 
-- `[x]` **A-AUDIT-DB-01** `ops` 角色种子数据 — `db/data.sql` 的 `sys_role` `MERGE INTO` 表补 `(id=9, role_code='ops', role_name='运维', ...)`；`schema.sql` 无需改动。Flyway 侧：如 Phase B 后需要 prod 部署，建 `V15__add_ops_role.sql` 同步
+- `[>]` **A-AUDIT-DB-01** `ops` 角色种子数据 — `db/data.sql` 的 `sys_role` `MERGE INTO` 表补 `(id=9, role_code='ops', role_name='运维', ...)`；`schema.sql` 无需改动。Flyway 侧：如 Phase B 后需要 prod 部署，建 `V15__add_ops_role.sql` 同步
 
 ---
 
