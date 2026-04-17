@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import com.oa.backend.mapper.SecondRoleAssignmentMapper;
@@ -71,6 +72,17 @@ public class AuthController {
         boolean isExpired() {
             return LocalDateTime.now().isAfter(expireAt);
         }
+    }
+
+    /**
+     * 每 10 分钟清理一次手机号变更流程中的过期条目，防止 Map 长期运行内存泄漏。
+     * 业务路径已在每次访问时 `isExpired()` 校验，这里仅回收存储空间。
+     */
+    @Scheduled(fixedDelay = 600_000L)
+    void cleanupExpiredPhoneChangeEntries() {
+        phoneChangeCurrentCodeStore.entrySet().removeIf(e -> e.getValue().isExpired());
+        phoneChangeNewCodeStore.entrySet().removeIf(e -> e.getValue().isExpired());
+        phoneChangeTokenStore.entrySet().removeIf(e -> e.getValue().isExpired());
     }
 
     /**

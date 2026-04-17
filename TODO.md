@@ -123,7 +123,8 @@
   4. 单元测试：发起但不完成流程，验证 30 分钟（测试中缩短为 60 秒）后条目消失
 - **验收点**：发起手机变更不完成，超过 TTL 后 Map 中无该条目；`jmap -histo` 显示 Map size 不随时间无限增长
 - **验收流程**：单元测试通过；代码 review 确认无裸 ConcurrentHashMap
-- **状态**：`[ ]`
+- **实施**：方案 B（@Scheduled 定时清理，零新依赖）。每 10 分钟执行 `cleanupExpiredPhoneChangeEntries()` 遍历 3 个 Map 移除过期条目。@EnableScheduling 已在 `OaBackendApplication.java:23` 开启。
+- **状态**：`[~]`
 
 #### A-CODE-02 WorkbenchController 直持 Mapper（业务逻辑渗入 Controller）
 - **目标**：WorkbenchController 跨 4 个 Mapper 直接查询，绕过 Service 层
