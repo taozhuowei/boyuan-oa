@@ -49,7 +49,7 @@
       :confirm-loading="applying"
       @cancel="resetApplyForm"
       ok-text="提交"
-      :ok-button-props="({ 'data-catch': 'injury-apply-modal-submit' } as any)"
+      :ok-button-props="({ 'data-catch': 'injury-apply-modal-submit' } as any)" <!-- 原因：antd ButtonProps 不含 data-* 属性，必须 as any 以传入 data-catch 测试标识 -->
     >
       <a-form :model="applyForm" layout="vertical">
         <!-- PM 代录：选择受伤员工 -->
@@ -113,7 +113,7 @@
       :confirm-loading="claiming"
       @cancel="resetClaimForm"
       ok-text="提交理赔"
-      :ok-button-props="({ 'data-catch': 'injury-amount-submit' } as any)"
+      :ok-button-props="({ 'data-catch': 'injury-amount-submit' } as any)" <!-- 原因：antd ButtonProps 不含 data-* 属性，必须 as any 以传入 data-catch 测试标识 -->
     >
       <a-form :model="claimForm" layout="vertical">
         <a-form-item label="选择已通过的申报单" required>

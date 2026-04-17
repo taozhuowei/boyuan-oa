@@ -14,7 +14,7 @@
             :pagination="pagination"
             row-key="id"
             size="small"
-            :customRow="(record: any) => ({'data-catch': 'form-list-item'} as any)"
+            :customRow="(record: FormRecord) => ({'data-catch': 'form-list-item'} as any)" <!-- 原因：antd TableCustomRow 返回类型不含 data-* 属性 -->
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'submitTime'">
@@ -43,7 +43,7 @@
             :pagination="pagination"
             row-key="id"
             size="small"
-            :customRow="(record: any) => ({'data-catch': 'form-list-item'} as any)"
+            :customRow="(record: FormRecord) => ({'data-catch': 'form-list-item'} as any)" <!-- 原因：antd TableCustomRow 返回类型不含 data-* 属性 -->
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'submitTime'">

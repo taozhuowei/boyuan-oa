@@ -310,7 +310,7 @@ interface LevelForm {
   annualLeaveOverride: number | undefined
 }
 
-function expandIcon(props: { expanded: boolean; onExpand: (expanded: boolean, record: any) => void; record: any }) {
+function expandIcon(props: { expanded: boolean; onExpand: (expanded: boolean, record: Position) => void; record: Position }) {
   return h('span', {
     'data-catch': `positions-row-expand-btn-${props.record.id}`,
     style: { cursor: 'pointer', marginRight: '8px', color: '#1890ff' },

@@ -4,7 +4,7 @@
     <a-card class="password-card">
       <a-form
         :model="formState"
-        :rules="(rules as any)"
+        :rules="(rules as any)" <!-- 原因：自定义 validator 签名 (_rule: unknown, value: string) 与 antd RuleObject 期望的 (rule, value, callback) 不完全兼容，必须 as any -->
         layout="vertical"
         @finish="handleSubmit"
       >
@@ -103,8 +103,10 @@ const handleSubmit = async () => {
     setTimeout(() => {
       navigateTo('/me')
     }, 1500)
-  } catch (error: any) {
-    message.error(error?.data?.message || '密码修改失败，请检查当前密码是否正确')
+  } catch (error) {
+    // error.data is the ofetch FetchError shape from Nuxt's $fetch; cast to extract the server message
+    const fetchError = error as { data?: { message?: string } }
+    message.error(fetchError?.data?.message || '密码修改失败，请检查当前密码是否正确')
   } finally {
     loading.value = false
   }

@@ -36,7 +36,7 @@
       :confirm-loading="submitting"
       @cancel="resetForm"
       ok-text="提交"
-      :okButtonProps="({ 'data-catch': 'form-log-submit' } as any)"
+      :okButtonProps="({ 'data-catch': 'form-log-submit' } as any)" <!-- 原因：antd ButtonProps 不含 data-* 属性，必须 as any 以传入 data-catch 测试标识 -->
     >
       <a-form :model="form" layout="vertical">
         <a-form-item label="日志日期" required>

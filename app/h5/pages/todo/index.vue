@@ -32,7 +32,7 @@
         :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
         row-key="id"
         size="small"
-        :customRow="() => ({ 'data-catch': 'todo-item' } as any)"
+        :customRow="() => ({ 'data-catch': 'todo-item' } as any)" <!-- 原因：antd TableCustomRow 返回类型不含 data-* 属性 -->
       >
         <template #emptyText>
           <a-empty data-catch="todo-empty" description="暂无数据" />

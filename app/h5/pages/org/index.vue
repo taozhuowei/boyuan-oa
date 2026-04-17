@@ -112,7 +112,7 @@
               :selectable="false"
               :draggable="isCeoOrHr"
               data-catch="org-supervisor-tree"
-              @drop="(info: any) => onSupervisorDrop(info)"
+              @drop="(info: AntdTreeDropInfo) => onSupervisorDrop(info)"
             >
               <template #title="node">
                 <span
@@ -376,8 +376,7 @@ async function loadSupervisorTree() {
 }
 
 interface AntdTreeDropInfo {
-  // dragNode typed as any to avoid incompatibility with AntDV's EventDataNode generic
-  dragNode: any
+  dragNode: any // 原因：AntDV EventDataNode 泛型与 TreeDropEvent 不兼容，暂无精确类型
   node: { employeeId: number }
   dropToGap: boolean
 }

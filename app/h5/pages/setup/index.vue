@@ -387,9 +387,11 @@ async function submitSetup() {
     })
     recoveryCode.value = data.recoveryCode
     currentStep.value = 4
-  } catch (error: any) {
-    if (error?.response?.status === 400 || error?.response?.status === 403 || error?.response?.status === 409) {
-      submitError.value = error?.data?.message || '提交失败，请检查输入'
+  } catch (error) {
+    // error is an ofetch FetchError from Nuxt's $fetch; response.status and data.message are ofetch-specific fields
+    const fetchError = error as { response?: { status?: number }; data?: { message?: string } }
+    if (fetchError?.response?.status === 400 || fetchError?.response?.status === 403 || fetchError?.response?.status === 409) {
+      submitError.value = fetchError?.data?.message || '提交失败，请检查输入'
     } else {
       submitError.value = '网络错误，请重试'
     }

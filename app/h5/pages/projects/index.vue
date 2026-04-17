@@ -88,7 +88,7 @@
       @ok="doCreateProject"
       :confirm-loading="createLoading"
       @cancel="resetCreateForm"
-      :okButtonProps="({ 'data-catch': 'project-create-modal-ok' } as any)"
+      :okButtonProps="({ 'data-catch': 'project-create-modal-ok' } as any)" <!-- 原因：antd ButtonProps 不含 data-* 属性，必须 as any 以传入 data-catch 测试标识 -->
     >
       <a-form :model="createForm" layout="vertical">
         <a-form-item label="项目名称" required>

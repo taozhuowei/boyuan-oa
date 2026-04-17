@@ -380,14 +380,14 @@
 
 #### A-AUDIT-FOLLOWUP — 审计中发现的非阻塞小项（收敛清理）
 
-- `[~]` **A-AUDIT-FOLLOWUP-01** EmployeeController.listEmployees N+1 查询 — 当前 `toResponse` 在 list 端点按行调用 `SecurityUtils.getEmployeeIdFromUsername`，对同一 authentication.getName() 重复查库。方法入口解析一次 `currentEmployeeId`，lambda 捕获下传
-- `[~]` **A-AUDIT-FOLLOWUP-02** PhoneChangeService record 可见性收紧 — `PhoneChangeCodeEntry` / `PhoneChangeTokenEntry` 两个 `public record` 降为 package-private 或移入 internal 子包，避免跨包暴露内部状态类型
-- `[~]` **A-AUDIT-FOLLOWUP-03** login.vue + app.vue 合并 `useCompanyName` composable — 当前双 onMounted 分别 fetch `/api/setup/status`，虽借 useState 不产生冗余请求但逻辑散落。抽 `composables/useCompanyName.ts` 统一入口
-- `[~]` **A-AUDIT-FOLLOWUP-04** `/me/profile` @Cacheable 性能优化 — 当前 `buildUserProfile` 每次查 employee + department 两次库；前端每页刷可能多次调用。加 Spring Cache 注解（key=employeeNo，TTL 60s），或在 Service 层用本地 Caffeine 缓存
-- `[ ]` **A-AUDIT-FOLLOWUP-05** 前端剩余 22 个 .vue 文件 `any` 清理 — A-AUDIT-CLEAN-02 只清了 6 个高频文件。剩余文件全量 grep `:\s*any\b\|\bas any\b`，逐一用 antd 官方类型 / `Record<string, unknown>` / 具体 interface 替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释
-- `[~]` **A-AUDIT-FOLLOWUP-06** `default.vue` `normalizePath` 死代码清理 — A-AUDIT-CODE-06 把后端菜单 `/workbench` 统一改为 `/` 后，`default.vue:236-239` 的 `normalizePath({'/workbench':'/'})` 映射表成为死代码，删除
+- `[>]` **A-AUDIT-FOLLOWUP-01** EmployeeController.listEmployees N+1 查询 — listEmployees 入口一次性解析 currentEmployeeId，新重载 toResponse(Employee,Long,Authentication) 消除 N+1；commit 5f298b3
+- `[x]` **A-AUDIT-FOLLOWUP-02** PhoneChangeService record 可见性收紧 — 不可做：PhoneChangeCodeEntry/TokenEntry 被 AuthController（不同包）直接引用，必须保持 public；无代码变更
+- `[>]` **A-AUDIT-FOLLOWUP-03** login.vue + app.vue 合并 `useCompanyName` composable — 抽 `composables/useCompanyName.ts`，双组件均改用 composable；commit 5f298b3
+- `[>]` **A-AUDIT-FOLLOWUP-04** `/me/profile` @Cacheable 性能优化 — 新增 CacheConfig + Caffeine + UserProfileService @Cacheable(TTL 60s)，WorkbenchService 委托给缓存 bean；commit 5f298b3
+- `[~]` **A-AUDIT-FOLLOWUP-05** 前端剩余 22 个 .vue 文件 `any` 清理 — A-AUDIT-CLEAN-02 只清了 6 个高频文件。剩余文件全量 grep `:\s*any\b\|\bas any\b`，逐一用 antd 官方类型 / `Record<string, unknown>` / 具体 interface 替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释
+- `[>]` **A-AUDIT-FOLLOWUP-06** `default.vue` `normalizePath` 死代码清理 — 删除 normalizePath 函数，buildMenuItems 改用 m.path 直传；commit 5f298b3
 - `[ ]` **A-AUDIT-FOLLOWUP-07** projects/[id].vue `member-row-` DOM id 变更同步 — A-AUDIT-CLEAN-02 里第二角色表 customRow 的 DOM id 从 `member-row-<username>` 改为 `member-row-<employeeId>`。如果有 e2e 选择器或手测脚本引用旧 id，同步更新
-- `[~]` **A-AUDIT-FOLLOWUP-08** 历史 `role_code='gm'` 数据迁移 — 若已有运行环境历史 H2/PG 库写入 `role_code='gm'`，升级后该账号会与新建的 `general_manager` 角色失配。新建 `V16__migrate_gm_role.sql`：`UPDATE employee SET role_code='general_manager' WHERE role_code='gm';` + `DELETE FROM sys_role WHERE role_code='gm' AND NOT EXISTS (SELECT 1 FROM employee WHERE role_code='gm');`
+- `[>]` **A-AUDIT-FOLLOWUP-08** 历史 `role_code='gm'` 数据迁移 — V16__migrate_gm_role.sql 已创建，幂等 UPDATE/DELETE；commit 5f298b3
 
 #### A-AUDIT-TEST — 单元测试层预存技术债
 
