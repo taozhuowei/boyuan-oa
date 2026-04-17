@@ -3,9 +3,14 @@ package com.oa.backend.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.dto.UserProfileResponse;
 import com.oa.backend.dto.WorkbenchConfigResponse;
+import com.oa.backend.dto.WorkbenchSummaryResponse;
+import com.oa.backend.entity.Department;
+import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.FormRecord;
 import com.oa.backend.entity.PayrollCycle;
 import com.oa.backend.entity.Project;
+import com.oa.backend.mapper.DepartmentMapper;
+import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.FormRecordMapper;
 import com.oa.backend.mapper.PayrollCycleMapper;
 import com.oa.backend.mapper.ProjectMapper;
@@ -31,60 +36,87 @@ public class WorkbenchService {
     private final PayrollCycleMapper payrollCycleMapper;
     private final ProjectMapper projectMapper;
     private final RetentionReminderMapper retentionReminderMapper;
+    private final EmployeeMapper employeeMapper;
+    private final DepartmentMapper departmentMapper;
 
     /**
      * 构建工作台摘要。
      * @return 填充完毕的 Summary；employeeId 为 null 时返回 null，由调用方处理
      */
-    public WorkbenchSummary buildWorkbenchSummary(Authentication authentication) {
+    public WorkbenchSummaryResponse buildWorkbenchSummary(Authentication authentication) {
         String role = extractRole(authentication);
         Long employeeId = SecurityUtils.getCurrentEmployeeId(authentication);
         if (employeeId == null) {
             return null;
         }
 
-        WorkbenchSummary summary = new WorkbenchSummary();
-        summary.unreadNotificationCount = notificationService.countUnread(employeeId);
-        summary.pendingApprovalCount = calculatePendingApprovalCount(role, employeeId);
+        Integer unreadNotificationCount = notificationService.countUnread(employeeId);
+        Integer pendingApprovalCount = calculatePendingApprovalCount(role, employeeId);
+        String payrollStatus = SecurityUtils.hasFinanceAccess(authentication)
+                ? getLatestPayrollCycleStatus()
+                : null;
+        Integer activeProjectCount = ("ceo".equals(role) || "project_manager".equals(role))
+                ? countActiveProjects()
+                : null;
+        Integer retentionAlertCount = "ceo".equals(role)
+                ? countPendingRetentionReminders()
+                : null;
 
-        if (SecurityUtils.hasFinanceAccess(authentication)) {
-            summary.payrollStatus = getLatestPayrollCycleStatus();
-        }
-        if ("ceo".equals(role) || "project_manager".equals(role)) {
-            summary.activeProjectCount = countActiveProjects();
-        }
-        if ("ceo".equals(role)) {
-            summary.retentionAlertCount = countPendingRetentionReminders();
-        }
-        return summary;
+        return new WorkbenchSummaryResponse(
+                pendingApprovalCount,
+                payrollStatus,
+                activeProjectCount,
+                retentionAlertCount,
+                unreadNotificationCount
+        );
     }
 
+    /**
+     * 构建当前登录用户的个人资料。
+     * 姓名、部门、员工类型、账号状态均来源于 employee / department 表，
+     * 不依赖任何硬编码 demo 账号映射；确保生产环境同名用户也得到真实数据。
+     */
     public UserProfileResponse buildUserProfile(Authentication authentication) {
         String username = authentication.getName();
         String role = extractRole(authentication);
-        return switch (username.toLowerCase()) {
-            case "employee.demo" -> new UserProfileResponse(
-                    username, "张晓宁", role, getRoleName(role), "综合管理部", "OFFICE", "ACTIVE",
-                    getVisibleModules(role));
-            case "worker.demo" -> new UserProfileResponse(
-                    username, "赵铁柱", role, getRoleName(role), "施工一部", "LABOR", "ACTIVE",
-                    getVisibleModules(role));
-            case "finance.demo" -> new UserProfileResponse(
-                    username, "李静", role, getRoleName(role), "财务管理部", "OFFICE", "ACTIVE",
-                    getVisibleModules(role));
-            case "pm.demo" -> new UserProfileResponse(
-                    username, "王建国", role, getRoleName(role), "项目一部", "OFFICE", "ACTIVE",
-                    getVisibleModules(role));
-            case "ceo.demo" -> new UserProfileResponse(
-                    username, "陈明远", role, getRoleName(role), "运营管理部", "OFFICE", "ACTIVE",
-                    getVisibleModules(role));
-            case "dept_manager.demo" -> new UserProfileResponse(
-                    username, "周伟", role, getRoleName(role), "综合管理部", "OFFICE", "ACTIVE",
-                    getVisibleModules(role));
-            default -> new UserProfileResponse(
+
+        Employee employee = employeeMapper.selectOne(
+                new LambdaQueryWrapper<Employee>()
+                        .eq(Employee::getEmployeeNo, username)
+                        .eq(Employee::getDeleted, 0)
+        );
+
+        if (employee == null) {
+            // 兜底：JWT 有效但数据库查不到（理论上不应发生，例如 dev-login 或员工已删除）。
+            return new UserProfileResponse(
                     username, username, role, getRoleName(role), "未分配", "OFFICE", "ACTIVE",
                     getVisibleModules(role));
-        };
+        }
+
+        String departmentName = "未分配";
+        if (employee.getDepartmentId() != null) {
+            Department department = departmentMapper.selectById(employee.getDepartmentId());
+            if (department != null && department.getName() != null && !department.getName().isBlank()) {
+                departmentName = department.getName();
+            }
+        }
+
+        String displayName = (employee.getName() != null && !employee.getName().isBlank())
+                ? employee.getName()
+                : username;
+        String employeeType = employee.getEmployeeType() != null ? employee.getEmployeeType() : "OFFICE";
+        String accountStatus = employee.getAccountStatus() != null ? employee.getAccountStatus() : "ACTIVE";
+
+        return new UserProfileResponse(
+                username,
+                displayName,
+                role,
+                getRoleName(role),
+                departmentName,
+                employeeType,
+                accountStatus,
+                getVisibleModules(role)
+        );
     }
 
     public WorkbenchConfigResponse buildWorkbenchConfig(Authentication authentication) {
@@ -180,96 +212,107 @@ public class WorkbenchService {
         };
     }
 
+    /**
+     * 按角色构建侧边栏菜单。
+     * 单一事实源（SOT）为前端 app/h5/layouts/default.vue 的 ROLE_MENUS；
+     * 本方法产物必须与之一一对应（code/label/path 全部一致），
+     * 以保证前端在 API 菜单生效前（首屏静态 fallback）与生效后的体验一致。
+     * 路径均为 snake_case 以匹配 Phase A 页面目录重命名结果。
+     */
     private List<WorkbenchConfigResponse.MenuItem> buildMenus(String role) {
         return switch (role) {
             case "ceo" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
-                    new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "team", "/employees", true, null),
-                    new WorkbenchConfigResponse.MenuItem("org", "\u7ec4\u7ec7\u67b6\u6784", "apartment", "/org", true, null),
-                    new WorkbenchConfigResponse.MenuItem("positions", "\u5c97\u4f4d\u7ba1\u7406", "idcard", "/positions", true, null),
-                    new WorkbenchConfigResponse.MenuItem("allowances", "\u8865\u8d34\u914d\u7f6e", "idcard", "/allowances", true, null),
-                    new WorkbenchConfigResponse.MenuItem("role", "\u89d2\u8272\u7ba1\u7406", "user-switch", "/role", true, null),
-                    new WorkbenchConfigResponse.MenuItem("projects", "\u9879\u76ee\u7ba1\u7406", "project", "/projects", true, null),
-                    new WorkbenchConfigResponse.MenuItem("payroll", "\u85aa\u8d44\u7ba1\u7406", "money", "/payroll", true, null),
-                    new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction_log", true, null),
-                    new WorkbenchConfigResponse.MenuItem("injury", "\u5de5\u4f24\u8865\u507f", "alert", "/injury", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-records", "\u62a5\u9500\u8bb0\u5f55", "solution", "/expense/records", true, null),
-                    new WorkbenchConfigResponse.MenuItem("retention", "\u6570\u636e\u4fdd\u7559", "safety", "/retention", true, null),
-                    new WorkbenchConfigResponse.MenuItem("operation-logs", "\u64cd\u4f5c\u65e5\u5fd7", "audit", "/operation_logs", true, null),
-                    new WorkbenchConfigResponse.MenuItem("config", "\u7cfb\u7edf\u914d\u7f6e", "setting", "/config", true, null)
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null),
+                    new WorkbenchConfigResponse.MenuItem("todo", "审批中心", "check-circle", "/todo", true, null),
+                    new WorkbenchConfigResponse.MenuItem("employees", "员工管理", "team", "/employees", true, null),
+                    new WorkbenchConfigResponse.MenuItem("org", "组织架构", "apartment", "/org", true, null),
+                    new WorkbenchConfigResponse.MenuItem("positions", "岗位管理", "idcard", "/positions", true, null),
+                    new WorkbenchConfigResponse.MenuItem("allowances", "补贴配置", "idcard", "/allowances", true, null),
+                    new WorkbenchConfigResponse.MenuItem("role", "角色管理", "user-switch", "/role", true, null),
+                    new WorkbenchConfigResponse.MenuItem("projects", "项目管理", "project", "/projects", true, null),
+                    new WorkbenchConfigResponse.MenuItem("payroll", "薪资管理", "money", "/payroll", true, null),
+                    new WorkbenchConfigResponse.MenuItem("construction_log", "施工日志", "file-text", "/construction_log", true, null),
+                    new WorkbenchConfigResponse.MenuItem("injury", "工伤补偿", "alert", "/injury", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-apply", "费用报销", "wallet", "/expense/apply", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-records", "报销记录", "solution", "/expense/records", true, null),
+                    new WorkbenchConfigResponse.MenuItem("retention", "数据保留", "safety", "/retention", true, null),
+                    new WorkbenchConfigResponse.MenuItem("data_export", "数据导出", "export", "/data_export", true, null),
+                    new WorkbenchConfigResponse.MenuItem("data_viewer", "数据查看", "database", "/data_viewer", true, null),
+                    new WorkbenchConfigResponse.MenuItem("operation_logs", "操作日志", "audit", "/operation_logs", true, null),
+                    new WorkbenchConfigResponse.MenuItem("config", "系统配置", "setting", "/config", true, null)
             );
             case "finance" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
-                    new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "team", "/employees", true, null),
-                    new WorkbenchConfigResponse.MenuItem("payroll", "\u85aa\u8d44\u7ba1\u7406", "money", "/payroll", true, null),
-                    new WorkbenchConfigResponse.MenuItem("injury", "\u5de5\u4f24\u7406\u8d54", "alert", "/injury", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-records", "\u62a5\u9500\u8bb0\u5f55", "solution", "/expense/records", true, null),
-                    new WorkbenchConfigResponse.MenuItem("directory", "\u901a\u8baf\u5f55\u5bfc\u5165", "import", "/directory", true, null)
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null),
+                    new WorkbenchConfigResponse.MenuItem("todo", "审批中心", "check-circle", "/todo", true, null),
+                    new WorkbenchConfigResponse.MenuItem("employees", "员工管理", "team", "/employees", true, null),
+                    new WorkbenchConfigResponse.MenuItem("payroll", "薪资管理", "money", "/payroll", true, null),
+                    new WorkbenchConfigResponse.MenuItem("injury", "工伤理赔", "alert", "/injury", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-apply", "费用报销", "wallet", "/expense/apply", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-records", "报销记录", "solution", "/expense/records", true, null),
+                    new WorkbenchConfigResponse.MenuItem("allowances", "补贴配置", "idcard", "/allowances", true, null),
+                    new WorkbenchConfigResponse.MenuItem("positions", "岗位薪资配置", "idcard", "/positions", true, null),
+                    new WorkbenchConfigResponse.MenuItem("projects", "项目管理", "project", "/projects", true, null),
+                    new WorkbenchConfigResponse.MenuItem("directory", "通讯录导入", "import", "/directory", true, null)
             );
             case "project_manager" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
-                    new WorkbenchConfigResponse.MenuItem("projects", "\u9879\u76ee\u7ba1\u7406", "project", "/projects", true, null),
-                    new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction_log", true, null),
-                    new WorkbenchConfigResponse.MenuItem("templates", "\u5de5\u4f5c\u9879\u6a21\u677f", "form", "/construction_log/templates", true, null),
-                    new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null)
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null),
+                    new WorkbenchConfigResponse.MenuItem("todo", "审批中心", "check-circle", "/todo", true, null),
+                    new WorkbenchConfigResponse.MenuItem("projects", "项目管理", "project", "/projects", true, null),
+                    new WorkbenchConfigResponse.MenuItem("construction_log", "施工日志", "file-text", "/construction_log", true, null),
+                    new WorkbenchConfigResponse.MenuItem("templates", "工作项模板", "form", "/construction_log/templates", true, null),
+                    new WorkbenchConfigResponse.MenuItem("forms", "表单中心", "file", "/forms", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-apply", "费用报销", "wallet", "/expense/apply", true, null)
             );
             case "hr" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "team", "/employees", true, null),
-                    new WorkbenchConfigResponse.MenuItem("org", "\u7ec4\u7ec7\u67b6\u6784", "apartment", "/org", true, null),
-                    new WorkbenchConfigResponse.MenuItem("positions", "\u5c97\u4f4d\u7ba1\u7406", "idcard", "/positions", true, null),
-                    new WorkbenchConfigResponse.MenuItem("attendance", "\u8003\u52e4\u7ba1\u7406", "calendar", "/attendance", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-records", "\u62a5\u9500\u8bb0\u5f55", "solution", "/expense/records", true, null)
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null),
+                    new WorkbenchConfigResponse.MenuItem("employees", "员工管理", "team", "/employees", true, null),
+                    new WorkbenchConfigResponse.MenuItem("org", "组织架构", "apartment", "/org", true, null),
+                    new WorkbenchConfigResponse.MenuItem("positions", "岗位管理", "idcard", "/positions", true, null),
+                    new WorkbenchConfigResponse.MenuItem("leave_types", "假期配额", "calendar", "/leave_types", true, null),
+                    new WorkbenchConfigResponse.MenuItem("attendance", "考勤管理", "calendar", "/attendance", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-apply", "费用报销", "wallet", "/expense/apply", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-records", "报销记录", "solution", "/expense/records", true, null)
             );
             case "department_manager" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
-                    new WorkbenchConfigResponse.MenuItem("team", "\u56e2\u961f\u6210\u5458", "team", "/team", true, null),
-                    new WorkbenchConfigResponse.MenuItem("attendance", "\u8003\u52e4\u7ba1\u7406", "calendar", "/attendance", true, null),
-                    new WorkbenchConfigResponse.MenuItem("employees", "\u5458\u5de5\u7ba1\u7406", "user", "/employees", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null)
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null),
+                    new WorkbenchConfigResponse.MenuItem("todo", "审批中心", "check-circle", "/todo", true, null),
+                    new WorkbenchConfigResponse.MenuItem("team", "团队成员", "team", "/team", true, null),
+                    new WorkbenchConfigResponse.MenuItem("attendance", "考勤管理", "calendar", "/attendance", true, null),
+                    new WorkbenchConfigResponse.MenuItem("employees", "员工管理", "user", "/employees", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-apply", "费用报销", "wallet", "/expense/apply", true, null)
             );
             case "worker" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction_log", true, null),
-                    new WorkbenchConfigResponse.MenuItem("injury", "\u5de5\u4f24\u8865\u507f", "alert", "/injury", true, null),
-                    new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null),
-                    new WorkbenchConfigResponse.MenuItem("payroll", "\u5de5\u8d44\u6761", "money", "/payroll", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null)
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null),
+                    new WorkbenchConfigResponse.MenuItem("attendance", "考勤申请", "calendar", "/attendance", true, null),
+                    new WorkbenchConfigResponse.MenuItem("construction_log", "施工日志", "file-text", "/construction_log", true, null),
+                    new WorkbenchConfigResponse.MenuItem("injury", "工伤补偿", "alert", "/injury", true, null),
+                    new WorkbenchConfigResponse.MenuItem("forms", "表单中心", "file", "/forms", true, null),
+                    new WorkbenchConfigResponse.MenuItem("payroll", "工资条", "money", "/payroll", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-apply", "费用报销", "wallet", "/expense/apply", true, null)
             );
+            // 总经理：可见全项目与营收，但不见考勤/薪资/HR 档案（设计 §3.2）
             case "general_manager" -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
-                    new WorkbenchConfigResponse.MenuItem("projects", "\u9879\u76ee\u7ba1\u7406", "project", "/projects", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-records", "\u62a5\u9500\u8bb0\u5f55", "solution", "/expense/records", true, null)
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null),
+                    new WorkbenchConfigResponse.MenuItem("todo", "审批中心", "check-circle", "/todo", true, null),
+                    new WorkbenchConfigResponse.MenuItem("projects", "项目管理", "project", "/projects", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-apply", "费用报销", "wallet", "/expense/apply", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-records", "报销记录", "solution", "/expense/records", true, null)
             );
-            default -> Arrays.asList(
-                    new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null),
-                    new WorkbenchConfigResponse.MenuItem("attendance", "\u8003\u52e4\u7ba1\u7406", "calendar", "/attendance", true, null),
-                    new WorkbenchConfigResponse.MenuItem("payroll", "\u5de5\u8d44\u6761", "money", "/payroll", true, null),
-                    new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null)
+            case "ops" -> Arrays.asList(
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null),
+                    new WorkbenchConfigResponse.MenuItem("operation_logs", "操作日志", "audit", "/operation_logs", true, null)
+            );
+            case "employee" -> Arrays.asList(
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null),
+                    new WorkbenchConfigResponse.MenuItem("forms", "表单中心", "file", "/forms", true, null),
+                    new WorkbenchConfigResponse.MenuItem("attendance", "考勤管理", "calendar", "/attendance", true, null),
+                    new WorkbenchConfigResponse.MenuItem("payroll", "工资条", "money", "/payroll", true, null),
+                    new WorkbenchConfigResponse.MenuItem("expense-apply", "费用报销", "wallet", "/expense/apply", true, null)
+            );
+            // 未知角色仅展示最小菜单，防止未授权访问
+            default -> List.of(
+                    new WorkbenchConfigResponse.MenuItem("workbench", "工作台", "dashboard", "/", true, null)
             );
         };
-    }
-
-    /**
-     * 工作台摘要数据传输对象。
-     * 字段值根据请求用户角色可能为 null。
-     */
-    public static class WorkbenchSummary {
-        public Integer pendingApprovalCount;
-        public String payrollStatus;
-        public Integer activeProjectCount;
-        public Integer retentionAlertCount;
-        public Integer unreadNotificationCount;
     }
 }
