@@ -314,7 +314,7 @@ public class SetupService {
     }
 
     private Long createGmAccount(SetupRequest request) {
-        ensureRoleExists("gm", "总经理", "负责全面经营管理");
+        ensureRoleExists("general_manager", "总经理", "负责全面经营管理");
 
         Employee gm = new Employee();
         gm.setEmployeeNo("GM001");
@@ -322,7 +322,7 @@ public class SetupService {
         gm.setIsDefaultPassword(true);
         gm.setName(request.gmName());
         gm.setPhone(request.gmPhone());
-        gm.setRoleCode("gm");
+        gm.setRoleCode("general_manager");
         gm.setEmployeeType("OFFICE");
         gm.setAccountStatus("ACTIVE");
         gm.setEntryDate(LocalDate.now());

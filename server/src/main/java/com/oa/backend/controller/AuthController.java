@@ -218,7 +218,7 @@ public class AuthController {
             // 生成6位随机验证码
             String code = String.format("%06d", secureRandom.nextInt(1000000));
             resetCodeStore.storeCode(request.phone(), code);
-            log.info("SMS code for {}: {} (employee: {})", request.phone(), code, employeeOpt.get().getEmployeeNo());
+            log.debug("SMS code generated for phone={}", maskPhone(request.phone()));
         } else {
             // 手机号不存在，仍然返回成功，但记录日志用于调试
             log.debug("Send reset code requested for non-existent phone: {}", request.phone());
@@ -300,7 +300,7 @@ public class AuthController {
         String code = String.format("%06d", secureRandom.nextInt(1000000));
         phoneChangeCurrentCodeStore.put("phone-change-current:" + userId,
             new PhoneChangeCodeEntry(code, LocalDateTime.now().plusMinutes(5)));
-        log.info("Phone change current SMS code for user {} phone {}: {}", userId, employee.getPhone(), code);
+        log.debug("SMS code generated for phone={}", maskPhone(employee.getPhone()));
         return ResponseEntity.ok(Map.of("message", "验证码已发送"));
     }
 
@@ -366,7 +366,7 @@ public class AuthController {
         String code = String.format("%06d", secureRandom.nextInt(1000000));
         phoneChangeNewCodeStore.put("phone-change-new:" + userId,
             new PhoneChangeCodeEntry(code, LocalDateTime.now().plusMinutes(5)));
-        log.info("Phone change new SMS code for user {} phone {}: {}", userId, newPhone, code);
+        log.debug("SMS code generated for phone={}", maskPhone(newPhone));
         return ResponseEntity.ok(Map.of("message", "验证码已发送"));
     }
 
@@ -526,5 +526,17 @@ public class AuthController {
         response.put("isDefaultPassword", employee.getIsDefaultPassword());
 
         return ResponseEntity.ok(response);
+    }
+
+    /**
+     * 职责：对手机号进行脱敏处理用于日志输出
+     * 规则：保留前 3 位和后 4 位，中间用 **** 替代；长度不足 7 或 null 时返回 ****
+     * 原因：防止明文手机号写入日志造成个人信息泄露
+     */
+    private static String maskPhone(String phone) {
+        if (phone == null || phone.length() < 7) {
+            return "****";
+        }
+        return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
     }
 }

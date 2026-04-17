@@ -8,6 +8,7 @@ import com.oa.backend.service.PayrollCorrectionService;
 import com.oa.backend.service.PayrollEngine;
 import com.oa.backend.service.SignatureService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -32,6 +33,7 @@ import java.util.Map;
  * - POST /payroll/slips/{id}/confirm       员工确认工资条（Employee/Worker）
  * - POST /payroll/slips/{id}/dispute       员工提出异议（Employee/Worker）
  */
+@Slf4j
 @RestController
 @RequestMapping("/payroll")
 @RequiredArgsConstructor
@@ -157,7 +159,9 @@ public class PayrollController {
                         "周期 " + cycle.getPeriod() + " 已解锁，请重新核对并结算。",
                         "PAYROLL", "PAYROLL_CYCLE", id);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            log.error("解锁薪资周期后通知财务失败 cycleId={}", id, e);
+        }
         return ResponseEntity.ok(cycle);
     }
 

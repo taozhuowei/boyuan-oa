@@ -14,7 +14,7 @@ import java.util.Map;
 /**
  * 测试接口（仅开发环境使用）
  */
-@Profile("!prod")
+@Profile("dev")
 @RestController
 @RequestMapping("/test")
 @RequiredArgsConstructor
