@@ -48,21 +48,33 @@ cd app/mp && npm run dev
 ## 运行测试
 
 ```bash
-# 后端单元测试 + 集成测试
+# 后端单元测试
 cd server && mvn test
 
 # H5 前端单元测试
-cd app/h5 && npm run test
+cd app/h5 && yarn test
 
-# 小程序单元测试
-cd app/mp && npm run test
+# API 集成测试（需后端运行中）
+yarn test:integration
+
+# E2E 测试（需前后端均运行中）
+yarn playwright test
+
+# E2E 冒烟（快速验证核心链路）
+yarn playwright test --grep @smoke
 ```
+
+**测试设计文档**：[test/TEST_DESIGN.md](./test/TEST_DESIGN.md)（主文档）、[test/e2e/TEST_DESIGN.md](./test/e2e/TEST_DESIGN.md)（E2E 用例详情）
 
 ---
 
 ## 部署
 
 > 部署方案待 Phase D 启动后设计，详见 [TODO.md](./TODO.md) Phase D。
+
+## 调试
+
+测试发现问题时，按症状（页面跳转/403/404/Toast 报错等）直接定位代码文件：[test/BUG_LOCATOR.md](./test/BUG_LOCATOR.md)
 
 ---
 
