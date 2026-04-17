@@ -310,15 +310,15 @@
 
 #### A-AUDIT-SEC — 安全类
 
-- `[ ]` **A-AUDIT-SEC-01** 短信验证码明文日志降级 — `AuthController.java:221,303,369` 三处 `log.info(".. code: {} ..")` 降级为 `log.debug`，且仅记脱敏手机号（如 `138****0000`），不落 code 本身
-- `[ ]` **A-AUDIT-SEC-02** TestController Profile 收窄 — `TestController.java` 类级 `@Profile("!prod")` → `@Profile("dev")`，与 DevController 一致
+- `[x]` **A-AUDIT-SEC-01** 短信验证码明文日志降级 — `AuthController.java:221,303,369` 三处 `log.info(".. code: {} ..")` 降级为 `log.debug`，且仅记脱敏手机号（如 `138****0000`），不落 code 本身
+- `[x]` **A-AUDIT-SEC-02** TestController Profile 收窄 — `TestController.java` 类级 `@Profile("!prod")` → `@Profile("dev")`，与 DevController 一致
 - `[ ]` **A-AUDIT-SEC-03** EmployeeResponse 敏感字段脱敏 — `EmployeeResponse.java` 删除 `isDefaultPassword` 字段；`idCardNo` 仅 CEO/HR 可见（通过 service 层过滤），其余角色返回 `"****"` 或省略
 - `[ ]` **A-AUDIT-SEC-04** CORS 按 profile 区分 — `SecurityConfig.java:81-86` localhost allow 只在 dev 生效；prod 从 `app.cors.origins` 环境变量读取
 - `[ ]` **A-AUDIT-SEC-05** AllowanceController GET 权限收窄 — `AllowanceController.java:44` `@PreAuthorize("isAuthenticated()")` → `hasAnyRole('CEO','HR','FINANCE')`
 
 #### A-AUDIT-CODE — 代码架构类
 
-- `[ ]` **A-AUDIT-CODE-01** 角色码 `gm` → `general_manager` 统一 — `SetupService.java:317,325` 两处字符串改为 `"general_manager"`，消除与 V7/V10/data.sql/前端守卫的命名冲突
+- `[x]` **A-AUDIT-CODE-01** 角色码 `gm` → `general_manager` 统一 — `SetupService.java:317,325` 两处字符串改为 `"general_manager"`，消除与 V7/V10/data.sql/前端守卫的命名冲突
 - `[ ]` **A-AUDIT-CODE-02** WorkbenchService demo 硬编码移除 — `WorkbenchService.java:62-88` 的 `buildUserProfile` switch 删除；改为通过 `EmployeeMapper` 查 `employee + department` 返回真实数据
 - `[ ]` **A-AUDIT-CODE-03** 20+ Controller `e.getMessage()` 清理 — 目标文件：PayrollController（7 处）、SignatureController（2）、SetupController（4）、ProjectRevenueController（2）、PayrollBonusController（2）、TemporaryDelegationController（2）、RoleController（1）。删除 Controller 层 `try/catch` + `ResponseEntity.status(.).body(Map.of("message", e.getMessage()))` 模式，改为抛 `BusinessException` 或让异常传播到 `GlobalExceptionHandler`
 - `[ ]` **A-AUDIT-CODE-04** GlobalExceptionHandler 补全 6 种异常 — 添加 `DataIntegrityViolationException(409)` / `MethodArgumentTypeMismatchException(400)` / `HttpMessageNotReadableException(400)` / `MaxUploadSizeExceededException(413)` / `AuthenticationException(401)` / `NoHandlerFoundException(404)` 的 `@ExceptionHandler`
@@ -329,7 +329,7 @@
 
 #### A-AUDIT-FIX — Bug 修复
 
-- `[ ]` **A-AUDIT-FIX-01** PayrollController `unlock` 吞异常 — `PayrollController.java:160` `catch (Exception ignored) {}` → 至少 `log.error("notify finance failed on cycleId={}", id, e);`
+- `[x]` **A-AUDIT-FIX-01** PayrollController `unlock` 吞异常 — `PayrollController.java:160` `catch (Exception ignored) {}` → 至少 `log.error("notify finance failed on cycleId={}", id, e);`
 - `[ ]` **A-AUDIT-FIX-02** `/forms/leave` `/forms/overtime` 死链 — `WorkbenchService.java:94-95` quickActions path 改为 `/forms?type=leave` / `/forms?type=overtime`，且前端 `pages/forms/index.vue` 支持 query 参数初始化对应表单
 - `[ ]` **A-AUDIT-FIX-03** Attachment 横向越权 + 文件类型白名单 — `AttachmentController.canAccess` 加业务归属校验：根据 `businessType`+`businessId` 查找 `form_record` / `injury_claim` 等表，验证当前用户是否为对应项目/部门审批人；上传加 MIME 白名单 `{pdf,jpg,jpeg,png,gif,webp,xlsx,docx}` + magic bytes 校验
 
