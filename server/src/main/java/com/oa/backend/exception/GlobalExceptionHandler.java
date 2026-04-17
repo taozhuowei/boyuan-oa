@@ -1,5 +1,7 @@
 package com.oa.backend.exception;
 
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
@@ -8,6 +10,9 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -72,6 +77,59 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Bean Validation 约束违反（@Validated 标注于 Controller 上，对 @RequestParam / @PathVariable
+     * 使用 @NotBlank / @Size / @Pattern 等约束时触发）。Spring 默认会将此异常映射为 500，
+     * 必须显式处理以返回业务语义的 400。
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Map<String, Object>> handleConstraintViolation(ConstraintViolationException ex) {
+        ConstraintViolation<?> first = ex.getConstraintViolations().stream().findFirst().orElse(null);
+        String message;
+        if (first != null) {
+            String path = first.getPropertyPath() != null ? first.getPropertyPath().toString() : "参数";
+            // propertyPath 形如 "methodName.paramName"，仅取最后一段对用户更友好
+            int dot = path.lastIndexOf('.');
+            String field = dot >= 0 && dot < path.length() - 1 ? path.substring(dot + 1) : path;
+            String msg = first.getMessage() != null ? first.getMessage() : "参数无效";
+            message = field + ": " + msg;
+        } else {
+            message = "请求参数校验失败";
+        }
+        log.debug("ConstraintViolationException: {}", message);
+        return buildResponse(HttpStatus.BAD_REQUEST.value(), message);
+    }
+
+    /**
+     * HTTP 方法不被当前接口支持（例如 GET 请求到一个仅声明 @PostMapping 的路径）。
+     * 返回 405，避免退化为 500。
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        log.debug("HttpRequestMethodNotSupportedException: method={}, supported={}",
+                ex.getMethod(), ex.getSupportedHttpMethods());
+        return buildResponse(HttpStatus.METHOD_NOT_ALLOWED.value(), "请求方法不被支持");
+    }
+
+    /**
+     * 请求 Content-Type 不被当前接口支持（例如接口只接受 JSON，但客户端发了 form）。
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+        log.debug("HttpMediaTypeNotSupportedException: contentType={}, supported={}",
+                ex.getContentType(), ex.getSupportedMediaTypes());
+        return buildResponse(HttpStatus.UNSUPPORTED_MEDIA_TYPE.value(), "不支持的请求媒体类型");
+    }
+
+    /**
+     * 客户端 Accept 头要求的响应类型当前接口无法产生。
+     */
+    @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+    public ResponseEntity<Map<String, Object>> handleMediaTypeNotAcceptable(HttpMediaTypeNotAcceptableException ex) {
+        log.debug("HttpMediaTypeNotAcceptableException: supported={}", ex.getSupportedMediaTypes());
+        return buildResponse(HttpStatus.NOT_ACCEPTABLE.value(), "无法生成客户端可接受的响应格式");
+    }
+
+    /**
      * 查询参数 / 路径变量类型转换失败，如 /xxx/abc 但 id 为 Long。
      */
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
@@ -98,7 +156,9 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<Map<String, Object>> handleDataIntegrity(DataIntegrityViolationException ex) {
-        log.debug("DataIntegrityViolationException: {}", ex.getMessage(), ex);
+        // 日志级别 warn：生产环境需要排查数据冲突（唯一键/外键/非空约束等），
+        // debug 级别默认不开启会导致问题定位困难
+        log.warn("DataIntegrityViolationException: {}", ex.getMessage(), ex);
         return buildResponse(HttpStatus.CONFLICT.value(), "数据冲突或约束违反");
     }
 
@@ -107,7 +167,8 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<Map<String, Object>> handleMaxUpload(MaxUploadSizeExceededException ex) {
-        log.debug("MaxUploadSizeExceededException: {}", ex.getMessage(), ex);
+        // 日志级别 warn：超限上传可能是配置问题或恶意尝试，应留存生产线索
+        log.warn("MaxUploadSizeExceededException: {}", ex.getMessage());
         return buildResponse(HttpStatus.PAYLOAD_TOO_LARGE.value(), "文件超过上传大小限制");
     }
 

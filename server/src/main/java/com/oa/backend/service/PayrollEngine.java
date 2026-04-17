@@ -424,7 +424,14 @@ public class PayrollEngine {
                 if (hours <= 0) continue;
                 LocalDate date = null;
                 if (dateStr != null && dateStr.length() >= 10) {
-                    try { date = LocalDate.parse(dateStr.substring(0, 10)); } catch (Exception ignored) {}
+                    // 保留原因：日期解析失败则保持 date 为 null，下游按未指定日期处理（仍计入 weekday）；
+                    // 用 debug 级别避免批量结算时解析失败刷屏
+                    try {
+                        date = LocalDate.parse(dateStr.substring(0, 10));
+                    } catch (java.time.format.DateTimeParseException e) {
+                        log.debug("overtime date parse failed, treated as undated: formId={}, dateStr={}",
+                                r.getId(), dateStr);
+                    }
                 }
                 if (date != null && (date.isBefore(start) || date.isAfter(end))) continue;
                 BigDecimal bucket = BigDecimal.valueOf(hours);

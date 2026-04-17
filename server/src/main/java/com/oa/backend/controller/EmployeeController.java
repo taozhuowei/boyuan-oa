@@ -16,6 +16,7 @@ import com.oa.backend.mapper.RoleMapper;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.EmployeeService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,6 +31,7 @@ import java.util.Map;
 /**
  * 员工管理控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/employees")
 @RequiredArgsConstructor
@@ -198,7 +200,7 @@ public class EmployeeController {
         }
         final boolean selfFinal = isSelf;
         final boolean idCardVisible = isSelf || canSeeIdCard;
-        // 查询角色名称
+        // 查询角色名称（响应辅助字段，失败不阻塞主流程）
         String roleName = employee.getRoleCode();
         try {
             Role role = roleMapper.selectOne(
@@ -209,10 +211,11 @@ public class EmployeeController {
                 roleName = role.getRoleName();
             }
         } catch (Exception e) {
-            // 忽略查询失败
+            // 保留原因：响应辅助字段查询失败兜底为 roleCode
+            log.warn("EmployeeDetail: failed to load role name for employeeId={}", employee.getId(), e);
         }
 
-        // 查询部门名称
+        // 查询部门名称（同上，失败不阻塞主流程）
         String departmentName = "";
         if (employee.getDepartmentId() != null) {
             try {
@@ -221,11 +224,13 @@ public class EmployeeController {
                     departmentName = dept.getName();
                 }
             } catch (Exception e) {
-                // 忽略查询失败
+                // 保留原因：响应辅助字段查询失败兜底为空
+                log.warn("EmployeeDetail: failed to load department name for employeeId={}, departmentId={}",
+                        employee.getId(), employee.getDepartmentId(), e);
             }
         }
 
-        // 紧急联系人列表
+        // 紧急联系人列表（失败兜底为空列表）
         java.util.List<EmployeeResponse.EmergencyContact> contacts = new java.util.ArrayList<>();
         try {
             java.util.List<com.oa.backend.entity.EmergencyContact> rows = emergencyContactMapper.selectList(
@@ -236,7 +241,10 @@ public class EmployeeController {
                 contacts.add(new EmployeeResponse.EmergencyContact(
                         ec.getId(), ec.getName(), ec.getPhone(), ec.getAddress()));
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            // 保留原因：紧急联系人查询失败兜底为空，不阻塞员工详情主流程
+            log.warn("EmployeeDetail: failed to load emergency contacts for employeeId={}", employee.getId(), e);
+        }
 
         return new EmployeeResponse(
             employee.getId(),

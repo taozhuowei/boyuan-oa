@@ -86,7 +86,7 @@ public class AuthController {
             employee.getName()
         );
 
-        // 查询角色名称
+        // 查询角色名称（登录响应的辅助字段，失败不应阻塞主流程）
         String roleName = employee.getRoleCode();
         try {
             Role role = roleMapper.selectOne(
@@ -97,11 +97,11 @@ public class AuthController {
                 roleName = role.getRoleName();
             }
         } catch (Exception e) {
-            // 如果查询失败，使用 roleCode 本身
-            roleName = employee.getRoleCode();
+            // 保留原因：登录响应辅助字段查询失败时兜底为 roleCode，不阻塞主流程
+            log.warn("Login: failed to load role name for employeeId={}, fallback to roleCode", employee.getId(), e);
         }
 
-        // 查询部门名称
+        // 查询部门名称（同上，失败不阻塞登录）
         String departmentName = "";
         if (employee.getDepartmentId() != null) {
             try {
@@ -110,8 +110,9 @@ public class AuthController {
                     departmentName = dept.getName();
                 }
             } catch (Exception e) {
-                // 如果查询失败，使用空字符串
-                departmentName = "";
+                // 保留原因：登录响应辅助字段查询失败时兜底为空，不阻塞主流程
+                log.warn("Login: failed to load department name for employeeId={}, departmentId={}",
+                        employee.getId(), employee.getDepartmentId(), e);
             }
         }
 
@@ -124,7 +125,8 @@ public class AuthController {
                     .eq(com.oa.backend.entity.SecondRoleAssignment::getDeleted, 0)
             ).stream().map(com.oa.backend.entity.SecondRoleAssignment::getRoleCode).toList();
         } catch (Exception e) {
-            log.warn("Failed to query second roles for employee {}: {}", employee.getId(), e.getMessage());
+            // 保留原因：第二角色查询失败兜底为空列表，不阻塞登录主流程
+            log.warn("Failed to query second roles for employee {}", employee.getId(), e);
         }
 
         return ResponseEntity.ok(new AuthLoginResponse(
@@ -459,7 +461,7 @@ public class AuthController {
         Employee employee = employeeService.findById(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
 
-        // 查询角色名称
+        // 查询角色名称（响应辅助字段，查询失败不阻塞主流程）
         String roleName = employee.getRoleCode();
         try {
             Role role = roleMapper.selectOne(
@@ -470,10 +472,11 @@ public class AuthController {
                 roleName = role.getRoleName();
             }
         } catch (Exception e) {
-            roleName = employee.getRoleCode();
+            // 保留原因：响应辅助字段查询失败兜底为 roleCode，不阻塞主流程
+            log.warn("Failed to load role name for employeeId={}, fallback to roleCode", employee.getId(), e);
         }
 
-        // 查询部门名称
+        // 查询部门名称（同上，失败不阻塞主流程）
         String departmentName = "";
         if (employee.getDepartmentId() != null) {
             try {
@@ -482,7 +485,9 @@ public class AuthController {
                     departmentName = dept.getName();
                 }
             } catch (Exception e) {
-                departmentName = "";
+                // 保留原因：响应辅助字段查询失败兜底为空，不阻塞主流程
+                log.warn("Failed to load department name for employeeId={}, departmentId={}",
+                        employee.getId(), employee.getDepartmentId(), e);
             }
         }
 

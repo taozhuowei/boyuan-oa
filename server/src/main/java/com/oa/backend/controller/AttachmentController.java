@@ -212,7 +212,9 @@ public class AttachmentController {
         try {
             MessageDigest md = MessageDigest.getInstance("MD5");
             return HexFormat.of().formatHex(md.digest(data));
-        } catch (Exception e) {
+        } catch (java.security.NoSuchAlgorithmException e) {
+            // 保留原因：MD5 为 JDK 标准算法，理论上不应缺失；失败兜底为空 md5，不影响上传主流程
+            log.warn("Attachment: MD5 algorithm not available on this JVM, skip md5 calculation", e);
             return "";
         }
     }

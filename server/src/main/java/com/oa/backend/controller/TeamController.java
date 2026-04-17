@@ -9,6 +9,7 @@ import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.FormRecordMapper;
 import com.oa.backend.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -22,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/team")
 @RequiredArgsConstructor
@@ -87,7 +89,9 @@ public class TeamController {
                         overtimeHours += node.path("hours").asDouble(0.0);
                     }
                 } catch (Exception e) {
-                    // 忽略解析失败的记录
+                    // 保留原因：单条表单 JSON 解析失败不阻塞团队月度统计聚合，兜底为该条不计入
+                    log.warn("TeamMembers: failed to parse form_data for formId={}, type={}",
+                            form.getId(), form.getFormType(), e);
                 }
             }
 

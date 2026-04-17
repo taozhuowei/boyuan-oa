@@ -67,7 +67,13 @@ public class ConstructionAttendanceService {
                 for (Object o : list) {
                     if (o instanceof Number n) empIds.add(n.longValue());
                     else if (o != null) {
-                        try { empIds.add(Long.parseLong(o.toString())); } catch (NumberFormatException ignored) {}
+                        // 保留原因：attendees 列表中单条非数字项静默跳过，避免脏数据阻塞整条日志写入；
+                        // 用 debug 级别避免循环内每条脏数据刷屏
+                        try { empIds.add(Long.parseLong(o.toString())); }
+                        catch (NumberFormatException e) {
+                            log.debug("attendees item is not a valid numeric id, skipped: formId={}, value={}",
+                                    form.getId(), o);
+                        }
                     }
                 }
             }
@@ -89,8 +95,9 @@ public class ConstructionAttendanceService {
                 try {
                     attendanceMapper.insert(row);
                     written++;
-                } catch (Exception e) {
-                    // UNIQUE 冲突 → 已存在；忽略
+                } catch (org.springframework.dao.DuplicateKeyException e) {
+                    // 保留原因: UNIQUE 冲突表示记录已存在，属于幂等写入的正常路径，不中断循环
+                    log.debug("出勤记录已存在，跳过 empId={} date={}", empId, date, e);
                 }
             }
             return written;

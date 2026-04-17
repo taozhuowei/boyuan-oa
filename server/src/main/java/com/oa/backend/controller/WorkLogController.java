@@ -19,6 +19,7 @@ import com.oa.backend.entity.Project;
 import com.oa.backend.mapper.ProjectMapper;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -32,6 +33,7 @@ import java.util.List;
  * 职责：处理劳工的施工日志提交与工伤申报，以及项目经理的审批操作。
  * 使用 FormService + ApprovalFlowService 代替 OaDataService 内存实现。
  */
+@Slf4j
 @RestController
 @RequestMapping("/logs")
 @RequiredArgsConstructor
@@ -121,7 +123,10 @@ public class WorkLogController {
                         String.format("项目 #%s 由 PM #%s 自填日志（无工长，无需审批）", projectId, submitterId),
                         "SYSTEM", "FORM_RECORD", formId);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            // 保留原因：异步通知 CEO 失败不应影响施工日志提交主流程
+            log.warn("PmSelfLog: failed to notify CEO, projectId={}, formId={}", projectId, formId, e);
+        }
     }
 
     /**

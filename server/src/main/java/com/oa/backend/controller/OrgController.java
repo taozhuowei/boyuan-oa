@@ -12,6 +12,7 @@ import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.PositionMapper;
 import com.oa.backend.mapper.RoleMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 /**
  * 组织架构控制器
  */
+@Slf4j
 @RestController
 @RequestMapping("/org")
 @RequiredArgsConstructor
@@ -45,7 +47,7 @@ public class OrgController {
         empWrapper.eq("account_status", "ACTIVE");
         List<Employee> employees = employeeMapper.selectList(empWrapper);
 
-        // 2. 加载部门名称映射
+        // 2. 加载部门名称映射（辅助字段，查询失败兜底为空 Map，组织树正常渲染但不显示部门名）
         Map<Long, String> deptNameMap = new HashMap<>();
         try {
             List<Department> depts = departmentMapper.selectList(null);
@@ -53,10 +55,11 @@ public class OrgController {
                 deptNameMap.put(d.getId(), d.getName());
             }
         } catch (Exception e) {
-            // 忽略查询失败
+            // 保留原因：部门名称加载失败不阻塞组织树主流程
+            log.warn("OrgTree: failed to load department name map", e);
         }
 
-        // 3. 加载岗位名称映射
+        // 3. 加载岗位名称映射（同上，失败不阻塞主流程）
         Map<Long, String> positionNameMap = new HashMap<>();
         try {
             QueryWrapper<Position> posWrapper = new QueryWrapper<>();
@@ -66,10 +69,11 @@ public class OrgController {
                 positionNameMap.put(p.getId(), p.getPositionName());
             }
         } catch (Exception e) {
-            // 忽略查询失败
+            // 保留原因：岗位名称加载失败不阻塞组织树主流程
+            log.warn("OrgTree: failed to load position name map", e);
         }
 
-        // 4. 加载角色名称映射
+        // 4. 加载角色名称映射（同上，失败不阻塞主流程）
         Map<String, String> roleNameMap = new HashMap<>();
         try {
             List<Role> roles = roleMapper.selectList(null);
@@ -77,7 +81,8 @@ public class OrgController {
                 roleNameMap.put(r.getRoleCode(), r.getRoleName());
             }
         } catch (Exception e) {
-            // 忽略查询失败
+            // 保留原因：角色名称加载失败不阻塞组织树主流程
+            log.warn("OrgTree: failed to load role name map", e);
         }
 
         // 5. 构建员工节点映射
@@ -242,14 +247,18 @@ public class OrgController {
             Department dept = departmentMapper.selectById(emp.getDepartmentId());
             if (dept != null) deptName = dept.getName();
         } catch (Exception e) {
-            // 忽略
+            // 保留原因：简化节点构建时单字段查询失败不阻塞节点返回
+            log.warn("OrgNode: failed to load department for empId={}, departmentId={}",
+                    emp.getId(), emp.getDepartmentId(), e);
         }
 
         try {
             Position pos = positionMapper.selectById(emp.getPositionId());
             if (pos != null) positionName = pos.getPositionName();
         } catch (Exception e) {
-            // 忽略
+            // 保留原因：简化节点构建时单字段查询失败不阻塞节点返回
+            log.warn("OrgNode: failed to load position for empId={}, positionId={}",
+                    emp.getId(), emp.getPositionId(), e);
         }
 
         try {
@@ -258,7 +267,9 @@ public class OrgController {
             );
             if (role != null) roleName = role.getRoleName();
         } catch (Exception e) {
-            // 忽略
+            // 保留原因：简化节点构建时单字段查询失败不阻塞节点返回
+            log.warn("OrgNode: failed to load role for empId={}, roleCode={}",
+                    emp.getId(), emp.getRoleCode(), e);
         }
 
         return new OrgNodeResponse(

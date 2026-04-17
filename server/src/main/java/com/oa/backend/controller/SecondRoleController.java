@@ -10,6 +10,7 @@ import com.oa.backend.mapper.SecondRoleDefMapper;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -30,6 +31,7 @@ import java.util.Map;
  *   POST   /second-roles                        分配（PM/CEO）
  *   DELETE /second-roles/{id}                   撤销（PM/CEO）
  */
+@Slf4j
 @RestController
 @RequestMapping("/second-roles")
 @RequiredArgsConstructor
@@ -126,7 +128,10 @@ public class SecondRoleController {
                                 req.projectId() != null ? "项目 #" + req.projectId() : "全局"),
                         "SYSTEM", "SECOND_ROLE", a.getId());
             }
-        } catch (Exception ignored) {}
+        } catch (Exception e) {
+            // 保留原因：异步通知 CEO 失败不应回滚第二角色分配主事务
+            log.warn("SecondRoleAssign: failed to notify CEO for assignmentId={}", a.getId(), e);
+        }
 
         return ResponseEntity.ok(a);
     }

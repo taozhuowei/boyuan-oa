@@ -12,6 +12,7 @@ import com.oa.backend.mapper.WorkItemTemplateMapper;
 import com.oa.backend.security.SecurityUtils;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -27,6 +28,7 @@ import java.util.stream.Collectors;
  * 职责：提供模板 CRUD 和派生功能，供 PM/CEO 管理施工工作项模板。
  * 数据来源：work_item_template 表，items 以 JSON 数组存储。
  */
+@Slf4j
 @RestController
 @RequestMapping("/work-item-templates")
 @RequiredArgsConstructor
@@ -151,7 +153,10 @@ public class WorkItemTemplateController {
                                 m.getOrDefault("name", "").toString(),
                                 m.get("defaultUnit") != null ? m.get("defaultUnit").toString() : null))
                         .collect(Collectors.toList());
-            } catch (Exception ignored) {}
+            } catch (Exception e) {
+                // 保留原因：items 字段 JSON 损坏时兜底为空列表，不阻塞模板信息返回
+                log.warn("WorkItemTemplate: failed to parse items JSON for templateId={}", tmpl.getId(), e);
+            }
         }
         return new WorkItemTemplateResponse(
                 tmpl.getId(), tmpl.getName(), tmpl.getProjectId(),

@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -23,6 +24,7 @@ import java.util.List;
  * 如果令牌有效，则在Spring Security上下文中设置认证信息，使后续处理器能够识别当前用户身份和权限。
  * 继承自OncePerRequestFilter，确保每个请求只被过滤一次。
  */
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -84,8 +86,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                 authorities.add(new SimpleGrantedAuthority("PERM_" + p.toUpperCase()));
                             }
                         }
-                    } catch (Exception ignored) {
-                        // 角色不存在或权限未配置时，仅使用角色权限，不中断请求
+                    } catch (Exception e) {
+                        // 保留原因：角色不存在或权限未配置时，仅使用 ROLE_* 权限，不中断请求
+                        log.warn("JwtAuthFilter: failed to load permissions for role={}, falling back to role-only authority",
+                                resolvedRole, e);
                     }
 
                     UsernamePasswordAuthenticationToken authentication =
