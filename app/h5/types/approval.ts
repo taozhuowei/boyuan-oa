@@ -4,9 +4,13 @@
 
 /** 审批历史步骤 */
 export interface ApprovalStep {
-  /** 操作人姓名 */
-  operator: string
-  /** 操作类型：提交 / 通过 / 驳回 / 修改 */
+  /** 操作人姓名 — 后端返回字段名为 approver */
+  approver?: string
+  /** 兼容字段（部分旧代码使用 operator） */
+  operator?: string
+  /** 节点名称 */
+  nodeName?: string
+  /** 操作类型：后端返回 APPROVE / REJECT / SKIP / RECALL */
   action: string
   /** 操作时间 ISO 字符串或 yyyy-MM-dd HH:mm:ss */
   time: string

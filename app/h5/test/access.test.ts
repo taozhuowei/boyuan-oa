@@ -25,7 +25,7 @@ const mockRequest = vi.mocked(request)
 // ─── loginWithAccount ─────────────────────────────────────────────────────────
 
 describe('loginWithAccount', () => {
-  beforeEach(() => mockRequest.mockReset())
+  beforeEach(() => { mockRequest.mockReset() })
 
   it('账号为空字符串时抛出"请输入账号和密码"，且 request 未被调用', async () => {
     await expect(loginWithAccount({ identifier: '', password: '123456' }))
@@ -153,7 +153,7 @@ describe('loginWithAccount', () => {
 // ─── fetchRoles ──────────────────────────────────────────────────────────────
 
 describe('fetchRoles', () => {
-  beforeEach(() => mockRequest.mockReset())
+  beforeEach(() => { mockRequest.mockReset() })
 
   it('API 成功时返回后端数据', async () => {
     const backendRoles = [
@@ -181,7 +181,7 @@ describe('fetchRoles', () => {
 // ─── saveRole ────────────────────────────────────────────────────────────────
 
 describe('saveRole', () => {
-  beforeEach(() => mockRequest.mockReset())
+  beforeEach(() => { mockRequest.mockReset() })
 
   it('roleCode 被 trim 并转 lowercase', async () => {
     const saved = { id: 10, roleCode: 'finance', roleName: '财务', description: '', status: 1, isSystem: false, permissions: [] }
@@ -242,7 +242,7 @@ describe('saveRole', () => {
 // ─── deleteRole ──────────────────────────────────────────────────────────────
 
 describe('deleteRole', () => {
-  beforeEach(() => mockRequest.mockReset())
+  beforeEach(() => { mockRequest.mockReset() })
 
   it('调用 DELETE /roles/{id}', async () => {
     mockRequest.mockResolvedValueOnce(undefined)

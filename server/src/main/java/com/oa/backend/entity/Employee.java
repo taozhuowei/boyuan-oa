@@ -117,4 +117,13 @@ public class Employee {
     /** 逻辑删除标志 */
     @TableLogic
     private Integer deleted;
+
+    @TableField("gender")
+    private String gender;
+
+    @TableField("id_card_no")
+    private String idCardNo;
+
+    @TableField("birth_date")
+    private java.time.LocalDate birthDate;
 }

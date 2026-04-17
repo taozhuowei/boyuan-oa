@@ -5,7 +5,7 @@
     <!-- Left sidebar navigation — menus fetched from /workbench/config (role-based) -->
     <a-layout-sider v-model:collapsed="collapsed" collapsible width="220" theme="dark">
       <div class="logo">
-        <span v-if="!collapsed" class="logo-text">众维OA工作台</span>
+        <span v-if="!collapsed" class="logo-text">{{ companyName ? companyName + 'OA' : '博渊OA' }}工作台</span>
         <span v-else class="logo-icon">OA</span>
       </div>
       <a-menu
@@ -95,6 +95,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useUserStore } from '~/stores/user'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
+import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
 
 interface MenuItem {
   key: string
@@ -132,6 +133,8 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
     { key: '/expense/records', label: '报销记录', path: '/expense/records' },
     { key: '/retention', label: '数据保留', path: '/retention' },
+    { key: '/data-export', label: '数据导出', path: '/data-export' },
+    { key: '/data-viewer', label: '数据查看', path: '/data-viewer' },
     { key: '/operation-logs', label: '操作日志', path: '/operation-logs' },
     { key: '/config', label: '系统配置', path: '/config' }
   ],
@@ -143,6 +146,9 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/injury', label: '工伤理赔', path: '/injury' },
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
     { key: '/expense/records', label: '报销记录', path: '/expense/records' },
+    { key: '/allowances', label: '补贴配置', path: '/allowances' },
+    { key: '/positions', label: '岗位薪资配置', path: '/positions' },
+    { key: '/projects', label: '项目管理', path: '/projects' },
     { key: '/directory', label: '通讯录导入', path: '/directory' }
   ],
   project_manager: [
@@ -159,6 +165,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/org', label: '组织架构', path: '/org' },
     { key: '/positions', label: '岗位管理', path: '/positions' },
+    { key: '/leave-types', label: '假期配额', path: '/leave-types' },
     { key: '/attendance', label: '考勤管理', path: '/attendance' },
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
     { key: '/expense/records', label: '报销记录', path: '/expense/records' }
@@ -173,6 +180,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
   ],
   worker: [
     { key: '/', label: '工作台', path: '/' },
+    { key: '/attendance', label: '考勤申请', path: '/attendance' },
     { key: '/construction-log', label: '施工日志', path: '/construction-log' },
     { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/forms', label: '表单中心', path: '/forms' },
@@ -187,6 +195,10 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
     { key: '/expense/records', label: '报销记录', path: '/expense/records' }
   ],
+  ops: [
+    { key: '/', label: '工作台', path: '/' },
+    { key: '/operation-logs', label: '操作日志', path: '/operation-logs' }
+  ],
   employee: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/forms', label: '表单中心', path: '/forms' },
@@ -200,6 +212,7 @@ const DEFAULT_MENUS: MenuItem[] = [
   { key: '/', label: '工作台', path: '/' }
 ]
 
+const companyName = useState<string | null>('company-name')
 const userStore = useUserStore()
 const route = useRoute()
 const collapsed = ref(false)
@@ -241,28 +254,23 @@ onMounted(async () => {
   const headers: Record<string, string> = { 'X-Client-Type': 'web' }
   if (token) headers['Authorization'] = 'Bearer ' + token
 
-  const role = userStore.userInfo?.role
-  const canAccessAttendanceTodo = role === 'ceo' || role === 'project_manager'
-
   await Promise.all([
     $fetch<{ menus: WorkbenchMenu[] }>('/api/workbench/config', { headers })
       .then((data) => {
         if (data.menus?.length) apiMenus.value = buildMenuItems(data.menus)
       })
       .catch(() => {/* keep computed fallback */}),
-    canAccessAttendanceTodo
-      ? $fetch<unknown[]>('/api/attendance/todo', { headers })
-          .then((list) => { todoCount.value = list?.length ?? 0 })
-          .catch(() => { todoCount.value = 0 })
-      : Promise.resolve().then(() => { todoCount.value = 0 })
+    $fetch<unknown[]>('/api/forms/todo', { headers })
+      .then((list) => { todoCount.value = list?.length ?? 0 })
+      .catch(() => { todoCount.value = 0 })
   ])
 })
 
-function onMenuClick({ key }: { key: string }) {
-  navigateTo(key)
+function onMenuClick({ key }: MenuInfo) {
+  navigateTo(String(key))
 }
 
-async function onAvatarMenuClick({ key }: { key: string }) {
+async function onAvatarMenuClick({ key }: MenuInfo) {
   if (key === 'logout') {
     userStore.logout()
     await navigateTo('/login')

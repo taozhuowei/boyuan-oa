@@ -36,7 +36,10 @@ public record EmployeeResponse(
     BigDecimal performanceRatio,
     List<EmergencyContact> emergencyContacts,
     LocalDateTime createdAt,
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+    String gender,
+    String idCardNo,
+    java.time.LocalDate birthDate
 ) {
     public record EmergencyContact(Long id, String name, String phone, String address) {}
 }

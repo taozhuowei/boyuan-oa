@@ -27,7 +27,7 @@
             {{ getExpenseTypeLabel(record.formData?.expenseType) }}
           </template>
           <template v-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="viewDetail(record)">查看详情</a-button>
+            <a-button type="link" size="small" @click="viewDetail(record as FormRecord)">查看详情</a-button>
           </template>
         </template>
       </a-table>
@@ -44,7 +44,7 @@
         <a-descriptions :column="2" size="small" bordered>
           <a-descriptions-item label="表单编号">{{ selectedRecord.formNo }}</a-descriptions-item>
           <a-descriptions-item label="报销类型">
-            {{ getExpenseTypeLabel(selectedRecord.formData?.expenseType) }}
+            {{ getExpenseTypeLabel(selectedRecord.formData?.expenseType as string | undefined) }}
           </a-descriptions-item>
           <a-descriptions-item label="报销金额">¥{{ selectedRecord.formData?.totalAmount }}</a-descriptions-item>
           <a-descriptions-item label="状态">

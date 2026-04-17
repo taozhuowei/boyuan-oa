@@ -78,28 +78,59 @@
     <!-- 汇报关系（直系领导可视化 + 拖拽重组） -->
     <a-card title="汇报关系" style="margin-top: 16px;">
       <template #extra>
-        <a-button :loading="loadingTree" size="small" @click="loadSupervisorTree">刷新</a-button>
+        <a-space>
+          <span style="color: #999; font-size: 12px;">拖拽左侧节点到右侧树指定上级下方</span>
+          <a-button :loading="loadingTree" size="small" @click="loadSupervisorTree">刷新</a-button>
+        </a-space>
       </template>
       <a-spin :spinning="loadingTree">
-        <p style="color: #999; margin: 0 0 12px 0;">
-          顶端固定为 CEO；将下属拖到任意上级节点重组直系领导。系统会自动校验循环汇报。
-        </p>
-        <a-tree
-          v-if="supervisorTree.length"
-          :tree-data="supervisorTree"
-          :default-expand-all="true"
-          :selectable="false"
-          :draggable="isCeoOrHr"
-          @drop="onSupervisorDrop"
-        >
-          <template #title="node">
-            <span style="font-weight: 500;">{{ node.title }}</span>
-            <span v-if="node.subtitle" style="color: #999; margin-left: 6px; font-size: 12px;">
-              {{ node.subtitle }}
-            </span>
-          </template>
-        </a-tree>
-        <a-empty v-else description="暂无员工" />
+        <div style="display: flex; gap: 16px; min-height: 300px;">
+          <!-- Left panel: unassigned employees -->
+          <div style="width: 220px; border: 1px dashed #d9d9d9; border-radius: 6px; padding: 12px; flex-shrink: 0;">
+            <div style="font-weight: 500; margin-bottom: 8px; color: #555;">备选节点（未纳入汇报关系）</div>
+            <div v-if="unassignedEmployees.length === 0" style="color: #bbb; font-size: 12px;">暂无未分配人员</div>
+            <div
+              v-for="emp in unassignedEmployees"
+              :key="emp.id"
+              draggable="true"
+              style="padding: 6px 10px; margin-bottom: 6px; background: #f5f5f5; border-radius: 4px; cursor: grab; user-select: none; border: 1px solid #e8e8e8;"
+              data-catch="org-unassigned-node"
+              @dragstart="onLeftItemDragStart($event, emp.id)"
+            >
+              <span style="font-weight: 500;">{{ emp.name }}</span>
+              <span v-if="emp.roleName" style="color: #999; font-size: 11px; margin-left: 6px;">{{ emp.roleName }}</span>
+            </div>
+          </div>
+
+          <!-- Right panel: CEO subtree -->
+          <div style="flex: 1; border: 1px solid #e8e8e8; border-radius: 6px; padding: 12px; position: relative;">
+            <div style="font-weight: 500; margin-bottom: 8px; color: #555;">汇报关系树（CEO 固定在顶端）</div>
+            <a-tree
+              v-if="ceoTree.length"
+              :tree-data="ceoTree"
+              :default-expand-all="true"
+              :selectable="false"
+              :draggable="isCeoOrHr"
+              data-catch="org-supervisor-tree"
+              @drop="(info: any) => onSupervisorDrop(info)"
+            >
+              <template #title="node">
+                <span
+                  style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 3px; transition: background 0.2s;"
+                  :style="dragOverNodeId === node.employeeId ? 'background: #e6f4ff;' : ''"
+                  @dragover="onRightNodeDragOver($event, node.employeeId)"
+                  @drop="onRightNodeDrop($event, node.employeeId)"
+                  @dragleave="dragOverNodeId = null"
+                >
+                  <span style="font-weight: 500;">{{ node.title }}</span>
+                  <a-tag v-if="node.employeeId === ceoEmployee?.id" color="gold" style="margin: 0; font-size: 11px;">固定</a-tag>
+                  <span v-else-if="node.subtitle" style="color: #999; font-size: 12px;">{{ node.subtitle }}</span>
+                </span>
+              </template>
+            </a-tree>
+            <a-empty v-else description="暂无员工（请先在员工管理中创建员工）" />
+          </div>
+        </div>
       </a-spin>
     </a-card>
   </div>
@@ -248,49 +279,115 @@ async function doDeleteDept(id: number) {
 
 // ── 汇报关系（直系领导）可视化 + 拖拽重组 ──────────────────────
 
-interface EmployeeBrief { id: number; name: string; employeeNo?: string; roleName?: string; directSupervisorId?: number | null }
+interface EmployeeBrief { id: number; name: string; employeeNo?: string; roleName?: string; roleCode?: string; directSupervisorId?: number | null }
 interface SupervisorTreeNode { key: string; title: string; subtitle?: string; employeeId: number; children: SupervisorTreeNode[] }
 
 const isCeoOrHr = computed(() => ['ceo', 'hr'].includes(userStore.userInfo?.role ?? ''))
 const allEmployees = ref<EmployeeBrief[]>([])
-const supervisorTree = ref<SupervisorTreeNode[]>([])
 const loadingTree = ref(false)
+
+const ceoEmployee = computed(() => allEmployees.value.find(e => e.roleCode === 'ceo' || e.roleName?.includes('CEO') || e.roleName?.includes('总裁')))
+
+function getSubtreeIds(rootId: number): Set<number> {
+  const ids = new Set<number>([rootId])
+  const queue = [rootId]
+  while (queue.length) {
+    const curr = queue.shift()!
+    allEmployees.value.filter(e => e.directSupervisorId === curr).forEach(e => {
+      ids.add(e.id)
+      queue.push(e.id)
+    })
+  }
+  return ids
+}
+
+const ceoSubtreeIds = computed(() => {
+  const ceo = ceoEmployee.value
+  if (!ceo) return new Set<number>()
+  return getSubtreeIds(ceo.id)
+})
+
+const unassignedEmployees = computed(() =>
+  allEmployees.value.filter(e => !ceoSubtreeIds.value.has(e.id))
+)
+
+function buildSubtree(rootId: number): SupervisorTreeNode[] {
+  const emp = allEmployees.value.find(e => e.id === rootId)
+  if (!emp) return []
+  const node: SupervisorTreeNode = {
+    key: 'emp-' + emp.id,
+    title: emp.name,
+    subtitle: emp.roleName ?? '',
+    employeeId: emp.id,
+    children: allEmployees.value
+      .filter(e => e.directSupervisorId === emp.id)
+      .flatMap(e => buildSubtree(e.id))
+  }
+  return [node]
+}
+
+const ceoTree = computed(() => {
+  const ceo = ceoEmployee.value
+  if (!ceo) return []
+  return buildSubtree(ceo.id)
+})
+
+const draggingEmployeeId = ref<number | null>(null)
+const dragOverNodeId = ref<number | null>(null)
+
+function onLeftItemDragStart(e: DragEvent, empId: number) {
+  draggingEmployeeId.value = empId
+  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
+}
+
+function onRightNodeDragOver(e: DragEvent, nodeEmpId: number) {
+  if (draggingEmployeeId.value == null) return
+  e.preventDefault()
+  dragOverNodeId.value = nodeEmpId
+}
+
+async function onRightNodeDrop(e: DragEvent, targetEmpId: number) {
+  e.preventDefault()
+  const dragId = draggingEmployeeId.value
+  draggingEmployeeId.value = null
+  dragOverNodeId.value = null
+  if (!dragId || dragId === targetEmpId) return
+  if (isAncestor(dragId, targetEmpId)) {
+    message.error('不允许循环汇报')
+    return
+  }
+  try {
+    await request({ url: `/employees/${dragId}`, method: 'PUT', body: { directSupervisorId: targetEmpId } })
+    message.success('已加入汇报关系')
+    await loadSupervisorTree()
+  } catch {
+    message.error('保存失败')
+  }
+}
 
 async function loadSupervisorTree() {
   loadingTree.value = true
   try {
     const data = await request<{ content: EmployeeBrief[] }>({ url: '/employees?size=500' })
     allEmployees.value = data?.content ?? []
-    supervisorTree.value = buildSupervisorTree(allEmployees.value)
   } catch {
     allEmployees.value = []
-    supervisorTree.value = []
   } finally { loadingTree.value = false }
 }
 
-function buildSupervisorTree(list: EmployeeBrief[]): SupervisorTreeNode[] {
-  const byId = new Map<number, SupervisorTreeNode>()
-  list.forEach(e => byId.set(e.id, {
-    key: 'emp-' + e.id, title: e.name, subtitle: e.roleName ?? '',
-    employeeId: e.id, children: []
-  }))
-  const roots: SupervisorTreeNode[] = []
-  list.forEach(e => {
-    const node = byId.get(e.id)!
-    const parent = e.directSupervisorId != null ? byId.get(e.directSupervisorId) : null
-    if (parent) parent.children.push(node)
-    else roots.push(node)
-  })
-  return roots
-}
-
 interface AntdTreeDropInfo {
-  dragNode: { employeeId: number }
+  // dragNode typed as any to avoid incompatibility with AntDV's EventDataNode generic
+  dragNode: any
   node: { employeeId: number }
   dropToGap: boolean
 }
 async function onSupervisorDrop(info: AntdTreeDropInfo) {
   if (!isCeoOrHr.value) return
+  const ceo = ceoEmployee.value
+  if (ceo && info.dragNode.employeeId === ceo.id) {
+    message.warning('CEO 节点不可移动')
+    return
+  }
   const dragId = info.dragNode.employeeId
   const newSupervisorId = info.dropToGap ? null : info.node.employeeId
   if (!newSupervisorId) {

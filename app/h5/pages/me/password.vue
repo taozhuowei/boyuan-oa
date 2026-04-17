@@ -4,7 +4,7 @@
     <a-card class="password-card">
       <a-form
         :model="formState"
-        :rules="rules"
+        :rules="(rules as any)"
         layout="vertical"
         @finish="handleSubmit"
       >

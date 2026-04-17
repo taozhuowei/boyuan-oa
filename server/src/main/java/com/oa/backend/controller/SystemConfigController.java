@@ -17,6 +17,12 @@ import java.util.Map;
  * Routes:
  *   GET  /config/attendance-unit — 读取考勤计量单位配置（请假/加班最小计量单位）
  *   POST /config/attendance-unit — 更新考勤计量单位配置
+ *   GET  /config/company-name — 读取企业名称
+ *   PUT  /config/company-name — 更新企业名称
+ *   GET  /config/payroll-cycle — 读取发薪周期配置
+ *   PUT  /config/payroll-cycle — 更新发薪周期配置
+ *   GET  /config/retention-period — 读取数据保留天数配置
+ *   PUT  /config/retention-period — 更新数据保留天数配置
  */
 @RestController
 @RequestMapping("/config")
@@ -59,6 +65,92 @@ public class SystemConfigController {
         return getAttendanceUnit();
     }
 
+    // ── Company name (A6.1) ────────────────────────────────────────────────
+
+    /**
+     * 获取企业名称
+     * 权限：所有登录用户可查看
+     */
+    @GetMapping("/company-name")
+    public ResponseEntity<Map<String, String>> getCompanyName() {
+        String value = getConfigValue("company_name", null);
+        Map<String, String> result = new java.util.HashMap<>();
+        result.put("companyName", value);
+        return ResponseEntity.ok(result);
+    }
+
+    /**
+     * 更新企业名称
+     * 权限：CEO
+     */
+    @PutMapping("/company-name")
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<Map<String, String>> updateCompanyName(@RequestBody Map<String, String> body) {
+        String name = body.get("companyName");
+        if (name == null || name.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        upsertConfig("company_name", name.trim(), "企业名称");
+        return getCompanyName();
+    }
+
+    // ── Payroll cycle (A6.2) ───────────────────────────────────────────────
+
+    /**
+     * 获取发薪周期配置
+     * 权限：CEO 或 FINANCE
+     */
+    @GetMapping("/payroll-cycle")
+    @PreAuthorize("hasAnyRole('CEO','FINANCE')")
+    public ResponseEntity<PayrollCycleConfig> getPayrollCycle() {
+        int payday = Integer.parseInt(getConfigValue("payroll.payday", "15"));
+        int settlementCutoff = Integer.parseInt(getConfigValue("payroll.settlement.cutoff", "5"));
+        return ResponseEntity.ok(new PayrollCycleConfig(payday, settlementCutoff));
+    }
+
+    /**
+     * 更新发薪周期配置
+     * 权限：CEO
+     */
+    @PutMapping("/payroll-cycle")
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<PayrollCycleConfig> updatePayrollCycle(@RequestBody PayrollCycleUpdateRequest req) {
+        if (req.payday() != null) {
+            if (req.payday() < 1 || req.payday() > 28) return ResponseEntity.badRequest().build();
+            upsertConfig("payroll.payday", String.valueOf(req.payday()), "月发薪日（1-28）");
+        }
+        if (req.settlementCutoff() != null) {
+            upsertConfig("payroll.settlement.cutoff", String.valueOf(req.settlementCutoff()), "结算截止日（发薪日前 N 天）");
+        }
+        return getPayrollCycle();
+    }
+
+    // ── Retention period (A6.3) ────────────────────────────────────────────
+
+    /**
+     * 获取数据保留天数配置
+     * 权限：CEO
+     */
+    @GetMapping("/retention-period")
+    @PreAuthorize("hasAnyRole('CEO')")
+    public ResponseEntity<RetentionPeriodConfig> getRetentionPeriod() {
+        int days = Integer.parseInt(getConfigValue("data.retention.days", "1095"));
+        return ResponseEntity.ok(new RetentionPeriodConfig(days));
+    }
+
+    /**
+     * 更新数据保留天数配置
+     * 权限：CEO
+     */
+    @PutMapping("/retention-period")
+    @PreAuthorize("hasRole('CEO')")
+    public ResponseEntity<RetentionPeriodConfig> updateRetentionPeriod(@RequestBody RetentionPeriodUpdateRequest req) {
+        if (req.days() != null && req.days() >= 365) {
+            upsertConfig("data.retention.days", String.valueOf(req.days()), "数据保留天数");
+        }
+        return getRetentionPeriod();
+    }
+
     // ── Helpers ────────────────────────────────────────────────────────────
 
     private String getConfigValue(String key, String defaultValue) {
@@ -80,7 +172,15 @@ public class SystemConfigController {
         }
     }
 
-    // ── Request / Response types ──────────────────────────────────────────
+    // ── Request / Response types ─────────────────────────────────────────
+
+    public record PayrollCycleConfig(int payday, int settlementCutoff) {}
+
+    public record PayrollCycleUpdateRequest(Integer payday, Integer settlementCutoff) {}
+
+    public record RetentionPeriodConfig(int days) {}
+
+    public record RetentionPeriodUpdateRequest(Integer days) {}
 
     public record AttendanceUnitConfig(String leaveUnit, String overtimeUnit) {}
 

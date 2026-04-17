@@ -16,7 +16,7 @@
             :pagination="pagination"
             row-key="id"
             size="small"
-            :customRow="(record) => ({ 'data-catch': 'form-list-item' })"
+            :customRow="(record: any) => ({'data-catch': 'form-list-item'} as any)"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'submitTime'">
@@ -28,7 +28,7 @@
                 </a-tag>
               </template>
               <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" :data-catch="'forms-row-view-btn-' + record.id" @click="openDetail(record)">
+                <a-button type="link" size="small" :data-catch="'forms-row-view-btn-' + record.id" @click="openDetail(record as FormRecord)">
                   查看
                 </a-button>
               </template>
@@ -45,7 +45,7 @@
             :pagination="pagination"
             row-key="id"
             size="small"
-            :customRow="(record) => ({ 'data-catch': 'form-list-item' })"
+            :customRow="(record: any) => ({'data-catch': 'form-list-item'} as any)"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'submitTime'">
@@ -57,7 +57,7 @@
                 </a-tag>
               </template>
               <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" :data-catch="'forms-row-view-btn-' + record.id" @click="openDetail(record)">
+                <a-button type="link" size="small" :data-catch="'forms-row-view-btn-' + record.id" @click="openDetail(record as FormRecord)">
                   查看
                 </a-button>
               </template>

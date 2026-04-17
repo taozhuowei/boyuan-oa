@@ -31,13 +31,13 @@
             <a-statistic title="共计" data-catch="directory-stat-total" :value="previewData?.totalCount ?? 0" />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="有效" :value="previewData?.validCount ?? 0" value-style="color: #52c41a" />
+            <a-statistic title="有效" :value="previewData?.validCount ?? 0" :value-style="{ color: '#52c41a' }" />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="无效" :value="previewData?.invalidCount ?? 0" value-style="color: #ff4d4f" />
+            <a-statistic title="无效" :value="previewData?.invalidCount ?? 0" :value-style="{ color: '#ff4d4f' }" />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="重复" data-catch="directory-stat-duplicate" :value="previewData?.duplicateCount ?? 0" value-style="color: #fa8c16" />
+            <a-statistic title="重复" data-catch="directory-stat-duplicate" :value="previewData?.duplicateCount ?? 0" :value-style="{ color: '#fa8c16' }" />
           </a-card>
         </div>
 
@@ -127,8 +127,8 @@ const columns = [
 
 const rowSelection = computed(() => ({
   selectedRowKeys: selectedRowKeys.value,
-  onChange: (keys: number[]) => {
-    selectedRowKeys.value = keys
+  onChange: (keys: (string | number)[]) => {
+    selectedRowKeys.value = keys as number[]
   },
   getCheckboxProps: (record: PreviewItem) => ({
     disabled: record.status === 'INVALID'

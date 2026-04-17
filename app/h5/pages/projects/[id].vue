@@ -42,6 +42,9 @@
             <a-descriptions-item label="实际完工日期">{{ project?.actualEndDate ?? '—' }}</a-descriptions-item>
             <a-descriptions-item label="日志申报周期">{{ project?.logCycleDays ?? 1 }} 天</a-descriptions-item>
             <a-descriptions-item label="汇报周期">{{ project?.logReportCycleDays ?? 1 }} 天</a-descriptions-item>
+            <a-descriptions-item label="客户名称">{{ project?.clientName ?? '—' }}</a-descriptions-item>
+            <a-descriptions-item label="合同编号">{{ project?.contractNo ?? '—' }}</a-descriptions-item>
+            <a-descriptions-item label="项目说明" :span="2">{{ project?.projectDescription ?? '—' }}</a-descriptions-item>
           </a-descriptions>
 
           <!-- CEO：修改配置 -->
@@ -54,6 +57,15 @@
               <a-form-item label="汇报周期（天）">
                 <a-input-number v-model:value="configForm.logReportCycleDays" :min="1" :max="90" />
               </a-form-item>
+              <a-form-item label="客户名称">
+                <a-input v-model:value="configForm.clientName" placeholder="客户/甲方名称" style="width: 200px" />
+              </a-form-item>
+              <a-form-item label="合同编号">
+                <a-input v-model:value="configForm.contractNo" placeholder="合同编号" style="width: 200px" />
+              </a-form-item>
+              <a-form-item label="项目说明">
+                <a-textarea v-model:value="configForm.projectDescription" :rows="2" style="width: 400px" placeholder="项目背景与说明" />
+              </a-form-item>
               <a-form-item>
                 <a-button type="primary" :loading="configLoading" @click="doUpdateConfig">保存配置</a-button>
               </a-form-item>
@@ -65,14 +77,22 @@
           <template v-if="isCeo">
             <div style="margin-bottom: 12px;">
               <a-space>
-                <a-input-number v-model:value="addMemberForm.employeeId" placeholder="员工ID" :min="1" style="width: 120px;" />
+                <a-select
+                  v-model:value="addMemberForm.employeeId"
+                  show-search
+                  :filter-option="false"
+                  :options="employeeOptions"
+                  placeholder="搜索员工姓名"
+                  style="width: 200px"
+                  allow-clear
+                  @search="debouncedSearchEmployees"
+                  data-catch="project-members-user-select"
+                />
                 <a-select v-model:value="addMemberForm.role" style="width: 120px;">
                   <a-select-option value="PM">PM</a-select-option>
                   <a-select-option value="MEMBER">成员</a-select-option>
                 </a-select>
                 <a-button data-catch="project-members-add-btn" type="primary" :loading="addMemberLoading" @click="doAddMember">添加成员</a-button>
-                <!-- TODO data-catch: project-members-user-select — element not found -->
-                <!-- TODO data-catch: project-members-save-btn — element not found -->
               </a-space>
             </div>
           </template>
@@ -145,7 +165,7 @@
             @ok="doSaveMilestone"
             :confirm-loading="milestoneLoading"
             @cancel="resetMilestoneForm"
-            :okButtonProps="{ 'data-catch': 'project-milestone-save-btn' }"
+            :okButtonProps="({ 'data-catch': 'project-milestone-save-btn' } as any)"
           >
             <a-form :model="milestoneForm" layout="vertical">
               <a-form-item label="名称" required>
@@ -333,7 +353,7 @@
                     :description="`提交于 ${item.createdAt?.slice(0, 16).replace('T', ' ')}`"
                   />
                   <a-tag :color="item.status === 'PENDING' ? 'orange' : item.status === 'APPROVED' ? 'green' : 'red'">
-                    {{ { PENDING: '待审批', APPROVING: '审批中', APPROVED: '已通过', REJECTED: '已驳回', RECALLED: '已追溯' }[item.status] ?? item.status }}
+                    {{ ({ PENDING: '待审批', APPROVING: '审批中', APPROVED: '已通过', REJECTED: '已驳回', RECALLED: '已追溯' } as Record<string, string>)[item.status] ?? item.status }}
                   </a-tag>
                   <a-space style="margin-left: 8px;">
                     <a-button size="small" @click="openReviewModal(item)">批注</a-button>
@@ -354,7 +374,7 @@
             </a-list>
           </a-spin>
 
-          <a-modal v-model:open="showReviewModal" title="批注" @ok="doReviewLog" :confirm-loading="reviewLoading">
+          <a-modal v-model:open="showReviewModal" title="批注" @ok="doReviewLog" :confirm-loading="approveLoading">
             <a-form layout="vertical">
               <a-form-item label="批注内容">
                 <a-textarea v-model:value="reviewNote" :rows="4" placeholder="输入批注（不影响审批状态）" />
@@ -377,8 +397,8 @@
                      :data-source="materialsSummary.materials"
                      :pagination="false" row-key="name" size="small" bordered>
               <template #bodyCell="{ column, record }">
-                <template v-if="column.key && column.key.startsWith('d_')">
-                  {{ record.byDate?.[column.key.substring(2)] ?? '—' }}
+                <template v-if="column.key && String(column.key).startsWith('d_')">
+                  {{ record.byDate?.[String(column.key).substring(2)] ?? '—' }}
                 </template>
               </template>
             </a-table>
@@ -399,7 +419,7 @@
             <a-button data-catch="assign-second-role-btn" type="primary" :loading="srLoading" @click="assignSecondRole">分配</a-button>
             <a-button @click="loadSecondRoles">刷新</a-button>
           </div>
-          <a-table :columns="srColumns" :data-source="srAssignments" :loading="srLoading" row-key="id" size="small" :customRow="(record: any) => ({ 'data-catch': 'member-row-' + record.username })">
+          <a-table :columns="srColumns" :data-source="srAssignments" :loading="srLoading" row-key="id" size="small" :customRow="(record: any) => ({ 'data-catch': 'member-row-' + record.username } as any)">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'roleName'">{{ srRoleName(record.roleCode) }}</template>
               <template v-if="column.key === 'action'">
@@ -453,8 +473,8 @@
         <template v-if="activeTab === 'revenue'">
           <div style="margin-bottom: 12px; display: flex; gap: 16px; align-items: center;">
             <a-statistic title="合同合计" :value="revenueSummary.contractTotal ?? 0" :precision="2" prefix="¥" />
-            <a-statistic title="已收款" :value="revenueSummary.received ?? 0" :precision="2" prefix="¥" value-style="color: #52c41a" />
-            <a-statistic title="待收款" :value="revenueSummary.pending ?? 0" :precision="2" prefix="¥" value-style="color: #fa8c16" />
+            <a-statistic title="已收款" :value="revenueSummary.received ?? 0" :precision="2" prefix="¥" :value-style="{ color: '#52c41a' }" />
+            <a-statistic title="待收款" :value="revenueSummary.pending ?? 0" :precision="2" prefix="¥" :value-style="{ color: '#fa8c16' }" />
             <a-button style="margin-left: auto" @click="loadRevenue">刷新</a-button>
           </div>
           <a-table :columns="revenueColumns" :data-source="revenueRows" :loading="revenueLoading" row-key="id" size="small">
@@ -466,7 +486,7 @@
                 <a-tag :color="record.receiptStatus === 'RECEIVED' ? 'green' : 'orange'">{{ record.receiptStatus === 'RECEIVED' ? '已收款' : '待收款' }}</a-tag>
               </template>
               <template v-if="column.key === 'action'">
-                <a-button v-if="canEditRevenue" type="link" size="small" @click="openRevenueEdit(record)">编辑</a-button>
+                <a-button v-if="canEditRevenue" type="link" size="small" @click="openRevenueEdit(record as RevenueRow)">编辑</a-button>
               </template>
             </template>
           </a-table>
@@ -544,11 +564,11 @@
               <template v-if="column.key === 'typeName'">{{ ticketTypeName(record.typeCode) }}</template>
               <template v-if="column.key === 'status'">
                 <a-tag :color="record.status === 'CLOSED' ? 'green' : record.status === 'PROCESSING' ? 'blue' : 'orange'">
-                  {{ { PENDING: '待处理', PROCESSING: '处理中', CLOSED: '已关闭' }[record.status] ?? record.status }}
+                  {{ ({ PENDING: '待处理', PROCESSING: '处理中', CLOSED: '已关闭' } as Record<string, string>)[record.status] ?? record.status }}
                 </a-tag>
               </template>
               <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" @click="openTicketEdit(record)">编辑</a-button>
+                <a-button type="link" size="small" @click="openTicketEdit(record as AfterSaleTicket)">编辑</a-button>
               </template>
             </template>
           </a-table>
@@ -615,6 +635,10 @@ interface ProjectDetail {
   actualEndDate: string | null
   logCycleDays: number
   logReportCycleDays: number
+  contractNo: string | null
+  contractAttachmentId: number | null
+  clientName: string | null
+  projectDescription: string | null
   members: MemberInfo[] | null
 }
 
@@ -682,6 +706,9 @@ async function loadProject() {
     // 初始化配置表单
     configForm.value.logCycleDays = res.logCycleDays ?? 1
     configForm.value.logReportCycleDays = res.logReportCycleDays ?? 1
+    configForm.value.clientName = res.clientName ?? ''
+    configForm.value.contractNo = res.contractNo ?? ''
+    configForm.value.projectDescription = res.projectDescription ?? ''
   } catch {
     message.error('加载项目详情失败')
   } finally {
@@ -698,8 +725,28 @@ const memberColumns = [
 ]
 
 // ── 添加/移除成员 ──────────────────────────────────────
-const addMemberForm = ref({ employeeId: null as number | null, role: 'MEMBER' })
+const addMemberForm = ref({ employeeId: undefined as number | undefined, role: 'MEMBER' })
 const addMemberLoading = ref(false)
+const employeeOptions = ref<{ label: string; value: number }[]>([])
+
+async function searchEmployees(keyword: string) {
+  if (!keyword || keyword.length < 1) { employeeOptions.value = []; return }
+  try {
+    const res = await request<{ content: { id: number; name: string; employeeNo: string }[] }>(
+      { url: '/employees?page=0&size=20&keyword=' + encodeURIComponent(keyword) }
+    )
+    employeeOptions.value = (res.content ?? []).map(e => ({ label: e.name + ' (' + e.employeeNo + ')', value: e.id }))
+  } catch {
+    employeeOptions.value = []
+  }
+}
+
+// Simple debounce: 300ms delay
+let searchTimer: ReturnType<typeof setTimeout> | null = null
+function debouncedSearchEmployees(keyword: string) {
+  if (searchTimer) clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => searchEmployees(keyword), 300)
+}
 
 async function doAddMember() {
   if (!addMemberForm.value.employeeId) {
@@ -714,7 +761,7 @@ async function doAddMember() {
       body: { employeeId: addMemberForm.value.employeeId, role: addMemberForm.value.role }
     })
     message.success('成员已添加')
-    addMemberForm.value = { employeeId: null, role: 'MEMBER' }
+    addMemberForm.value = { employeeId: undefined, role: 'MEMBER' }
     await loadProject()
   } catch {
     message.error('添加失败')
@@ -734,7 +781,7 @@ async function doRemoveMember(employeeId: number) {
 }
 
 // ── 配置 ──────────────────────────────────────────────
-const configForm = ref({ logCycleDays: 1, logReportCycleDays: 1 })
+const configForm = ref({ logCycleDays: 1, logReportCycleDays: 1, clientName: '' as string, contractNo: '' as string, projectDescription: '' as string })
 const configLoading = ref(false)
 
 async function doUpdateConfig() {
@@ -743,7 +790,7 @@ async function doUpdateConfig() {
     await request({
       url: `/projects/${projectId.value}/config`,
       method: 'PATCH',
-      body: { logCycleDays: configForm.value.logCycleDays, logReportCycleDays: configForm.value.logReportCycleDays }
+      body: { logCycleDays: configForm.value.logCycleDays, logReportCycleDays: configForm.value.logReportCycleDays, clientName: configForm.value.clientName || null, contractNo: configForm.value.contractNo || null, projectDescription: configForm.value.projectDescription || null }
     })
     message.success('配置已更新')
     await loadProject()
@@ -760,7 +807,7 @@ const milestones = ref<Milestone[]>([])
 const showMilestoneModal = ref(false)
 const milestoneLoading = ref(false)
 const editingMilestone = ref<Milestone | null>(null)
-const milestoneForm = ref({ name: '', sort: 0, actualCompletionDate: null as string | null })
+const milestoneForm = ref({ name: '', sort: 0, actualCompletionDate: undefined as string | undefined })
 
 const milestoneColumns = [
   { title: '排序', dataIndex: 'sort', key: 'sort', width: 60 },
@@ -783,12 +830,12 @@ async function loadMilestones() {
 
 function resetMilestoneForm() {
   editingMilestone.value = null
-  milestoneForm.value = { name: '', sort: 0, actualCompletionDate: null }
+  milestoneForm.value = { name: '', sort: 0, actualCompletionDate: undefined }
 }
 
 function openEditMilestone(m: Milestone) {
   editingMilestone.value = m
-  milestoneForm.value = { name: m.name, sort: m.sort, actualCompletionDate: m.actualCompletionDate }
+  milestoneForm.value = { name: m.name, sort: m.sort, actualCompletionDate: m.actualCompletionDate ?? undefined }
   showMilestoneModal.value = true
 }
 
@@ -848,7 +895,7 @@ async function doDeleteMilestone(id: number) {
 
 // ── 进度记录 ──────────────────────────────────────────
 const progressLogs = ref<ProgressLog[]>([])
-const progressForm = ref({ milestoneId: null as number | null, note: '' })
+const progressForm = ref({ milestoneId: undefined as number | undefined, note: '' })
 const progressLoading = ref(false)
 
 async function doRecordProgress() {
@@ -862,7 +909,7 @@ async function doRecordProgress() {
     if (progressForm.value.milestoneId) body.milestoneId = progressForm.value.milestoneId
     await request({ url: `/projects/${projectId.value}/progress`, method: 'POST', body })
     message.success('进度已记录')
-    progressForm.value = { milestoneId: null, note: '' }
+    progressForm.value = { milestoneId: undefined, note: '' }
     await loadDashboard()
   } catch {
     message.error('记录失败')
@@ -910,7 +957,7 @@ async function loadDashboard() {
 }
 
 // ── 汇总报告 ──────────────────────────────────────────
-const summaryForm = ref({ periodStart: null as string | null, periodEnd: null as string | null, pmNote: '' })
+const summaryForm = ref({ periodStart: undefined as string | undefined, periodEnd: undefined as string | undefined, pmNote: '' })
 const summaryLoading = ref(false)
 
 const summaryColumns = [
@@ -938,7 +985,7 @@ async function doCreateSummary() {
       }
     })
     message.success('汇总报告已生成，CEO 已收到通知')
-    summaryForm.value = { periodStart: null, periodEnd: null, pmNote: '' }
+    summaryForm.value = { periodStart: undefined, periodEnd: undefined, pmNote: '' }
     await loadDashboard()
   } catch {
     message.error('生成失败')
@@ -1081,7 +1128,7 @@ async function doRecallLog(id: number) {
   }
 }
 
-function onTabChange(key: string) {
+function onTabChange(key: string | number) {
   if (key === 'logs') loadLogs()
   if (key === 'second-roles') { loadSecondRoleDefs(); loadSecondRoles() }
   if (key === 'material') loadMaterialCosts()
@@ -1099,8 +1146,8 @@ const revenueSummary = ref<{ contractTotal?: number; received?: number; pending?
 const showRevenueModal = ref(false)
 const revenueSaving = ref(false)
 const editingRevenue = ref<RevenueRow | null>(null)
-const revenueForm = ref<{ contractAmount: number | null; receiptStatus: string; actualReceiptAmount: number | null; receiptDate: string; receiptRemark: string }>({
-  contractAmount: null, receiptStatus: 'PENDING', actualReceiptAmount: null, receiptDate: '', receiptRemark: ''
+const revenueForm = ref<{ contractAmount: number | undefined; receiptStatus: string; actualReceiptAmount: number | undefined; receiptDate: string; receiptRemark: string }>({
+  contractAmount: undefined, receiptStatus: 'PENDING', actualReceiptAmount: undefined, receiptDate: '', receiptRemark: ''
 })
 const canEditRevenue = computed(() => ['ceo', 'finance'].includes(role.value))
 
@@ -1130,9 +1177,9 @@ async function loadRevenue() {
 function openRevenueEdit(record: RevenueRow) {
   editingRevenue.value = record
   revenueForm.value = {
-    contractAmount: record.contractAmount ?? null,
+    contractAmount: record.contractAmount ?? undefined,
     receiptStatus: record.receiptStatus ?? 'PENDING',
-    actualReceiptAmount: record.actualReceiptAmount ?? null,
+    actualReceiptAmount: record.actualReceiptAmount ?? undefined,
     receiptDate: record.receiptDate ?? '',
     receiptRemark: record.receiptRemark ?? ''
   }
@@ -1161,8 +1208,8 @@ const insuranceRows = ref<InsuranceRow[]>([])
 const insuranceLoading = ref(false)
 const showInsuranceModal = ref(false)
 const insuranceSaving = ref(false)
-const insuranceForm = ref<{ insuranceName: string; scope: 'GLOBAL' | 'POSITION' | 'EMPLOYEE'; scopeTargetId: number | null; dailyRate: number | null; effectiveDate: string; remark: string }>({
-  insuranceName: '', scope: 'GLOBAL', scopeTargetId: null, dailyRate: null, effectiveDate: new Date().toISOString().slice(0, 10), remark: ''
+const insuranceForm = ref<{ insuranceName: string; scope: 'GLOBAL' | 'POSITION' | 'EMPLOYEE'; scopeTargetId: number | undefined; dailyRate: number | undefined; effectiveDate: string; remark: string }>({
+  insuranceName: '', scope: 'GLOBAL', scopeTargetId: undefined, dailyRate: undefined, effectiveDate: new Date().toISOString().slice(0, 10), remark: ''
 })
 const canEditInsurance = computed(() => ['ceo', 'finance'].includes(role.value))
 
@@ -1191,7 +1238,7 @@ async function loadInsurance() {
 }
 
 function openInsuranceModal() {
-  insuranceForm.value = { insuranceName: '', scope: 'GLOBAL', scopeTargetId: null, dailyRate: null, effectiveDate: new Date().toISOString().slice(0, 10), remark: '' }
+  insuranceForm.value = { insuranceName: '', scope: 'GLOBAL', scopeTargetId: undefined, dailyRate: undefined, effectiveDate: new Date().toISOString().slice(0, 10), remark: '' }
   showInsuranceModal.value = true
 }
 
@@ -1222,7 +1269,7 @@ interface SecondRoleAssignment { id: number; employeeId: number; roleCode: strin
 const srDefs = ref<SecondRoleDef[]>([])
 const srAssignments = ref<SecondRoleAssignment[]>([])
 const srLoading = ref(false)
-const srForm = ref<{ employeeId: number | null; roleCode: string | null }>({ employeeId: null, roleCode: null })
+const srForm = ref<{ employeeId: number | undefined; roleCode: string | undefined }>({ employeeId: undefined, roleCode: undefined })
 const srColumns = [
   { title: '员工 ID', dataIndex: 'employeeId', key: 'employeeId', width: 100 },
   { title: '角色', key: 'roleName' },
@@ -1246,7 +1293,7 @@ async function assignSecondRole() {
       employeeId: srForm.value.employeeId, roleCode: srForm.value.roleCode, projectId: projectId.value
     }})
     message.success('已分配')
-    srForm.value = { employeeId: null, roleCode: null }
+    srForm.value = { employeeId: undefined, roleCode: undefined }
     await loadSecondRoles()
   } catch {}
 }
@@ -1261,8 +1308,8 @@ const materialCosts = ref<MaterialCost[]>([])
 const materialLoading = ref(false)
 const showMaterialModal = ref(false)
 const materialSubmitting = ref(false)
-const materialForm = ref<{ itemName: string; spec: string; quantity: number | null; unit: string; unitPrice: number | null; occurredOn: string; remark: string }>({
-  itemName: '', spec: '', quantity: null, unit: '', unitPrice: null, occurredOn: new Date().toISOString().slice(0, 10), remark: ''
+const materialForm = ref<{ itemName: string; spec: string; quantity: number | undefined; unit: string; unitPrice: number | undefined; occurredOn: string; remark: string }>({
+  itemName: '', spec: '', quantity: undefined, unit: '', unitPrice: undefined, occurredOn: new Date().toISOString().slice(0, 10), remark: ''
 })
 const materialColumns = [
   { title: '物品名称', dataIndex: 'itemName', key: 'itemName' },
@@ -1282,7 +1329,7 @@ async function loadMaterialCosts() {
   } catch { materialCosts.value = [] } finally { materialLoading.value = false }
 }
 function openMaterialModal() {
-  materialForm.value = { itemName: '', spec: '', quantity: null, unit: '', unitPrice: null, occurredOn: new Date().toISOString().slice(0, 10), remark: '' }
+  materialForm.value = { itemName: '', spec: '', quantity: undefined, unit: '', unitPrice: undefined, occurredOn: new Date().toISOString().slice(0, 10), remark: '' }
   showMaterialModal.value = true
 }
 async function submitMaterialCost() {
@@ -1310,8 +1357,8 @@ const ticketsLoading = ref(false)
 const showTicketModal = ref(false)
 const ticketSubmitting = ref(false)
 const editingTicketId = ref<number | null>(null)
-const ticketForm = ref<{ typeCode: string | null; incidentDate: string; description: string; customerFeedback: string; resolution: string; status: string }>({
-  typeCode: null, incidentDate: new Date().toISOString().slice(0, 10), description: '', customerFeedback: '', resolution: '', status: 'PENDING'
+const ticketForm = ref<{ typeCode: string | undefined; incidentDate: string; description: string; customerFeedback: string; resolution: string; status: string }>({
+  typeCode: undefined, incidentDate: new Date().toISOString().slice(0, 10), description: '', customerFeedback: '', resolution: '', status: 'PENDING'
 })
 const ticketColumns = [
   { title: '日期', dataIndex: 'incidentDate', key: 'incidentDate', width: 110 },
@@ -1332,7 +1379,7 @@ async function loadTickets() {
 }
 function openTicketModal() {
   editingTicketId.value = null
-  ticketForm.value = { typeCode: ticketTypes.value[0]?.code ?? null, incidentDate: new Date().toISOString().slice(0, 10), description: '', customerFeedback: '', resolution: '', status: 'PENDING' }
+  ticketForm.value = { typeCode: ticketTypes.value[0]?.code ?? undefined, incidentDate: new Date().toISOString().slice(0, 10), description: '', customerFeedback: '', resolution: '', status: 'PENDING' }
   showTicketModal.value = true
 }
 function openTicketEdit(record: AfterSaleTicket) {

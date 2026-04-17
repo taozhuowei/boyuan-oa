@@ -25,7 +25,10 @@ public record EmployeeCreateRequest(
     BigDecimal dailySubsidy,
     BigDecimal expenseLimit,
     BigDecimal performanceRatio,
-    List<EmergencyContactRequest> emergencyContacts
+    List<EmergencyContactRequest> emergencyContacts,
+    String gender,
+    String idCardNo,
+    java.time.LocalDate birthDate
 ) {
     public record EmergencyContactRequest(String name, String phone, String address) {}
 }

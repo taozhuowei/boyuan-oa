@@ -232,7 +232,10 @@ public class EmployeeController {
             employee.getPerformanceRatio(),
             contacts,
             employee.getCreatedAt(),
-            employee.getUpdatedAt()
+            employee.getUpdatedAt(),
+            employee.getGender(),
+            employee.getIdCardNo(),
+            employee.getBirthDate()
         );
     }
 }

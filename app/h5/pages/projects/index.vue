@@ -88,7 +88,7 @@
       @ok="doCreateProject"
       :confirm-loading="createLoading"
       @cancel="resetCreateForm"
-      :okButtonProps="{ 'data-catch': 'project-create-modal-ok' }"
+      :okButtonProps="({ 'data-catch': 'project-create-modal-ok' } as any)"
     >
       <a-form :model="createForm" layout="vertical">
         <a-form-item label="项目名称" required>
@@ -161,12 +161,12 @@ const statusFilter = ref<string | undefined>(undefined)
 // 新建表单
 const showCreateModal = ref(false)
 const createLoading = ref(false)
-const createForm = ref({ name: '', startDateStr: null as string | null, logCycleDays: 1 })
+const createForm = ref({ name: '', startDateStr: undefined as string | undefined, logCycleDays: 1 })
 
 // 编辑表单
 const showEditModal = ref(false)
 const editLoading = ref(false)
-const editForm = ref({ id: 0, name: '', startDateStr: null as string | null })
+const editForm = ref({ id: 0, name: '', startDateStr: undefined as string | undefined })
 
 const columns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
@@ -193,7 +193,7 @@ async function loadProjects() {
 }
 
 function resetCreateForm() {
-  createForm.value = { name: '', startDateStr: null, logCycleDays: 1 }
+  createForm.value = { name: '', startDateStr: undefined, logCycleDays: 1 }
 }
 
 async function doCreateProject() {
@@ -219,7 +219,7 @@ async function doCreateProject() {
 }
 
 function openEditModal(project: ProjectItem) {
-  editForm.value = { id: project.id, name: project.name, startDateStr: project.startDate }
+  editForm.value = { id: project.id, name: project.name, startDateStr: project.startDate ?? undefined }
   showEditModal.value = true
 }
 

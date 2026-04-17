@@ -49,7 +49,7 @@
               v-model:value="pinForm.pin"
               type="password"
               placeholder="请输入4-6位数字 PIN 码"
-              maxlength="6"
+              :maxlength="6"
               @input="onPinInput"
             />
           </a-form-item>
@@ -62,7 +62,7 @@
               v-model:value="pinForm.confirmPin"
               type="password"
               placeholder="请再次输入 PIN 码"
-              maxlength="6"
+              :maxlength="6"
               @input="onConfirmPinInput"
             />
           </a-form-item>

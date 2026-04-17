@@ -86,7 +86,7 @@ interface OperationLog {
 
 const loading = ref(false)
 const records = ref<OperationLog[]>([])
-const dateRange = ref<[string, string] | null>(null)
+const dateRange = ref<[string, string] | undefined>(undefined)
 const page = ref(0)
 const pageSize = ref(20)
 const total = ref(0)
@@ -140,7 +140,7 @@ function onSearch() {
 }
 
 function onReset() {
-  dateRange.value = null
+  dateRange.value = undefined
   page.value = 0
   loadLogs()
 }

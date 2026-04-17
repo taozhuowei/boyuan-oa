@@ -29,7 +29,7 @@
         }"
         row-key="id"
         size="small"
-        :customRow="(record) => ({ 'data-catch': 'employee-row' })"
+        :customRow="(record: Employee) => ({ 'data-catch': 'employee-row-' + record.id } as any)"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'entryDate'">
@@ -85,7 +85,7 @@
       :title="formMode === 'create' ? '新增员工' : '编辑员工'"
       :confirm-loading="submitting"
       width="700px"
-      :okButtonProps="{ 'data-catch': 'employee-save-btn' }"
+      :okButtonProps="({ 'data-catch': 'employee-save-btn' } as any)"
       @ok="submitForm"
       @cancel="showForm = false"
     >
@@ -117,7 +117,16 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="主角色" required>
-              <a-input v-model:value="form.roleCode" placeholder="employee/finance/hr/ceo/..." />
+              <a-select v-model:value="form.roleCode" style="width: 100%" data-catch="employee-role-select">
+                <a-select-option value="employee">员工</a-select-option>
+                <a-select-option value="worker">劳工</a-select-option>
+                <a-select-option value="hr">人力资源</a-select-option>
+                <a-select-option value="finance">财务</a-select-option>
+                <a-select-option value="project_manager">项目经理</a-select-option>
+                <a-select-option value="department_manager">部门经理</a-select-option>
+                <a-select-option value="ceo">总裁</a-select-option>
+                <a-select-option value="ops">运维</a-select-option>
+              </a-select>
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -131,13 +140,47 @@
         </a-row>
         <a-row :gutter="16">
           <a-col :span="12">
-            <a-form-item label="部门 ID" required>
-              <a-input-number v-model:value="form.departmentId" :precision="0" style="width: 100%" data-catch="employee-dept-select" />
+            <a-form-item label="部门" required>
+              <a-select v-model:value="form.departmentId" :options="departments" placeholder="选择部门" show-search option-filter-prop="label" data-catch="employee-dept-select" style="width: 100%" />
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="岗位 ID">
-              <a-input-number v-model:value="form.positionId" :precision="0" style="width: 100%" />
+            <a-form-item label="岗位">
+              <a-select v-model:value="form.positionId" :options="positions.map(p => ({ value: p.id, label: p.positionName }))" placeholder="选择岗位" show-search option-filter-prop="label" style="width: 100%" @change="onPositionChange" allow-clear />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="岗位等级">
+              <a-select v-model:value="form.levelId" :options="levels" placeholder="先选岗位" :disabled="levels.length === 0" allow-clear style="width: 100%" />
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="直系领导">
+              <a-select v-model:value="form.directSupervisorId" :options="supervisorOptions" placeholder="输入姓名搜索" show-search :filter-option="false" :loading="searchingSupervisor" allow-clear style="width: 100%" @search="searchSupervisor" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="性别" required>
+              <a-select v-model:value="form.gender" style="width: 100%" data-catch="employee-gender-select">
+                <a-select-option value="MALE">男</a-select-option>
+                <a-select-option value="FEMALE">女</a-select-option>
+              </a-select>
+            </a-form-item>
+          </a-col>
+          <a-col :span="12">
+            <a-form-item label="身份证号">
+              <a-input v-model:value="form.idCardNo" placeholder="18位身份证号" data-catch="employee-idcard-input" />
+            </a-form-item>
+          </a-col>
+        </a-row>
+        <a-row :gutter="16">
+          <a-col :span="12">
+            <a-form-item label="出生日期">
+              <a-input v-model:value="form.birthDate" placeholder="YYYY-MM-DD" data-catch="employee-birthday-input" />
             </a-form-item>
           </a-col>
         </a-row>
@@ -191,6 +234,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue'
 import { message } from 'ant-design-vue'
+import type { SelectValue } from 'ant-design-vue/es/select'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 
@@ -215,7 +259,15 @@ interface Employee {
   expenseLimit?: number | null
   performanceRatio?: number | null
   emergencyContacts?: EmergencyContact[]
+  gender?: string
+  idCardNo?: string
+  birthDate?: string
+  directSupervisorId?: number | null
+  levelId?: number | null
 }
+
+interface Department { id: number; name: string; children?: Department[] }
+interface Position { id: number; positionCode: string; positionName: string; levels: { id: number; levelName: string }[] }
 
 const userStore = useUserStore()
 const canEdit = computed(() => ['ceo', 'hr'].includes(userStore.userInfo?.role ?? ''))
@@ -227,6 +279,13 @@ const page = ref(0)
 const pageSize = ref(20)
 const totalElements = ref(0)
 
+const departments = ref<{ value: number; label: string }[]>([])
+const positions = ref<Position[]>([])
+const levels = ref<{ value: number; label: string }[]>([])
+const supervisorOptions = ref<{ value: number; label: string }[]>([])
+const loadingLevels = ref(false)
+const searchingSupervisor = ref(false)
+
 const showDetail = ref(false)
 const detailRecord = ref<Employee | null>(null)
 
@@ -234,26 +293,33 @@ const showForm = ref(false)
 const submitting = ref(false)
 const formMode = ref<'create' | 'edit'>('create')
 const editingId = ref<number | null>(null)
+
 const form = ref<{
   name: string
   phone: string
   email: string
   roleCode: string
   employeeType: 'OFFICE' | 'LABOR'
-  departmentId: number | null
-  positionId: number | null
+  departmentId: number | undefined
+  positionId: number | undefined
   entryDate: string
-  socialSeniority: number | null
-  contractType: string | null
-  dailySubsidy: number | null
-  expenseLimit: number | null
-  performanceRatio: number | null
+  socialSeniority: number | undefined
+  contractType: string | undefined
+  dailySubsidy: number | undefined
+  expenseLimit: number | undefined
+  performanceRatio: number | undefined
   emergencyContacts: EmergencyContact[]
+  gender: string
+  idCardNo: string
+  birthDate: string
+  directSupervisorId: number | undefined
+  levelId: number | undefined
 }>({
   name: '', phone: '', email: '', roleCode: 'employee', employeeType: 'OFFICE',
-  departmentId: null, positionId: null, entryDate: '',
-  socialSeniority: null, contractType: null, dailySubsidy: null, expenseLimit: null,
-  performanceRatio: null, emergencyContacts: []
+  departmentId: undefined, positionId: undefined, entryDate: '',
+  socialSeniority: undefined, contractType: undefined, dailySubsidy: undefined, expenseLimit: undefined,
+  performanceRatio: undefined, emergencyContacts: [],
+  gender: '', idCardNo: '', birthDate: '', directSupervisorId: undefined, levelId: undefined
 })
 
 const columns = [
@@ -280,9 +346,10 @@ function openDetail(record: Employee) {
 function resetForm() {
   form.value = {
     name: '', phone: '', email: '', roleCode: 'employee', employeeType: 'OFFICE',
-    departmentId: null, positionId: null, entryDate: new Date().toISOString().slice(0, 10),
-    socialSeniority: null, contractType: null, dailySubsidy: null, expenseLimit: null,
-    performanceRatio: null, emergencyContacts: []
+    departmentId: undefined, positionId: undefined, entryDate: new Date().toISOString().slice(0, 10),
+    socialSeniority: undefined, contractType: undefined, dailySubsidy: undefined, expenseLimit: undefined,
+    performanceRatio: undefined, emergencyContacts: [],
+    gender: '', idCardNo: '', birthDate: '', directSupervisorId: undefined, levelId: undefined
   }
 }
 
@@ -302,15 +369,24 @@ function openEdit(record: Employee) {
     email: record.email ?? '',
     roleCode: record.roleCode ?? 'employee',
     employeeType: (record.employeeType as 'OFFICE' | 'LABOR') ?? 'OFFICE',
-    departmentId: record.departmentId ?? null,
-    positionId: record.positionId ?? null,
+    departmentId: record.departmentId ?? undefined,
+    positionId: record.positionId ?? undefined,
     entryDate: record.entryDate ?? '',
-    socialSeniority: record.socialSeniority ?? null,
-    contractType: record.contractType ?? null,
-    dailySubsidy: record.dailySubsidy ?? null,
-    expenseLimit: record.expenseLimit ?? null,
-    performanceRatio: record.performanceRatio ?? null,
-    emergencyContacts: (record.emergencyContacts ?? []).map(c => ({ ...c }))
+    socialSeniority: record.socialSeniority ?? undefined,
+    contractType: record.contractType ?? undefined,
+    dailySubsidy: record.dailySubsidy ?? undefined,
+    expenseLimit: record.expenseLimit ?? undefined,
+    performanceRatio: record.performanceRatio ?? undefined,
+    emergencyContacts: (record.emergencyContacts ?? []).map(c => ({ ...c })),
+    directSupervisorId: record.directSupervisorId ?? undefined,
+    levelId: record.levelId ?? undefined,
+    gender: record.gender ?? '',
+    idCardNo: record.idCardNo ?? '',
+    birthDate: record.birthDate ?? ''
+  }
+  onPositionChange(record.positionId ?? undefined)
+  if (record.directSupervisorId) {
+    supervisorOptions.value = [{ value: record.directSupervisorId, label: record.name }]
   }
   showForm.value = true
 }
@@ -328,6 +404,7 @@ async function submitForm() {
   if (!form.value.roleCode) { message.warning('请选择主角色'); return }
   if (!form.value.employeeType) { message.warning('请选择员工类型'); return }
   if (!form.value.departmentId) { message.warning('请填写部门 ID'); return }
+  if (!form.value.gender) { message.warning('请选择性别'); return }
   if (formMode.value === 'create' && !form.value.entryDate) { message.warning('请填写入职日期'); return }
   submitting.value = true
   try {
@@ -346,6 +423,43 @@ async function submitForm() {
   } finally {
     submitting.value = false
   }
+}
+
+async function loadDepartments() {
+  const tree = await request<Department[]>({ url: '/departments' })
+  const flat: { value: number; label: string }[] = []
+  function walk(nodes: Department[]) {
+    for (const n of nodes) { flat.push({ value: n.id, label: n.name }); if (n.children) walk(n.children) }
+  }
+  walk(tree ?? [])
+  departments.value = flat
+}
+
+async function loadPositions() {
+  const data = await request<Position[]>({ url: '/positions' })
+  positions.value = data ?? []
+}
+
+function onPositionChange(posId: SelectValue) {
+  form.value.levelId = undefined
+  levels.value = []
+  if (!posId) return
+  const pos = positions.value.find(p => p.id === Number(posId))
+  levels.value = (pos?.levels ?? []).map(l => ({ value: l.id, label: l.levelName }))
+}
+
+let supervisorTimer: ReturnType<typeof setTimeout> | null = null
+async function searchSupervisor(keyword: string) {
+  if (!keyword) { supervisorOptions.value = []; return }
+  if (supervisorTimer) clearTimeout(supervisorTimer)
+  supervisorTimer = setTimeout(async () => {
+    searchingSupervisor.value = true
+    try {
+      const data = await request<{ content: Employee[] }>({ url: '/employees?keyword=' + encodeURIComponent(keyword) + '&size=20' })
+      supervisorOptions.value = (data?.content ?? []).map(e => ({ value: e.id, label: e.name + (e.departmentName ? ' (' + e.departmentName + ')' : '') }))
+    } catch {}
+    finally { searchingSupervisor.value = false }
+  }, 300)
 }
 
 async function loadEmployees() {
@@ -372,7 +486,11 @@ async function loadEmployees() {
 function onSearch() { page.value = 0; loadEmployees() }
 function onPageChange(p: number) { page.value = p - 1; loadEmployees() }
 
-onMounted(loadEmployees)
+onMounted(() => {
+  loadEmployees()
+  loadDepartments()
+  loadPositions()
+})
 </script>
 
 <style scoped>

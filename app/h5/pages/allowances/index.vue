@@ -24,7 +24,7 @@
           </template>
           <template v-if="column.key === 'action'">
             <a-space @click.stop>
-              <a-button v-if="canEdit" type="link" size="small" @click="openEditDef(record)">编辑</a-button>
+              <a-button v-if="canEdit" type="link" size="small" @click="openEditDef(record as AllowanceDef)">编辑</a-button>
               <a-popconfirm v-if="canEdit && !record.isSystem" title="确定删除该补贴项吗？" @confirm="deleteDef(record.id)">
                 <a-button type="link" danger size="small">删除</a-button>
               </a-popconfirm>
@@ -279,14 +279,14 @@ async function deleteDef(id: number) {
 
 // Scope editor state
 const scopeTab = ref<'GLOBAL' | 'POSITION' | 'EMPLOYEE'>('GLOBAL')
-const globalAmount = ref<number | null>(null)
+const globalAmount = ref<number | undefined>(undefined)
 const positions = ref<PositionRow[]>([])
 const positionsLoading = ref(false)
-const positionAmounts = reactive<Record<number, number | null>>({})
+const positionAmounts = reactive<Record<number, number | undefined>>({})
 const employees = ref<EmployeeRow[]>([])
 const employeeOverrides = ref<EmployeeOverride[]>([])
-const newEmployeeId = ref<number | null>(null)
-const newEmployeeAmount = ref<number | null>(null)
+const newEmployeeId = ref<number | undefined>(undefined)
+const newEmployeeAmount = ref<number | undefined>(undefined)
 const saving = ref(false)
 
 const positionScopeColumns = [
@@ -317,8 +317,8 @@ async function selectDef(def: AllowanceDef) {
 async function loadConfigs(defId: number) {
   try {
     const list = await request<AllowanceConfig[]>({ url: `/allowances/${defId}/configs` })
-    globalAmount.value = null
-    Object.keys(positionAmounts).forEach(k => { positionAmounts[Number(k)] = null })
+    globalAmount.value = undefined
+    Object.keys(positionAmounts).forEach(k => { positionAmounts[Number(k)] = undefined })
     employeeOverrides.value = []
     for (const c of list ?? []) {
       if (c.scope === 'GLOBAL') globalAmount.value = c.amount
@@ -365,8 +365,8 @@ function addEmployeeOverride() {
     return
   }
   employeeOverrides.value.push({ employeeId: newEmployeeId.value, amount: newEmployeeAmount.value })
-  newEmployeeId.value = null
-  newEmployeeAmount.value = null
+  newEmployeeId.value = undefined
+  newEmployeeAmount.value = undefined
 }
 
 function removeEmployeeOverride(id: number) {

@@ -33,8 +33,8 @@
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button type="link" size="small" @click="openEdit(record)">编辑</a-button>
-              <a-button type="link" size="small" @click="openDerive(record)">派生</a-button>
+              <a-button type="link" size="small" @click="openEdit(record as Template)">编辑</a-button>
+              <a-button type="link" size="small" @click="openDerive(record as Template)">派生</a-button>
               <a-popconfirm title="确认删除此模板？" @confirm="doDelete(record.id)">
                 <a-button type="link" size="small" danger>删除</a-button>
               </a-popconfirm>

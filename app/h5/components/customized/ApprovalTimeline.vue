@@ -16,8 +16,8 @@
       >
         <div class="step-content">
           <span class="step-time">{{ formatTime(step.time) }}</span>
-          <span class="step-operator">{{ step.operator }}</span>
-          <a-tag :color="getTagColor(step.action)" class="step-action">{{ step.action }}</a-tag>
+          <span class="step-operator">{{ step.approver ?? step.operator ?? '—' }}</span>
+          <a-tag :color="getTagColor(step.action)" class="step-action">{{ actionLabel(step.action) }}</a-tag>
           <span v-if="step.comment" class="step-comment">{{ step.comment }}</span>
         </div>
       </a-timeline-item>
@@ -41,19 +41,32 @@ defineProps<{
   steps: ApprovalStep[]
 }>()
 
+/** 操作类型代码 → 中文标签 */
+function actionLabel(action: string): string {
+  const map: Record<string, string> = {
+    APPROVE: '通过', REJECT: '驳回', SKIP: '跳过', RECALL: '撤回',
+    SUBMIT: '提交', PENDING: '待审批',
+    // 兼容旧中文值
+    通过: '通过', 驳回: '驳回', 提交: '提交', 修改: '修改'
+  }
+  return map[action] ?? action
+}
+
 /** 操作类型 → 时间轴节点颜色 */
 function getColor(action: string): string {
-  if (action === '通过') return 'green'
-  if (action === '驳回') return 'red'
-  if (action === '提交' || action === '修改') return 'blue'
+  if (action === 'APPROVE' || action === '通过') return 'green'
+  if (action === 'REJECT' || action === '驳回') return 'red'
+  if (action === 'SUBMIT' || action === '提交' || action === '修改') return 'blue'
+  if (action === 'SKIP') return 'orange'
   return 'gray'
 }
 
 /** 操作类型 → Tag 颜色 */
 function getTagColor(action: string): string {
-  if (action === '通过') return 'success'
-  if (action === '驳回') return 'error'
-  if (action === '修改') return 'warning'
+  if (action === 'APPROVE' || action === '通过') return 'success'
+  if (action === 'REJECT' || action === '驳回') return 'error'
+  if (action === 'SKIP') return 'warning'
+  if (action === '修改' || action === 'RECALL') return 'warning'
   return 'processing'
 }
 

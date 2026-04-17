@@ -10,7 +10,7 @@
         <!-- 劳工/PM 均可发起（PM 代录使用下面的 proxyFor 字段） -->
         <a-button type="primary" @click="openApply" data-catch="injury-apply-btn">+ 发起申报</a-button>
         <!-- 财务：录入理赔按钮 -->
-        <a-button v-if="isFinance" @click="showClaimModal = true" data-catch="injury-fill-amount-btn">录入理赔</a-button>
+        <a-button v-if="isFinance" @click="showClaimModal = true; loadApprovedInjuries()" data-catch="injury-fill-amount-btn">录入理赔</a-button>
       </a-space>
     </div>
 
@@ -32,7 +32,7 @@
                 v-if="isFinance && item.status === 'APPROVED'"
                 size="small"
                 type="link"
-                @click="showClaimModal = true"
+                @click="showClaimModal = true; loadApprovedInjuries()"
                 data-catch="injury-fill-amount-btn"
               >录入金额</a-button>
             </a-space>
@@ -51,7 +51,7 @@
       :confirm-loading="applying"
       @cancel="resetApplyForm"
       ok-text="提交"
-      :ok-button-props="{ 'data-catch': 'injury-apply-modal-submit' }"
+      :ok-button-props="({ 'data-catch': 'injury-apply-modal-submit' } as any)"
     >
       <a-form :model="applyForm" layout="vertical">
         <!-- PM 代录：选择受伤员工 -->
@@ -71,13 +71,21 @@
           <a-date-picker v-model:value="applyForm.injuryDate" style="width:100%;" placeholder="请选择日期" data-catch="injury-date" />
         </a-form-item>
 
-        <a-form-item label="伤情描述" required>
+        <a-form-item label="受伤时间" required>
+          <a-time-picker v-model:value="applyForm.injuryTime" format="HH:mm" style="width:100%;" placeholder="请选择受伤时间" data-catch="injury-time" />
+        </a-form-item>
+
+        <a-form-item label="事故经过" required>
           <a-textarea
             v-model:value="applyForm.description"
             :rows="4"
-            placeholder="请描述受伤经过、部位及严重程度"
-            data-catch="injury-description"
+            placeholder="请描述事故发生经过和受伤部位"
+            data-catch="injury-accident"
           />
+        </a-form-item>
+
+        <a-form-item label="医生诊断结果" required>
+          <a-textarea v-model:value="applyForm.medicalDiagnosis" :rows="3" placeholder="请填写医生诊断结论（如骨折、软组织挫伤等）" data-catch="injury-diagnosis" />
         </a-form-item>
 
         <a-form-item label="附件（受伤照片/医疗证明）">
@@ -107,14 +115,18 @@
       :confirm-loading="claiming"
       @cancel="resetClaimForm"
       ok-text="提交理赔"
-      :ok-button-props="{ 'data-catch': 'injury-amount-submit' }"
+      :ok-button-props="({ 'data-catch': 'injury-amount-submit' } as any)"
     >
       <a-form :model="claimForm" layout="vertical">
-        <a-form-item label="关联申报单 ID" required>
-          <a-input-number v-model:value="claimForm.formRecordId" placeholder="工伤申报单 ID" style="width:100%;" />
-        </a-form-item>
-        <a-form-item label="员工 ID" required>
-          <a-input-number v-model:value="claimForm.employeeId" placeholder="受伤员工 ID" style="width:100%;" />
+        <a-form-item label="选择已通过的申报单" required>
+          <a-select
+            v-model:value="claimForm.formRecordId"
+            placeholder="选择工伤申报单"
+            show-search
+            option-filter-prop="label"
+            :options="approvedInjuryRecords.map(r => ({ label: r.formNo + (r.submitter ? ' — ' + r.submitter : ''), value: r.id }))"
+            @change="claimForm.formRecordId = $event as number"
+          />
         </a-form-item>
         <a-form-item label="受伤日期" required>
           <a-date-picker v-model:value="claimForm.injuryDate" style="width:100%;" placeholder="请选择日期" />
@@ -174,19 +186,25 @@ const showApplyModal = ref(false)
 const showClaimModal = ref(false)
 const injuryFileRef = ref<{ clear: () => void } | null>(null)
 
+const approvedInjuryRecords = ref<{ id: number; formNo: string; submitter?: string }[]>([])
+const selectedApprovedRecord = ref<{ id: number; formNo: string; employeeId?: number } | null>(null)
+
 const applyForm = ref({
-  proxyEmployeeId: null as number | null,
-  injuryDate: null as Dayjs | null,
+  proxyEmployeeId: undefined as number | undefined,
+  injuryDate: undefined as Dayjs | undefined,
+  injuryTime: undefined as Dayjs | undefined,
   description: '',
+  medicalDiagnosis: '',
+  accidentDescription: '',
   remark: '',
   attachmentIds: [] as number[]
 })
 
 const claimForm = ref({
-  formRecordId: null as number | null,
-  employeeId: null as number | null,
-  injuryDate: null as Dayjs | null,
-  compensationAmount: null as number | null,
+  formRecordId: undefined as number | undefined,
+  employeeId: undefined as number | undefined,
+  injuryDate: undefined as Dayjs | undefined,
+  compensationAmount: undefined as number | undefined,
   financeNote: ''
 })
 
@@ -202,6 +220,19 @@ async function loadWorkers() {
     )
     workerOptions.value = (res.content || []).map((e: { id: number; name: string }) => ({ label: e.name, value: e.id }))
   } catch { /* 加载失败不阻断流程 */ }
+}
+
+async function loadApprovedInjuries() {
+  try {
+    const res = await request<{ id: number; formNo: string; formData?: Record<string, unknown>; submitter?: string }[]>(
+      { url: '/logs/records?status=APPROVED', method: 'GET' }
+    )
+    approvedInjuryRecords.value = (res as typeof res)
+      .filter((r: { formNo?: string }) => r.formNo?.startsWith('INJ'))
+      .map(r => ({ id: r.id, formNo: r.formNo, submitter: r.submitter }))
+  } catch {
+    approvedInjuryRecords.value = []
+  }
 }
 
 async function loadRecords() {
@@ -229,11 +260,21 @@ async function doApply() {
     message.warning('请填写伤情描述')
     return
   }
+  if (!applyForm.value.injuryTime) {
+    message.warning('请选择受伤时间')
+    return
+  }
+  if (!applyForm.value.medicalDiagnosis.trim()) {
+    message.warning('请填写医生诊断结果')
+    return
+  }
   applying.value = true
   try {
     const formData: Record<string, unknown> = {
       injuryDate: applyForm.value.injuryDate.format('YYYY-MM-DD'),
-      description: applyForm.value.description,
+      accidentDescription: applyForm.value.description,
+      injuryTime: applyForm.value.injuryTime.format('HH:mm'),
+      medicalDiagnosis: applyForm.value.medicalDiagnosis,
       attachmentIds: applyForm.value.attachmentIds
     }
     if (applyForm.value.proxyEmployeeId) {
@@ -256,12 +297,12 @@ async function doApply() {
 }
 
 function resetApplyForm() {
-  applyForm.value = { proxyEmployeeId: null, injuryDate: null, description: '', remark: '', attachmentIds: [] }
+  applyForm.value = { proxyEmployeeId: undefined, injuryDate: undefined, injuryTime: undefined, description: '', medicalDiagnosis: '', accidentDescription: '', remark: '', attachmentIds: [] }
   injuryFileRef.value?.clear()
 }
 
 async function doCreateClaim() {
-  if (!claimForm.value.formRecordId || !claimForm.value.employeeId ||
+  if (!claimForm.value.formRecordId ||
       !claimForm.value.injuryDate || !claimForm.value.compensationAmount) {
     message.warning('请填写完整理赔信息')
     return
@@ -290,7 +331,7 @@ async function doCreateClaim() {
 }
 
 function resetClaimForm() {
-  claimForm.value = { formRecordId: null, employeeId: null, injuryDate: null, compensationAmount: null, financeNote: '' }
+  claimForm.value = { formRecordId: undefined, employeeId: undefined, injuryDate: undefined, compensationAmount: undefined, financeNote: '' }
 }
 
 function statusLabel(status: string) {

@@ -42,8 +42,10 @@
  */
 import { ref } from 'vue'
 import { message } from 'ant-design-vue'
+import type { UploadFile } from 'ant-design-vue'
+import type { UploadRequestOption } from 'ant-design-vue/es/vc-upload/interface'
 import { UploadOutlined, PaperClipOutlined } from '@ant-design/icons-vue'
-import { useCookie } from '#app'
+import { useCookie } from 'nuxt/app'
 
 interface UploadedFile {
   attachmentId: number
@@ -81,8 +83,9 @@ const emit = defineEmits<{
 const fileList = ref<AntUploadFile[]>([])
 const uploaded = ref<UploadedFile[]>([])
 
-function handleBeforeUpload(file: File) {
-  const isValidSize = file.size / 1024 / 1024 < 10
+function handleBeforeUpload(file: UploadFile) {
+  const rawFile = file as unknown as File
+  const isValidSize = rawFile.size / 1024 / 1024 < 10
   if (!isValidSize) {
     message.error('文件大小不能超过 10MB')
     return false
@@ -90,20 +93,17 @@ function handleBeforeUpload(file: File) {
   return true
 }
 
-async function handleUpload({ file, onSuccess, onError, onProgress }: {
-  file: File
-  onSuccess: (res: unknown) => void
-  onError: (err: Error) => void
-  onProgress: (event: { percent: number }) => void
-}) {
+async function handleUpload(options: UploadRequestOption) {
+  const { file, onSuccess, onError, onProgress } = options
+  const rawFile = file as File
   const tokenCookie = useCookie<string | null>('oa-token')
   const formData = new FormData()
-  formData.append('file', file)
+  formData.append('file', rawFile)
   formData.append('businessType', props.businessType)
   if (props.businessId) formData.append('businessId', String(props.businessId))
 
   try {
-    onProgress({ percent: 30 })
+    onProgress?.({ percent: 30 } as unknown as ProgressEvent)
     const res = await $fetch<{ attachmentId: number; fileName: string; storagePath: string }>(
       '/api/attachments/upload',
       {
@@ -112,25 +112,25 @@ async function handleUpload({ file, onSuccess, onError, onProgress }: {
         body: formData
       }
     )
-    onProgress({ percent: 100 })
-    onSuccess(res)
+    onProgress?.({ percent: 100 } as unknown as ProgressEvent)
+    onSuccess?.(res, {} as XMLHttpRequest)
 
     const entry: UploadedFile = {
       attachmentId: res.attachmentId,
       fileName: res.fileName,
       storagePath: res.storagePath,
-      uid: (file as unknown as AntUploadFile).uid ?? String(Date.now())
+      uid: (rawFile as unknown as AntUploadFile).uid ?? String(Date.now())
     }
     uploaded.value.push(entry)
     emit('change', [...uploaded.value])
-    message.success(`${file.name} 上传成功`)
+    message.success(`${rawFile.name} 上传成功`)
   } catch {
-    onError(new Error('上传失败'))
-    message.error(`${file.name} 上传失败`)
+    onError?.(new Error('上传失败') as ProgressEvent & Error)
+    message.error(`${rawFile.name} 上传失败`)
   }
 }
 
-function handleRemove(file: AntUploadFile) {
+function handleRemove(file: UploadFile) {
   uploaded.value = uploaded.value.filter(u => u.uid !== file.uid)
   emit('change', [...uploaded.value])
 }

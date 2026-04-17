@@ -37,6 +37,17 @@
           <a-textarea v-model:value="formState.tripPurpose" :rows="2" placeholder="请输入出差事由" />
         </a-form-item>
 
+        <a-form-item label="关联项目（可选）" name="projectId">
+          <a-select
+            v-model:value="formState.projectId"
+            placeholder="选择关联项目（报销核销后计入项目成本）"
+            allow-clear
+            :options="projects.map(p => ({ label: p.name, value: p.id }))"
+            show-search
+            option-filter-prop="label"
+          />
+        </a-form-item>
+
         <!-- 报销明细 -->
         <a-divider orientation="left">报销明细</a-divider>
 
@@ -90,6 +101,21 @@
           <a-textarea v-model:value="formState.remark" :rows="3" placeholder="请输入备注说明（可选）" />
         </a-form-item>
 
+        <a-form-item
+          label="发票附件"
+          name="invoiceAttachmentIds"
+          :rules="[{ validator: validateInvoiceAttachments, trigger: 'change' }]"
+        >
+          <customized-file-upload
+            ref="invoiceFileRef"
+            business-type="EXPENSE"
+            :max-count="5"
+            accept="image/*,.pdf"
+            hint="请上传发票图片或 PDF，最多 5 个（必填）"
+            @change="files => formState.invoiceAttachmentIds = files.map(f => f.attachmentId)"
+          />
+        </a-form-item>
+
         <a-form-item>
           <a-space>
             <a-button type="primary" html-type="submit" :loading="submitting">
@@ -111,12 +137,12 @@ import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 
 interface ExpenseItem {
-  itemType: string | null
-  expenseDate: Dayjs | null
-  amount: number | null
+  itemType: string | undefined
+  expenseDate: Dayjs | undefined
+  amount: number | undefined
   invoiceNo: string
   description: string
-  attachmentId: number | null
+  attachmentId: number | undefined
 }
 
 interface ExpenseType {
@@ -129,18 +155,22 @@ interface ExpenseType {
 }
 
 const formState = reactive({
-  expenseType: null as string | null,
-  tripStartDate: null as Dayjs | null,
-  tripEndDate: null as Dayjs | null,
+  expenseType: undefined as string | undefined,
+  tripStartDate: undefined as Dayjs | undefined,
+  tripEndDate: undefined as Dayjs | undefined,
   tripDestination: '',
   tripPurpose: '',
-  totalAmount: null as number | null,
+  projectId: undefined as number | undefined,
+  totalAmount: undefined as number | undefined,
   remark: '',
+  invoiceAttachmentIds: [] as number[],
   items: [] as ExpenseItem[]
 })
 
 const expenseTypes = ref<ExpenseType[]>([])
 const submitting = ref(false)
+const invoiceFileRef = ref<{ clear: () => void } | undefined>(undefined)
+const projects = ref<{ id: number; name: string }[]>([])
 
 // 计算总金额
 const calculatedTotal = computed(() => {
@@ -151,17 +181,17 @@ const calculatedTotal = computed(() => {
 
 // 监听明细变化，自动更新总金额
 watch(calculatedTotal, (newVal) => {
-  formState.totalAmount = newVal > 0 ? newVal : null
+  formState.totalAmount = newVal > 0 ? newVal : undefined
 })
 
 function addItem() {
   formState.items.push({
-    itemType: null,
-    expenseDate: null,
-    amount: null,
+    itemType: undefined,
+    expenseDate: undefined,
+    amount: undefined,
     invoiceNo: '',
     description: '',
-    attachmentId: null
+    attachmentId: undefined
   })
 }
 
@@ -170,14 +200,17 @@ function removeItem(index: number) {
 }
 
 function resetForm() {
-  formState.expenseType = null
-  formState.tripStartDate = null
-  formState.tripEndDate = null
+  formState.expenseType = undefined
+  formState.tripStartDate = undefined
+  formState.tripEndDate = undefined
   formState.tripDestination = ''
   formState.tripPurpose = ''
-  formState.totalAmount = null
+  formState.projectId = undefined
+  formState.totalAmount = undefined
   formState.remark = ''
+  formState.invoiceAttachmentIds = []
   formState.items = []
+  invoiceFileRef.value?.clear()
 }
 
 function goToRecords() {
@@ -198,8 +231,10 @@ async function submitExpense() {
       tripEndDate: formState.tripEndDate?.format('YYYY-MM-DD'),
       tripDestination: formState.tripDestination || null,
       tripPurpose: formState.tripPurpose || null,
+      projectId: formState.projectId,
       totalAmount: formState.totalAmount,
       remark: formState.remark || null,
+      invoiceAttachmentIds: formState.invoiceAttachmentIds,
       items: formState.items.map(item => ({
         itemType: item.itemType,
         expenseDate: item.expenseDate?.format('YYYY-MM-DD'),
@@ -227,6 +262,20 @@ async function submitExpense() {
   }
 }
 
+function validateInvoiceAttachments(): Promise<void> {
+  if (formState.invoiceAttachmentIds.length > 0) return Promise.resolve()
+  return Promise.reject(new Error('请上传至少一张发票'))
+}
+
+async function loadProjects() {
+  try {
+    const res = await request<{ records: { id: number; name: string }[] }>({ url: '/projects?page=1&size=100' })
+    projects.value = res?.records ?? []
+  } catch {
+    projects.value = []
+  }
+}
+
 async function loadExpenseTypes() {
   try {
     const types = await request<ExpenseType[]>({ url: '/expense/types' })
@@ -246,6 +295,7 @@ async function loadExpenseTypes() {
 
 onMounted(() => {
   loadExpenseTypes()
+  loadProjects()
   addItem() // 默认添加一条明细
 })
 </script>

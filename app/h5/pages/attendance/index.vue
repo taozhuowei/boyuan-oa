@@ -31,13 +31,13 @@
               {{ formatDate(record.submitTime) }}
             </template>
             <template v-if="column.key === 'summary'">
-              {{ getSummary(record) }}
+              {{ getSummary(record as FormRecord) }}
             </template>
             <template v-if="column.key === 'status'">
               <a-tag :color="statusColor(record.status)">{{ statusLabel(record.status) }}</a-tag>
             </template>
             <template v-if="column.key === 'action'">
-              <a-button type="link" size="small" @click="viewRecord(record)">查看</a-button>
+              <a-button type="link" size="small" @click="viewRecord(record as FormRecord)">查看</a-button>
             </template>
           </template>
         </a-table>
@@ -53,9 +53,7 @@
         >
           <a-form-item label="假种" name="leaveType" :rules="[{ required: true, message: '请选择假种' }]">
             <a-select v-model:value="leaveForm.leaveType" placeholder="请选择" data-catch="form-leave-type">
-              <a-select-option value="事假">事假</a-select-option>
-              <a-select-option value="病假">病假</a-select-option>
-              <a-select-option value="年假">年假</a-select-option>
+              <a-select-option v-for="lt in leaveTypes" :key="lt.code" :value="lt.name">{{ lt.name }}</a-select-option>
             </a-select>
           </a-form-item>
           <a-form-item label="开始日期" name="startDate" :rules="[{ required: true, message: '请选择开始日期' }]">
@@ -64,8 +62,24 @@
           <a-form-item label="结束日期" name="endDate" :rules="[{ required: true, message: '请选择结束日期' }]">
             <a-date-picker v-model:value="leaveForm.endDate" style="width: 100%" placeholder="请选择日期" data-catch="form-leave-end-date" />
           </a-form-item>
+          <a-form-item label="请假时长">
+            <span style="color: #555;">{{ leaveDuration ?? '请先选择开始和结束日期' }}</span>
+          </a-form-item>
           <a-form-item label="请假原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
             <a-textarea v-model:value="leaveForm.reason" :rows="3" />
+          </a-form-item>
+          <a-form-item>
+            <a-checkbox v-model:checked="leaveForm.retroactive">追溯申请（补录历史请假）</a-checkbox>
+          </a-form-item>
+          <a-form-item label="附件（可选）">
+            <customized-file-upload
+              ref="leaveFileRef"
+              business-type="LEAVE"
+              :max-count="3"
+              accept="image/*,.pdf"
+              hint="可上传病假单、证明材料等，最多 3 个"
+              @change="files => leaveForm.attachmentIds = files.map(f => f.attachmentId)"
+            />
           </a-form-item>
 
           <a-divider style="margin: 8px 0;" />
@@ -109,6 +123,9 @@
           <a-form-item label="结束时间" name="endTime" :rules="[{ required: true, message: '请选择结束时间' }]">
             <a-time-picker v-model:value="overtimeForm.endTime" format="HH:mm" style="width: 100%" />
           </a-form-item>
+          <a-form-item label="加班时长">
+            <span style="color: #555;">{{ overtimeDuration ?? '请先选择开始和结束时间' }}</span>
+          </a-form-item>
           <a-form-item label="加班类型" name="overtimeType">
             <a-select v-model:value="overtimeForm.overtimeType" placeholder="请选择">
               <a-select-option value="周末加班">周末加班</a-select-option>
@@ -118,6 +135,16 @@
           </a-form-item>
           <a-form-item label="说明" name="reason">
             <a-textarea v-model:value="overtimeForm.reason" :rows="3" />
+          </a-form-item>
+          <a-form-item label="附件（可选）">
+            <customized-file-upload
+              ref="overtimeFileRef"
+              business-type="OVERTIME"
+              :max-count="3"
+              accept="image/*,.pdf"
+              hint="可上传相关证明，最多 3 个"
+              @change="files => overtimeForm.attachmentIds = files.map(f => f.attachmentId)"
+            />
           </a-form-item>
           <a-form-item>
             <a-button type="primary" html-type="submit" :loading="submittingOvertime" data-catch="attendance-overtime-submit">
@@ -406,7 +433,7 @@ interface FormRecord {
 const userStore = useUserStore()
 const isPmOrCeo = computed(() => {
   const role = userStore.userInfo?.role ?? ''
-  return role === 'project_manager' || role === 'ceo'
+  return role === 'project_manager' || role === 'ceo' || role === 'department_manager'
 })
 
 const activeTab = ref('records')
@@ -418,37 +445,77 @@ const submittingSelfReport = ref(false)
 const submittingNotification = ref(false)
 
 const leaveForm = ref<{
-  leaveType: string | null
-  startDate: Dayjs | null
-  endDate: Dayjs | null
+  leaveType: string | undefined
+  startDate: Dayjs | undefined
+  endDate: Dayjs | undefined
   reason: string
   enableDelegation: boolean
   delegatePhone: string
-  delegateScope: string | null
-}>({ leaveType: null, startDate: null, endDate: null, reason: '',
-     enableDelegation: false, delegatePhone: '', delegateScope: null })
+  delegateScope: string | undefined
+  retroactive: boolean
+  attachmentIds: number[]
+}>({ leaveType: undefined, startDate: undefined, endDate: undefined, reason: '',
+     enableDelegation: false, delegatePhone: '', delegateScope: undefined,
+     retroactive: false, attachmentIds: [] })
+
+const leaveFileRef = ref<{ clear: () => void } | null>(null)
+const leaveTypes = ref<Array<{ code: string; name: string }>>([])
+
+async function loadLeaveTypes() {
+  try {
+    const data = await request<Array<{ code: string; name: string }>>({ url: '/config/leave-types' })
+    leaveTypes.value = data ?? []
+  } catch {
+    leaveTypes.value = []
+  }
+}
+
+const leaveDuration = computed(() => {
+  const s = leaveForm.value.startDate
+  const e = leaveForm.value.endDate
+  if (s && e && e.diff(s, 'day') >= 0) {
+    return `${e.diff(s, 'day') + 1} 天`
+  }
+  return null
+})
 
 const overtimeForm = ref<{
-  date: Dayjs | null
-  startTime: Dayjs | null
-  endTime: Dayjs | null
-  overtimeType: string | null
+  date: Dayjs | undefined
+  startTime: Dayjs | undefined
+  endTime: Dayjs | undefined
+  overtimeType: string | undefined
   reason: string
-}>({ date: null, startTime: null, endTime: null, overtimeType: null, reason: '' })
+  attachmentIds: number[]
+}>({ date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '', attachmentIds: [] })
+
+const overtimeFileRef = ref<{ clear: () => void } | null>(null)
+const overtimeDuration = computed(() => {
+  const s = overtimeForm.value.startTime
+  const e = overtimeForm.value.endTime
+  if (s && e) {
+    const mins = e.diff(s, 'minute')
+    if (mins > 0) {
+      const h = Math.floor(mins / 60)
+      const m = mins % 60
+      return m > 0 ? `${h} 小时 ${m} 分钟` : `${h} 小时`
+    }
+  }
+  return null
+})
 
 const selfReportForm = ref<{
-  date: Dayjs | null
-  startTime: Dayjs | null
-  endTime: Dayjs | null
-  overtimeType: string | null
+  date: Dayjs | undefined
+  startTime: Dayjs | undefined
+  endTime: Dayjs | undefined
+  overtimeType: string | undefined
   reason: string
-}>({ date: null, startTime: null, endTime: null, overtimeType: null, reason: '' })
+}>({ date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '' })
 
 const notifyForm = ref<{
-  overtimeDate: Dayjs | null
-  overtimeType: string | null
+  overtimeDate: Dayjs | undefined
+  overtimeType: string | undefined
   content: string
-}>({ overtimeDate: null, overtimeType: null, content: '' })
+}>({ overtimeDate: undefined, overtimeType: undefined, content: '' })
 
 const recordColumns = [
   { title: '日期', key: 'submitTime', width: 100 },
@@ -510,7 +577,7 @@ function notifStatusLabel(s: string) {
   return map[s] ?? s
 }
 
-function onTabChange(key: string) {
+function onTabChange(key: string | number) {
   if (key === 'notifications') loadNotifications()
   if (key === 'notify-initiated') loadInitiatedNotifs()
 }
@@ -636,19 +703,25 @@ function resubmitRecord(record: FormRecord) {
   const data = record.formData ?? {}
   if (record.formType === 'LEAVE') {
     leaveForm.value = {
-      leaveType: (data.leaveType as string) ?? null,
-      startDate: data.startDate ? dayjs(data.startDate as string) : null,
-      endDate: data.endDate ? dayjs(data.endDate as string) : null,
-      reason: record.remark ?? ''
+      leaveType: (data.leaveType as string) ?? undefined,
+      startDate: data.startDate ? dayjs(data.startDate as string) : undefined,
+      endDate: data.endDate ? dayjs(data.endDate as string) : undefined,
+      reason: record.remark ?? '',
+      enableDelegation: false,
+      delegatePhone: '',
+      delegateScope: undefined,
+      retroactive: false,
+      attachmentIds: []
     }
     activeTab.value = 'leave'
   } else if (record.formType === 'OVERTIME') {
     overtimeForm.value = {
-      date: data.date ? dayjs(data.date as string) : null,
-      startTime: data.startTime ? dayjs(data.startTime as string, 'HH:mm') : null,
-      endTime: data.endTime ? dayjs(data.endTime as string, 'HH:mm') : null,
-      overtimeType: (data.overtimeType as string) ?? null,
-      reason: record.remark ?? ''
+      date: data.date ? dayjs(data.date as string) : undefined,
+      startTime: data.startTime ? dayjs(data.startTime as string, 'HH:mm') : undefined,
+      endTime: data.endTime ? dayjs(data.endTime as string, 'HH:mm') : undefined,
+      overtimeType: (data.overtimeType as string) ?? undefined,
+      reason: record.remark ?? '',
+      attachmentIds: []
     }
     activeTab.value = 'overtime'
   }
@@ -684,7 +757,9 @@ async function submitLeave() {
             const e = leaveForm.value.endDate
             if (s && e) return e.diff(s, 'day') + 1
             return 1
-          })()
+          })(),
+          retroactive: leaveForm.value.retroactive,
+          attachmentIds: leaveForm.value.attachmentIds
         },
         remark: leaveForm.value.reason
       }
@@ -706,8 +781,10 @@ async function submitLeave() {
         alert('请假已提交，但临时委托创建失败，请到委托管理手动创建')
       }
     }
-    leaveForm.value = { leaveType: null, startDate: null, endDate: null, reason: '',
-                        enableDelegation: false, delegatePhone: '', delegateScope: null }
+    leaveFileRef.value?.clear()
+    leaveForm.value = { leaveType: undefined, startDate: undefined, endDate: undefined, reason: '',
+                        enableDelegation: false, delegatePhone: '', delegateScope: undefined,
+                        retroactive: false, attachmentIds: [] }
     activeTab.value = 'records'
     await loadRecords()
   } catch (e: unknown) {
@@ -730,12 +807,14 @@ async function submitOvertime() {
           date: overtimeForm.value.date?.format('YYYY-MM-DD'),
           startTime: overtimeForm.value.startTime?.format('HH:mm'),
           endTime: overtimeForm.value.endTime?.format('HH:mm'),
-          overtimeType: overtimeForm.value.overtimeType
+          overtimeType: overtimeForm.value.overtimeType,
+          attachmentIds: overtimeForm.value.attachmentIds
         },
         remark: overtimeForm.value.reason
       }
     })
-    overtimeForm.value = { date: null, startTime: null, endTime: null, overtimeType: null, reason: '' }
+    overtimeFileRef.value?.clear()
+    overtimeForm.value = { date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '', attachmentIds: [] }
     activeTab.value = 'records'
     await loadRecords()
   } catch (e: unknown) {
@@ -763,7 +842,7 @@ async function submitSelfReport() {
         remark: selfReportForm.value.reason
       }
     })
-    selfReportForm.value = { date: null, startTime: null, endTime: null, overtimeType: null, reason: '' }
+    selfReportForm.value = { date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '' }
     activeTab.value = 'records'
     await loadRecords()
   } catch (e: unknown) {
@@ -786,7 +865,7 @@ async function submitNotification() {
         content: notifyForm.value.content
       }
     })
-    notifyForm.value = { overtimeDate: null, overtimeType: null, content: '' }
+    notifyForm.value = { overtimeDate: undefined, overtimeType: undefined, content: '' }
     activeTab.value = 'notify-initiated'
     await loadInitiatedNotifs()
   } catch (e: unknown) {
@@ -797,7 +876,10 @@ async function submitNotification() {
   }
 }
 
-onMounted(loadRecords)
+onMounted(() => {
+  loadRecords()
+  loadLeaveTypes()
+})
 
 </script>
 

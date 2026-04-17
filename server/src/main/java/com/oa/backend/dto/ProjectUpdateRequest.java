@@ -10,5 +10,9 @@ public record ProjectUpdateRequest(
     LocalDate startDate,
     LocalDate actualEndDate,
     Integer logCycleDays,
-    Integer logReportCycleDays
+    Integer logReportCycleDays,
+    String contractNo,
+    Long contractAttachmentId,
+    String clientName,
+    String projectDescription
 ) {}

@@ -120,6 +120,83 @@
           </div>
         </a-spin>
       </a-card>
+
+      <!-- Section 4: Company Name -->
+      <a-card title="企业信息" class="config-card">
+        <a-spin :spinning="companyNameLoading">
+          <div class="form-row">
+            <span class="form-label">企业名称：</span>
+            <template v-if="isCEO">
+              <a-input v-model:value="companyName" style="width: 240px" placeholder="请输入企业名称" data-catch="config-company-name-input" />
+            </template>
+            <template v-else>
+              <span class="readonly-value">{{ companyName || '—' }}</span>
+            </template>
+          </div>
+          <div v-if="isCEO" class="form-actions">
+            <a-button type="primary" :loading="savingCompanyName" data-catch="config-company-name-save-btn" @click="saveCompanyName">
+              保存
+            </a-button>
+          </div>
+        </a-spin>
+      </a-card>
+
+      <!-- Section 5: Payroll Cycle -->
+      <a-card title="薪资周期配置" class="config-card">
+        <a-spin :spinning="payrollCycleLoading">
+          <div class="form-row">
+            <span class="form-label">发薪日：</span>
+            <template v-if="isCEO">
+              <a-input-number v-model:value="payrollPayday" :min="1" :max="28" style="width: 120px" data-catch="config-payday-input" />
+              <span style="margin-left:8px;color:#888;">日（每月，建议 15 日）</span>
+            </template>
+            <template v-else>
+              <span class="readonly-value">每月 {{ payrollPayday }} 日</span>
+            </template>
+          </div>
+          <div class="form-row" style="margin-top:12px;">
+            <span class="form-label">结算截止日：</span>
+            <template v-if="isCEO">
+              <a-input-number v-model:value="settlementCutoff" :min="1" :max="15" style="width: 120px" />
+              <span style="margin-left:8px;color:#888;">天前（发薪日前 N 天）</span>
+            </template>
+            <template v-else>
+              <span class="readonly-value">发薪日前 {{ settlementCutoff }} 天</span>
+            </template>
+          </div>
+          <div v-if="isCEO" class="form-actions">
+            <a-button type="primary" :loading="savingPayrollCycle" data-catch="config-payroll-cycle-save-btn" @click="savePayrollCycle">
+              保存
+            </a-button>
+          </div>
+        </a-spin>
+      </a-card>
+
+      <!-- Section 6: Retention Period -->
+      <a-card title="数据保留期" class="config-card">
+        <a-spin :spinning="retentionLoading">
+          <div class="form-row">
+            <span class="form-label">全局保留期：</span>
+            <template v-if="isCEO">
+              <a-select v-model:value="retentionDays" style="width: 160px" data-catch="config-retention-select">
+                <a-select-option :value="365">1 年（365 天）</a-select-option>
+                <a-select-option :value="730">2 年（730 天）</a-select-option>
+                <a-select-option :value="1095">3 年（1095 天，默认）</a-select-option>
+                <a-select-option :value="1825">5 年（1825 天）</a-select-option>
+              </a-select>
+            </template>
+            <template v-else>
+              <span class="readonly-value">{{ retentionDays }} 天</span>
+            </template>
+          </div>
+          <div class="form-hint">超过保留期的历史数据将在下次自动清理任务时删除，或可在数据保留页手动清理。</div>
+          <div v-if="isCEO" class="form-actions">
+            <a-button type="primary" :loading="savingRetention" data-catch="config-retention-save-btn" @click="saveRetentionPeriod">
+              保存
+            </a-button>
+          </div>
+        </a-spin>
+      </a-card>
     </div>
   </div>
 </template>
@@ -208,7 +285,8 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
   LEAVE: '请假',
   OVERTIME: '加班',
   LOG: '施工日志',
-  INJURY: '工伤'
+  INJURY: '工伤',
+  EXPENSE: '报销申请'
 }
 
 const flowColumns = [
@@ -321,11 +399,109 @@ async function saveBonusApprovalConfig() {
   }
 }
 
+// Company Name Config
+const companyNameLoading = ref(false)
+const savingCompanyName = ref(false)
+const companyName = ref<string>('')
+
+async function loadCompanyName() {
+  companyNameLoading.value = true
+  try {
+    const data = await request<{ companyName: string | null }>({ url: '/config/company-name' })
+    companyName.value = data.companyName ?? ''
+  } catch {
+    // ignore
+  } finally {
+    companyNameLoading.value = false
+  }
+}
+
+async function saveCompanyName() {
+  if (!isCEO.value) return
+  savingCompanyName.value = true
+  try {
+    await request({ url: '/config/company-name', method: 'PUT', body: { companyName: companyName.value } })
+    message.success('企业名称已保存')
+    // Update shared state so sidebar logo reflects the change immediately
+    const sharedCompanyName = useState<string | null>('company-name')
+    sharedCompanyName.value = companyName.value || null
+  } catch {
+    message.error('保存失败')
+  } finally {
+    savingCompanyName.value = false
+  }
+}
+
+// Payroll Cycle Config
+const payrollCycleLoading = ref(false)
+const savingPayrollCycle = ref(false)
+const payrollPayday = ref<number>(15)
+const settlementCutoff = ref<number>(5)
+
+async function loadPayrollCycle() {
+  payrollCycleLoading.value = true
+  try {
+    const data = await request<{ payday: number; settlementCutoff: number }>({ url: '/config/payroll-cycle' })
+    payrollPayday.value = data.payday ?? 15
+    settlementCutoff.value = data.settlementCutoff ?? 5
+  } catch {
+    // keep defaults
+  } finally {
+    payrollCycleLoading.value = false
+  }
+}
+
+async function savePayrollCycle() {
+  if (!isCEO.value) return
+  savingPayrollCycle.value = true
+  try {
+    await request({ url: '/config/payroll-cycle', method: 'PUT', body: { payday: payrollPayday.value, settlementCutoff: settlementCutoff.value } })
+    message.success('薪资周期已保存')
+  } catch {
+    message.error('保存失败')
+  } finally {
+    savingPayrollCycle.value = false
+  }
+}
+
+// Data Retention Config
+const retentionLoading = ref(false)
+const savingRetention = ref(false)
+const retentionDays = ref<number>(1095)
+
+async function loadRetentionPeriod() {
+  retentionLoading.value = true
+  try {
+    const data = await request<{ days: number }>({ url: '/config/retention-period' })
+    retentionDays.value = data.days ?? 1095
+  } catch {
+    // keep default
+  } finally {
+    retentionLoading.value = false
+  }
+}
+
+async function saveRetentionPeriod() {
+  if (!isCEO.value) return
+  savingRetention.value = true
+  try {
+    await request({ url: '/config/retention-period', method: 'PUT', body: { days: retentionDays.value } })
+    message.success('保留期已更新')
+  } catch {
+    message.error('保存失败')
+  } finally {
+    savingRetention.value = false
+  }
+}
+
 // Load data on mount
 onMounted(() => {
   loadAttendanceConfig()
   loadApprovalFlows()
   loadBonusApprovalConfig()
+  loadCompanyName()
+  loadPayrollCycle()
+  loadRetentionPeriod()
 })
 </script>
 

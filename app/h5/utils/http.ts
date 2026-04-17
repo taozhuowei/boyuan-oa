@@ -5,7 +5,7 @@ const API_BASE = '/api'
 
 export interface RequestOptions {
   url: string
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH'
   body?: unknown
   skipAuthRedirect?: boolean
 }
@@ -20,7 +20,7 @@ export async function request<T>(options: RequestOptions): Promise<T> {
   try {
     return await $fetch<T>(API_BASE + options.url, {
       method: options.method ?? 'GET',
-      body: options.body,
+      body: options.body as Record<string, unknown> | undefined,
       headers
     })
   } catch (err: unknown) {

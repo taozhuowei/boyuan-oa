@@ -261,7 +261,7 @@
       :confirm-loading="creatingCycle"
       @ok="doCreateCycle"
       @cancel="createCycleForm.period = ''"
-      :okButtonProps="{ 'data-catch': 'payroll-cycle-create-ok' }"
+      :okButtonProps="({ 'data-catch': 'payroll-cycle-create-ok' } as any)"
     >
       <a-form layout="vertical">
         <a-form-item label="周期（格式：YYYY-MM）">
@@ -277,7 +277,7 @@
       :confirm-loading="confirmingSlip"
       @ok="submitPinConfirm"
       @cancel="closePinModal"
-      :okButtonProps="{ 'data-catch': 'payroll-sign-confirm-btn' }"
+      :okButtonProps="({ 'data-catch': 'payroll-sign-confirm-btn' } as any)"
     >
       <a-form layout="vertical">
         <a-form-item
@@ -289,7 +289,7 @@
             v-model:value="pinInput"
             type="password"
             placeholder="请输入您的 PIN 码"
-            maxlength="6"
+            :maxlength="6"
             @press-enter="submitPinConfirm"
           />
         </a-form-item>
@@ -307,7 +307,7 @@
       :footer="null"
     >
       <a-result status="warning" title="您尚未绑定签名">
-        <template #subtitle>
+        <template #subTitle>
           <p>确认工资条需要先绑定手写签名并设置 PIN 码</p>
         </template>
         <template #extra>
@@ -409,7 +409,7 @@
       title="发起薪资更正"
       :confirm-loading="submittingCorrection"
       width="640px"
-      :okButtonProps="{ 'data-catch': 'correction-submit-btn' }"
+      :okButtonProps="({ 'data-catch': 'correction-submit-btn' } as any)"
       @ok="submitCorrection"
       @cancel="showCorrectionModal = false"
     >
@@ -560,7 +560,7 @@ const creatingCycle = ref(false)
 const createCycleForm = ref({ period: '' })
 
 // 结算操作
-const selectedCycleId = ref<number | null>(null)
+const selectedCycleId = ref<number | undefined>(undefined)
 const precheckLoading = ref(false)
 const settleLoading = ref(false)
 const precheckResult = ref<PrecheckItem[] | null>(null)
@@ -571,7 +571,7 @@ const precheckPassed = computed(() =>
 // 工资条
 const slips = ref<PayrollSlip[]>([])
 const loadingSlips = ref(false)
-const selectedCycleIdForSlips = ref<number | null>(null)
+const selectedCycleIdForSlips = ref<number | undefined>(undefined)
 
 // 工资条详情
 const showSlipDetail = ref(false)
@@ -622,7 +622,7 @@ interface PayrollBonus {
 interface EmployeeOption { id: number; name: string; employeeNo: string }
 
 const isFinance = computed(() => role.value === 'finance')
-const selectedBonusCycleId = ref<number | null>(null)
+const selectedBonusCycleId = ref<number | undefined>(undefined)
 const bonuses = ref<PayrollBonus[]>([])
 const loadingBonuses = ref(false)
 const bonusApprovalRequired = ref(false)
@@ -632,8 +632,8 @@ const employeeOptions = computed(() => employeesForBonus.value.map(e => ({
 })))
 const showBonusModal = ref(false)
 const creatingBonus = ref(false)
-const bonusForm = ref<{ employeeId: number | null; name: string; amount: number | null; type: 'EARNING' | 'DEDUCTION'; remark: string }>({
-  employeeId: null, name: '', amount: null, type: 'EARNING', remark: ''
+const bonusForm = ref<{ employeeId: number | undefined; name: string; amount: number | undefined; type: 'EARNING' | 'DEDUCTION'; remark: string }>({
+  employeeId: undefined, name: '', amount: undefined, type: 'EARNING', remark: ''
 })
 
 const bonusColumns = [
@@ -671,7 +671,7 @@ interface CorrectionRow {
   itemDefId: number
   name: string
   originalAmount: string | number
-  newAmount: number | null
+  newAmount: number | undefined
   remark: string
 }
 
@@ -681,7 +681,7 @@ const showCorrectionModal = ref(false)
 const submittingCorrection = ref(false)
 const correctionRows = ref<CorrectionRow[]>([])
 const correctionReason = ref('')
-const correctionTargetSlipId = ref<number | null>(null)
+const correctionTargetSlipId = ref<number | undefined>(undefined)
 
 const correctionColumns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 70 },
@@ -773,7 +773,7 @@ async function loadBonuses() {
 }
 
 function openBonusModal() {
-  bonusForm.value = { employeeId: null, name: '', amount: null, type: 'EARNING', remark: '' }
+  bonusForm.value = { employeeId: undefined, name: '', amount: undefined, type: 'EARNING', remark: '' }
   showBonusModal.value = true
 }
 
@@ -831,7 +831,7 @@ function openCorrectionModal() {
     itemDefId: it.itemDefId,
     name: it.name,
     originalAmount: formatAmount(it.amount),
-    newAmount: null,
+    newAmount: undefined,
     remark: ''
   }))
   showCorrectionModal.value = true
@@ -948,7 +948,7 @@ async function doSettle() {
     await request({ url: `/payroll/cycles/${selectedCycleId.value}/settle`, method: 'POST' })
     message.success('结算完成')
     precheckResult.value = null
-    selectedCycleId.value = null
+    selectedCycleId.value = undefined
     await loadCycles()
     activeTab.value = 'cycles'
   } catch (e: unknown) {

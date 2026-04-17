@@ -31,7 +31,7 @@
           </template>
           <template v-if="column.key === 'action'">
             <template v-if="isCEO && !record.isSystem">
-              <a-button type="link" size="small" :data-catch="'role-row-edit-btn-' + record.roleCode" @click="openEditModal(record)">
+              <a-button type="link" size="small" :data-catch="'role-row-edit-btn-' + record.roleCode" @click="openEditModal(record as Role)">
                 编辑
               </a-button>
               <a-popconfirm
@@ -201,10 +201,11 @@ const columns = [
   { title: '操作', key: 'action', width: 120 }
 ]
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const rules = {
   roleCode: [{ required: true, message: '角色编码不能为空', trigger: 'blur' }],
   roleName: [{ required: true, message: '角色名称不能为空', trigger: 'blur' }]
-}
+} as any
 
 async function loadRoles() {
   loading.value = true

@@ -28,7 +28,7 @@ dayjs.locale('zh-cn')
 const antdLocale = zhCN
 
 // 企业名：从 /api/setup/status 获取；未设置时回退到「博渊」
-const companyName = ref<string | null>(null)
+const companyName = useState<string | null>('company-name', () => null)
 const appTitle = computed(() =>
   companyName.value ? `${companyName.value}OA管理系统` : '博渊OA管理系统'
 )

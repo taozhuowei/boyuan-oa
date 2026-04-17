@@ -10,7 +10,7 @@
         :pagination="false"
         row-key="id"
         size="small"
-        :customRow="() => ({ 'data-catch': 'team-member-row' })"
+        :customRow="() => ({ 'data-catch': 'team-member-row' } as any)"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'roleCode'">

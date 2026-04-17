@@ -92,6 +92,10 @@ public class ProjectServiceImpl implements ProjectService {
         project.setStartDate(req.startDate() != null ? req.startDate() : LocalDate.now());
         project.setLogCycleDays(req.logCycleDays() != null ? req.logCycleDays() : 1);
         project.setLogReportCycleDays(1);
+        if (req.contractNo() != null) project.setContractNo(req.contractNo());
+        if (req.contractAttachmentId() != null) project.setContractAttachmentId(req.contractAttachmentId());
+        if (req.clientName() != null) project.setClientName(req.clientName());
+        if (req.projectDescription() != null) project.setProjectDescription(req.projectDescription());
 
         LocalDateTime now = LocalDateTime.now();
         project.setCreatedAt(now);
@@ -125,6 +129,10 @@ public class ProjectServiceImpl implements ProjectService {
         if (req.logReportCycleDays() != null) {
             project.setLogReportCycleDays(req.logReportCycleDays());
         }
+        if (req.contractNo() != null) project.setContractNo(req.contractNo());
+        if (req.contractAttachmentId() != null) project.setContractAttachmentId(req.contractAttachmentId());
+        if (req.clientName() != null) project.setClientName(req.clientName());
+        if (req.projectDescription() != null) project.setProjectDescription(req.projectDescription());
 
         project.setUpdatedAt(LocalDateTime.now());
         projectMapper.updateById(project);

@@ -124,6 +124,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setDailySubsidy(request.dailySubsidy());
         employee.setExpenseLimit(request.expenseLimit());
         employee.setPerformanceRatio(request.performanceRatio());
+        if (request.gender() != null) employee.setGender(request.gender());
+        if (request.idCardNo() != null) employee.setIdCardNo(request.idCardNo());
+        if (request.birthDate() != null) employee.setBirthDate(request.birthDate());
 
         LocalDateTime now = LocalDateTime.now();
         employee.setCreatedAt(now);
@@ -194,6 +197,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (request.performanceRatio() != null) {
             employee.setPerformanceRatio(request.performanceRatio());
         }
+        if (request.gender() != null) employee.setGender(request.gender());
+        if (request.idCardNo() != null) employee.setIdCardNo(request.idCardNo());
+        if (request.birthDate() != null) employee.setBirthDate(request.birthDate());
 
         employee.setUpdatedAt(LocalDateTime.now());
         employeeMapper.updateById(employee);

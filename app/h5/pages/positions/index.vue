@@ -30,11 +30,11 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'socialInsuranceMode'">
-            {{ record.socialInsuranceMode === 'COMPANY_PAID' ? '公司缴纳' : '合并缴纳' }}
+            {{ (record as Position).socialInsuranceMode === 'COMPANY_PAID' ? '公司缴纳' : '合并缴纳' }}
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button v-if="isCEO" type="link" size="small" :data-catch="'positions-row-edit-btn-' + record.id" @click.stop="openEditPositionModal(record)">
+              <a-button v-if="isCEO" type="link" size="small" :data-catch="'positions-row-edit-btn-' + record.id" @click.stop="openEditPositionModal(record as Position)">
                 编辑
               </a-button>
               <a-popconfirm
@@ -70,7 +70,7 @@
               <template #bodyCell="{ column, record: level }">
                 <template v-if="column.key === 'action' && isCEO">
                   <a-space>
-                    <a-button type="link" size="small" :data-catch="'positions-level-row-edit-btn-' + level.id" @click="openEditLevelModal(record.id, level)">
+                    <a-button type="link" size="small" :data-catch="'positions-level-row-edit-btn-' + level.id" @click="openEditLevelModal(record.id, level as Level)">
                       编辑
                     </a-button>
                     <a-popconfirm
@@ -286,28 +286,28 @@ interface Position {
 }
 
 interface PositionForm {
-  id: number | null
+  id: number | undefined
   positionName: string
   employeeCategory: 'OFFICE' | 'LABOR'
   defaultRoleCode: string
-  baseSalary: number | null
-  positionSalary: number | null
-  defaultPerformanceBonus: number | null
-  socialInsuranceMode: 'COMPANY_PAID' | 'MERGED' | null
-  annualLeave: number | null
+  baseSalary: number | undefined
+  positionSalary: number | undefined
+  defaultPerformanceBonus: number | undefined
+  socialInsuranceMode: 'COMPANY_PAID' | 'MERGED' | undefined
+  annualLeave: number | undefined
   requiresConstructionLog: boolean
   hasPerformanceBonus: boolean
 }
 
 interface LevelForm {
-  id: number | null
-  positionId: number | null
+  id: number | undefined
+  positionId: number | undefined
   levelName: string
-  levelOrder: number | null
-  baseSalaryOverride: number | null
-  positionSalaryOverride: number | null
-  performanceBonusOverride: number | null
-  annualLeaveOverride: number | null
+  levelOrder: number | undefined
+  baseSalaryOverride: number | undefined
+  positionSalaryOverride: number | undefined
+  performanceBonusOverride: number | undefined
+  annualLeaveOverride: number | undefined
 }
 
 function expandIcon(props: { expanded: boolean; onExpand: (expanded: boolean, record: any) => void; record: any }) {
@@ -367,15 +367,15 @@ const positionModalLoading = ref(false)
 const positionModalTitle = computed(() => positionForm.value.id ? '编辑岗位' : '新增岗位')
 
 const defaultPositionForm: PositionForm = {
-  id: null,
+  id: undefined,
   positionName: '',
   employeeCategory: 'OFFICE',
   defaultRoleCode: '',
-  baseSalary: null,
-  positionSalary: null,
-  defaultPerformanceBonus: null,
+  baseSalary: undefined,
+  positionSalary: undefined,
+  defaultPerformanceBonus: undefined,
   socialInsuranceMode: 'COMPANY_PAID',
-  annualLeave: null,
+  annualLeave: undefined,
   requiresConstructionLog: false,
   hasPerformanceBonus: false
 }
@@ -388,20 +388,20 @@ const levelModalLoading = ref(false)
 const levelModalTitle = computed(() => levelForm.value.id ? '编辑等级' : '新增等级')
 
 const defaultLevelForm: LevelForm = {
-  id: null,
-  positionId: null,
+  id: undefined,
+  positionId: undefined,
   levelName: '',
-  levelOrder: null,
-  baseSalaryOverride: null,
-  positionSalaryOverride: null,
-  performanceBonusOverride: null,
-  annualLeaveOverride: null
+  levelOrder: undefined,
+  baseSalaryOverride: undefined,
+  positionSalaryOverride: undefined,
+  performanceBonusOverride: undefined,
+  annualLeaveOverride: undefined
 }
 
 const levelForm = ref<LevelForm>({ ...defaultLevelForm })
 
 // Current position for level operations
-const currentPositionId = ref<number | null>(null)
+const currentPositionId = ref<number | undefined>(undefined)
 
 // Load positions
 async function loadPositions() {
@@ -432,11 +432,11 @@ function openEditPositionModal(record: Position) {
     positionName: record.positionName,
     employeeCategory: record.employeeCategory,
     defaultRoleCode: record.defaultRoleCode ?? '',
-    baseSalary: record.baseSalary,
-    positionSalary: record.positionSalary,
-    defaultPerformanceBonus: record.defaultPerformanceBonus,
-    socialInsuranceMode: record.socialInsuranceMode,
-    annualLeave: record.annualLeave,
+    baseSalary: record.baseSalary ?? undefined,
+    positionSalary: record.positionSalary ?? undefined,
+    defaultPerformanceBonus: record.defaultPerformanceBonus ?? undefined,
+    socialInsuranceMode: record.socialInsuranceMode ?? undefined,
+    annualLeave: record.annualLeave ?? undefined,
     requiresConstructionLog: record.requiresConstructionLog,
     hasPerformanceBonus: record.hasPerformanceBonus
   }
@@ -524,10 +524,10 @@ function openEditLevelModal(positionId: number, level: Level) {
     positionId,
     levelName: level.levelName,
     levelOrder: level.levelOrder,
-    baseSalaryOverride: level.baseSalaryOverride,
-    positionSalaryOverride: level.positionSalaryOverride,
-    performanceBonusOverride: level.performanceBonusOverride,
-    annualLeaveOverride: level.annualLeaveOverride
+    baseSalaryOverride: level.baseSalaryOverride ?? undefined,
+    positionSalaryOverride: level.positionSalaryOverride ?? undefined,
+    performanceBonusOverride: level.performanceBonusOverride ?? undefined,
+    annualLeaveOverride: level.annualLeaveOverride ?? undefined
   }
   levelModalOpen.value = true
 }
@@ -535,7 +535,7 @@ function openEditLevelModal(positionId: number, level: Level) {
 function closeLevelModal() {
   levelModalOpen.value = false
   levelForm.value = { ...defaultLevelForm }
-  currentPositionId.value = null
+  currentPositionId.value = undefined
 }
 
 async function submitLevel() {

@@ -39,7 +39,7 @@
       :confirm-loading="submitting"
       @cancel="resetForm"
       ok-text="提交"
-      :okButtonProps="{ 'data-catch': 'form-log-submit' }"
+      :okButtonProps="({ 'data-catch': 'form-log-submit' } as any)"
     >
       <a-form :model="form" layout="vertical">
         <a-form-item label="日志日期" required>
@@ -159,7 +159,7 @@ const showTemplateModal = ref(false)
 const fileUploadRef = ref<{ clear: () => void } | null>(null)
 
 const form = ref({
-  logDate: null as Dayjs | null,
+  logDate: undefined as Dayjs | undefined,
   workItems: [] as WorkItem[],
   remark: '',
   attachmentIds: [] as number[]
@@ -249,7 +249,7 @@ async function doSubmit() {
 }
 
 function resetForm() {
-  form.value = { logDate: null, workItems: [], remark: '', attachmentIds: [] }
+  form.value = { logDate: undefined, workItems: [], remark: '', attachmentIds: [] }
   fileUploadRef.value?.clear()
 }
 

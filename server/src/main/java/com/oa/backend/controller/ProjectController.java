@@ -86,6 +86,10 @@ public class ProjectController {
             project.getActualEndDate(),
             project.getLogCycleDays(),
             project.getLogReportCycleDays(),
+            project.getContractNo(),
+            project.getContractAttachmentId(),
+            project.getClientName(),
+            project.getProjectDescription(),
             project.getCreatedAt(),
             project.getUpdatedAt(),
             members.size(),
@@ -351,6 +355,9 @@ public class ProjectController {
         if (request.logCycleDays() != null) {
             project.setLogCycleDays(request.logCycleDays());
         }
+        if (request.contractNo() != null) project.setContractNo(request.contractNo());
+        if (request.clientName() != null) project.setClientName(request.clientName());
+        if (request.projectDescription() != null) project.setProjectDescription(request.projectDescription());
         project.setUpdatedAt(LocalDateTime.now());
         projectService.updateById(project);
         return ResponseEntity.ok(buildProjectResponse(project, false));
@@ -443,7 +450,8 @@ public class ProjectController {
     public record ProgressRequest(Long milestoneId, String note, LocalDateTime completedAt) {}
 
     /** 项目配置修改请求 */
-    public record ProjectConfigRequest(Integer logCycleDays, Integer logReportCycleDays) {}
+    public record ProjectConfigRequest(Integer logCycleDays, Integer logReportCycleDays,
+                                       String contractNo, String clientName, String projectDescription) {}
 
     /** 汇总报告请求 */
     public record SummaryRequest(LocalDate periodStart, LocalDate periodEnd, String pmNote) {}

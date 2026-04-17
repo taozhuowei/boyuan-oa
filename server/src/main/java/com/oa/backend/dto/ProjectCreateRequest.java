@@ -8,5 +8,9 @@ import java.time.LocalDate;
 public record ProjectCreateRequest(
     String name,          // required
     LocalDate startDate,  // optional
-    Integer logCycleDays  // default 1
+    Integer logCycleDays, // default 1
+    String contractNo,         // optional
+    Long contractAttachmentId, // optional
+    String clientName,         // optional
+    String projectDescription  // optional
 ) {}

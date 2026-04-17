@@ -32,7 +32,7 @@
         :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
         row-key="id"
         size="small"
-        :customRow="() => ({ 'data-catch': 'todo-item' })"
+        :customRow="() => ({ 'data-catch': 'todo-item' } as any)"
       >
         <template #emptyText>
           <a-empty data-catch="todo-empty" description="暂无数据" />
@@ -42,10 +42,10 @@
             {{ formatTime(record.submitTime) }}
           </template>
           <template v-if="column.key === 'summary'">
-            {{ getSummary(record) }}
+            {{ getSummary(record as FormRecord) }}
           </template>
           <template v-if="column.key === 'action'">
-            <a-button type="link" size="small" :data-catch="'todo-row-detail-btn-' + record.id" @click="viewApproval(record)">查看审批</a-button>
+            <a-button type="link" size="small" :data-catch="'todo-row-detail-btn-' + record.id" @click="viewApproval(record as FormRecord)">查看审批</a-button>
           </template>
         </template>
       </a-table>
@@ -135,8 +135,8 @@ function getSummary(record: FormRecord): string {
   return formatFormSummary(record.formType, record.formData) || record.formTypeName
 }
 
-function onTabChange(key: string) {
-  activeTab.value = key
+function onTabChange(key: string | number) {
+  activeTab.value = String(key)
 }
 
 async function viewApproval(record: FormRecord) {
