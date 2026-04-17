@@ -107,7 +107,7 @@
   4. `EXPLAIN` 关键查询（如 `SELECT * FROM form_record WHERE submitter_id = ?`）确认命中索引
 - **验收点**：V14 迁移在两种数据库均成功；`EXPLAIN` 显示 Index Scan（PG）或 INDEX 关键字（H2）
 - **验收流程**：启动后端，查看 Flyway 日志确认 V14 applied；执行 `EXPLAIN` 语句
-- **状态**：`[ ]`
+- **状态**：`[~]`
 
 ---
 
