@@ -31,6 +31,13 @@
 > **目标**：消除上线前安全漏洞、性能隐患、架构腐化、命名不规范、遗留临时文件。
 > **优先级**：A-SEC（安全）> A-DB（性能）> A-CODE（架构）> A-CLEAN（清理）> A-OPS（运维配置）。
 > **完成标准**：所有子任务 `[x]`，`git ls-files` 无临时脚本，`app/h5/pages/` 无 kebab-case 目录，`app/` 下无 `*.test.ts`，后端每个 Controller 方法均有权限注解或 Service 层隔离。
+>
+> **Phase A 验收方案（代替人工 code review）**
+> 用户不做 code review，改用三层自动化验收，全部通过后任务方可推进到 `[x]`：
+> 1. **Agent Code Review** — 每批改动由独立 Code Reviewer agent 审查，PASS 才继续
+> 2. **黑盒 API 测试** — 启动后端服务，Claude 亲自 curl 关键接口（含权限越权场景），验证实际响应
+> 3. **自动化测试** — `mvn test`（392 个后端单测）+ `yarn workspace oa-h5 test`（21 个前端单测）全通过
+> Phase C 的完整 e2e 覆盖留在 Phase C 统一完成，不作为 Phase A `[x]` 的前置条件。
 
 ---
 
