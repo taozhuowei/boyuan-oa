@@ -259,7 +259,18 @@
   5. 对必须拆分的文件制定拆分计划，若本阶段无法完成则记录为 Phase B 技术债
 - **验收点**：无单文件同时承担 3 个以上独立业务职责；拆分计划或技术债记录存在
 - **验收流程**：审查报告写入本任务注释；代码 review 确认职责边界清晰
-- **状态**：`[ ]`
+- **审查结果（2026-04-17）**：
+  - Vue 文件超过 400 行的共 12 个。**职责最严重越界**（3+ 独立业务）：
+    - `pages/projects/[id].vue`（1431 行）— 6 个 Tab：进度 / 成本 / 营收 / 施工日志 / 人员 / 售后。**必须拆**，建议按 Tab 拆 6 个 `pages/projects/tabs/*.vue` 子组件。
+    - `pages/payroll/index.vue`（1246 行）— 薪资周期管理 / 结算操作 / 工资条查看。建议拆为 `pages/payroll/cycles.vue`、`pages/payroll/settle.vue`、`pages/payroll/slips.vue`（已有 `slips.vue`，复用）。
+    - `pages/attendance/index.vue`（914 行）— 请假 / 加班 / 我的记录 / 发起加班通知。建议拆 4 个 Tab 组件。
+    - `pages/config/index.vue`（567 行）— 企业信息 / 发薪日 / 数据保留 / 审批流 / 假期配置。建议拆为独立子页面或抽屉组件。
+  - **Java Controller 超过 200 行的共 8 个**。**需拆**：
+    - `AuthController.java`（530 行）— 登录 / 重置密码 / 手机号变更 三大流程。建议拆 `PasswordResetController`、`PhoneChangeController`，AuthController 仅保留 login/logout。
+    - `ProjectController.java`（458 行）— 项目 CRUD / 成员 / 里程碑 / 成本 / 营收 混合。建议按业务域拆分。
+  - **职责单一但行数偏大**（可保留或轻度重构）：`positions`（639）、`setup`（471，5 步向导，可拆子组件但不紧急）、`allowances`、`org`、`retention`、`notifications`、`signature_bind`。
+- **处置方式**：上述拆分**不在 Phase A 范围**。将拆分任务归入 Phase B 新增 **B-DEBT（技术债）** 子节（详见下方 Phase B 末尾）统一执行。
+- **状态**：`[x]`
 
 ---
 
@@ -701,6 +712,49 @@
 - `[?]` 施工日志模板 `/construction_log/templates` — 工作项模板 CRUD
 - `[?]` 通知中心 `/notifications` — 分类 Tab + 标记已读
 - `[?]` 数据保留 `/retention` — 保留期配置与清理预览
+
+---
+
+### B-DEBT — 架构技术债拆分（A-CLEAN-07 移入）
+
+> 前置条件：B-P0/P1/P2/P3/FEAT 全部完成后再执行，避免拆分期间与功能开发冲突。
+> 拆分原则：按业务职责分文件；拆分后每个子组件/子控制器单一职责；同步更新引用和单元测试。
+
+#### B-DEBT-01 projects/[id].vue 按 Tab 拆分
+- **范围**：`app/h5/pages/projects/[id].vue`（1431 行，6 个 Tab）
+- **拆分**：`pages/projects/tabs/progress.vue`、`tabs/cost.vue`、`tabs/revenue.vue`、`tabs/logs.vue`、`tabs/members.vue`、`tabs/aftersale.vue`；父页面保留 Tab 切换骨架
+- **验收**：每个子组件 ≤ 400 行；原页面所有交互可用
+- **状态**：`[ ]`
+
+#### B-DEBT-02 payroll/index.vue 拆分
+- **范围**：`app/h5/pages/payroll/index.vue`（1246 行）
+- **拆分**：周期管理 / 结算操作 / 工资条查看 三个独立页面或组件
+- **验收**：拆分后 finance 周期→结算→发放链路完整
+- **状态**：`[ ]`
+
+#### B-DEBT-03 attendance/index.vue 按 Tab 拆分
+- **范围**：`app/h5/pages/attendance/index.vue`（914 行）
+- **拆分**：请假 / 加班 / 我的记录 / 发起加班通知 四个 Tab 组件
+- **验收**：员工提交请假/加班流程完整
+- **状态**：`[ ]`
+
+#### B-DEBT-04 config/index.vue 按配置域拆分
+- **范围**：`app/h5/pages/config/index.vue`（567 行）
+- **拆分**：企业信息 / 发薪日 / 数据保留 / 审批流 / 假期配置各自独立抽屉或子页面
+- **验收**：CEO 配置页各项可修改保存
+- **状态**：`[ ]`
+
+#### B-DEBT-05 AuthController 按流程拆分
+- **范围**：`server/src/main/java/com/oa/backend/controller/AuthController.java`（530 行）
+- **拆分**：新建 `PasswordResetController`（密码重置三步）、`PhoneChangeController`（手机号变更三步）；AuthController 仅保留 `/login`、`/logout`、`/me`、`/change-password`
+- **验收**：所有接口路径不变（避免前端改动），行为不回退
+- **状态**：`[ ]`
+
+#### B-DEBT-06 ProjectController 按业务域拆分
+- **范围**：`server/src/main/java/com/oa/backend/controller/ProjectController.java`（458 行）
+- **拆分**：基础 CRUD（Project）/ 成员（Member）/ 里程碑（Milestone）/ 成本（Cost）/ 营收（Revenue）各自独立 Controller
+- **验收**：接口路径保持 `/projects/**` 不变（RESTful 分组），行为不回退
+- **状态**：`[ ]`
 
 ---
 
