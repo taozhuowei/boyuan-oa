@@ -319,13 +319,13 @@
 #### A-AUDIT-CODE — 代码架构类
 
 - `[x]` **A-AUDIT-CODE-01** 角色码 `gm` → `general_manager` 统一 — `SetupService.java:317,325` 两处字符串改为 `"general_manager"`，消除与 V7/V10/data.sql/前端守卫的命名冲突
-- `[ ]` **A-AUDIT-CODE-02** WorkbenchService demo 硬编码移除 — `WorkbenchService.java:62-88` 的 `buildUserProfile` switch 删除；改为通过 `EmployeeMapper` 查 `employee + department` 返回真实数据
+- `[x]` **A-AUDIT-CODE-02** WorkbenchService demo 硬编码移除 — `WorkbenchService.java:62-88` 的 `buildUserProfile` switch 删除；改为通过 `EmployeeMapper` 查 `employee + department` 返回真实数据
 - `[x]` **A-AUDIT-CODE-03** 20+ Controller `e.getMessage()` 清理 — 目标文件：PayrollController（7 处）、SignatureController（2）、SetupController（4）、ProjectRevenueController（2）、PayrollBonusController（2）、TemporaryDelegationController（2）、RoleController（1）。删除 Controller 层 `try/catch` + `ResponseEntity.status(.).body(Map.of("message", e.getMessage()))` 模式，改为抛 `BusinessException` 或让异常传播到 `GlobalExceptionHandler`
 - `[x]` **A-AUDIT-CODE-04** GlobalExceptionHandler 补全 6 种异常 — 添加 `DataIntegrityViolationException(409)` / `MethodArgumentTypeMismatchException(400)` / `HttpMessageNotReadableException(400)` / `MaxUploadSizeExceededException(413)` / `AuthenticationException(401)` / `NoHandlerFoundException(404)` 的 `@ExceptionHandler`
-- `[ ]` **A-AUDIT-CODE-05** @Scheduled 迁出 Controller — `AuthController.cleanupExpiredPhoneChangeEntries` 迁出到 `server/.../scheduler/PhoneChangeCleanupScheduler.java`；三个 Map 也一并转移，Controller 通过 Service 访问
-- `[ ]` **A-AUDIT-CODE-06** 前后端菜单双源统一 — 以 `default.vue:ROLE_MENUS` 为单一来源，`WorkbenchService.buildMenus` 返回值**完全对齐**；修正 3 处已知漂移：ceo 菜单补 `/leave_types`、worker 菜单前后端 `/attendance` 统一、`employee` 显式 case（不再走 default）；所有 Unicode 转义（`"\u5de5\u4f5c\u53f0"` 等）改为中文字面量
-- `[ ]` **A-AUDIT-CODE-07** WorkbenchSummary DTO 独立 — 新建 `dto/WorkbenchSummaryResponse.java`；删除 `WorkbenchService.WorkbenchSummary` 内部类；Controller 返回 `ResponseEntity<WorkbenchSummaryResponse>`（去 `ResponseEntity<?>`）
-- `[ ]` **A-AUDIT-CODE-08** A-CODE-02 验收范围回退 + B-DEBT-07 — TODO.md A-CODE-02 已加"范围限定声明"（已完成）；本任务负责在 Phase B 新增 **B-DEBT-07 Controller 层批量下沉 Service**，列出剩余 32 个 Controller 清单
+- `[x]` **A-AUDIT-CODE-05** @Scheduled 迁出 Controller — `AuthController.cleanupExpiredPhoneChangeEntries` 迁出到 `server/.../scheduler/PhoneChangeCleanupScheduler.java`；三个 Map 也一并转移，Controller 通过 Service 访问
+- `[x]` **A-AUDIT-CODE-06** 前后端菜单双源统一 — 以 `default.vue:ROLE_MENUS` 为单一来源，`WorkbenchService.buildMenus` 返回值**完全对齐**；修正 3 处已知漂移：ceo 菜单补 `/leave_types`、worker 菜单前后端 `/attendance` 统一、`employee` 显式 case（不再走 default）；所有 Unicode 转义（`"\u5de5\u4f5c\u53f0"` 等）改为中文字面量
+- `[x]` **A-AUDIT-CODE-07** WorkbenchSummary DTO 独立 — 新建 `dto/WorkbenchSummaryResponse.java`；删除 `WorkbenchService.WorkbenchSummary` 内部类；Controller 返回 `ResponseEntity<WorkbenchSummaryResponse>`（去 `ResponseEntity<?>`）
+- `[x]` **A-AUDIT-CODE-08** A-CODE-02 验收范围回退 + B-DEBT-07 — TODO.md A-CODE-02 已加"范围限定声明"（已完成）；本任务负责在 Phase B 新增 **B-DEBT-07 Controller 层批量下沉 Service**，列出剩余 32 个 Controller 清单
 
 #### A-AUDIT-FIX — Bug 修复
 
