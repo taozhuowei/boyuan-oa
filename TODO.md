@@ -338,7 +338,7 @@
 - `[ ]` **A-AUDIT-CLEAN-01** 登录页硬编码公司名 — `app/h5/pages/login.vue`（及 mp 对应页）从 `/api/setup/status` 读 `companyName`，消除硬编码"众维建筑工程有限公司"
 - `[ ]` **A-AUDIT-CLEAN-02** TypeScript `any` 批量清理 — 28 个 `.vue` 页面里 158 处 `any` + 41 处 `as any`。重点文件：`employees/index.vue`、`attendance/index.vue`、`payroll/index.vue`、`config/index.vue`、`projects/[id].vue`、`role/index.vue` 等。用 antd 官方类型（`TableProps`、`ButtonProps`、`FormItemProps` 等）替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释说明
 - `[ ]` **A-AUDIT-CLEAN-03** `slips.vue` 路径冲突清理 — `app/h5/pages/payroll/slips.vue` 当前是空转发页。删除该文件（Nuxt 不再生成 `/payroll/slips` 路由）；或若有用途，明示功能
-- `[ ]` **A-AUDIT-CLEAN-04** `app/shared` vitest 配置去重 — `app/mp/vitest.config.ts` 已 include `../../test/unit/shared/**`，`app/shared/vitest.config.ts` 同路径重复。确认无 CI 依赖后删除 shared 配置，或给它分配独立用途（如仅跑 node 环境的纯函数测试）
+- `[x]` **A-AUDIT-CLEAN-04** `app/shared` vitest 配置去重 — `app/mp/vitest.config.ts` 已 include `../../test/unit/shared/**`，`app/shared/vitest.config.ts` 同路径重复。确认无 CI 依赖后删除 shared 配置，或给它分配独立用途（如仅跑 node 环境的纯函数测试）
 
 #### A-AUDIT-OPS — 运维配置类
 
@@ -351,11 +351,11 @@
       include-stacktrace: never
       include-exception: false
   ```
-- `[ ]` **A-AUDIT-OPS-02** H2-console 移出默认配置 — 新建 `application-dev.yml` 保留 `spring.h2.console.enabled: true`；`application.yml` 删除此配置（或改为 `enabled: ${H2_CONSOLE_ENABLED:false}`）；避免 prod profile 未激活时误暴露
+- `[x]` **A-AUDIT-OPS-02** H2-console 移出默认配置 — 新建 `application-dev.yml` 保留 `spring.h2.console.enabled: true`；`application.yml` 删除此配置（或改为 `enabled: ${H2_CONSOLE_ENABLED:false}`）；避免 prod profile 未激活时误暴露
 
 #### A-AUDIT-DB — 数据种子类
 
-- `[ ]` **A-AUDIT-DB-01** `ops` 角色种子数据 — `db/data.sql` 的 `sys_role` `MERGE INTO` 表补 `(id=9, role_code='ops', role_name='运维', ...)`；`schema.sql` 无需改动。Flyway 侧：如 Phase B 后需要 prod 部署，建 `V15__add_ops_role.sql` 同步
+- `[x]` **A-AUDIT-DB-01** `ops` 角色种子数据 — `db/data.sql` 的 `sys_role` `MERGE INTO` 表补 `(id=9, role_code='ops', role_name='运维', ...)`；`schema.sql` 无需改动。Flyway 侧：如 Phase B 后需要 prod 部署，建 `V15__add_ops_role.sql` 同步
 
 ---
 
