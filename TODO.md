@@ -320,8 +320,8 @@
 
 - `[x]` **A-AUDIT-CODE-01** 角色码 `gm` → `general_manager` 统一 — `SetupService.java:317,325` 两处字符串改为 `"general_manager"`，消除与 V7/V10/data.sql/前端守卫的命名冲突
 - `[ ]` **A-AUDIT-CODE-02** WorkbenchService demo 硬编码移除 — `WorkbenchService.java:62-88` 的 `buildUserProfile` switch 删除；改为通过 `EmployeeMapper` 查 `employee + department` 返回真实数据
-- `[ ]` **A-AUDIT-CODE-03** 20+ Controller `e.getMessage()` 清理 — 目标文件：PayrollController（7 处）、SignatureController（2）、SetupController（4）、ProjectRevenueController（2）、PayrollBonusController（2）、TemporaryDelegationController（2）、RoleController（1）。删除 Controller 层 `try/catch` + `ResponseEntity.status(.).body(Map.of("message", e.getMessage()))` 模式，改为抛 `BusinessException` 或让异常传播到 `GlobalExceptionHandler`
-- `[ ]` **A-AUDIT-CODE-04** GlobalExceptionHandler 补全 6 种异常 — 添加 `DataIntegrityViolationException(409)` / `MethodArgumentTypeMismatchException(400)` / `HttpMessageNotReadableException(400)` / `MaxUploadSizeExceededException(413)` / `AuthenticationException(401)` / `NoHandlerFoundException(404)` 的 `@ExceptionHandler`
+- `[x]` **A-AUDIT-CODE-03** 20+ Controller `e.getMessage()` 清理 — 目标文件：PayrollController（7 处）、SignatureController（2）、SetupController（4）、ProjectRevenueController（2）、PayrollBonusController（2）、TemporaryDelegationController（2）、RoleController（1）。删除 Controller 层 `try/catch` + `ResponseEntity.status(.).body(Map.of("message", e.getMessage()))` 模式，改为抛 `BusinessException` 或让异常传播到 `GlobalExceptionHandler`
+- `[x]` **A-AUDIT-CODE-04** GlobalExceptionHandler 补全 6 种异常 — 添加 `DataIntegrityViolationException(409)` / `MethodArgumentTypeMismatchException(400)` / `HttpMessageNotReadableException(400)` / `MaxUploadSizeExceededException(413)` / `AuthenticationException(401)` / `NoHandlerFoundException(404)` 的 `@ExceptionHandler`
 - `[ ]` **A-AUDIT-CODE-05** @Scheduled 迁出 Controller — `AuthController.cleanupExpiredPhoneChangeEntries` 迁出到 `server/.../scheduler/PhoneChangeCleanupScheduler.java`；三个 Map 也一并转移，Controller 通过 Service 访问
 - `[ ]` **A-AUDIT-CODE-06** 前后端菜单双源统一 — 以 `default.vue:ROLE_MENUS` 为单一来源，`WorkbenchService.buildMenus` 返回值**完全对齐**；修正 3 处已知漂移：ceo 菜单补 `/leave_types`、worker 菜单前后端 `/attendance` 统一、`employee` 显式 case（不再走 default）；所有 Unicode 转义（`"\u5de5\u4f5c\u53f0"` 等）改为中文字面量
 - `[ ]` **A-AUDIT-CODE-07** WorkbenchSummary DTO 独立 — 新建 `dto/WorkbenchSummaryResponse.java`；删除 `WorkbenchService.WorkbenchSummary` 内部类；Controller 返回 `ResponseEntity<WorkbenchSummaryResponse>`（去 `ResponseEntity<?>`）
@@ -342,7 +342,7 @@
 
 #### A-AUDIT-OPS — 运维配置类
 
-- `[ ]` **A-AUDIT-OPS-01** `server.error` 响应加固 — `application.yml` 新增：
+- `[x]` **A-AUDIT-OPS-01** `server.error` 响应加固 — `application.yml` 新增：
   ```yaml
   server:
     error:
@@ -847,6 +847,22 @@
 - **拆分原则**：每个 Controller 对应一个 Service（无 Service 则新建 Impl），Mapper 仅从 Service 注入；对 13 处 `return selectList` 的直接封装为 `listXxx()` Service 方法
 - **验收**：`grep -rn "private final.*Mapper" server/src/main/java/com/oa/backend/controller/` 输出为空（除 WorkbenchController 已下沉外零命中）
 - **前置条件**：B-P0/P1/P2/P3/FEAT 全部完成；本任务为大范围重构，须在功能稳定后进行
+- **状态**：`[ ]`
+
+#### B-DEBT-ERR-01 剩余 Controller `catch (Exception)` 清理
+- **背景**：A-AUDIT-CODE-03 清理了 7 个 Controller 共 20 处 `e.getMessage` 泄露。审查再次 grep 发现另有 13 处 `catch (Exception e)` 未清理
+- **范围**：AuthController（5 处）、OrgController（6）、EmployeeController（2）、TeamController（1）、AttachmentController（1）
+- **原则**：同 A-AUDIT-CODE-03，`try/catch + e.getMessage` 模式 → 抛 BusinessException 或让异常冒泡到 GlobalExceptionHandler
+- **状态**：`[ ]`
+
+#### B-DEBT-ERR-02 GlobalExceptionHandler 常见异常补齐
+- **范围**：`server/src/main/java/com/oa/backend/exception/GlobalExceptionHandler.java`
+- **补**：`ConstraintViolationException`（@Validated on @RequestParam/@PathVariable 校验失败）→ 400；`HttpRequestMethodNotSupportedException` → 405；`HttpMediaTypeNotSupportedException` → 415；`HttpMediaTypeNotAcceptableException` → 406
+- **状态**：`[ ]`
+
+#### B-DEBT-ERR-03 异常处理日志级别调优
+- **范围**：`GlobalExceptionHandler`
+- **要求**：`DataIntegrityViolationException` / `MaxUploadSizeExceededException` 日志级别从 `debug` 提升到 `warn`（利于生产排查）；`AuthenticationException` / `NoHandlerFoundException` 保留 `debug`（防扫描器刷屏）
 - **状态**：`[ ]`
 
 ---
