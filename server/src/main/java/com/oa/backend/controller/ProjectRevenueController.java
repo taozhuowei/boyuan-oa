@@ -2,6 +2,7 @@ package com.oa.backend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.entity.ProjectMilestone;
+import com.oa.backend.exception.BusinessException;
 import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.ProjectMilestoneMapper;
 import com.oa.backend.security.SecurityUtils;
@@ -95,7 +96,7 @@ public class ProjectRevenueController {
             ProjectMilestone m = revenueChangeService.createChange(milestoneId, req.amount(), req.reason(), me, role);
             return ResponseEntity.ok(m);
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            throw new BusinessException(400, e.getMessage());
         }
     }
 
@@ -110,7 +111,8 @@ public class ProjectRevenueController {
             revenueChangeService.cancelChange(milestoneId, me);
             return ResponseEntity.ok(Map.of("message", "已撤销"));
         } catch (IllegalStateException e) {
-            return ResponseEntity.status(403).body(Map.of("message", e.getMessage()));
+            // 撤销失败语义为 "非发起人本人"，返回 403
+            throw new BusinessException(403, e.getMessage());
         }
     }
 

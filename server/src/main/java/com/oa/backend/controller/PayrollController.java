@@ -2,6 +2,7 @@ package com.oa.backend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.entity.*;
+import com.oa.backend.exception.BusinessException;
 import com.oa.backend.mapper.*;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.PayrollCorrectionService;
@@ -73,13 +74,13 @@ public class PayrollController {
     @PreAuthorize("hasAnyRole('FINANCE','CEO')")
     public ResponseEntity<?> createCycle(@RequestBody CreateCycleRequest request) {
         if (request.period() == null || request.period().isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "period 不能为空（格式：yyyy-MM）"));
+            throw new BusinessException(400, "period 不能为空（格式：yyyy-MM）");
         }
         try {
             PayrollCycle cycle = payrollEngine.createCycle(request.period());
             return ResponseEntity.ok(cycle);
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            throw new BusinessException(400, e.getMessage());
         }
     }
 
@@ -94,7 +95,7 @@ public class PayrollController {
             PayrollCycle cycle = payrollEngine.openWindow(id);
             return ResponseEntity.ok(cycle);
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            throw new BusinessException(400, e.getMessage());
         }
     }
 
@@ -109,7 +110,7 @@ public class PayrollController {
             boolean allPass = items.stream().allMatch(PayrollEngine.PrecheckItem::pass);
             return ResponseEntity.ok(Map.of("pass", allPass, "items", items));
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            throw new BusinessException(400, e.getMessage());
         }
     }
 
@@ -123,7 +124,7 @@ public class PayrollController {
             PayrollCycle cycle = payrollEngine.settle(id);
             return ResponseEntity.ok(cycle);
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            throw new BusinessException(400, e.getMessage());
         }
     }
 
@@ -278,10 +279,10 @@ public class PayrollController {
                     "evidenceId", evidenceId,
                     "slip", confirmed
             ));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            // IllegalArgumentException 交给 GlobalExceptionHandler（已 400）
+            // IllegalStateException 语义也是业务冲突（如状态不允许），统一 400
+            throw new BusinessException(400, e.getMessage());
         }
     }
 
@@ -363,7 +364,7 @@ public class PayrollController {
             PayrollAdjustment adj = correctionService.createCorrection(id, req.reason(), items, financeId);
             return ResponseEntity.ok(adj);
         } catch (IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+            throw new BusinessException(400, ex.getMessage());
         }
     }
 

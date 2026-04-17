@@ -1,6 +1,7 @@
 package com.oa.backend.controller;
 
 import com.oa.backend.annotation.OperationLogRecord;
+import com.oa.backend.exception.BusinessException;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.SignatureService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -87,16 +88,10 @@ public class SignatureController {
             return ResponseEntity.badRequest().body(Map.of("message", "PIN 码长度必须为 4-6 位"));
         }
 
-        try {
-            signatureService.bindSignature(employeeId, request.signatureImage(), request.pin());
-            return ResponseEntity.ok(Map.of("message", "签名绑定成功"));
-        } catch (IllegalArgumentException e) {
-            log.warn("签名绑定失败: employeeId={}, error={}", employeeId, e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-        } catch (Exception e) {
-            log.error("签名绑定异常: employeeId={}", employeeId, e);
-            return ResponseEntity.badRequest().body(Map.of("message", "签名绑定失败，请稍后重试"));
-        }
+        // IllegalArgumentException 和其它未知异常均由 GlobalExceptionHandler 统一处理
+        // （400 参数不合法 / 500 服务器内部错误）。
+        signatureService.bindSignature(employeeId, request.signatureImage(), request.pin());
+        return ResponseEntity.ok(Map.of("message", "签名绑定成功"));
     }
 
     /**
@@ -144,6 +139,10 @@ public class SignatureController {
             // 由 service 层进行权限控制
         }
 
+        // PDF 下载端点声明 produces=APPLICATION_PDF，前端以 responseType='blob' 接收；
+        // 若让异常透传至 GlobalExceptionHandler 返回 JSON，blob 会把 JSON 当 PDF 下载导致文件损坏。
+        // 因此业务类异常（IllegalArgument/IllegalState）在此就地转为 BusinessException(400)，
+        // 使响应 status=400，前端 blob 处理可据此走 error 分支；其它 RuntimeException 任其冒泡。
         try {
             String pdfPath = signatureService.generateEvidencePdf(id);
             File pdfFile = new File(pdfPath);
@@ -153,21 +152,14 @@ public class SignatureController {
             }
 
             Resource resource = new FileSystemResource(pdfFile);
-
-            // 获取文件名
             String filename = pdfFile.getName();
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_PDF)
                     .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
                     .body(resource);
-
-        } catch (IllegalArgumentException e) {
-            log.warn("下载存证 PDF 失败: slipId={}, error={}", id, e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
-        } catch (Exception e) {
-            log.error("下载存证 PDF 异常: slipId={}", id, e);
-            return ResponseEntity.internalServerError().body(Map.of("message", "PDF 生成失败"));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new BusinessException(400, e.getMessage() != null ? e.getMessage() : "签名凭证生成失败");
         }
     }
 

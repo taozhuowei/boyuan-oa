@@ -44,3 +44,9 @@ logging:
 
 server:
   port: ${SERVER_PORT:8080}
+  # 生产环境强制不暴露异常细节。
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false

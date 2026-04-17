@@ -1,5 +1,6 @@
 package com.oa.backend.controller;
 
+import com.oa.backend.exception.BusinessException;
 import com.oa.backend.service.SetupService;
 import com.oa.backend.service.SetupService.SetupRequest;
 import com.oa.backend.service.SetupService.SetupResult;
@@ -94,10 +95,10 @@ public class SetupController {
                     "recoveryCode", result.recoveryCode(),
                     "message", result.message()
             ));
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+            // 初始化冲突（如已存在同名账户）→ 409
+            // IllegalArgumentException 交由 GlobalExceptionHandler 统一 400
+            throw new BusinessException(HttpStatus.CONFLICT.value(), e.getMessage());
         }
     }
 
@@ -111,16 +112,17 @@ public class SetupController {
      */
     @PostMapping("/reset-ceo-password")
     public ResponseEntity<?> resetCeoPassword(@Valid @RequestBody ResetCeoPasswordRequest request) {
+        // IllegalArgumentException（恢复码无效）→ GlobalExceptionHandler 统一 400
+        // IllegalStateException（系统未初始化 / 状态不允许）属于 client 错误，在此转 BusinessException(400)
+        // 保留原始 message（如 "系统未初始化"），避免 fallback 500 丢失业务语义
         try {
             String newRecoveryCode = setupService.resetCeoPassword(request.recoveryCode(), request.newPassword());
             return ResponseEntity.ok(Map.of(
                     "recoveryCode", newRecoveryCode,
                     "message", "密码重置成功"
             ));
-        } catch (IllegalArgumentException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
         } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
+            throw new BusinessException(400, e.getMessage() != null ? e.getMessage() : "系统状态不允许此操作");
         }
     }
 

@@ -2,10 +2,26 @@ server:
   port: ${SERVER_PORT:8080}
   servlet:
     context-path: /api
+  # 统一错误响应：默认错误页不暴露 message / 堆栈 / 绑定错误 / 异常类型。
+  # 业务错误通过 GlobalExceptionHandler 统一返回 {"code","message"}。
+  error:
+    include-message: never
+    include-binding-errors: never
+    include-stacktrace: never
+    include-exception: false
 
 spring:
   application:
     name: oa-backend
+
+  # 让未匹配路由抛 NoHandlerFoundException，交由 GlobalExceptionHandler 统一处理。
+  mvc:
+    throw-exception-if-no-handler-found: true
+
+  # 关闭默认静态资源映射，避免吞掉 404 返回空白页而不抛异常。
+  web:
+    resources:
+      add-mappings: false
 
   servlet:
     multipart:

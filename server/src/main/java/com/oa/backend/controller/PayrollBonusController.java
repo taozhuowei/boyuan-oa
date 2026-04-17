@@ -1,6 +1,7 @@
 package com.oa.backend.controller;
 
 import com.oa.backend.entity.PayrollBonus;
+import com.oa.backend.exception.BusinessException;
 import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.PayrollBonusService;
@@ -58,7 +59,7 @@ public class PayrollBonusController {
                     req.amount(), req.type(), req.remark(), creatorId);
             return ResponseEntity.ok(bonus);
         } catch (IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+            throw new BusinessException(400, ex.getMessage());
         }
     }
 
@@ -69,7 +70,7 @@ public class PayrollBonusController {
             bonusService.delete(id);
             return ResponseEntity.ok(Map.of("message", "已删除", "id", id));
         } catch (IllegalStateException ex) {
-            return ResponseEntity.badRequest().body(Map.of("message", ex.getMessage()));
+            throw new BusinessException(400, ex.getMessage());
         }
     }
 

@@ -2,14 +2,13 @@ package com.oa.backend.controller;
 
 import com.oa.backend.dto.RoleUpsertRequest;
 import com.oa.backend.dto.RoleViewResponse;
+import com.oa.backend.exception.BusinessException;
 import com.oa.backend.service.AccessManagementService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -81,7 +80,8 @@ public class RoleController {
             accessManagementService.deleteRole(id);
             return ResponseEntity.noContent().build();
         } catch (IllegalStateException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage());
+            // 系统角色不可删除 → 400
+            throw new BusinessException(400, e.getMessage());
         }
     }
 }

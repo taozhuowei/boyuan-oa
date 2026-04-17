@@ -1,6 +1,7 @@
 package com.oa.backend.controller;
 
 import com.oa.backend.entity.TemporaryDelegation;
+import com.oa.backend.exception.BusinessException;
 import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.security.SecurityUtils;
 import com.oa.backend.service.TemporaryDelegationService;
@@ -49,7 +50,7 @@ public class TemporaryDelegationController {
                     req.startsAt(), req.expiresAt(), req.relatedFormId());
             return ResponseEntity.ok(d);
         } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+            throw new BusinessException(400, e.getMessage());
         }
     }
 
@@ -63,7 +64,8 @@ public class TemporaryDelegationController {
             return ok ? ResponseEntity.ok(Map.of("message", "已撤销", "id", id))
                     : ResponseEntity.notFound().build();
         } catch (IllegalStateException e) {
-            return ResponseEntity.status(403).body(Map.of("message", e.getMessage()));
+            // 撤销失败语义为 "非委托人本人"，返回 403
+            throw new BusinessException(403, e.getMessage());
         }
     }
 
