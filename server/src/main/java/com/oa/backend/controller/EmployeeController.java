@@ -63,9 +63,11 @@ public class EmployeeController {
             page, size, keyword, roleCode, employeeType, accountStatus, departmentId);
 
         // 转换为响应DTO（根据调用者身份脱敏）
-        final Authentication auth = authentication;
+        // Resolve currentEmployeeId once to avoid N+1 DB queries inside toResponse per element.
+        Long currentEmployeeId = SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper);
         Map<String, Object> result = new HashMap<>();
-        result.put("content", employeePage.getRecords().stream().map(e -> toResponse(e, auth)).toList());
+        result.put("content", employeePage.getRecords().stream()
+                .map(e -> toResponse(e, currentEmployeeId, authentication)).toList());
         result.put("totalElements", employeePage.getTotal());
         result.put("totalPages", employeePage.getPages());
         result.put("number", employeePage.getCurrent());
@@ -175,6 +177,8 @@ public class EmployeeController {
 
     /**
      * 将 Employee 实体转换为 EmployeeResponse DTO（按调用者身份脱敏）。
+     * 单记录端点入口（getEmployee、createEmployee 等）；每次调用会解析一次 currentEmployeeId，
+     * 不在列表场景下使用，因此单次 DB 查询可接受。
      *
      * 脱敏规则：
      *  - idCardNo：仅本人、CEO、HR 可见；其他角色返回 null
@@ -183,10 +187,20 @@ public class EmployeeController {
      * 保留字段结构（record 不变），仅将敏感字段置 null 以维持向后兼容。
      */
     private EmployeeResponse toResponse(Employee employee, Authentication authentication) {
+        Long currentEmployeeId = authentication != null
+                ? SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper)
+                : null;
+        return toResponse(employee, currentEmployeeId, authentication);
+    }
+
+    /**
+     * 列表端点专用重载，接受预计算的 currentEmployeeId 以消除 N+1 查询。
+     * 由 listEmployees 在流处理前一次性解析 currentEmployeeId，然后传入此方法。
+     */
+    private EmployeeResponse toResponse(Employee employee, Long currentEmployeeId, Authentication authentication) {
         boolean isSelf = false;
         boolean canSeeIdCard = false;
         if (authentication != null) {
-            Long currentEmployeeId = SecurityUtils.getEmployeeIdFromUsername(authentication.getName(), employeeMapper);
             if (currentEmployeeId != null && currentEmployeeId.equals(employee.getId())) {
                 isSelf = true;
             }

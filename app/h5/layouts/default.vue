@@ -233,17 +233,11 @@ watch(() => route.path, (path) => {
   selectedKeys.value = [path]
 })
 
-// Backend paths may differ from Nuxt file-based routes; normalize here
-function normalizePath(p: string): string {
-  const map: Record<string, string> = { '/workbench': '/' }
-  return map[p] ?? p
-}
-
 function buildMenuItems(menus: WorkbenchMenu[]): MenuItem[] {
   return menus.map((m) => ({
-    key: normalizePath(m.path),
+    key: m.path,
     label: m.name,
-    path: normalizePath(m.path),
+    path: m.path,
     icon: m.icon,
     children: m.children ? buildMenuItems(m.children) : undefined
   }))

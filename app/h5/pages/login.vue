@@ -71,17 +71,11 @@ const loading = ref(false)
 const errorMsg = ref('')
 const form = reactive({ identifier: '', password: '' })
 
-// 企业名：复用 app.vue 写入的 useState('company-name') 值；若尚未填充，主动拉取 /api/setup/status
+// 企业名：由 useCompanyName 统一管理；fetchIfNeeded 内部已处理「已有值则跳过」逻辑
 // 未设置时模板回退到「博渊」
-const companyName = useState<string | null>('company-name', () => null)
-onMounted(async () => {
-  if (companyName.value) return
-  try {
-    const data = await $fetch<{ companyName?: string | null }>('/api/setup/status')
-    if (data?.companyName) companyName.value = data.companyName
-  } catch {
-    // 忽略：模板会回退到默认值
-  }
+const { companyName, fetchIfNeeded } = useCompanyName()
+onMounted(() => {
+  fetchIfNeeded()
 })
 
 async function handleLogin() {

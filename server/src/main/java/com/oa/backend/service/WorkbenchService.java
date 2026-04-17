@@ -4,13 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.oa.backend.dto.UserProfileResponse;
 import com.oa.backend.dto.WorkbenchConfigResponse;
 import com.oa.backend.dto.WorkbenchSummaryResponse;
-import com.oa.backend.entity.Department;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.FormRecord;
 import com.oa.backend.entity.PayrollCycle;
 import com.oa.backend.entity.Project;
-import com.oa.backend.mapper.DepartmentMapper;
-import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.FormRecordMapper;
 import com.oa.backend.mapper.PayrollCycleMapper;
 import com.oa.backend.mapper.ProjectMapper;
@@ -26,6 +23,7 @@ import java.util.List;
 /**
  * 工作台业务逻辑。
  * 聚合个人资料、菜单配置、工作台摘要三类查询，封装多 Mapper 协同。
+ * 个人资料查询通过 UserProfileService 完成，享受 Caffeine 60s 缓存，减少重复 DB 访问。
  */
 @Service
 @RequiredArgsConstructor
@@ -36,8 +34,9 @@ public class WorkbenchService {
     private final PayrollCycleMapper payrollCycleMapper;
     private final ProjectMapper projectMapper;
     private final RetentionReminderMapper retentionReminderMapper;
-    private final EmployeeMapper employeeMapper;
-    private final DepartmentMapper departmentMapper;
+    // employeeMapper and departmentMapper are no longer injected here;
+    // employee+department queries are delegated to UserProfileService (cached).
+    private final UserProfileService userProfileService;
 
     /**
      * 构建工作台摘要。
@@ -73,33 +72,26 @@ public class WorkbenchService {
 
     /**
      * 构建当前登录用户的个人资料。
-     * 姓名、部门、员工类型、账号状态均来源于 employee / department 表，
+     * 姓名、部门、员工类型、账号状态均来源于 employee / department 表（经由 UserProfileService 缓存层），
      * 不依赖任何硬编码 demo 账号映射；确保生产环境同名用户也得到真实数据。
+     * 缓存策略：UserProfileService.loadByEmployeeNo 带 60s TTL，减少频繁工作台轮询时的 DB 压力。
      */
     public UserProfileResponse buildUserProfile(Authentication authentication) {
         String username = authentication.getName();
         String role = extractRole(authentication);
 
-        Employee employee = employeeMapper.selectOne(
-                new LambdaQueryWrapper<Employee>()
-                        .eq(Employee::getEmployeeNo, username)
-                        .eq(Employee::getDeleted, 0)
-        );
+        // Delegate to cached service bean to enable @Cacheable AOP proxy interception.
+        UserProfileService.EmployeeProfile profile = userProfileService.loadByEmployeeNo(username);
 
-        if (employee == null) {
-            // 兜底：JWT 有效但数据库查不到（理论上不应发生，例如 dev-login 或员工已删除）。
+        if (profile == null) {
+            // Fallback: JWT valid but no matching employee row (dev-login or soft-deleted employee).
             return new UserProfileResponse(
                     username, username, role, getRoleName(role), "未分配", "OFFICE", "ACTIVE",
                     getVisibleModules(role));
         }
 
-        String departmentName = "未分配";
-        if (employee.getDepartmentId() != null) {
-            Department department = departmentMapper.selectById(employee.getDepartmentId());
-            if (department != null && department.getName() != null && !department.getName().isBlank()) {
-                departmentName = department.getName();
-            }
-        }
+        Employee employee = profile.employee();
+        String departmentName = profile.departmentName();
 
         String displayName = (employee.getName() != null && !employee.getName().isBlank())
                 ? employee.getName()

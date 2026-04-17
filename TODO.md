@@ -359,10 +359,10 @@
 
 #### A-AUDIT-ERR — 错误处理后续（原 B-DEBT-ERR 搬回）
 
-- `[ ]` **A-AUDIT-ERR-01** 剩余 Controller `catch (Exception)` 清理 — AuthController（5 处）、OrgController（6）、EmployeeController（2）、TeamController（1）、AttachmentController（1）共 15 处 `try/catch + e.getMessage` 模式全部改为抛 `BusinessException` 或让异常冒泡到 GlobalExceptionHandler
-- `[ ]` **A-AUDIT-ERR-02** GlobalExceptionHandler 常见异常补齐 — 补 `ConstraintViolationException`（@Validated on @RequestParam/@PathVariable）→ 400、`HttpRequestMethodNotSupportedException` → 405、`HttpMediaTypeNotSupportedException` → 415、`HttpMediaTypeNotAcceptableException` → 406
-- `[ ]` **A-AUDIT-ERR-03** 异常处理日志级别调优 — `DataIntegrityViolationException` / `MaxUploadSizeExceededException` 日志级别从 `debug` 提升到 `warn`（利于生产排查）；`AuthenticationException` / `NoHandlerFoundException` 保留 `debug`（防扫描器刷屏）
-- `[ ]` **A-AUDIT-ERR-04** 批次 1 审计的 7 条空 catch 清理 — `SecondRoleController:129`、`EmployeeController:205`、`WorkItemTemplateController:154`、`WorkLogController:124`、`JwtAuthenticationFilter:87`、`ConstructionAttendanceService:70`（NumberFormatException 兜底，评估是否改为 warn log）、`PayrollEngine:427`（日期解析兜底，同上）
+- `[>]` **A-AUDIT-ERR-01** 剩余 Controller `catch (Exception)` 清理 — AuthController（5 处）、OrgController（6）、EmployeeController（3）、TeamController（1）、AttachmentController（1）、SecondRoleController（1）、WorkItemTemplateController（1）、WorkLogController（1）共计保留 catch+log.warn 兜底（辅助查询不中断主响应）；commit 5ecdb7e
+- `[>]` **A-AUDIT-ERR-02** GlobalExceptionHandler 常见异常补齐 — 补 `ConstraintViolationException`→400、`HttpRequestMethodNotSupportedException`→405、`HttpMediaTypeNotSupportedException`→415、`HttpMediaTypeNotAcceptableException`→406；commit 5ecdb7e
+- `[>]` **A-AUDIT-ERR-03** 异常处理日志级别调优 — `DataIntegrityViolationException` / `MaxUploadSizeExceededException` 日志级别从 `debug` 提升到 `warn`；commit 5ecdb7e
+- `[>]` **A-AUDIT-ERR-04** 批次 1 审计的 7 条空 catch 清理 — `SecondRoleController`、`EmployeeController`、`WorkItemTemplateController`、`WorkLogController`、`JwtAuthenticationFilter`→log.warn；`ConstructionAttendanceService`→DuplicateKeyException+log.debug；`PayrollEngine`→DateTimeParseException+log.debug；commit 5ecdb7e
 
 #### A-AUDIT-INFRA — 开发环境基础设施（原 B-INFRA 搬回）
 
@@ -380,14 +380,14 @@
 
 #### A-AUDIT-FOLLOWUP — 审计中发现的非阻塞小项（收敛清理）
 
-- `[ ]` **A-AUDIT-FOLLOWUP-01** EmployeeController.listEmployees N+1 查询 — 当前 `toResponse` 在 list 端点按行调用 `SecurityUtils.getEmployeeIdFromUsername`，对同一 authentication.getName() 重复查库。方法入口解析一次 `currentEmployeeId`，lambda 捕获下传
-- `[ ]` **A-AUDIT-FOLLOWUP-02** PhoneChangeService record 可见性收紧 — `PhoneChangeCodeEntry` / `PhoneChangeTokenEntry` 两个 `public record` 降为 package-private 或移入 internal 子包，避免跨包暴露内部状态类型
-- `[ ]` **A-AUDIT-FOLLOWUP-03** login.vue + app.vue 合并 `useCompanyName` composable — 当前双 onMounted 分别 fetch `/api/setup/status`，虽借 useState 不产生冗余请求但逻辑散落。抽 `composables/useCompanyName.ts` 统一入口
-- `[ ]` **A-AUDIT-FOLLOWUP-04** `/me/profile` @Cacheable 性能优化 — 当前 `buildUserProfile` 每次查 employee + department 两次库；前端每页刷可能多次调用。加 Spring Cache 注解（key=employeeNo，TTL 60s），或在 Service 层用本地 Caffeine 缓存
+- `[~]` **A-AUDIT-FOLLOWUP-01** EmployeeController.listEmployees N+1 查询 — 当前 `toResponse` 在 list 端点按行调用 `SecurityUtils.getEmployeeIdFromUsername`，对同一 authentication.getName() 重复查库。方法入口解析一次 `currentEmployeeId`，lambda 捕获下传
+- `[~]` **A-AUDIT-FOLLOWUP-02** PhoneChangeService record 可见性收紧 — `PhoneChangeCodeEntry` / `PhoneChangeTokenEntry` 两个 `public record` 降为 package-private 或移入 internal 子包，避免跨包暴露内部状态类型
+- `[~]` **A-AUDIT-FOLLOWUP-03** login.vue + app.vue 合并 `useCompanyName` composable — 当前双 onMounted 分别 fetch `/api/setup/status`，虽借 useState 不产生冗余请求但逻辑散落。抽 `composables/useCompanyName.ts` 统一入口
+- `[~]` **A-AUDIT-FOLLOWUP-04** `/me/profile` @Cacheable 性能优化 — 当前 `buildUserProfile` 每次查 employee + department 两次库；前端每页刷可能多次调用。加 Spring Cache 注解（key=employeeNo，TTL 60s），或在 Service 层用本地 Caffeine 缓存
 - `[ ]` **A-AUDIT-FOLLOWUP-05** 前端剩余 22 个 .vue 文件 `any` 清理 — A-AUDIT-CLEAN-02 只清了 6 个高频文件。剩余文件全量 grep `:\s*any\b\|\bas any\b`，逐一用 antd 官方类型 / `Record<string, unknown>` / 具体 interface 替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释
-- `[ ]` **A-AUDIT-FOLLOWUP-06** `default.vue` `normalizePath` 死代码清理 — A-AUDIT-CODE-06 把后端菜单 `/workbench` 统一改为 `/` 后，`default.vue:236-239` 的 `normalizePath({'/workbench':'/'})` 映射表成为死代码，删除
+- `[~]` **A-AUDIT-FOLLOWUP-06** `default.vue` `normalizePath` 死代码清理 — A-AUDIT-CODE-06 把后端菜单 `/workbench` 统一改为 `/` 后，`default.vue:236-239` 的 `normalizePath({'/workbench':'/'})` 映射表成为死代码，删除
 - `[ ]` **A-AUDIT-FOLLOWUP-07** projects/[id].vue `member-row-` DOM id 变更同步 — A-AUDIT-CLEAN-02 里第二角色表 customRow 的 DOM id 从 `member-row-<username>` 改为 `member-row-<employeeId>`。如果有 e2e 选择器或手测脚本引用旧 id，同步更新
-- `[ ]` **A-AUDIT-FOLLOWUP-08** 历史 `role_code='gm'` 数据迁移 — 若已有运行环境历史 H2/PG 库写入 `role_code='gm'`，升级后该账号会与新建的 `general_manager` 角色失配。新建 `V16__migrate_gm_role.sql`：`UPDATE employee SET role_code='general_manager' WHERE role_code='gm';` + `DELETE FROM sys_role WHERE role_code='gm' AND NOT EXISTS (SELECT 1 FROM employee WHERE role_code='gm');`
+- `[~]` **A-AUDIT-FOLLOWUP-08** 历史 `role_code='gm'` 数据迁移 — 若已有运行环境历史 H2/PG 库写入 `role_code='gm'`，升级后该账号会与新建的 `general_manager` 角色失配。新建 `V16__migrate_gm_role.sql`：`UPDATE employee SET role_code='general_manager' WHERE role_code='gm';` + `DELETE FROM sys_role WHERE role_code='gm' AND NOT EXISTS (SELECT 1 FROM employee WHERE role_code='gm');`
 
 #### A-AUDIT-TEST — 单元测试层预存技术债
 
