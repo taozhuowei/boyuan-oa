@@ -135,7 +135,7 @@
   3. 其余 Controller（AuthController/OrgController/AttachmentController）标记为技术债，在 Phase B 迭代中逐步整理（不在本任务范围）
 - **验收点**：WorkbenchController 中无直接 Mapper 字段注入；代码 grep 确认
 - **验收流程**：`grep -r "Mapper" WorkbenchController.java` 输出为空（无 Mapper 直接注入）；API 功能不回退（curl `/api/workbench/summary` 返回 200）
-- **状态**：`[ ]`
+- **状态**：`[~]`
 
 #### A-CODE-03 缺全局异常处理器
 - **目标**：各 Controller 错误响应格式不统一，BUG-E03 Toast 暴露 HTTP 字符串的根本原因
