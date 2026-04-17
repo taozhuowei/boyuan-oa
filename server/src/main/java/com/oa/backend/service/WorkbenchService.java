@@ -192,12 +192,12 @@ public class WorkbenchService {
                     new WorkbenchConfigResponse.MenuItem("role", "\u89d2\u8272\u7ba1\u7406", "user-switch", "/role", true, null),
                     new WorkbenchConfigResponse.MenuItem("projects", "\u9879\u76ee\u7ba1\u7406", "project", "/projects", true, null),
                     new WorkbenchConfigResponse.MenuItem("payroll", "\u85aa\u8d44\u7ba1\u7406", "money", "/payroll", true, null),
-                    new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction-log", true, null),
+                    new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction_log", true, null),
                     new WorkbenchConfigResponse.MenuItem("injury", "\u5de5\u4f24\u8865\u507f", "alert", "/injury", true, null),
                     new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null),
                     new WorkbenchConfigResponse.MenuItem("expense-records", "\u62a5\u9500\u8bb0\u5f55", "solution", "/expense/records", true, null),
                     new WorkbenchConfigResponse.MenuItem("retention", "\u6570\u636e\u4fdd\u7559", "safety", "/retention", true, null),
-                    new WorkbenchConfigResponse.MenuItem("operation-logs", "\u64cd\u4f5c\u65e5\u5fd7", "audit", "/operation-logs", true, null),
+                    new WorkbenchConfigResponse.MenuItem("operation-logs", "\u64cd\u4f5c\u65e5\u5fd7", "audit", "/operation_logs", true, null),
                     new WorkbenchConfigResponse.MenuItem("config", "\u7cfb\u7edf\u914d\u7f6e", "setting", "/config", true, null)
             );
             case "finance" -> Arrays.asList(
@@ -214,8 +214,8 @@ public class WorkbenchService {
                     new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
                     new WorkbenchConfigResponse.MenuItem("todo", "\u5ba1\u6279\u4e2d\u5fc3", "check-circle", "/todo", true, null),
                     new WorkbenchConfigResponse.MenuItem("projects", "\u9879\u76ee\u7ba1\u7406", "project", "/projects", true, null),
-                    new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction-log", true, null),
-                    new WorkbenchConfigResponse.MenuItem("templates", "\u5de5\u4f5c\u9879\u6a21\u677f", "form", "/construction-log/templates", true, null),
+                    new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction_log", true, null),
+                    new WorkbenchConfigResponse.MenuItem("templates", "\u5de5\u4f5c\u9879\u6a21\u677f", "form", "/construction_log/templates", true, null),
                     new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null),
                     new WorkbenchConfigResponse.MenuItem("expense-apply", "\u8d39\u7528\u62a5\u9500", "wallet", "/expense/apply", true, null)
             );
@@ -238,7 +238,7 @@ public class WorkbenchService {
             );
             case "worker" -> Arrays.asList(
                     new WorkbenchConfigResponse.MenuItem("workbench", "\u5de5\u4f5c\u53f0", "dashboard", "/workbench", true, null),
-                    new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction-log", true, null),
+                    new WorkbenchConfigResponse.MenuItem("construction-log", "\u65bd\u5de5\u65e5\u5fd7", "file-text", "/construction_log", true, null),
                     new WorkbenchConfigResponse.MenuItem("injury", "\u5de5\u4f24\u8865\u507f", "alert", "/injury", true, null),
                     new WorkbenchConfigResponse.MenuItem("forms", "\u8868\u5355\u4e2d\u5fc3", "file", "/forms", true, null),
                     new WorkbenchConfigResponse.MenuItem("payroll", "\u5de5\u8d44\u6761", "money", "/payroll", true, null),

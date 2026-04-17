@@ -72,7 +72,7 @@
 
 <script setup lang="ts">
 /**
- * 工作项模板管理 — construction-log/templates/index.vue
+ * 工作项模板管理 — construction_log/templates/index.vue
  * PM/CEO 管理模板：CRUD + 派生
  */
 import { ref, computed, onMounted } from 'vue'

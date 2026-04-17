@@ -1096,7 +1096,7 @@ function closePinModal() {
 function goToSignatureBind() {
   showBindPromptModal.value = false
   showPinModal.value = false
-  navigateTo('/payroll/signature-bind')
+  navigateTo('/payroll/signature_bind')
 }
 
 async function doDispute() {

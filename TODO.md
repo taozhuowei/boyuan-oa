@@ -184,7 +184,8 @@
   3. 启动前端，逐一访问重命名路由，确认 200 无死链
 - **验收点**：`app/h5/pages/` 无连字符目录；所有路由可正常访问
 - **验收流程**：`ls app/h5/pages/ | grep "-"` 输出为空；浏览器访问 `/construction_log`、`/data_export`、`/data_viewer`、`/leave_types`、`/operation_logs` 均正常加载
-- **状态**：`[ ]`
+- **实施范围**：前端页面目录/文件重命名 + 所有前端路由引用（auth.global.ts、default.vue、navigateTo）同步更新 + WorkbenchService 返回的菜单 path 字段同步。**保留不改**：后端 API URL（`/config/leave-types`、`/logs/construction-logs`、`/operation-logs`，属于后端路径，非本次范围）、CSS 类名（`.construction-log-page` 等，行业惯例）、data-catch 测试标记、WorkbenchService MenuItem.code 字段（内部标识）。
+- **状态**：`[~]`
 
 #### A-CLEAN-03 临时测试脚本与产物已提交到 git
 - **目标**：一次性测试脚本、运行产物、截图无 CI 入口，不是持久测试资产，应从 git 清除

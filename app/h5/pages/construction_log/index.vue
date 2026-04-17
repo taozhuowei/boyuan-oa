@@ -119,7 +119,7 @@
 
 <script setup lang="ts">
 /**
- * 施工日志填报页 — construction-log/index.vue
+ * 施工日志填报页 — construction_log/index.vue
  * 劳工可提交施工日志（含动态 workItems 列表 + 附件）
  */
 import { ref, onMounted } from 'vue'

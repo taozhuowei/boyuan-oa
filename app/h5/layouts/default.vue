@@ -128,14 +128,14 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/role', label: '角色管理', path: '/role' },
     { key: '/projects', label: '项目管理', path: '/projects' },
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
-    { key: '/construction-log', label: '施工日志', path: '/construction-log' },
+    { key: '/construction_log', label: '施工日志', path: '/construction_log' },
     { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
     { key: '/expense/records', label: '报销记录', path: '/expense/records' },
     { key: '/retention', label: '数据保留', path: '/retention' },
-    { key: '/data-export', label: '数据导出', path: '/data-export' },
-    { key: '/data-viewer', label: '数据查看', path: '/data-viewer' },
-    { key: '/operation-logs', label: '操作日志', path: '/operation-logs' },
+    { key: '/data_export', label: '数据导出', path: '/data_export' },
+    { key: '/data_viewer', label: '数据查看', path: '/data_viewer' },
+    { key: '/operation_logs', label: '操作日志', path: '/operation_logs' },
     { key: '/config', label: '系统配置', path: '/config' }
   ],
   finance: [
@@ -155,8 +155,8 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/', label: '工作台', path: '/' },
     { key: '/todo', label: '审批中心', path: '/todo' },
     { key: '/projects', label: '项目管理', path: '/projects' },
-    { key: '/construction-log', label: '施工日志', path: '/construction-log' },
-    { key: '/construction-log/templates', label: '工作项模板', path: '/construction-log/templates' },
+    { key: '/construction_log', label: '施工日志', path: '/construction_log' },
+    { key: '/construction_log/templates', label: '工作项模板', path: '/construction_log/templates' },
     { key: '/forms', label: '表单中心', path: '/forms' },
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' }
   ],
@@ -165,7 +165,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/org', label: '组织架构', path: '/org' },
     { key: '/positions', label: '岗位管理', path: '/positions' },
-    { key: '/leave-types', label: '假期配额', path: '/leave-types' },
+    { key: '/leave_types', label: '假期配额', path: '/leave_types' },
     { key: '/attendance', label: '考勤管理', path: '/attendance' },
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
     { key: '/expense/records', label: '报销记录', path: '/expense/records' }
@@ -181,7 +181,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
   worker: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/attendance', label: '考勤申请', path: '/attendance' },
-    { key: '/construction-log', label: '施工日志', path: '/construction-log' },
+    { key: '/construction_log', label: '施工日志', path: '/construction_log' },
     { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/forms', label: '表单中心', path: '/forms' },
     { key: '/payroll', label: '工资条', path: '/payroll' },
@@ -197,7 +197,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
   ],
   ops: [
     { key: '/', label: '工作台', path: '/' },
-    { key: '/operation-logs', label: '操作日志', path: '/operation-logs' }
+    { key: '/operation_logs', label: '操作日志', path: '/operation_logs' }
   ],
   employee: [
     { key: '/', label: '工作台', path: '/' },

@@ -104,7 +104,7 @@
  * 用途：员工绑定手写签名并设置 PIN 码，用于后续工资条确认
  * 流程：检查绑定状态 → 绘制签名 → 设置 PIN → 提交绑定
  *
- * 页面路由: /payroll/signature-bind
+ * 页面路由: /payroll/signature_bind
  */
 import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
