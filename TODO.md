@@ -45,7 +45,7 @@
   3. curl 测试：employee A token 访问 employee B 上传的附件 `GET /api/attachments/{id}` 返回 403
 - **验收点**：无 token 访问附件返回 401；跨用户访问返回 403
 - **验收流程**：curl 两个场景（无 token、跨用户 token），均返回预期状态码
-- **状态**：`[ ]`
+- **状态**：`[~]`
 
 #### A-SEC-02 WorkbenchController 无权限注解
 - **目标**：工作台接口未认证可访问，须强制认证
@@ -56,7 +56,7 @@
   3. curl 测试：无 token 访问 `GET /api/workbench/summary` 返回 401
 - **验收点**：无 token 访问 workbench 接口返回 401
 - **验收流程**：`curl /api/workbench/summary`（不带 Authorization）→ 401
-- **状态**：`[ ]`
+- **状态**：`[~]`
 
 #### A-SEC-03 前端路由守卫覆盖不全
 - **目标**：`PAGE_ACCESS` 当前仅覆盖 11 条路由（/config, /org, /role, /employees, /positions, /retention, /operation-logs, /payroll, /projects, /construction-log, /injury），其余业务页面对所有已登录用户全开
