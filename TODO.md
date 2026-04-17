@@ -199,7 +199,7 @@
   2. 确认无其他散落的一次性脚本（全局 grep 无关脚本引用）
 - **验收点**：`git ls-files test/manual-test-2026-04-17/` 仅含 `*.md` 文件
 - **验收流程**：命令输出仅为 markdown 文件路径
-- **状态**：`[ ]`
+- **状态**：`[x]`
 
 #### A-CLEAN-04 server/README.md 超出快速启动范围
 - **目标**：`server/README.md`（322 行）深入架构描述，与 `BACKEND_IMPL.md`（131 行）职责重叠
