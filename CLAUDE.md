@@ -99,8 +99,27 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 
 > **Task state single source of truth: `TODO.md`**
 > Do NOT trust any "what is done" list in this or any other file.
-> Last manual test: 2026-04-17 — 25 bugs found (see `TODO.md §A10`).
-> Outstanding work: A1–A10 (features + bugs), AD (docs), T0–T8 (tests).
+> Last manual test: 2026-04-17 — 25 bugs found (recorded in TODO.md Phase B).
+> TODO.md was fully rewritten 2026-04-17 into a 7-phase roadmap (A→G).
+> **Current active phase: Phase A (architecture governance + cleanup).**
+
+### 7-Phase Roadmap (see TODO.md for full detail)
+- Phase A — Architecture governance + cleanup (CURRENT)
+- Phase B — Feature completeness + bug fixes
+- Phase C — Full test coverage + Claude black-box self-test
+- Phase D — Human browser acceptance
+- Phase E — Production deploy + ALL engineering standards (git/PR/branch/SemVer/CHANGELOG/RUNBOOK)
+- Phase F — WeChat mini-program
+- Phase G — Operational maintenance
+
+### Known critical facts
+- Flyway migrations: V1–V13 exist. Next new migration = **V14** (DB index migration, task A-DB-01).
+- Page dir rename in progress (Phase A, task A-CLEAN-02): kebab-case → snake_case.
+  Affected: construction-log→construction_log, data-export→data_export, data-viewer→data_viewer, leave-types→leave_types, operation-logs→operation_logs.
+  After rename, all route keys in auth.global.ts and ROLE_MENUS must use snake_case paths.
+- WorkbenchController directly holds 4 Mappers (no Service layer) — task A-CODE-02.
+- AttachmentController has no @PreAuthorize at all — task A-SEC-01.
+- auth.global.ts PAGE_ACCESS covers only 13 routes — task A-SEC-03.
 
 ### Tech stack
 - H5: Nuxt 3, Ant Design Vue (antd), TypeScript, Pinia, Vitest
