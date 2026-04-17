@@ -330,14 +330,14 @@
 #### A-AUDIT-FIX — Bug 修复
 
 - `[x]` **A-AUDIT-FIX-01** PayrollController `unlock` 吞异常 — `PayrollController.java:160` `catch (Exception ignored) {}` → 至少 `log.error("notify finance failed on cycleId={}", id, e);`
-- `[ ]` **A-AUDIT-FIX-02** `/forms/leave` `/forms/overtime` 死链 — `WorkbenchService.java:94-95` quickActions path 改为 `/forms?type=leave` / `/forms?type=overtime`，且前端 `pages/forms/index.vue` 支持 query 参数初始化对应表单
+- `[x]` **A-AUDIT-FIX-02** `/forms/leave` `/forms/overtime` 死链 — `WorkbenchService.java:94-95` quickActions path 改为 `/forms?type=leave` / `/forms?type=overtime`，且前端 `pages/forms/index.vue` 支持 query 参数初始化对应表单
 - `[x]` **A-AUDIT-FIX-03** Attachment 横向越权 + 文件类型白名单 — `AttachmentController.canAccess` 加业务归属校验：根据 `businessType`+`businessId` 查找 `form_record` / `injury_claim` 等表，验证当前用户是否为对应项目/部门审批人；上传加 MIME 白名单 `{pdf,jpg,jpeg,png,gif,webp,xlsx,docx}` + magic bytes 校验
 
 #### A-AUDIT-CLEAN — 清理类
 
-- `[ ]` **A-AUDIT-CLEAN-01** 登录页硬编码公司名 — `app/h5/pages/login.vue`（及 mp 对应页）从 `/api/setup/status` 读 `companyName`，消除硬编码"众维建筑工程有限公司"
-- `[ ]` **A-AUDIT-CLEAN-02** TypeScript `any` 批量清理 — 28 个 `.vue` 页面里 158 处 `any` + 41 处 `as any`。重点文件：`employees/index.vue`、`attendance/index.vue`、`payroll/index.vue`、`config/index.vue`、`projects/[id].vue`、`role/index.vue` 等。用 antd 官方类型（`TableProps`、`ButtonProps`、`FormItemProps` 等）替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释说明
-- `[ ]` **A-AUDIT-CLEAN-03** `slips.vue` 路径冲突清理 — `app/h5/pages/payroll/slips.vue` 当前是空转发页。删除该文件（Nuxt 不再生成 `/payroll/slips` 路由）；或若有用途，明示功能
+- `[x]` **A-AUDIT-CLEAN-01** 登录页硬编码公司名 — `app/h5/pages/login.vue`（及 mp 对应页）从 `/api/setup/status` 读 `companyName`，消除硬编码"众维建筑工程有限公司"
+- `[x]` **A-AUDIT-CLEAN-02** TypeScript `any` 批量清理 — 28 个 `.vue` 页面里 158 处 `any` + 41 处 `as any`。重点文件：`employees/index.vue`、`attendance/index.vue`、`payroll/index.vue`、`config/index.vue`、`projects/[id].vue`、`role/index.vue` 等。用 antd 官方类型（`TableProps`、`ButtonProps`、`FormItemProps` 等）替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释说明
+- `[x]` **A-AUDIT-CLEAN-03** `slips.vue` 路径冲突清理 — `app/h5/pages/payroll/slips.vue` 当前是空转发页。删除该文件（Nuxt 不再生成 `/payroll/slips` 路由）；或若有用途，明示功能
 - `[x]` **A-AUDIT-CLEAN-04** `app/shared` vitest 配置去重 — `app/mp/vitest.config.ts` 已 include `../../test/unit/shared/**`，`app/shared/vitest.config.ts` 同路径重复。确认无 CI 依赖后删除 shared 配置，或给它分配独立用途（如仅跑 node 环境的纯函数测试）
 
 #### A-AUDIT-OPS — 运维配置类
