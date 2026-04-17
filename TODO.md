@@ -91,9 +91,8 @@ Phase A 完成标准：
   > 验收：dept_manager 登录可见"发起通知"和"已发起"Tab，可创建加班通知
 
 - [>] **Worker 菜单添加考勤管理入口**（`default.vue` ROLE_MENUS.worker）
-  - 当前 worker 菜单无 `/attendance`，但劳工需要提交请假/加班申请（§5.8）
-  - 添加 `{ key: '/attendance', label: '考勤申请', path: '/attendance' }` 到 worker 菜单
-  - 同步更新后端 WorkbenchController worker 菜单配置
+  - Reality Checker 2026-04-17 核查——`ROLE_MENUS.worker` 已含 `/attendance`，代码层已修复（同 BUG-08）
+  - 同步确认后端 WorkbenchController worker 菜单配置是否一致
   > 验收：worker 账号登录，侧边栏可见考勤入口，可提交请假申请
 
 ---
@@ -251,10 +250,10 @@ Phase A 完成标准：
 
 #### P1 — 接口缺失 / 权限泄露（4条）
 
-- [ ] **BUG-04 系统配置页 3 个 Config API 404**
-  - `SystemConfigController` 缺失：`GET/PUT /api/config/company-name`、`GET/PUT /api/config/payroll-cycle`、`GET/PUT /api/config/retention-period`
-  - 修复：在 `SystemConfigController` 实现上述 6 个端点，读写 `system_config` 表对应 key
-  > 验收：CEO `/config` 三个配置区域均可加载并保存
+- [>] **BUG-04 系统配置页 3 个 Config API 404**
+  - ~~`SystemConfigController` 缺失~~：Reality Checker 2026-04-17 代码核查——6 个端点已在 `SystemConfigController.java:74–151` 全部实现，非代码缺失
+  - 待确认：后端重启后 API 是否 200；CEO `/config` 三个配置区域均可加载并保存
+  > 验收：`curl -H "Authorization: Bearer {ceo-token}" /api/config/company-name` 返回 200
 
 - [ ] **BUG-05 / BUG-06 请假类型 404，考勤请假 Tab 与假期配额页全失效**
   - `LeaveTypeController` 已实现，但后端运行中 JAR 为旧版（需重启）；`local/seed-data.sql` 无 `leave_type_def` 记录
@@ -268,21 +267,23 @@ Phase A 完成标准：
 
 #### P2 — 权限 / 路由 / 错误提示（8条）
 
-- [ ] **BUG-07 HR 侧边栏缺少「假期配额管理」入口**
-  - `default.vue` `ROLE_MENUS.hr` 缺 `/leave-types` 菜单项
-  > 验收：HR 登录侧边栏可见"假期配额管理"
+- [>] **BUG-07 HR 侧边栏缺少「假期配额管理」入口**
+  - Reality Checker 2026-04-17 代码核查——`ROLE_MENUS.hr` 已含 `/leave-types` 条目，代码层已修复
+  > 验收：HR 登录侧边栏可见"假期配额管理"（浏览器验收）
 
-- [ ] **BUG-08 Worker 侧边栏缺少「考勤管理」入口**
-  - `default.vue` `ROLE_MENUS.worker` 缺 `/attendance` 菜单项
-  > 验收：Worker 登录侧边栏可见"考勤申请"
+- [>] **BUG-08 Worker 侧边栏缺少「考勤管理」入口**
+  - Reality Checker 2026-04-17 代码核查——`ROLE_MENUS.worker` 已含 `/attendance` 条目，代码层已修复
+  > 验收：Worker 登录侧边栏可见"考勤申请"（浏览器验收）
 
 - [ ] **BUG-09 角色管理页仅显示 5 个角色（缺 hr / department_manager）**
   - `GET /api/roles` 查询条件过滤，或 seed-data 中这两个角色 `status` 值不正确；待代码排查
   > 验收：CEO `/role` 显示至少 7 个内置角色
 
-- [ ] **BUG-10 CEO 侧边栏缺少 3 个独有功能入口**
-  - `default.vue` `ROLE_MENUS.ceo` 缺 `/attendance`、`/data-export`、`/data-viewer`
-  > 验收：CEO 侧边栏可见数据导出、数据文件查看、考勤管理三项
+- [>] **BUG-10 CEO 侧边栏缺少独有功能入口（部分已修复）**
+  - Reality Checker 2026-04-17 代码核查——`/data-export` 和 `/data-viewer` 已在 CEO 菜单中，代码层已修复
+  - **仍缺**：`/attendance` 入口尚未在 `ROLE_MENUS.ceo` 中出现
+  - 待修复：`default.vue` `ROLE_MENUS.ceo` 补充 `/attendance` 菜单项
+  > 验收：CEO 侧边栏可见考勤管理入口（/data-export 和 /data-viewer 浏览器验收确认）
 
 - [ ] **BUG-11 HR 访问 `/payroll` 被重定向到首页**
   - `auth.global.ts:23` `'/payroll': ['ceo', 'finance', 'worker', 'employee']` 缺 `'hr'`（需产品确认 HR 是否应可访问）
@@ -330,6 +331,101 @@ Phase A 完成标准：
   - 现状：所有跨文档引用均使用反引号路径（如 `` `test/TEST_DESIGN.md` ``），不可点击
   - 修复：全部替换为 `[文件名](相对路径)` 格式的可点击链接
   > 验收：在 GitHub 或 VS Code 预览中所有文档交叉引用均可点击跳转
+
+---
+
+### AR — 上线前架构审查发现（2026-04-17）
+
+> 来源：4 个专项 agent 并行审查（Codebase Onboarding Engineer、Git Workflow Master、Software Architect、Reality Checker）。  
+> 新发现的问题，不与 A10 Bug 列表重叠。按优先级排列。
+
+#### AR-SEC — 安全漏洞
+
+- [ ] **AR-01 AttachmentController 无权限注解，附件接口对任意已认证用户全开**
+  - `AttachmentController.java`：`/attachments/upload` 和 `/{id}` 无任何 `@PreAuthorize`，任意角色可上传/下载任意附件，无业务隔离
+  - 修复：上传接口至少加 `@PreAuthorize("isAuthenticated()")`；下载接口添加附件归属校验（仅上传者或业务关联角色可访问）
+  > 验收：员工 A token 访问员工 B 上传的附件 `GET /api/attachments/{id}` 返回 403
+
+- [ ] **AR-02 WorkbenchController 无权限注解**
+  - `WorkbenchController.java`：`/me/profile`、`/workbench/config`、`/workbench/summary` 均无方法级 `@PreAuthorize`
+  - 修复：至少添加 `@PreAuthorize("isAuthenticated()")` 确保未认证请求被拦截
+  > 验收：无 token 直接访问 `GET /api/workbench/summary` 返回 401
+
+- [ ] **AR-03 前端路由守卫仅覆盖 13 条路由，大量页面无角色限制**
+  - `auth.global.ts` `PAGE_ACCESS` 未覆盖：`/attendance`、`/expense/apply`、`/expense/records`、`/forms`、`/todo`、`/team`、`/workbench`、`/construction-log` 等核心业务页面
+  - 未列出的路由对所有已认证用户全开，与各角色设计不符（此问题比 BUG-E02 更广）
+  - 修复：按 DESIGN.md 各角色章节逐一补全 `PAGE_ACCESS`（BUG-E02 仅修 `/data-export` 和 `/data-viewer`，此任务补全其余所有页面）
+  > 验收：worker 直接访问 `/payroll` URL 被重定向到首页；employee 访问 `/operation-logs` 被重定向
+
+#### AR-DB — 数据库性能
+
+- [ ] **AR-04 V1 核心高频查询表无任何索引，数据量增长后查询性能将显著下降**
+  - `V1__init_schema.sql` 无任何 `CREATE INDEX`，受影响高频查询表：
+    - `form_record(submitter_id, project_id, status)` — 审批中心主查询
+    - `approval_record(form_id, approver_id)` — 审批记录
+    - `notification(recipient_id, is_read)` — 工作台通知（每次加载均触发）
+    - `payroll_slip(employee_id, cycle_id)` — 工资单查询
+    - `payroll_slip_item(slip_id)` — 工资单明细
+    - `employee(department_id, role_code)` — 员工按部门/角色筛选
+  - 修复：新建 Flyway 迁移 `V13__add_indexes.sql`，为上述列添加索引
+  > 验收：`V13__add_indexes.sql` 在 H2 和 PostgreSQL 均执行成功；`EXPLAIN` 结果确认关键查询命中索引
+
+#### AR-OPS — 运维配置
+
+- [ ] **AR-05 生产配置 DB_PASSWORD fallback 为 "changeme"，忘记注入环境变量时数据库使用弱密码**
+  - `server/src/main/resources/application-prod.yml`：`password: ${DB_PASSWORD:changeme}`
+  - 修复：改为 `password: ${DB_PASSWORD}`（无 fallback，强制要求生产注入）
+  > 验收：`application-prod.yml` 中 `DB_PASSWORD` 无冒号 fallback 默认值
+
+- [ ] **AR-06 CI `frontend-mp-test` job 每次 push 必定失败（Phase C 尚未开发）**
+  - `.github/workflows/ci.yml` 中 `frontend-mp-test` 执行 `yarn workspace oa-mp test`，而 `app/mp/` 的 uni-app 为 Phase C，尚未开发
+  - 修复：注释或条件跳过 `frontend-mp-test` job，Phase C 启动时恢复
+  > 验收：CI push to main 全绿，无 `frontend-mp-test` 失败记录
+
+#### AR-CODE — 代码质量（技术债，Phase B 前处理）
+
+- [ ] **AR-07 AuthController phone change ConcurrentHashMap 无过期清理，生产长期运行存在内存泄漏**
+  - `AuthController.java` 第 60–62 行：`phoneChangeCurrentCodeStore`、`phoneChangeNewCodeStore`、`phoneChangeTokenStore` 三个 Map 仅在流程完成时清理本次条目；用户发起不完成则永久留存
+  - 修复：添加 `@Scheduled` 定时扫描过期条目，或改用带 TTL 的 Guava Cache / Caffeine
+  > 验收：手机变更流程发起但不完成，30 分钟后条目自动清除
+
+- [ ] **AR-08 多控制器直接持有 Mapper，业务逻辑渗入 Controller 层**
+  - `WorkbenchController`（多表查询）、`AuthController`（注入 RoleMapper/DepartmentMapper）、`OrgController`、`AfterSaleController`、`AttachmentController` 均绕过 Service 层直接调 Mapper
+  - 修复：优先将 `WorkbenchController` 中查询逻辑抽取为 `WorkbenchService`；其余在迭代中逐步整理
+  > 验收：WorkbenchController 中无直接 Mapper 字段注入
+
+- [ ] **AR-09 无全局异常处理器，错误响应格式各控制器自行决定**
+  - 缺少 `@ControllerAdvice` 全局处理，各控制器混用 `Map.of("message", ...)`、`ResponseStatusException`、裸异常
+  - BUG-E03（Toast 暴露 HTTP 字符串）部分源于此
+  - 修复：新建 `GlobalExceptionHandler.java`，统一 `BusinessException`、`AccessDeniedException`、验证失败场景，返回 `{"code": 4xx, "message": "..."}` 结构
+  > 验收：所有 4xx 错误均返回统一 JSON 结构，不暴露 Stack Trace；BUG-E03 Toast 问题连带修复
+
+#### AR-STRUCT — 目录结构与命名
+
+- [ ] **AR-10 测试文件散落在源码目录（违反"测试统一在 test/ 目录"规则）**
+  - `app/h5/test/`：`access.test.ts`、`setup.ts`（2 个文件）
+  - `app/mp/test/`：`access.test.ts`、`appshell.test.ts`、`org.test.ts`、`stores.user.test.ts`、`setup.ts`（5 个文件）
+  - `app/shared/test/`：`formLabels.test.ts`、`forms.test.ts`（2 个文件）
+  - 修复：迁移至 `test/unit/h5/`、`test/unit/mp/`、`test/unit/shared/`；同步更新各 vitest.config.ts 中的 include 路径
+  > 验收：`app/` 目录下无任何 `*.test.ts` 文件；`yarn test` 仍全部通过
+
+- [ ] **AR-11 前端页面目录使用 kebab-case，违反 snake_case 命名规范**
+  - 违规目录：`app/h5/pages/construction-log/`、`data-export/`、`data-viewer/`、`leave-types/`、`operation-logs/`
+  - 违规文件：`app/h5/pages/payroll/signature-bind.vue`
+  - 注意：Nuxt 3 基于文件路由，重命名会改变 URL，需同步更新 `auth.global.ts` 路由 key、`ROLE_MENUS` 路径、所有 `navigateTo`/`router.push` 引用
+  - 修复：重命名为 `construction_log/`、`data_export/`、`data_viewer/`、`leave_types/`、`operation_logs/`，全局替换所有引用
+  > 验收：`app/h5/pages/` 无 kebab-case 多词目录；浏览器可正常访问重命名后的路由
+
+- [ ] **AR-12 一次性测试脚本已提交到 git（应在 local/ 或删除）**
+  - `test/manual-test-2026-04-17/run_tests.js`、`run_edge_tests.js`、`run_network_trace.js`
+  - 三个文件为单次测试临时脚本，无 CI 入口，不是持久测试资产
+  - 修复：删除三个脚本文件（TEST_REPORT.md 等文档文件保留）
+  > 验收：`git ls-files test/manual-test-2026-04-17/` 仅含 `*.md` 文件
+
+- [ ] **AR-13 server/README.md 内容超出快速启动范围，与 server/BACKEND_IMPL.md 职责重叠**
+  - `server/README.md`（322 行）深入架构描述，大量内容与 `server/BACKEND_IMPL.md`（131 行）重复
+  - 修复：`server/README.md` 裁剪为纯快速启动（≤ 50 行）：环境要求 + 启动命令 + 链接到 BACKEND_IMPL.md
+  > 验收：`server/README.md` ≤ 50 行，无架构实现细节
 
 ---
 
