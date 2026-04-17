@@ -136,7 +136,7 @@
   3. 其余 Controller（AuthController/OrgController/AttachmentController）标记为技术债，在 Phase B 迭代中逐步整理（不在本任务范围）
 - **验收点**：WorkbenchController 中无直接 Mapper 字段注入；代码 grep 确认
 - **验收流程**：`grep -r "Mapper" WorkbenchController.java` 输出为空（无 Mapper 直接注入）；API 功能不回退（curl `/api/workbench/summary` 返回 200）
-- **范围限定声明（2026-04-17 架构审查后修订）**：本任务**仅覆盖 WorkbenchController 一个文件**。审查发现全仓还有 **32 个 Controller 直持 Mapper**（AllowanceController、PayrollController、ProjectController、LeaveTypeController、AfterSaleController 等，其中 13 处直接在 Controller 体内 return Mapper.selectList）。这部分统一下沉到 `B-DEBT-07` 批量处理，不扩大 A-CODE-02 范围。
+- **范围限定声明（2026-04-17 架构审查后修订）**：本任务**仅覆盖 WorkbenchController 一个文件**。审查发现全仓还有 **32 个 Controller 直持 Mapper**（AllowanceController、PayrollController、ProjectController、LeaveTypeController、AfterSaleController 等，其中 13 处直接在 Controller 体内 return Mapper.selectList）。这部分在 Phase A 内由 `A-AUDIT-DEBT-07` 批量处理（原计划归 Phase B，用户要求不留技术债已搬回 Phase A）。
 - **状态**：`[>]`
 
 #### A-CODE-03 缺全局异常处理器
@@ -325,7 +325,7 @@
 - `[>]` **A-AUDIT-CODE-05** @Scheduled 迁出 Controller — `AuthController.cleanupExpiredPhoneChangeEntries` 迁出到 `server/.../scheduler/PhoneChangeCleanupScheduler.java`；三个 Map 也一并转移，Controller 通过 Service 访问
 - `[>]` **A-AUDIT-CODE-06** 前后端菜单双源统一 — 以 `default.vue:ROLE_MENUS` 为单一来源，`WorkbenchService.buildMenus` 返回值**完全对齐**；修正 3 处已知漂移：ceo 菜单补 `/leave_types`、worker 菜单前后端 `/attendance` 统一、`employee` 显式 case（不再走 default）；所有 Unicode 转义（`"\u5de5\u4f5c\u53f0"` 等）改为中文字面量
 - `[>]` **A-AUDIT-CODE-07** WorkbenchSummary DTO 独立 — 新建 `dto/WorkbenchSummaryResponse.java`；删除 `WorkbenchService.WorkbenchSummary` 内部类；Controller 返回 `ResponseEntity<WorkbenchSummaryResponse>`（去 `ResponseEntity<?>`）
-- `[>]` **A-AUDIT-CODE-08** A-CODE-02 验收范围回退 + B-DEBT-07 — TODO.md A-CODE-02 已加"范围限定声明"（已完成）；本任务负责在 Phase B 新增 **B-DEBT-07 Controller 层批量下沉 Service**，列出剩余 32 个 Controller 清单
+- `[>]` **A-AUDIT-CODE-08** A-CODE-02 验收范围回退 + 登记后续批量治理任务 — TODO.md A-CODE-02 已加"范围限定声明"（已完成）；后续批量治理原为 B-DEBT-07，用户要求不留技术债，现已搬回 Phase A 作 `A-AUDIT-DEBT-07`
 
 #### A-AUDIT-FIX — Bug 修复
 
@@ -356,6 +356,42 @@
 #### A-AUDIT-DB — 数据种子类
 
 - `[>]` **A-AUDIT-DB-01** `ops` 角色种子数据 — `db/data.sql` 的 `sys_role` `MERGE INTO` 表补 `(id=9, role_code='ops', role_name='运维', ...)`；`schema.sql` 无需改动。Flyway 侧：如 Phase B 后需要 prod 部署，建 `V15__add_ops_role.sql` 同步
+
+#### A-AUDIT-ERR — 错误处理后续（原 B-DEBT-ERR 搬回）
+
+- `[ ]` **A-AUDIT-ERR-01** 剩余 Controller `catch (Exception)` 清理 — AuthController（5 处）、OrgController（6）、EmployeeController（2）、TeamController（1）、AttachmentController（1）共 15 处 `try/catch + e.getMessage` 模式全部改为抛 `BusinessException` 或让异常冒泡到 GlobalExceptionHandler
+- `[ ]` **A-AUDIT-ERR-02** GlobalExceptionHandler 常见异常补齐 — 补 `ConstraintViolationException`（@Validated on @RequestParam/@PathVariable）→ 400、`HttpRequestMethodNotSupportedException` → 405、`HttpMediaTypeNotSupportedException` → 415、`HttpMediaTypeNotAcceptableException` → 406
+- `[ ]` **A-AUDIT-ERR-03** 异常处理日志级别调优 — `DataIntegrityViolationException` / `MaxUploadSizeExceededException` 日志级别从 `debug` 提升到 `warn`（利于生产排查）；`AuthenticationException` / `NoHandlerFoundException` 保留 `debug`（防扫描器刷屏）
+- `[ ]` **A-AUDIT-ERR-04** 批次 1 审计的 7 条空 catch 清理 — `SecondRoleController:129`、`EmployeeController:205`、`WorkItemTemplateController:154`、`WorkLogController:124`、`JwtAuthenticationFilter:87`、`ConstructionAttendanceService:70`（NumberFormatException 兜底，评估是否改为 warn log）、`PayrollEngine:427`（日期解析兜底，同上）
+
+#### A-AUDIT-INFRA — 开发环境基础设施（原 B-INFRA 搬回）
+
+- `[ ]` **A-AUDIT-INFRA-01** 统一 dev/prod 数据库初始化路径 — 消除 `db/schema.sql`（dev）与 `db/migration/V*.sql`（prod Flyway）双写不同步风险。方案择一：(A) dev 也启用 Flyway，禁用 `spring.sql.init`，V1-Vn 全跑，种子数据合并到 V2；(B) 保留双写但加 CI 自动化校验对比漂移。验收：新增 V 号迁移后 dev 启动无需手动改 schema.sql
+
+#### A-AUDIT-DEBT — 架构拆分（原 B-DEBT 搬回，7 项）
+
+- `[ ]` **A-AUDIT-DEBT-01** `projects/[id].vue` 按 Tab 拆分 — 1431 行 6 个 Tab 拆为 `pages/projects/tabs/progress.vue`、`tabs/cost.vue`、`tabs/revenue.vue`、`tabs/logs.vue`、`tabs/members.vue`、`tabs/aftersale.vue`；父页面保留 Tab 切换骨架；每子组件 ≤ 400 行
+- `[ ]` **A-AUDIT-DEBT-02** `payroll/index.vue` 拆分 — 1246 行拆为周期管理 / 结算操作 / 工资条查看三个独立组件；拆分后 finance 周期→结算→发放链路完整
+- `[ ]` **A-AUDIT-DEBT-03** `attendance/index.vue` 按 Tab 拆分 — 914 行拆为请假 / 加班 / 我的记录 / 发起加班通知四个 Tab 组件（注意 A-AUDIT-FIX-02 已引入 ?tab= query 激活逻辑，保留）
+- `[ ]` **A-AUDIT-DEBT-04** `config/index.vue` 按配置域拆分 — 567 行拆为企业信息 / 发薪日 / 数据保留 / 审批流 / 假期配置各自独立抽屉或子页面
+- `[ ]` **A-AUDIT-DEBT-05** AuthController 按流程拆分 — 530 行新建 `PasswordResetController`（密码重置三步）、`PhoneChangeController`（手机号变更三步，协同已抽出的 PhoneChangeService）；AuthController 仅保留 `/login`、`/logout`、`/me`、`/change-password`；接口路径不变（前端无需改）
+- `[ ]` **A-AUDIT-DEBT-06** ProjectController 按业务域拆分 — 458 行拆为基础 CRUD / 成员（Member）/ 里程碑（Milestone）/ 成本（Cost）/ 营收（Revenue）各自独立 Controller；接口路径保持 `/projects/**` 不变
+- `[ ]` **A-AUDIT-DEBT-07** Controller 层批量下沉 Service — 全仓另有 32 个 Controller 直持 Mapper（13 处直接在 Controller 体内 `return Mapper.selectList()`）。范围：AllowanceController / Payroll 系列 / Project 系列 / AuthController / RoleController / SecondRoleController / Attendance 系列 / LeaveTypeController / AfterSaleController / InjuryController / MaterialCostController / FormController / NotificationController / OperationLogController / OrgController / DepartmentController / EmployeeController / SignatureController / SystemConfigController / SetupController / DevController / TestController。原则：每个 Controller 对应一个 Service，Mapper 仅从 Service 注入；13 处 `return selectList` 封装为 `listXxx()` Service 方法。验收：`grep -rn "private final.*Mapper" server/.../controller/` 输出为空
+
+#### A-AUDIT-FOLLOWUP — 审计中发现的非阻塞小项（收敛清理）
+
+- `[ ]` **A-AUDIT-FOLLOWUP-01** EmployeeController.listEmployees N+1 查询 — 当前 `toResponse` 在 list 端点按行调用 `SecurityUtils.getEmployeeIdFromUsername`，对同一 authentication.getName() 重复查库。方法入口解析一次 `currentEmployeeId`，lambda 捕获下传
+- `[ ]` **A-AUDIT-FOLLOWUP-02** PhoneChangeService record 可见性收紧 — `PhoneChangeCodeEntry` / `PhoneChangeTokenEntry` 两个 `public record` 降为 package-private 或移入 internal 子包，避免跨包暴露内部状态类型
+- `[ ]` **A-AUDIT-FOLLOWUP-03** login.vue + app.vue 合并 `useCompanyName` composable — 当前双 onMounted 分别 fetch `/api/setup/status`，虽借 useState 不产生冗余请求但逻辑散落。抽 `composables/useCompanyName.ts` 统一入口
+- `[ ]` **A-AUDIT-FOLLOWUP-04** `/me/profile` @Cacheable 性能优化 — 当前 `buildUserProfile` 每次查 employee + department 两次库；前端每页刷可能多次调用。加 Spring Cache 注解（key=employeeNo，TTL 60s），或在 Service 层用本地 Caffeine 缓存
+- `[ ]` **A-AUDIT-FOLLOWUP-05** 前端剩余 22 个 .vue 文件 `any` 清理 — A-AUDIT-CLEAN-02 只清了 6 个高频文件。剩余文件全量 grep `:\s*any\b\|\bas any\b`，逐一用 antd 官方类型 / `Record<string, unknown>` / 具体 interface 替换；无法替换的 `as any` 必须加 `// 原因：xxx` 注释
+- `[ ]` **A-AUDIT-FOLLOWUP-06** `default.vue` `normalizePath` 死代码清理 — A-AUDIT-CODE-06 把后端菜单 `/workbench` 统一改为 `/` 后，`default.vue:236-239` 的 `normalizePath({'/workbench':'/'})` 映射表成为死代码，删除
+- `[ ]` **A-AUDIT-FOLLOWUP-07** projects/[id].vue `member-row-` DOM id 变更同步 — A-AUDIT-CLEAN-02 里第二角色表 customRow 的 DOM id 从 `member-row-<username>` 改为 `member-row-<employeeId>`。如果有 e2e 选择器或手测脚本引用旧 id，同步更新
+- `[ ]` **A-AUDIT-FOLLOWUP-08** 历史 `role_code='gm'` 数据迁移 — 若已有运行环境历史 H2/PG 库写入 `role_code='gm'`，升级后该账号会与新建的 `general_manager` 角色失配。新建 `V16__migrate_gm_role.sql`：`UPDATE employee SET role_code='general_manager' WHERE role_code='gm';` + `DELETE FROM sys_role WHERE role_code='gm' AND NOT EXISTS (SELECT 1 FROM employee WHERE role_code='gm');`
+
+#### A-AUDIT-TEST — 单元测试层预存技术债
+
+- `[ ]` **A-AUDIT-TEST-01** 修复 Backend 单元测试编译失败 — Phase A 前就存在的预存 bug：`ProjectServiceImplTest.java` / `EmployeeServiceImplTest.java` 使用了旧 DTO 构造签名，V11/V13 扩展 DTO 字段后 `mvn test-compile` 失败，`mvn test` 整体阻塞。更新两个测试类的构造函数调用，补齐新字段（多数可传 null）；确保 `mvn test` 全量通过（已有的 Integration Test 500 同时修或至少定位）
 
 ---
 
@@ -771,99 +807,6 @@
 - `[?]` 施工日志模板 `/construction_log/templates` — 工作项模板 CRUD
 - `[?]` 通知中心 `/notifications` — 分类 Tab + 标记已读
 - `[?]` 数据保留 `/retention` — 保留期配置与清理预览
-
----
-
-### B-INFRA — 开发环境基础设施
-
-#### B-INFRA-01 统一 dev/prod 数据库初始化路径
-- **目标**：消除 `db/schema.sql`（dev 用）与 `db/migration/V*.sql`（prod Flyway 用）双写不同步风险
-- **背景**：Phase A A-DB-01 实施中发现 schema.sql 落后 V11/V12/V13 字段，需要手动补齐。长期看每新增一个 Flyway migration 都要同步改 schema.sql，容易遗漏
-- **方案**（择一）
-  - 方案 A：dev 也启用 Flyway（禁用 `spring.sql.init`），V1-Vn 全跑；种子数据合并到 `V2__init_data.sql`
-  - 方案 B：保留双写但加自动化校验（CI 对比 schema.sql 列与 V* migration 推导的列）
-- **验收点**：V 号迁移新增后，dev 启动无需手动改 schema.sql；或 CI 能自动发现漂移
-- **状态**：`[ ]`
-
----
-
-### B-DEBT — 架构技术债拆分（A-CLEAN-07 移入）
-
-> 前置条件：B-P0/P1/P2/P3/FEAT 全部完成后再执行，避免拆分期间与功能开发冲突。
-> 拆分原则：按业务职责分文件；拆分后每个子组件/子控制器单一职责；同步更新引用和单元测试。
-
-#### B-DEBT-01 projects/[id].vue 按 Tab 拆分
-- **范围**：`app/h5/pages/projects/[id].vue`（1431 行，6 个 Tab）
-- **拆分**：`pages/projects/tabs/progress.vue`、`tabs/cost.vue`、`tabs/revenue.vue`、`tabs/logs.vue`、`tabs/members.vue`、`tabs/aftersale.vue`；父页面保留 Tab 切换骨架
-- **验收**：每个子组件 ≤ 400 行；原页面所有交互可用
-- **状态**：`[ ]`
-
-#### B-DEBT-02 payroll/index.vue 拆分
-- **范围**：`app/h5/pages/payroll/index.vue`（1246 行）
-- **拆分**：周期管理 / 结算操作 / 工资条查看 三个独立页面或组件
-- **验收**：拆分后 finance 周期→结算→发放链路完整
-- **状态**：`[ ]`
-
-#### B-DEBT-03 attendance/index.vue 按 Tab 拆分
-- **范围**：`app/h5/pages/attendance/index.vue`（914 行）
-- **拆分**：请假 / 加班 / 我的记录 / 发起加班通知 四个 Tab 组件
-- **验收**：员工提交请假/加班流程完整
-- **状态**：`[ ]`
-
-#### B-DEBT-04 config/index.vue 按配置域拆分
-- **范围**：`app/h5/pages/config/index.vue`（567 行）
-- **拆分**：企业信息 / 发薪日 / 数据保留 / 审批流 / 假期配置各自独立抽屉或子页面
-- **验收**：CEO 配置页各项可修改保存
-- **状态**：`[ ]`
-
-#### B-DEBT-05 AuthController 按流程拆分
-- **范围**：`server/src/main/java/com/oa/backend/controller/AuthController.java`（530 行）
-- **拆分**：新建 `PasswordResetController`（密码重置三步）、`PhoneChangeController`（手机号变更三步）；AuthController 仅保留 `/login`、`/logout`、`/me`、`/change-password`
-- **验收**：所有接口路径不变（避免前端改动），行为不回退
-- **状态**：`[ ]`
-
-#### B-DEBT-06 ProjectController 按业务域拆分
-- **范围**：`server/src/main/java/com/oa/backend/controller/ProjectController.java`（458 行）
-- **拆分**：基础 CRUD（Project）/ 成员（Member）/ 里程碑（Milestone）/ 成本（Cost）/ 营收（Revenue）各自独立 Controller
-- **验收**：接口路径保持 `/projects/**` 不变（RESTful 分组），行为不回退
-- **状态**：`[ ]`
-
-#### B-DEBT-07 Controller 层批量下沉 Service（A-CODE-02 溢出项）
-- **背景**：Phase A A-CODE-02 验收收窄为"仅 WorkbenchController"。审查发现全仓另有 **32 个 Controller 直持 Mapper**，13 处直接在 Controller 体内 `return Mapper.selectList()`。这些属于分层腐化，须批量治理
-- **待迁移 Controller 清单（部分）**：
-  - AllowanceController（直接 return selectList）
-  - PayrollController、PayrollBonusController、PayrollItemDefController
-  - ProjectController、ProjectRevenueController、ProjectConstructionLogController
-  - AuthController、RoleController、SecondRoleController
-  - AttendanceController、AttendanceBalanceController
-  - LeaveTypeController
-  - AfterSaleController、InjuryController
-  - MaterialCostController、FormController
-  - NotificationController、OperationLogController
-  - OrgController、DepartmentController、EmployeeController
-  - SignatureController、SystemConfigController
-  - SetupController、DevController、TestController（dev 类，优先级低）
-  - 其它直接 @Autowired Mapper 的 Controller（grep 确认）
-- **拆分原则**：每个 Controller 对应一个 Service（无 Service 则新建 Impl），Mapper 仅从 Service 注入；对 13 处 `return selectList` 的直接封装为 `listXxx()` Service 方法
-- **验收**：`grep -rn "private final.*Mapper" server/src/main/java/com/oa/backend/controller/` 输出为空（除 WorkbenchController 已下沉外零命中）
-- **前置条件**：B-P0/P1/P2/P3/FEAT 全部完成；本任务为大范围重构，须在功能稳定后进行
-- **状态**：`[ ]`
-
-#### B-DEBT-ERR-01 剩余 Controller `catch (Exception)` 清理
-- **背景**：A-AUDIT-CODE-03 清理了 7 个 Controller 共 20 处 `e.getMessage` 泄露。审查再次 grep 发现另有 13 处 `catch (Exception e)` 未清理
-- **范围**：AuthController（5 处）、OrgController（6）、EmployeeController（2）、TeamController（1）、AttachmentController（1）
-- **原则**：同 A-AUDIT-CODE-03，`try/catch + e.getMessage` 模式 → 抛 BusinessException 或让异常冒泡到 GlobalExceptionHandler
-- **状态**：`[ ]`
-
-#### B-DEBT-ERR-02 GlobalExceptionHandler 常见异常补齐
-- **范围**：`server/src/main/java/com/oa/backend/exception/GlobalExceptionHandler.java`
-- **补**：`ConstraintViolationException`（@Validated on @RequestParam/@PathVariable 校验失败）→ 400；`HttpRequestMethodNotSupportedException` → 405；`HttpMediaTypeNotSupportedException` → 415；`HttpMediaTypeNotAcceptableException` → 406
-- **状态**：`[ ]`
-
-#### B-DEBT-ERR-03 异常处理日志级别调优
-- **范围**：`GlobalExceptionHandler`
-- **要求**：`DataIntegrityViolationException` / `MaxUploadSizeExceededException` 日志级别从 `debug` 提升到 `warn`（利于生产排查）；`AuthenticationException` / `NoHandlerFoundException` 保留 `debug`（防扫描器刷屏）
-- **状态**：`[ ]`
 
 ---
 
