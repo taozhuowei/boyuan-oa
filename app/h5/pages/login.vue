@@ -2,9 +2,9 @@
   <a-config-provider :locale="zhCN">
   <div class="login-page">
     <div class="login-container">
-      <!-- Company header -->
+      <!-- Company header — name comes from /api/setup/status, falls back to 博渊 -->
       <div class="company-section">
-        <h1 class="company-name">众维建筑工程有限公司</h1>
+        <h1 class="company-name">{{ companyName || '博渊' }}</h1>
         <p class="company-subtitle">企业协同管理系统</p>
       </div>
 
@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import { loginWithAccount } from '~/utils/access'
 import { useUserStore } from '~/stores/user'
@@ -70,6 +70,19 @@ const userStore = useUserStore()
 const loading = ref(false)
 const errorMsg = ref('')
 const form = reactive({ identifier: '', password: '' })
+
+// 企业名：复用 app.vue 写入的 useState('company-name') 值；若尚未填充，主动拉取 /api/setup/status
+// 未设置时模板回退到「博渊」
+const companyName = useState<string | null>('company-name', () => null)
+onMounted(async () => {
+  if (companyName.value) return
+  try {
+    const data = await $fetch<{ companyName?: string | null }>('/api/setup/status')
+    if (data?.companyName) companyName.value = data.companyName
+  } catch {
+    // 忽略：模板会回退到默认值
+  }
+})
 
 async function handleLogin() {
   if (loading.value) return

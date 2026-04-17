@@ -165,7 +165,8 @@
             @ok="doSaveMilestone"
             :confirm-loading="milestoneLoading"
             @cancel="resetMilestoneForm"
-            :okButtonProps="({ 'data-catch': 'project-milestone-save-btn' } as any)"
+            <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
+            :okButtonProps="({ 'data-catch': 'project-milestone-save-btn' } as unknown as ButtonProps)"
           >
             <a-form :model="milestoneForm" layout="vertical">
               <a-form-item label="名称" required>
@@ -416,7 +417,7 @@
             <a-button data-catch="assign-second-role-btn" type="primary" :loading="srLoading" @click="assignSecondRole">分配</a-button>
             <a-button @click="loadSecondRoles">刷新</a-button>
           </div>
-          <a-table :columns="srColumns" :data-source="srAssignments" :loading="srLoading" row-key="id" size="small" :customRow="(record: any) => ({ 'data-catch': 'member-row-' + record.username } as any)">
+          <a-table :columns="srColumns" :data-source="srAssignments" :loading="srLoading" row-key="id" size="small" :customRow="(record: SecondRoleAssignment) => ({ 'data-catch': 'member-row-' + record.employeeId } as Record<string, string>)">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'roleName'">{{ srRoleName(record.roleCode) }}</template>
               <template v-if="column.key === 'action'">
@@ -512,7 +513,7 @@
           <a-table :columns="insuranceColumns" :data-source="insuranceRows"
                    :loading="insuranceLoading" :pagination="false"
                    row-key="insuranceName" size="small"
-                   :row-class-name="(r: any) => r.isTotal ? 'insurance-total-row' : ''">
+                   :row-class-name="(r: InsuranceRow) => r.isTotal ? 'insurance-total-row' : ''">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'scope'">
                 <span v-if="!record.isTotal">{{ insuranceScopeLabel(record.scope) }}{{ record.scopeTargetId ? ' #' + record.scopeTargetId : '' }}</span>
@@ -623,6 +624,7 @@ import { useRoute } from 'vue-router'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 import { message } from 'ant-design-vue'
+import type { ButtonProps } from 'ant-design-vue'
 
 interface ProjectDetail {
   id: number

@@ -258,7 +258,8 @@
       :confirm-loading="creatingCycle"
       @ok="doCreateCycle"
       @cancel="createCycleForm.period = ''"
-      :okButtonProps="({ 'data-catch': 'payroll-cycle-create-ok' } as any)"
+      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
+      :okButtonProps="({ 'data-catch': 'payroll-cycle-create-ok' } as unknown as ButtonProps)"
     >
       <a-form layout="vertical">
         <a-form-item label="周期（格式：YYYY-MM）">
@@ -274,7 +275,8 @@
       :confirm-loading="confirmingSlip"
       @ok="submitPinConfirm"
       @cancel="closePinModal"
-      :okButtonProps="({ 'data-catch': 'payroll-sign-confirm-btn' } as any)"
+      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
+      :okButtonProps="({ 'data-catch': 'payroll-sign-confirm-btn' } as unknown as ButtonProps)"
     >
       <a-form layout="vertical">
         <a-form-item
@@ -406,7 +408,8 @@
       title="发起薪资更正"
       :confirm-loading="submittingCorrection"
       width="640px"
-      :okButtonProps="({ 'data-catch': 'correction-submit-btn' } as any)"
+      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
+      :okButtonProps="({ 'data-catch': 'correction-submit-btn' } as unknown as ButtonProps)"
       @ok="submitCorrection"
       @cancel="showCorrectionModal = false"
     >
@@ -494,6 +497,7 @@
  */
 import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
+import type { ButtonProps } from 'ant-design-vue'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 

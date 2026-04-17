@@ -29,7 +29,7 @@
         }"
         row-key="id"
         size="small"
-        :customRow="(record: Employee) => ({ 'data-catch': 'employee-row-' + record.id } as any)"
+        :customRow="(record: Employee) => ({ 'data-catch': 'employee-row-' + record.id } as Record<string, string>)"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'entryDate'">
@@ -85,7 +85,8 @@
       :title="formMode === 'create' ? '新增员工' : '编辑员工'"
       :confirm-loading="submitting"
       width="700px"
-      :okButtonProps="({ 'data-catch': 'employee-save-btn' } as any)"
+      <!-- 原因：antd ButtonProps 无 data-* 索引签名，传 data-catch 测试锚点需断言；仅此一处，最小副作用 -->
+      :okButtonProps="({ 'data-catch': 'employee-save-btn' } as unknown as ButtonProps)"
       @ok="submitForm"
       @cancel="showForm = false"
     >
@@ -234,6 +235,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, h } from 'vue'
 import { message } from 'ant-design-vue'
+import type { ButtonProps } from 'ant-design-vue'
 import type { SelectValue } from 'ant-design-vue/es/select'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'

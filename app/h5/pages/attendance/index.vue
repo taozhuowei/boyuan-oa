@@ -363,6 +363,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -431,12 +432,19 @@ interface FormRecord {
 }
 
 const userStore = useUserStore()
+const route = useRoute()
 const isPmOrCeo = computed(() => {
   const role = userStore.userInfo?.role ?? ''
   return role === 'project_manager' || role === 'ceo' || role === 'department_manager'
 })
 
-const activeTab = ref('records')
+// 初始 Tab：允许通过 ?tab=xxx 激活（用于 /forms/leave、/forms/overtime 等快捷入口转发），合法值见下；非法值回退到 records
+const VALID_TABS = ['records', 'leave', 'overtime', 'self-report', 'notifications', 'notify-create', 'notify-initiated'] as const
+const initialTab = (() => {
+  const q = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
+  return typeof q === 'string' && (VALID_TABS as readonly string[]).includes(q) ? q : 'records'
+})()
+const activeTab = ref(initialTab)
 const loadingRecords = ref(false)
 const records = ref<FormRecord[]>([])
 const submittingLeave = ref(false)
@@ -879,6 +887,9 @@ async function submitNotification() {
 onMounted(() => {
   loadRecords()
   loadLeaveTypes()
+  // 若通过 ?tab=xxx 进入需要拉远端数据的 Tab，此处主动触发一次加载
+  if (initialTab === 'notifications') loadNotifications()
+  if (initialTab === 'notify-initiated') loadInitiatedNotifs()
 })
 
 </script>

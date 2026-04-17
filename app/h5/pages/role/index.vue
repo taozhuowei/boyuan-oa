@@ -103,7 +103,7 @@
             <tr v-for="mod in PERMISSION_MODULES" :key="mod.code">
               <td>{{ mod.label }}</td>
               <td v-for="lvl in PERMISSION_LEVELS" :key="lvl.code">
-                <a-checkbox :checked="hasPermission(mod.code, lvl.code)" @change="(e: any) => togglePermission(mod.code, lvl.code, e.target.checked)" />
+                <a-checkbox :checked="hasPermission(mod.code, lvl.code)" @change="(e: CheckboxChangeEvent) => togglePermission(mod.code, lvl.code, Boolean(e.target.checked))" />
               </td>
             </tr>
           </tbody>
@@ -120,6 +120,8 @@
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
+import type { Rule } from 'ant-design-vue/es/form'
+import type { CheckboxChangeEvent } from 'ant-design-vue/es/checkbox/interface'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 
@@ -201,11 +203,10 @@ const columns = [
   { title: '操作', key: 'action', width: 120 }
 ]
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const rules = {
+const rules: Record<string, Rule[]> = {
   roleCode: [{ required: true, message: '角色编码不能为空', trigger: 'blur' }],
   roleName: [{ required: true, message: '角色名称不能为空', trigger: 'blur' }]
-} as any
+}
 
 async function loadRoles() {
   loading.value = true
