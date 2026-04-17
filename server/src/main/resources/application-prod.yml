@@ -2,7 +2,7 @@ spring:
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/boyuan_oa}
     username: ${DB_USERNAME:oa}
-    password: ${DB_PASSWORD:changeme}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 20

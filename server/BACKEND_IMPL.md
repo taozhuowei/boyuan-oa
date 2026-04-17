@@ -116,9 +116,10 @@ src/main/resources/
 
 **生产（prod）**：
 - PostgreSQL（通过 `DB_URL` / `DB_USERNAME` / `DB_PASSWORD` 环境变量配置）
+- **`DB_PASSWORD` 无 fallback，未设置将启动失败**（避免弱密码默认值）
 - Flyway 启用，`spring.sql.init.mode = never`
 - 附件上传目录通过 `OA_UPLOAD_DIR` 配置
-- JWT Secret 与签名 AES 密钥均强制从环境变量读取
+- `JWT_SECRET` 与 `SIGNATURE_AES_KEY` 均强制从环境变量读取，无 fallback
 
 启动方式：
 

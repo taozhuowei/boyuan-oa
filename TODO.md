@@ -285,7 +285,7 @@
   3. 确认 JWT_SECRET 是否有类似问题，若有则同步修复
 - **验收点**：`application-prod.yml` 中 `DB_PASSWORD` 无冒号后 fallback 值
 - **验收流程**：`grep "DB_PASSWORD" server/src/main/resources/application-prod.yml` 输出无 "changeme"
-- **状态**：`[ ]`
+- **状态**：`[x]`
 
 #### A-OPS-02 CI frontend-mp-test job 必定失败
 - **目标**：`app/mp/` 为 Phase F 尚未开发，CI 每次 push 必定失败
