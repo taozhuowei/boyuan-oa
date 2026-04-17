@@ -13,9 +13,13 @@ import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.util.Set;
 
 import java.io.IOException;
 import java.net.MalformedURLException;
@@ -46,6 +50,10 @@ public class AttachmentController {
     @Value("${oa.upload-dir:./uploads}")
     private String uploadDir;
 
+    private static final Set<String> AUDIT_ROLES = Set.of("ROLE_CEO", "ROLE_FINANCE", "ROLE_HR");
+    private static final Set<String> APPROVER_ROLES = Set.of("ROLE_PROJECT_MANAGER", "ROLE_DEPARTMENT_MANAGER");
+    private static final Set<String> APPROVER_BUSINESS_TYPES = Set.of("LOG", "INJURY", "EXPENSE", "LEAVE", "OVERTIME");
+
     /**
      * 上传附件
      * @param file 文件（multipart/form-data）
@@ -53,6 +61,7 @@ public class AttachmentController {
      * @param businessId 业务记录 ID（可选）
      */
     @PostMapping("/upload")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> upload(
             @RequestParam("file") MultipartFile file,
             @RequestParam(defaultValue = "GENERAL") String businessType,
@@ -98,14 +107,25 @@ public class AttachmentController {
     }
 
     /**
-     * 下载附件（需登录鉴权，JWT 由 Spring Security 统一校验）
+     * 下载附件
+     * 授权规则：
+     *   - 上传者本人可访问
+     *   - 审计角色（CEO / FINANCE / HR）可访问任意附件
+     *   - 审批角色（PROJECT_MANAGER / DEPARTMENT_MANAGER）可访问审批流相关业务类型的附件
+     *   - 其余情况返回 403
      */
     @GetMapping("/{id}")
-    public ResponseEntity<Resource> download(@PathVariable Long id) throws MalformedURLException {
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Resource> download(@PathVariable Long id, Authentication auth) throws MalformedURLException {
         AttachmentMeta meta = attachmentMetaMapper.selectById(id);
         if (meta == null) {
             return ResponseEntity.notFound().build();
         }
+
+        if (!canAccess(meta, auth)) {
+            return ResponseEntity.status(403).build();
+        }
+
         Path filePath = Paths.get(uploadDir).resolve(meta.getStoragePath());
         Resource resource = new UrlResource(filePath.toUri());
         if (!resource.exists()) {
@@ -117,6 +137,31 @@ public class AttachmentController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + meta.getFileName() + "\"")
                 .body(resource);
+    }
+
+    private boolean canAccess(AttachmentMeta meta, Authentication auth) {
+        if (auth == null) return false;
+
+        Long currentEmployeeId = getEmployeeId(auth);
+        if (currentEmployeeId != null && currentEmployeeId.equals(meta.getUploadedBy())) {
+            return true;
+        }
+
+        Set<String> authorities = auth.getAuthorities().stream()
+                .map(GrantedAuthority::getAuthority)
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+
+        if (authorities.stream().anyMatch(AUDIT_ROLES::contains)) {
+            return true;
+        }
+
+        if (authorities.stream().anyMatch(APPROVER_ROLES::contains)
+                && meta.getBusinessType() != null
+                && APPROVER_BUSINESS_TYPES.contains(meta.getBusinessType())) {
+            return true;
+        }
+
+        return false;
     }
 
     // ── helpers ─────────────────────────────────────────────────
