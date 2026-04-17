@@ -203,7 +203,6 @@
               <a-form-item>
                 <a-button data-catch="project-progress-update-btn" type="primary" :loading="progressLoading" @click="doRecordProgress">提交进度</a-button>
               </a-form-item>
-              <!-- TODO data-catch: project-progress-save-btn — element not found -->
             </a-form>
           </a-card>
 
@@ -223,8 +222,6 @@
           </a-card>
         </template>
 
-        <!-- TODO data-catch: project-cost-add-btn — element not found -->
-        <!-- TODO data-catch: project-cost-save-btn — element not found -->
         <!-- ── Tab: Dashboard ── -->
         <template v-if="activeTab === 'dashboard'">
           <a-spin :spinning="loadingDashboard">

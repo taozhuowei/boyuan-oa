@@ -25,9 +25,6 @@
           </a-list-item>
         </template>
       </a-list>
-      <!-- TODO data-catch: construction-row-review-btn-1 — element not found -->
-      <!-- TODO data-catch: construction-row-approve-btn-1 — element not found -->
-      <!-- TODO data-catch: construction-row-reject-btn-1 — element not found -->
     </a-spin>
 
     <!-- 填写施工日志弹窗 -->

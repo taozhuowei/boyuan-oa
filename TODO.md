@@ -224,7 +224,8 @@
   4. 逐一解决或将 TODO 内容转为本文档对应任务项
 - **验收点**：`find app server/src test -type d -empty` 输出为空（或仅有 .gitkeep 的占位目录）；源码无遗留 TODO 注释
 - **验收流程**：命令输出为空；代码 review 无 TODO 注释残留
-- **状态**：`[ ]`
+- **实施**：删除 13 条 data-catch TODO 注释（forms/projects/construction_log/injury/payroll/Permission.vue）+ 1 条 EmployeeServiceImpl TODO。空目录无。所有 TODO/FIXME/XXX 搜索结果为 0。功能缺口线索已分别归入 Phase B B-FEAT-10/11/12（工伤/项目/施工日志）；forms 过滤器与 mp Permission 细粒度权限在 Phase B 验收或 Phase F 实施时处理。
+- **状态**：`[x]`
 
 #### A-CLEAN-06 vitest 配置文件整理
 - **目标**：当前存在 5 个 vitest 配置文件，其中 1 个是冗余死文件，1 个从未被任何 script 或 CI 接入，A-CLEAN-01（测试文件迁移）完成后所有 include 路径将失效，须一并修正

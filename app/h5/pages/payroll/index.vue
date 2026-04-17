@@ -42,7 +42,6 @@
                   :data-catch="'payroll-cycle-open-btn-' + record.id"
                   @click="doOpenWindow(record.id as number)"
                 >开放申报窗口</a-button>
-                <!-- TODO data-catch: payroll-cycle-publish-btn-test — element not found -->
                 <a-button
                   v-if="['OPEN','WINDOW_OPEN','WINDOW_CLOSED'].includes(record.status as string)"
                   type="link"
@@ -59,7 +58,6 @@
           <div style="max-width: 480px; margin-top: 8px;">
             <a-form layout="vertical">
               <a-form-item label="选择周期">
-                <!-- TODO data-catch: payroll-settle-cycle-option-latest — element not feasible (options prop) -->
                 <a-select
                   :value="selectedCycleId ?? undefined"
                   placeholder="请选择工资周期"
@@ -114,7 +112,6 @@
         <!-- 工资条查看（Finance/CEO 按周期查全员） -->
         <template v-if="activeTab === 'slips'">
           <div style="margin-bottom: 12px;">
-            <!-- TODO data-catch: payroll-slips-cycle-option-latest — element not feasible (options prop) -->
             <a-select
               data-catch="payroll-slips-cycle-select"
               :value="selectedCycleIdForSlips ?? undefined"

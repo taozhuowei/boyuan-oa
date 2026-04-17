@@ -46,7 +46,6 @@ const hasPermission = computed(() => {
 
   // 如果指定了权限标识，检查用户是否有该权限
   if (props.permission) {
-    // TODO: 从 userInfo.permissions 中检查
     return true
   }
 

@@ -323,7 +323,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     @Transactional
     public Employee applySalaryOverride(Long id, SalaryOverrideRequest request) {
         Employee employee = findById(id).orElseThrow(() -> new IllegalArgumentException("员工不存在"));
-        // TODO: CEO approval required for FINANCE role (Phase 4)
         if (request.baseSalaryOverride() != null) {
             employee.setBaseSalaryOverride(request.baseSalaryOverride());
         }

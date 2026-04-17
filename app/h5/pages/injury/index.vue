@@ -39,8 +39,6 @@
           </a-list-item>
         </template>
       </a-list>
-      <!-- TODO data-catch: injury-approve-btn — element not found -->
-      <!-- TODO data-catch: injury-approve-modal-ok — element not found -->
     </a-spin>
 
     <!-- 工伤申报弹窗（不含补偿金额） -->

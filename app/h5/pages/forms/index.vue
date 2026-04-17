@@ -4,8 +4,6 @@
     <h2 class="page-title">表单中心</h2>
 
     <a-card>
-      <!-- TODO data-catch forms-filter-type -->
-      <!-- TODO data-catch forms-filter-status -->
       <a-tabs v-model:active-key="activeTab">
         <!-- Tab 1: My Submissions -->
         <a-tab-pane key="submissions" tab="我的提交">
