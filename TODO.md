@@ -1146,14 +1146,91 @@
 ## Phase C+ — 遗留修复 + 质量体系建设 + 完整验收
 
 > **前置条件**：Phase C 全部任务记录完毕（含 C-QUALITY 设计）。
-> **目标**：补齐 A/B/C 三阶段遗留问题，建立完整测试与审计规范，执行全维度测试，完整确认三个阶段真实完成。
-> **完成标准**：四节全部通过，用户确认测试用例设计和最终验收报告，方可进入 Phase D。
+> **目标**：补齐 A/B/C 三阶段遗留问题，建立完整 CI/CD 门禁与测试工具链，执行全维度测试，完整确认三个阶段真实完成。
+> **完成标准**：五节全部通过，用户确认测试用例设计和最终验收报告，方可进入 Phase D。
+>
+> **执行顺序（严格）**：C+-INFRA → C+-DESIGN → C+-FIX → C+-TEST → C+-GATE
+> C+-INFRA 必须在任何代码改动前完成，确保每次提交/推送都受门禁保护。
+
+---
+
+### C+-INFRA — CI/CD 门禁基础设施（最先执行）
+
+> **目标**：在任何代码改动开始前，建立本地 git 钩子与远程 CI 流水线，保证后续每次 commit/push 都自动触发质量检测。
+> C+-INFRA 完成后，C+-DESIGN 各工具配置完成时自动激活对应门禁；C+-FIX 开始时所有门禁已就位。
+
+- `[ ]` **C+-I-01 VSCode 工作区配置**
+  - `.vscode/settings.json`：保存时自动 Prettier 格式化、ESLint 自动修复、Java 格式化绑定 google-java-format、TypeScript strict 提示启用、文件关联配置
+  - `.vscode/extensions.json`：推荐插件列表（ESLint、Prettier、Vue Language Features、Extension Pack for Java、SonarLint、GitLens）
+  - 验收：项目目录下打开 VSCode 弹出"安装推荐插件"提示；保存 `.ts` 文件自动触发格式化
+
+- `[ ]` **C+-I-02 husky + lint-staged + commitlint 本地钩子**
+  - 安装：`husky`、`lint-staged`、`commitlint`、`@commitlint/config-conventional`
+  - `.commitlintrc.json`：类型白名单 feat/fix/refactor/perf/test/docs/style/chore/cleanup
+  - `commit-msg` hook：`npx commitlint --edit $1`（拦截不合规提交信息）
+  - `pre-commit` hook（lint-staged，仅扫描 staged 文件，< 30s）：
+    - `*.{ts,vue,js}` → `prettier --check` + `eslint --fix`
+    - `*.java` → `mvn spotless:check -pl server -q`
+  - `pre-push` hook（全量检查，< 3min，无需运行服务）：
+    - `mvn test -pl server`（含 ArchUnit，C+-D-01 完成后自动生效）
+    - `yarn workspace oa-h5 test`
+    - `yarn workspace oa-h5 lint`
+    - `semgrep --config p/owasp-top-ten server/src app/h5`（C+-D-12 完成后自动生效）
+    - `snyk test --file=app/h5/package.json --severity-threshold=high`（C+-D-06 完成后自动生效）
+    - `snyk test --file=server/pom.xml --severity-threshold=high`（C+-D-06 完成后自动生效）
+  - 注：pre-push 中引用未安装工具的命令以 `command -v <tool> && ...` 方式条件执行，工具配置完成后自动激活
+  - `tools/commitlint/README.md`：提交规范说明与示例
+  - 验收：提交格式不合规被拦截；推送触发 `mvn test` 和 `yarn test`；lint-staged 只检查变更文件
+
+- `[ ]` **C+-I-03 GitHub Actions — fast-check workflow（每次 push 触发）**
+  - 文件：`.github/workflows/fast-check.yml`
+  - 触发：`on: push`（无需 PR）
+  - 步骤（无需运行服务，目标 < 5 分钟）：
+    1. `yarn format:check`（Prettier）
+    2. `yarn workspace oa-h5 lint`（ESLint + TypeScript）
+    3. `mvn spotless:check -pl server`（Java 格式）
+    4. `mvn test -pl server`（单元测试 + ArchUnit）
+    5. `yarn workspace oa-h5 test`（前端单元测试）
+    6. `semgrep --config p/spring-boot --config p/owasp-top-ten server/src`
+    7. `semgrep --config p/typescript app/h5`
+    8. `snyk test --file=app/h5/package.json --severity-threshold=high`
+    9. `snyk test --file=server/pom.xml --severity-threshold=high`
+    10. `yarn knip`（死代码检测）
+    11. `mvn package -DskipTests -pl server`（构建验证）
+    12. `yarn build`（前端构建验证）
+  - 验收：push 后 GitHub Actions 页面出现 fast-check job 并通过
+
+- `[ ]` **C+-I-04 GitHub Actions — full-test workflow（每次 push 触发，Docker Compose 启动服务）**
+  - 文件：`.github/workflows/full-test.yml`
+  - 触发：`on: push`
+  - 步骤（需要运行服务，目标 < 15 分钟）：
+    1. Docker Compose 启动后端 + H2 数据库
+    2. `yarn test:integration`（连续运行 3 次，全部通过）
+    3. `yarn test:e2e`（Playwright 全场景）
+    4. OWASP ZAP baseline scan（`tools/zap/` 配置）
+    5. schemathesis 模糊测试（`tools/schemathesis/` 配置）
+    6. SonarQube 分析上报（`mvn verify sonar:sonar`，需 SONAR_TOKEN secret）
+  - 验收：push 后 full-test job 通过；SonarQube 面板出现分析结果
+
+- `[ ]` **C+-I-05 GitHub Actions — nightly workflow（每日 02:00 UTC 定时触发）**
+  - 文件：`.github/workflows/nightly.yml`
+  - 触发：`on: schedule: cron: '0 2 * * *'`
+  - 步骤（需要部署环境或 Docker Compose，允许运行较长时间）：
+    1. Docker Compose 启动服务
+    2. k6 正常负载：`k6 run tools/k6/normal.js`
+    3. k6 峰值：`k6 run tools/k6/peak.js`
+    4. k6 压力：`k6 run tools/k6/stress.js`
+    5. k6 稳定性：`k6 run tools/k6/soak.js`
+    6. k6 竞态：`k6 run tools/k6/race.js`
+    7. OWASP ZAP full scan
+    8. Snyk 完整依赖审计报告
+  - 验收：nightly job 首次手动触发通过；结果可在 Actions 页面查看
 
 ---
 
 ### C+-DESIGN — 测试设计与质量规范落地
 
-> 全部完成后由用户确认测试用例设计文档，通过后才能进入 C+-FIX。
+> C+-INFRA 完成后执行。全部完成后，C+-INFRA 中所有条件执行的命令均已激活。
 
 #### 架构约束自动化
 
@@ -1200,10 +1277,14 @@
   - `tools/schemathesis/README.md`：安装（pip）与运行方式
   - 验收：可对本地服务执行并输出测试结果
 
-- `[ ]` **C+-D-06 OWASP Dependency-Check 后端依赖安全**
-  - `server/pom.xml` 添加 `dependency-check-maven` plugin
-  - 报告输出：`tools/dep-check/`
-  - 验收：`mvn dependency-check:check` 可执行，无 CVSS ≥ 7 的高危漏洞
+- `[ ]` **C+-D-06 Snyk 依赖安全审计（前端 + 后端统一覆盖）**
+  - 位置：`tools/snyk/`（配置文件 + README）
+  - 安装：`npm install -g snyk`，`snyk auth` 完成认证
+  - 扫描命令：
+    - 前端：`snyk test --file=app/h5/package.json --severity-threshold=high`
+    - 后端：`snyk test --file=server/pom.xml --severity-threshold=high`
+  - `tools/snyk/README.md`：认证方式、运行命令、结果解读、豁免流程
+  - 验收：两个命令均可执行，无 high/critical 漏洞；结果输出可读
 
 #### 测试设计文档补全
 
@@ -1239,6 +1320,48 @@
     - `yarn test:integration` 连续三次全部通过
     - `yarn workspace oa-h5 lint` 零 error
   - 验收：CLAUDE.md 各阶段验收门包含上述三条
+
+#### 代码质量与格式工具
+
+- `[ ]` **C+-D-11 SonarQube Community 本地搭建**
+  - Docker 启动 SonarQube Community Edition（`docker compose up sonarqube`）
+  - `tools/sonarqube/docker-compose.yml`：服务配置
+  - `sonar-project.properties`（根目录）：项目名称、源码路径、测试报告路径、Java + TypeScript 双语言配置
+  - 接入 JaCoCo 覆盖率报告（`mvn verify sonar:sonar`）与 Vitest 覆盖率报告（`lcov.info`）
+  - Quality Gate 规则：新增代码覆盖率 ≥ 80%、重复率 ≤ 3%、无 Blocker/Critical 安全漏洞
+  - `tools/sonarqube/README.md`：启动方式、Quality Gate 配置、CI 接入说明（Phase F 落地）
+  - 验收：本地访问 SonarQube 面板，项目全量扫描通过 Quality Gate
+
+- `[ ]` **C+-D-12 Semgrep SAST 静态安全扫描**
+  - 位置：`tools/semgrep/`
+  - 规则集：`p/spring-boot`（后端）、`p/typescript`（前端）、`p/owasp-top-ten`（通用安全）
+  - 扫描命令：`semgrep --config p/spring-boot --config p/owasp-top-ten server/src` 和 `semgrep --config p/typescript app/h5`
+  - `tools/semgrep/README.md`：安装、运行、结果解读、误报豁免方式（`# nosemgrep` 注释）
+  - 验收：两个命令可执行，无 ERROR 级别发现；与 ZAP（动态）形成静态+动态双层安全覆盖
+
+- `[ ]` **C+-D-13 Prettier JS/TS/Vue 代码格式化**
+  - 根目录添加 `.prettierrc`（Vue/TS/JS 统一格式规则：单引号、2空格缩进、行尾逗号等）
+  - 根目录添加 `.prettierignore`（排除 node_modules、dist、.nuxt 等）
+  - `package.json` scripts 新增：`"format:check": "prettier --check \"app/h5/**/*.{ts,vue,js}\""`
+  - 修复现有格式不符合的文件（`prettier --write`）
+  - 验收：`yarn format:check` 零错误；CI Tier 1 可直接接入
+
+- `[ ]` **C+-D-14 Spotless Java 代码格式化**
+  - `server/pom.xml` 添加 `spotless-maven-plugin`，使用 google-java-format 后端
+  - 格式化范围：`src/main/java/**/*.java` + `src/test/java/**/*.java`
+  - 修复现有格式不符合的文件（`mvn spotless:apply`）
+  - 验收：`mvn spotless:check` 零差异；CI Tier 1 可直接接入
+
+- `[ ]` **C+-D-15 ESLint jsdoc 文档注释规则**
+  - `app/h5/.eslintrc` 新增 `plugin:jsdoc/recommended` 规则：要求所有导出函数/组件有 JSDoc 注释
+  - 修复或补充现有导出函数的 JSDoc
+  - 验收：`yarn workspace oa-h5 lint` 零 error（jsdoc 规则生效）
+
+- `[ ]` **C+-D-16 Knip TypeScript 死代码检测**
+  - 根目录添加 `knip.json`：配置 monorepo 工作区（`app/h5`）、入口文件、忽略规则
+  - 扫描命令：`yarn knip`
+  - `tools/knip/README.md`：运行方式、结果解读、豁免方式
+  - 验收：`yarn knip` 可执行，输出无误报（确认所有报告项均为真实死代码）；修复或豁免全部发现项
 
 ---
 
@@ -1284,11 +1407,14 @@
   - `yarn test:e2e`（Playwright 全场景）全通过
   - 覆盖关键业务链路：登录/审批/考勤/工资/报销/工伤/施工日志
 
-- `[ ]` **C+-T-03 Round 3 — 安全**
+- `[ ]` **C+-T-03 Round 3 — 安全与静态分析**
+  - Semgrep 后端：`semgrep --config p/spring-boot --config p/owasp-top-ten server/src` 无 ERROR 级别
+  - Semgrep 前端：`semgrep --config p/typescript app/h5` 无 ERROR 级别
   - OWASP ZAP baseline scan：无高危（High）漏洞
   - schemathesis 模糊测试：无 5xx 错误，无异常数据泄露
-  - OWASP Dependency-Check：无 CVSS ≥ 7 漏洞
-  - `npm audit`：无 high/critical 漏洞
+  - Snyk 前端：`snyk test --file=app/h5/package.json --severity-threshold=high` 无 high/critical
+  - Snyk 后端：`snyk test --file=server/pom.xml --severity-threshold=high` 无 high/critical
+  - SonarQube Quality Gate：覆盖率 ≥ 80%、重复率 ≤ 3%、无 Blocker/Critical 安全漏洞
 
 - `[ ]` **C+-T-04 Round 4 — 负载/并发**
   - k6 正常（50并发×5min）：P99 < 500ms，错误率 < 1%
@@ -1440,6 +1566,7 @@
 
 > **前置条件**：Phase E 全部 `[x]`。
 > **目标**：首版上线 + 建立全套工程规范。规范从这里起建立，后续所有维护遵循这套规范。
+> **注**：CI/CD 基础流水线（fast-check / full-test / nightly 三个 workflow）已在 C+-INFRA 建立并运行。Phase F 的 CI/CD 任务聚焦于生产部署流水线（build → Docker image → 推送生产环境），而非重建已有的质量门禁。
 
 ---
 

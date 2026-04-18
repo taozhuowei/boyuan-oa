@@ -69,14 +69,18 @@ Phase C (Test Coverage)
 - Code review after test changes → QA Engineer (review role)
 - Phase acceptance gate → QA Engineer runs full suite, outputs Pass/Fail matrix
 
-Phase C+ (Leftover Fixes + Quality System + Full Acceptance)
-- C+-DESIGN: ArchUnit → springdoc-openapi → tools setup (k6/ZAP/schemathesis/dep-check) → TEST_DESIGN.md → CLAUDE.md Checklist → frontend strict → phase gate rules
-  - Backend tasks (C+-D-01/02/06) → Backend Engineer → QA Engineer
-  - Tools setup (C+-D-03/04/05) → QA Engineer
-  - Docs/rules (C+-D-07/08/09/10) → orchestrator
-  - User confirms test case design before proceeding
-- C+-FIX: each fix → Backend/Frontend Engineer → QA Engineer (review)
-- C+-TEST: 5 rounds executed by QA Engineer + orchestrator; all must pass
+Phase C+ (CI/CD Infra + Leftover Fixes + Quality System + Full Acceptance)
+- C+-INFRA (FIRST, before any code change): VSCode config + husky hooks + GitHub Actions workflows
+  - C+-I-01 (.vscode/) → orchestrator writes config files
+  - C+-I-02 (husky+lint-staged+commitlint) → DevOps Engineer → QA Engineer
+  - C+-I-03/04/05 (GitHub Actions) → DevOps Engineer → QA Engineer
+- C+-DESIGN: tools setup (ArchUnit/springdoc/k6/ZAP/schemathesis/Snyk/SonarQube/Semgrep/Prettier/Spotless/Knip/jsdoc) + docs + rules
+  - Backend tasks (C+-D-01/02/06/11/12/14) → Backend Engineer → QA Engineer
+  - Tools (C+-D-03/04/05/12/13/16) → QA Engineer
+  - Docs/rules (C+-D-07/08/09/10/15) → orchestrator
+  - User confirms test case design before proceeding to C+-FIX
+- C+-FIX: each fix → Backend/Frontend Engineer → QA Engineer (review); all hooks active by this point
+- C+-TEST: 5 rounds; QA Engineer executes; all must pass
 - C+-GATE: orchestrator outputs acceptance report; user confirms test design (C+-G-04) and signs off (C+-G-05)
 
 Phase D (Design Alignment Audit)
