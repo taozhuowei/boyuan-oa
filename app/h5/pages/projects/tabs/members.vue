@@ -284,7 +284,7 @@ function debouncedSearchEmployees(keyword: string) {
 
 async function doAddMember() {
   if (!addMemberForm.value.employeeId) {
-    message.warning('请输入员工ID')
+    message.warning('请选择员工')
     return
   }
   addMemberLoading.value = true
