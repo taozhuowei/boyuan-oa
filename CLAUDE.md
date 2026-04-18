@@ -109,27 +109,32 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 > Do NOT trust any "what is done" list in this or any other file.
 > Last manual test: 2026-04-17 — 25 bugs found (recorded in TODO.md Phase B).
 > TODO.md was fully rewritten 2026-04-17 into a 7-phase roadmap (A→G).
-> **Phase A complete — all 46 tasks `[x]`, validated 2026-04-18 via three-layer automated acceptance.**
-> **Current active phase: Phase B (feature completeness + bug fixes).**
+> **Phase A complete — all 46 tasks `[x]`, validated 2026-04-18.**
+> **Phase B complete — all tasks `[?]`; B-INFRA-01 deferred to Phase E (6 migrations need PostgreSQL syntax conversion).**
+> **Current active phase: Phase C (full test coverage).**
 
 ### 7-Phase Roadmap (see TODO.md for full detail)
-- Phase A — Architecture governance + cleanup (COMPLETE — all 46 tasks `[x]`, validated 2026-04-18)
-- Phase B — Feature completeness + bug fixes (CURRENT)
-- Phase C — Full test coverage + Claude black-box self-test
+- Phase A — Architecture governance + cleanup (COMPLETE — 2026-04-18)
+- Phase B — Feature completeness + bug fixes (COMPLETE — 2026-04-18, all `[?]`, pending Phase D browser)
+- Phase C — Full test coverage + Claude black-box self-test (CURRENT)
 - Phase D — Human browser acceptance
 - Phase E — Production deploy + ALL engineering standards (git/PR/branch/SemVer/CHANGELOG/RUNBOOK)
 - Phase F — WeChat mini-program
 - Phase G — Operational maintenance
 
 ### Known critical facts
-- Flyway migrations: V1–V16 exist. Next new migration = **V17**.
-  V14 = DB indexes, V15 = ops role, V16 = gm→general_manager data migration.
+- Flyway migrations: V1–V17 exist. Next new migration = **V18**.
+  V14 = DB indexes, V15 = ops role, V16 = gm→general_manager data migration, V17 = add COMPENSATORY leave type.
+- B-INFRA-01 deferred: V2–V9 migrations use PostgreSQL-only syntax (ON CONFLICT, setval); cannot run in H2 dev. CI job validates prod migrations. Will be resolved in Phase E.
 - Page dir rename complete (A-CLEAN-02 `[x]`): construction_log, data_export, data_viewer, leave_types, operation_logs.
   All route keys in auth.global.ts and ROLE_MENUS use snake_case paths.
 - Controller layer Mapper injections removed (A-AUDIT-DEBT-07 `[x]`): all 32 controllers cleaned.
 - Large Vue files split (A-AUDIT-FOLLOWUP `[x]`): projects/[id].vue, payroll/index.vue, attendance/index.vue, config/index.vue.
 - auth.global.ts PAGE_ACCESS routes complete (A-SEC-03 `[x]`).
 - WorkbenchService quick-action paths use `/forms?type=leave` and `/forms?type=overtime`.
+- /api/auth/login uses EmployeeService (DB-based); test with /api/auth/dev-login (no password, in-memory) when DB accounts absent.
+- PositionController GET endpoints: CEO/HR/FINANCE only (PROJECT_MANAGER removed, per DESIGN §3.4).
+- customized-file-upload component: app/h5/components/customized/FileUpload/index.vue (Nuxt auto-registers as customized-file-upload).
 
 ### Tech stack
 - H5: Nuxt 3, Ant Design Vue (antd), TypeScript, Pinia, Vitest
