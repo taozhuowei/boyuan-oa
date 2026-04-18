@@ -1,24 +1,92 @@
 # AGENTS
 
-## ROLES
-Claude: plan, brief, verify, test, docs, git
-Kimi: implement, files
+## AGENT ASSIGNMENTS
 
-Claude-only: requirements, design, decisions, acceptance
-Kimi-only: codegen, file-ops, bulk-implementation
-Neither does the other's job.
+### Orchestrator
+Claude main session — planning, briefing, verification, git, docs, phase acceptance gate.
+Never writes business code. Never reviews its own outputs.
 
-## KIMI CLI
+### Implementation Agents (spawn via Agent tool)
+
+**Backend Engineer** — `subagent_type: "Backend Engineer"`
+When: Spring Boot controller/service/entity, DB migration (V18+), API design, MyBatis-Plus mapper
+
+**Frontend Engineer** — `subagent_type: "Frontend Engineer"`
+When: Nuxt 3 page/component/store/middleware/composable, Vue SFC, TypeScript UI logic
+
+**Technical Architect** — `subagent_type: "Technical Architect"`
+When: cross-cutting architecture decisions, new module design, integration pattern selection
+
+**WeChat Mini Program Developer** — `subagent_type: "WeChat Mini Program Developer"`
+When: Phase F — app/mp uni-app implementation, WeChat API integration
+
+**Kimi CLI** — fallback for bulk operations (5+ files or large-scale generation)
 ```
 kimi --quiet -w <dir> -p "<prompt>"
 kimi --quiet -w <dir> --continue -p "<prompt>"
-kimi --quiet --thinking -w <dir> -p "<prompt>"  # complex tasks
+kimi --quiet --thinking -w <dir> -p "<prompt>"
 ```
 exit: 0=ok 1=fail 75=retry
 
+### Quality Agents (spawn via Agent tool)
+
+**Code Reviewer** — `subagent_type: "Code Reviewer"`
+When: after EVERY implementation — mandatory, no exceptions
+Input: changed file paths + diff summary + task context
+Output: PASS or NEEDS WORK with specific findings
+
+**QA Engineer** — `subagent_type: "QA Engineer"`
+When: Phase C test design and writing; phase-end full test run + acceptance report
+
+### Infrastructure Agents (spawn via Agent tool)
+
+**DevOps Engineer** — `subagent_type: "DevOps Engineer"`
+When: Phase E — GitHub Actions CI/CD pipeline setup, Docker, deployment scripts
+
+**Ops Engineer** — `subagent_type: "Ops Engineer"`
+When: Phase G — production monitoring, alerting, incident response, capacity planning
+
+### Phase → Agent Map
+
+Phase A (Architecture Governance + Cleanup)
+- Architecture analysis → Technical Architect
+- Backend cleanup → Backend Engineer → Code Reviewer
+- Frontend cleanup → Frontend Engineer → Code Reviewer
+- Phase acceptance gate → QA Engineer runs full test suite + outputs report
+
+Phase B (Feature Development + Bug Fixes)
+- Full-stack features → Backend Engineer (parallel with) Frontend Engineer → Code Reviewer each
+- Backend-only or frontend-only → single agent → Code Reviewer
+- Five-dimension cross-check → orchestrator verifies each dimension
+- Phase acceptance gate → QA Engineer runs full test suite + outputs report
+
+Phase C (Test Coverage)
+- Test strategy design → QA Engineer
+- Backend integration test writing → QA Engineer + Backend Engineer
+- E2E test writing → QA Engineer + Frontend Engineer
+- Black-box self-test execution → QA Engineer runs full suite, outputs Pass/Fail matrix
+
+Phase D (Human Acceptance)
+- Bug fixes from user walkthrough → Backend Engineer or Frontend Engineer → Code Reviewer
+- Regression validation → QA Engineer
+
+Phase E (Production Deploy + Standards)
+- CI/CD pipeline → DevOps Engineer
+- Production environment setup → Ops Engineer
+- Standards docs (RUNBOOK/CHANGELOG) → orchestrator
+
+Phase F (WeChat Mini Program)
+- MP implementation → WeChat Mini Program Developer → Code Reviewer
+- Backend API extensions → Backend Engineer → Code Reviewer
+- Phase acceptance gate → QA Engineer
+
+Phase G (Operations)
+- Incident response + maintenance → Ops Engineer
+- Code fixes → Backend Engineer or Frontend Engineer → Code Reviewer → QA Engineer regression
+
 ## DIRS
 h5 frontend: D:/Taozhuowei/Project/boyuan-oa/app/h5          (Nuxt 3 + Ant Design Vue)
-mp frontend: D:/Taozhuowei/Project/boyuan-oa/app/mp          (uni-app, Phase 3 not started)
+mp frontend: D:/Taozhuowei/Project/boyuan-oa/app/mp          (uni-app, Phase F not started)
 backend:     D:/Taozhuowei/Project/boyuan-oa/server           (Spring Boot 3 + MyBatis-Plus + H2/PostgreSQL)
 shared:      D:/Taozhuowei/Project/boyuan-oa/app/shared       (types + utils, shared by h5 and mp)
 root:        D:/Taozhuowei/Project/boyuan-oa
@@ -163,7 +231,7 @@ Read this section before creating, moving, or deleting any file or directory.
 /
 ├── app/
 │   ├── h5/          # H5 frontend (Nuxt 3 + Ant Design Vue)
-│   ├── mp/          # WeChat mini-program (uni-app, Phase C)
+│   ├── mp/          # WeChat mini-program (uni-app, Phase F)
 │   └── shared/      # Shared TS types + utils used by both h5 and mp
 ├── server/          # Spring Boot backend
 ├── test/            # All test code and test design docs

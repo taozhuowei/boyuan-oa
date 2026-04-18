@@ -877,7 +877,7 @@
 
 ## Phase C — 测试覆盖
 
-> **前置条件**：Phase B 全部 `[x]`（P0/P1 全通过，P2/P3 全通过，所有 FEAT `[x]`）。
+> **前置条件**：Phase B 全部 `[?]`（P0/P1/P2/P3/FEAT 自动化测试全通过；`[x]` 待 Phase D 人工走查后补齐）。
 > **目标**：编写并执行全部自动化测试；Claude 自执行黑盒测试；测试文档修复。
 > **完成标准**：`yarn test:integration` 全通过；`yarn playwright test` 全通过；MB-01~MB-10 黑盒用例全部 Pass。
 
@@ -1056,7 +1056,7 @@
 ### C-AUTO — Claude 自执行黑盒自动化验证
 
 - `[ ]` **C-AUTO-01 Claude 操控浏览器执行 MB-01~MB-10**
-  - 前置：后端和前端服务均运行中；Phase B 全部 `[x]`；C-BLK-01 设计文档已完成
+  - 前置：后端和前端服务均运行中；Phase B 全部 `[?]`；C-BLK-01 设计文档已完成
   - 按 `test/manual/TEST_CASES.md` 逐条执行，截图关键步骤
   - 发现新缺陷立即追加至 Phase B 对应优先级
   - 全部通过后将结果写入 `test/manual/TEST_CASES.md` 实际结果栏
