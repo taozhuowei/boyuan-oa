@@ -81,8 +81,8 @@ public class AccessManagementService {
         seedAccount("pm.demo", "123456", "王建国", "project_manager", "项目一部", "OFFICE");
         seedAccount("ceo.demo", "123456", "陈明远", "ceo", "运营管理部", "OFFICE");
         seedAccount("worker.demo", "123456", "赵铁柱", "worker", "施工一部", "LABOR");
-        seedAccount("hr.demo", "123456", "孙丽华", "hr", "综合管理部", "OFFICE");
-        seedAccount("dept_manager.demo", "123456", "周伟", "department_manager", "综合管理部", "OFFICE");
+        // hr.demo and dept_manager.demo are defined in local/seed-data.sql (dev-only seed),
+        // not here, to prevent weak-password demo accounts from existing in production.
         roleSequence.set(roles.keySet().stream().mapToLong(Long::longValue).max().orElse(0L));
     }
 
