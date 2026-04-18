@@ -796,6 +796,26 @@
 
 ---
 
+### B-INFRA — 开发基础设施
+
+#### B-INFRA-01 dev 环境改用 Flyway 单一初始化路径
+- **目标**：当前 dev 用 `schema.sql + data.sql` 初始化，prod 用 Flyway，两路径长期维护成本高且存在漂移风险（A-DB-01 已发生 V11/V12/V13 漏同步）
+- **范围**：`server/src/main/resources/`（`schema.sql`、`data.sql`、`application.yml`、Flyway V*.sql）；`.github/workflows/ci.yml`
+- **前置条件**：V2__init_data.sql 中的 `MERGE INTO` 语法与 H2 2.2.224 不兼容（H2 不支持 `MERGE INTO ... WHEN NOT MATCHED`），须先将 V2 的幂等写法改为 H2 兼容语法，或改用 `INSERT INTO ... ON CONFLICT DO NOTHING`（H2 支持）
+- **步骤**
+  1. 将 V2__init_data.sql 的 `MERGE INTO` 改为 H2 兼容写法（`INSERT INTO ... WHERE NOT EXISTS`）
+  2. `application.yml` 中 `spring.sql.init` 配置改为仅在 prod profile 启用（或整体删除），dev 通过 Flyway 初始化
+  3. `application-dev.yml` 追加 Flyway 配置（`spring.flyway.enabled: true`，H2 方言兼容）
+  4. 删除 `schema.sql` 和 `data.sql`（或保留为参考副本，gitignore 防止 CI 加载）
+  5. 本地启动后端，确认 H2 控制台可查到 Flyway 建的所有表和种子数据
+  6. `mvn test` 全量通过（392 tests）
+- **验收点**：`schema.sql` 不再参与 dev 初始化；H2 dev 环境通过 Flyway 完成全量迁移；`mvn test` 通过
+- **验收流程**：启动后端查看 Flyway 日志确认 V1~Vxx 全部 applied；curl `/api/auth/login` 返回 200
+- **注意**：若 V2 语法改造工作量过大，可接受方案 B：保留 `data.sql` 仅做种子数据，`schema.sql` 替换为空文件（让 Flyway 建表），dev 也走 Flyway；C-INT-09 的 CI migration-validate job 已作为短期安全网
+- **状态**：`[ ]`
+
+---
+
 ### B-VAL — 待浏览器验收（代码已有，无已知 gap）
 
 以下页面代码已存在，目前未发现实现缺口，B 阶段统一走查。
