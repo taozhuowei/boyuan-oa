@@ -22,20 +22,20 @@ public class PositionController {
 
     /**
      * 获取岗位列表
-     * 权限：CEO、财务、项目经理
+     * 权限：CEO、HR、财务、项目经理
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('CEO','FINANCE','PROJECT_MANAGER')")
+    @PreAuthorize("hasAnyRole('CEO','HR','FINANCE','PROJECT_MANAGER')")
     public ResponseEntity<List<PositionResponse>> listPositions() {
         return ResponseEntity.ok(positionService.listPositions());
     }
 
     /**
      * 获取岗位详情（含等级和社保项目）
-     * 权限：CEO、财务、项目经理
+     * 权限：CEO、HR、财务、项目经理
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CEO','FINANCE','PROJECT_MANAGER')")
+    @PreAuthorize("hasAnyRole('CEO','HR','FINANCE','PROJECT_MANAGER')")
     public ResponseEntity<PositionResponse> getPosition(@PathVariable Long id) {
         return ResponseEntity.ok(positionService.getPosition(id));
     }
@@ -79,10 +79,10 @@ public class PositionController {
 
     /**
      * 获取岗位等级列表
-     * 权限：CEO、财务、项目经理
+     * 权限：CEO、HR、财务、项目经理
      */
     @GetMapping("/{id}/levels")
-    @PreAuthorize("hasAnyRole('CEO','FINANCE','PROJECT_MANAGER')")
+    @PreAuthorize("hasAnyRole('CEO','HR','FINANCE','PROJECT_MANAGER')")
     public ResponseEntity<List<PositionLevelResponse>> listLevels(@PathVariable Long id) {
         return ResponseEntity.ok(positionService.listLevels(id));
     }

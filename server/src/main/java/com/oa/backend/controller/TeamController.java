@@ -31,7 +31,7 @@ public class TeamController {
     private final ObjectMapper objectMapper;
 
     @GetMapping("/members")
-    @PreAuthorize("hasRole('DEPARTMENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('DEPARTMENT_MANAGER','PROJECT_MANAGER')")
     public ResponseEntity<List<TeamMemberResponse>> getTeamMembers(Authentication authentication) {
         Long managerId = SecurityUtils.getCurrentEmployeeId(authentication);
         if (managerId == null) {

@@ -80,6 +80,19 @@ ALTER TABLE approval_flow_node ALTER COLUMN id RESTART WITH 100;
 MERGE INTO system_config (config_key, config_value, description) KEY (config_key) VALUES ('initialized', 'true', 'System initialization status');
 
 -- ============================================
+-- V3: 报销类型默认种子数据（H2 dev 环境）
+-- Flyway V3 已建表并含 ON CONFLICT INSERT，H2 需用 MERGE INTO 同步
+-- ============================================
+MERGE INTO expense_type_def (code, name, description, require_invoice, display_order, is_enabled, is_system)
+KEY (code) VALUES
+('TRAVEL', '差旅费', '出差期间的交通、住宿等费用', TRUE, 1, TRUE, TRUE),
+('MEAL', '餐饮费', '出差期间的餐饮补贴', TRUE, 2, TRUE, TRUE),
+('ACCOMMODATION', '住宿费', '出差期间的住宿费用', TRUE, 3, TRUE, TRUE),
+('TRANSPORT', '交通费', '打车、公共交通等费用', TRUE, 4, TRUE, TRUE),
+('OFFICE', '办公用品', '办公耗材、用品等', TRUE, 5, TRUE, TRUE),
+('OTHER', '其他', '其他报销费用', FALSE, 99, TRUE, TRUE);
+
+-- ============================================
 -- V5: 薪资构成扩展 — 临时补贴表单类型 + 审批流 + 配置开关
 -- ============================================
 MERGE INTO form_type_def (code, name, is_enabled, is_system) KEY (code) VALUES
