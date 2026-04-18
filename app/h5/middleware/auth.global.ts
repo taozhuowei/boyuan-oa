@@ -15,7 +15,7 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/org':              ['ceo', 'hr'],
   '/role':             ['ceo'],
   '/employees':        ['ceo', 'hr', 'finance', 'project_manager', 'department_manager'],
-  '/positions':        ['ceo', 'hr'],
+  '/positions':        ['ceo', 'hr', 'finance'],
   '/retention':        ['ceo'],
   '/allowances':       ['ceo'],
   '/leave_types':      ['ceo', 'hr'],

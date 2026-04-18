@@ -110,6 +110,14 @@ MERGE INTO approval_flow_node (id, flow_id, node_order, node_name, approval_mode
 (9, 6, 1, 'CEO审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL),
 (10, 7, 1, '对方审批', 'SEQUENTIAL', 'ROLE', 'ceo', NULL);
 
+-- B-FEAT-16: EXPENSE approval flow seed (报销审批流)
+MERGE INTO approval_flow_def (id, business_type, version, is_active) KEY (id) VALUES
+(8, 'EXPENSE', 1, TRUE);
+
+MERGE INTO approval_flow_node (id, flow_id, node_order, node_name, approval_mode, approver_type, approver_ref, skip_condition) KEY (id) VALUES
+(11, 8, 1, '财务审批', 'SEQUENTIAL', 'ROLE', 'finance', NULL),
+(12, 8, 2, 'CEO终审', 'SEQUENTIAL', 'ROLE', 'ceo', NULL);
+
 MERGE INTO system_config (config_key, config_value, description) KEY (config_key) VALUES
 ('payroll_bonus_approval_required', 'false', '临时薪资调整是否需要 CEO 审批');
 
