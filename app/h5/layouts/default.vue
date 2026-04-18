@@ -150,8 +150,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/expense/records', label: '报销记录', path: '/expense/records' },
     { key: '/allowances', label: '补贴配置', path: '/allowances' },
     { key: '/positions', label: '岗位薪资配置', path: '/positions' },
-    { key: '/projects', label: '项目管理', path: '/projects' },
-    { key: '/directory', label: '通讯录导入', path: '/directory' }
+    { key: '/projects', label: '项目管理', path: '/projects' }
   ],
   project_manager: [
     { key: '/', label: '工作台', path: '/' },

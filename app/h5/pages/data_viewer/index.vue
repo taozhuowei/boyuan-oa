@@ -2,8 +2,8 @@
   <div>
     <h2 class="page-title">历史数据查看</h2>
     <a-card style="margin-bottom: 16px;">
-      <p style="color: #888; margin-bottom: 12px;">上传从「数据导出」页面下载的 .zip 文件，查看其中的历史数据。</p>
-      <input type="file" accept=".zip,.json" style="display:none" ref="fileInput" @change="onFileChange" />
+      <p style="color: #888; margin-bottom: 12px;">上传从「数据导出」页面下载的 .obk 文件，查看其中的历史数据。</p>
+      <input type="file" accept=".obk" style="display:none" ref="fileInput" @change="onFileChange" />
       <a-button @click="() => fileInput?.click()" data-catch="data-viewer-upload-btn">选择文件</a-button>
       <span v-if="fileName" style="margin-left: 12px; color: #555;">{{ fileName }}</span>
     </a-card>
@@ -38,7 +38,7 @@ function onFileChange(e: Event) {
   fileName.value = file.name
   const reader = new FileReader()
 
-  if (file.name.endsWith('.json')) {
+  if (file.name.endsWith('.obk')) {
     reader.onload = () => {
       try {
         const data = JSON.parse(String(reader.result))
@@ -48,12 +48,12 @@ function onFileChange(e: Event) {
           message.error('文件格式不正确')
         }
       } catch {
-        message.error('JSON 解析失败')
+        message.error('.obk 文件解析失败，请确认文件来自「数据导出」功能')
       }
     }
     reader.readAsText(file)
   } else {
-    message.warning('暂不支持 .zip 文件，请直接上传解压后的 .json 文件')
+    message.warning('请上传 .obk 格式文件（由「数据导出」页面生成）')
   }
 
   if (fileInput.value) {

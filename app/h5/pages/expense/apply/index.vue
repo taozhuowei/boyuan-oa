@@ -70,8 +70,14 @@
               </a-form-item>
             </a-col>
             <a-col :span="5">
-              <a-form-item :name="['items', index, 'amount']" :rules="[{ required: true, message: '请输入金额' }]">
-                <a-input-number v-model:value="item.amount" style="width: 100%" :min="0" :precision="2" placeholder="金额" />
+              <a-form-item
+                :name="['items', index, 'amount']"
+                :rules="[
+                  { required: true, message: '请输入金额' },
+                  { validator: validateItemAmount, trigger: 'blur' }
+                ]"
+              >
+                <a-input-number v-model:value="item.amount" style="width: 100%" :min="0.01" :precision="2" placeholder="金额" />
               </a-form-item>
             </a-col>
             <a-col :span="5">
@@ -183,6 +189,12 @@ const calculatedTotal = computed(() => {
 watch(calculatedTotal, (newVal) => {
   formState.totalAmount = newVal > 0 ? newVal : undefined
 })
+
+// 报销明细金额校验：必须大于0（防止输入负数或零）
+function validateItemAmount(_rule: unknown, val: number | undefined): Promise<void> {
+  if (val != null && val > 0) return Promise.resolve()
+  return Promise.reject(new Error('金额必须大于0'))
+}
 
 function addItem() {
   formState.items.push({

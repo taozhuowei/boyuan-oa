@@ -173,7 +173,10 @@
             </a-form-item>
           </a-col>
           <a-col :span="12">
-            <a-form-item label="身份证号">
+            <a-form-item
+              label="身份证号"
+              :rules="[{ pattern: /^\d{17}[\dX]$/i, message: '请输入有效的18位身份证号', trigger: 'blur' }]"
+            >
               <a-input v-model:value="form.idCardNo" placeholder="18位身份证号" data-catch="employee-idcard-input" />
             </a-form-item>
           </a-col>

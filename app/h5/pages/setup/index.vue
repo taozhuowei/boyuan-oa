@@ -40,7 +40,10 @@
           </a-form-item>
           <a-form-item
             label="手机号"
-            :rules="[{ required: true, message: '请输入CEO手机号' }]"
+            :rules="[
+              { required: true, message: '请输入CEO手机号' },
+              { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号码', trigger: 'blur' }
+            ]"
           >
             <a-input
               v-model:value="formState.ceoPhone"
@@ -318,6 +321,10 @@ function validateStep(step: number): boolean {
     }
     if (!formState.ceoPhone.trim()) {
       message.error('请输入CEO手机号')
+      return false
+    }
+    if (!/^1[3-9]\d{9}$/.test(formState.ceoPhone.trim())) {
+      message.error('请输入有效的手机号码')
       return false
     }
     if (!formState.ceoPassword || formState.ceoPassword.length < 8) {

@@ -147,3 +147,60 @@ MERGE INTO leave_type_def (code, name, deduction_rate, is_enabled, is_system, di
 ('MARRIAGE',     '婚假',   0.00, TRUE, TRUE, 4,  3,   'DAILY_SALARY'),
 ('MATERNITY',    '产假',   0.00, TRUE, TRUE, 5,  90,  'DAILY_SALARY'),
 ('COMPENSATORY', '调休假', 0.00, TRUE, FALSE, 6, 3,   'DAILY_WAGE');
+
+-- ============================================
+-- B-P3-01: 岗位管理种子数据（5条内置岗位）
+-- 字段来源：schema.sql position 表定义
+-- employee_category: OFFICE（办公室）/ LABOR（劳工）
+-- ============================================
+MERGE INTO position (id, position_code, position_name, employee_category, default_role_code,
+                     requires_construction_log, has_performance_bonus)
+KEY (id) VALUES
+(1, 'ENGINEER',     '工程师',   'OFFICE', 'employee',         FALSE, TRUE),
+(2, 'PM',           '项目经理', 'OFFICE', 'project_manager',  FALSE, TRUE),
+(3, 'FINANCE_SUP',  '财务主管', 'OFFICE', 'finance',          FALSE, TRUE),
+(4, 'HR_SPECIALIST','人事专员', 'OFFICE', 'hr',               FALSE, FALSE),
+(5, 'OPS_ENGINEER', '运维工程师','OFFICE','employee',         FALSE, FALSE);
+
+-- ============================================
+-- B-P3-02: 补贴配置种子数据
+-- allowance_def: 补贴项定义（字段来源：V5__payroll_composition.sql）
+-- allowance_config: 三级覆盖配置（scope: GLOBAL/POSITION/EMPLOYEE）
+-- ============================================
+MERGE INTO allowance_def (id, code, name, description, display_order, is_enabled, is_system)
+KEY (id) VALUES
+(1, 'ATTENDANCE_BONUS', '全勤奖',       '每月全勤（无请假/迟到）额外奖励', 1, TRUE, FALSE),
+(2, 'TECH_ALLOWANCE',   '技术岗位津贴', '适用于技术类岗位的固定月度津贴',   2, TRUE, FALSE);
+
+-- 全勤奖：GLOBAL 全员适用，500元/月
+-- 技术岗位津贴：POSITION 限定岗位（position_id=1 工程师），200元/月
+MERGE INTO allowance_config (id, allowance_def_id, scope, scope_target_id, amount)
+KEY (id) VALUES
+(1, 1, 'GLOBAL',   NULL, 500.00),
+(2, 2, 'POSITION', 1,    200.00);
+
+-- ============================================
+-- B-P3-03: CEO 考勤记录种子数据
+-- 以 form_record 写入请假/加班记录（submitter_id = ceo.demo 员工 id）
+-- 使用子查询：若 ceo.demo 账号不存在则跳过，保证幂等性
+-- ============================================
+INSERT INTO form_record (id, form_type, submitter_id, form_data, status, current_node_order)
+SELECT 1001, 'LEAVE', e.id,
+    '{"leaveType":"年假","startDate":"2026-03-10","endDate":"2026-03-12","days":3,"reason":"年假休整"}',
+    'APPROVED', 2
+FROM employee e WHERE e.employee_no = 'ceo.demo'
+AND NOT EXISTS (SELECT 1 FROM form_record WHERE id = 1001);
+
+INSERT INTO form_record (id, form_type, submitter_id, form_data, status, current_node_order)
+SELECT 1002, 'OVERTIME', e.id,
+    '{"overtimeDate":"2026-03-15","startTime":"18:00","endTime":"21:00","hours":3,"reason":"项目进度保障"}',
+    'APPROVED', 2
+FROM employee e WHERE e.employee_no = 'ceo.demo'
+AND NOT EXISTS (SELECT 1 FROM form_record WHERE id = 1002);
+
+INSERT INTO form_record (id, form_type, submitter_id, form_data, status, current_node_order)
+SELECT 1003, 'LEAVE', e.id,
+    '{"leaveType":"事假","startDate":"2026-04-01","endDate":"2026-04-01","days":1,"reason":"私事处理"}',
+    'APPROVED', 2
+FROM employee e WHERE e.employee_no = 'ceo.demo'
+AND NOT EXISTS (SELECT 1 FROM form_record WHERE id = 1003);
