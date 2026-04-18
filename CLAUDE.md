@@ -8,6 +8,10 @@ Never writes business code. Never reviews its own outputs.
 
 ### Implementation Agents (spawn via Agent tool)
 
+Note: `~/.claude/agents/*.md` are custom persona definitions (engineering-backend-architect,
+engineering-code-reviewer, testing-api-tester, etc.). They are NOT callable via Agent tool
+subagent_type — only built-in types below are valid.
+
 **Backend Engineer** — `subagent_type: "Backend Engineer"`
 When: Spring Boot controller/service/entity, DB migration (V18+), API design, MyBatis-Plus mapper
 
@@ -30,13 +34,10 @@ exit: 0=ok 1=fail 75=retry
 
 ### Quality Agents (spawn via Agent tool)
 
-**Code Reviewer** — `subagent_type: "Code Reviewer"`
-When: after EVERY implementation — mandatory, no exceptions
-Input: changed file paths + diff summary + task context
-Output: PASS or NEEDS WORK with specific findings
-
 **QA Engineer** — `subagent_type: "QA Engineer"`
-When: Phase C test design and writing; phase-end full test run + acceptance report
+When: after EVERY implementation (code review) + Phase C test writing/fixing + phase acceptance gate
+Input for review: changed file paths + diff summary + task context
+Output for review: PASS or NEEDS WORK with specific findings
 
 ### Infrastructure Agents (spawn via Agent tool)
 
@@ -50,24 +51,26 @@ When: Phase G — production monitoring, alerting, incident response, capacity p
 
 Phase A (Architecture Governance + Cleanup)
 - Architecture analysis → Technical Architect
-- Backend cleanup → Backend Engineer → Code Reviewer
-- Frontend cleanup → Frontend Engineer → Code Reviewer
+- Backend cleanup → Backend Engineer → QA Engineer (review)
+- Frontend cleanup → Frontend Engineer → QA Engineer (review)
 - Phase acceptance gate → QA Engineer runs full test suite + outputs report
 
 Phase B (Feature Development + Bug Fixes)
-- Full-stack features → Backend Engineer (parallel with) Frontend Engineer → Code Reviewer each
-- Backend-only or frontend-only → single agent → Code Reviewer
+- Full-stack features → Backend Engineer (parallel with) Frontend Engineer → QA Engineer each
+- Backend-only or frontend-only → single agent → QA Engineer (review)
 - Five-dimension cross-check → orchestrator verifies each dimension
 - Phase acceptance gate → QA Engineer runs full test suite + outputs report
 
 Phase C (Test Coverage)
 - Test strategy design → QA Engineer
-- Backend integration test writing → QA Engineer + Backend Engineer
+- Integration test writing and fixing → QA Engineer
 - E2E test writing → QA Engineer + Frontend Engineer
-- Black-box self-test execution → QA Engineer runs full suite, outputs Pass/Fail matrix
+- Black-box self-test execution → orchestrator (Claude) executes MB-01~MB-10 directly
+- Code review after test changes → QA Engineer (review role)
+- Phase acceptance gate → QA Engineer runs full suite, outputs Pass/Fail matrix
 
 Phase D (Human Acceptance)
-- Bug fixes from user walkthrough → Backend Engineer or Frontend Engineer → Code Reviewer
+- Bug fixes from user walkthrough → Backend Engineer or Frontend Engineer → QA Engineer
 - Regression validation → QA Engineer
 
 Phase E (Production Deploy + Standards)
@@ -76,13 +79,13 @@ Phase E (Production Deploy + Standards)
 - Standards docs (RUNBOOK/CHANGELOG) → orchestrator
 
 Phase F (WeChat Mini Program)
-- MP implementation → WeChat Mini Program Developer → Code Reviewer
-- Backend API extensions → Backend Engineer → Code Reviewer
+- MP implementation → WeChat Mini Program Developer → QA Engineer
+- Backend API extensions → Backend Engineer → QA Engineer
 - Phase acceptance gate → QA Engineer
 
 Phase G (Operations)
 - Incident response + maintenance → Ops Engineer
-- Code fixes → Backend Engineer or Frontend Engineer → Code Reviewer → QA Engineer regression
+- Code fixes → Backend Engineer or Frontend Engineer → QA Engineer regression
 
 ## DIRS
 h5 frontend: D:/Taozhuowei/Project/boyuan-oa/app/h5          (Nuxt 3 + Ant Design Vue)

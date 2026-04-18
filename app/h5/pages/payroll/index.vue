@@ -57,6 +57,12 @@
         <template v-if="activeTab === 'corrections'">
           <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
             <a-button :loading="loadingCorrections" @click="loadCorrections">刷新</a-button>
+            <a-button
+              v-if="isFinance"
+              type="primary"
+              data-catch="payroll-correction-open-btn"
+              @click="showCorrectionModal = true; loadSlipsForCorrection()"
+            >发起更正</a-button>
             <span style="color: #999; font-size: 12px;">列表会自动应用 CEO 已审批通过的更正</span>
           </div>
           <a-table
@@ -126,6 +132,39 @@
       :isFinance="isFinance"
       @slip-action-done="loadMySlips"
     />
+
+    <!-- 薪资更正申请弹窗 -->
+    <a-modal
+      v-if="isFinance"
+      v-model:open="showCorrectionModal"
+      title="发起薪资更正申请"
+      :confirm-loading="submittingCorrection"
+      @ok="submitCorrection"
+      @cancel="showCorrectionModal = false; correctionForm = { slipId: undefined, reason: '' }"
+    >
+      <template #footer>
+        <a-button @click="showCorrectionModal = false; correctionForm = { slipId: undefined, reason: '' }">取消</a-button>
+        <a-button type="primary" data-catch="correction-submit-btn" :loading="submittingCorrection" @click="submitCorrection">提交更正</a-button>
+      </template>
+      <a-form layout="vertical">
+        <a-form-item label="工资条" required>
+          <a-select
+            v-model:value="correctionForm.slipId"
+            :options="availableSlips.map(s => ({ value: s.id, label: `ID:${s.id}${s.period ? ' (' + s.period + ')' : ''}` }))"
+            placeholder="选择需要更正的工资条"
+            style="width: 100%"
+          />
+        </a-form-item>
+        <a-form-item label="更正原因" required>
+          <a-textarea
+            v-model:value="correctionForm.reason"
+            data-catch="correction-reason-input"
+            :rows="4"
+            placeholder="请说明更正原因"
+          />
+        </a-form-item>
+      </a-form>
+    </a-modal>
   </div>
 </template>
 
@@ -288,6 +327,46 @@ function openSlipDetail(slip: PayrollSlip) {
 }
 
 // ── 薪资更正记录（内联，逻辑简单） ────────────────────────────────
+
+const showCorrectionModal = ref(false)
+const submittingCorrection = ref(false)
+const correctionForm = ref({ slipId: undefined as number | undefined, reason: '' })
+const availableSlips = ref<{ id: number; period?: string; employeeId: number }[]>([])
+
+async function loadSlipsForCorrection() {
+  try {
+    const data = await request<{ id: number; period?: string; employeeId: number }[]>({ url: '/payroll/slips' })
+    availableSlips.value = data ?? []
+    if (availableSlips.value.length > 0 && !correctionForm.value.slipId) {
+      correctionForm.value.slipId = availableSlips.value[0].id
+    }
+  } catch {
+    availableSlips.value = []
+  }
+}
+
+async function submitCorrection() {
+  if (!correctionForm.value.slipId || !correctionForm.value.reason.trim()) {
+    message.warning('请填写更正原因')
+    return
+  }
+  submittingCorrection.value = true
+  try {
+    await request({
+      url: `/payroll/slips/${correctionForm.value.slipId}/correction`,
+      method: 'POST',
+      body: { reason: correctionForm.value.reason }
+    })
+    showCorrectionModal.value = false
+    correctionForm.value = { slipId: undefined, reason: '' }
+    await loadCorrections()
+    message.success('更正申请已提交')
+  } catch (e: unknown) {
+    message.error((e as Error).message ?? '提交失败')
+  } finally {
+    submittingCorrection.value = false
+  }
+}
 
 const corrections = ref<PayrollCorrection[]>([])
 const loadingCorrections = ref(false)

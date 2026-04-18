@@ -34,7 +34,6 @@
           </template>
         </template>
       </a-table>
-      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
       <a-modal v-model:open="showMilestoneModal" :title="editingMilestone ? '编辑里程碑' : '新建里程碑'" @ok="doSaveMilestone" :confirm-loading="milestoneLoading" @cancel="resetMilestoneForm" :okButtonProps="({ 'data-catch': 'project-milestone-save-btn' } as unknown as ButtonProps)">
         <a-form :model="milestoneForm" layout="vertical">
           <a-form-item label="名称" required><a-input v-model:value="milestoneForm.name" /></a-form-item>

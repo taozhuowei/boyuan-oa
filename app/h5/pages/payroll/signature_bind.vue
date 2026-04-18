@@ -298,6 +298,7 @@ async function handleSubmit(): Promise<void> {
       body: {
         signatureImage: signatureImage.value,
         pin: pinForm.value.pin,
+        confirmPin: pinForm.value.confirmPin,
       },
     })
     message.success('签名绑定成功')

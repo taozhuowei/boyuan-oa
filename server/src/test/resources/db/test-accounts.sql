@@ -1,10 +1,12 @@
 -- 测试账号种子数据（仅用于 mvn test，不进入生产）
 -- 5 个演示账号 + 1 个 HR；密码统一为 bcrypt("123456")
 
-INSERT INTO employee (
+-- Use MERGE so this file is idempotent when data.sql (which also seeds employees via MERGE)
+-- is loaded first in the test application context.
+MERGE INTO employee (
     id, employee_no, password_hash, is_default_password, name, phone, email,
     role_code, employee_type, department_id, account_status, entry_date
-) VALUES
+) KEY (id) VALUES
 (1, 'employee.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '张晓宁',  '13800000001', 'zhangxn@oa.demo', 'employee',        'OFFICE', 1, 'ACTIVE', '2024-01-01'),
 (2, 'finance.demo',  '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '李静',    '13800000002', 'lij@oa.demo',     'finance',         'OFFICE', 2, 'ACTIVE', '2024-01-01'),
 (3, 'pm.demo',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '王建国',  '13800000003', 'wangjg@oa.demo',  'project_manager', 'OFFICE', 3, 'ACTIVE', '2024-01-01'),

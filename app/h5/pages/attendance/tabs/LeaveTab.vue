@@ -7,21 +7,27 @@
     @finish="submitLeave"
   >
     <a-form-item label="假种" name="leaveType" :rules="[{ required: true, message: '请选择假种' }]">
-      <a-select v-model:value="leave_form.leaveType" placeholder="请选择" data-catch="form-leave-type">
-        <a-select-option v-for="lt in leave_types" :key="lt.code" :value="lt.name">{{ lt.name }}</a-select-option>
-      </a-select>
+      <div data-catch="form-leave-type" style="display:block;">
+        <a-select v-model:value="leave_form.leaveType" placeholder="请选择" style="width:100%;">
+          <a-select-option v-for="lt in leave_types" :key="lt.code" :value="lt.name">{{ lt.name }}</a-select-option>
+        </a-select>
+      </div>
     </a-form-item>
     <a-form-item label="开始日期" name="startDate" :rules="[{ required: true, message: '请选择开始日期' }]">
-      <a-date-picker v-model:value="leave_form.startDate" style="width: 100%" placeholder="请选择日期" data-catch="form-leave-start-date" />
+      <div data-catch="form-leave-start-date" style="display:block;">
+        <a-date-picker v-model:value="leave_form.startDate" style="width: 100%" placeholder="请选择日期" />
+      </div>
     </a-form-item>
     <a-form-item label="结束日期" name="endDate" :rules="[{ required: true, message: '请选择结束日期' }]">
-      <a-date-picker v-model:value="leave_form.endDate" style="width: 100%" placeholder="请选择日期" data-catch="form-leave-end-date" />
+      <div data-catch="form-leave-end-date" style="display:block;">
+        <a-date-picker v-model:value="leave_form.endDate" style="width: 100%" placeholder="请选择日期" />
+      </div>
     </a-form-item>
     <a-form-item label="请假时长">
       <span style="color: #555;">{{ leave_duration ?? '请先选择开始和结束日期' }}</span>
     </a-form-item>
     <a-form-item label="请假原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
-      <a-textarea v-model:value="leave_form.reason" :rows="3" />
+      <a-textarea v-model:value="leave_form.reason" :rows="3" data-catch="form-leave-reason" />
     </a-form-item>
     <a-form-item>
       <a-checkbox v-model:checked="leave_form.retroactive">追溯申请（补录历史请假）</a-checkbox>

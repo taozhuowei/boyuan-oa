@@ -23,6 +23,8 @@ import { API_URL } from '../playwright.config'
 // Shared state across tests — initialised to sentinel -1 (means "not yet created")
 let position_id = -1
 let level_id = -1
+// Unique name per run so repeated runs on a persistent H2 session don't hit unique-constraint 409
+const position_name = `E2E岗位测试_${Date.now()}`
 
 test.describe('C-E2E-08 岗位与薪级 CRUD', () => {
   // ── Test 08-1: CEO 创建岗位 + 薪级，HR 可查询 ────────────────────────────
@@ -35,17 +37,15 @@ test.describe('C-E2E-08 岗位与薪级 CRUD', () => {
       const create_resp = await api_ctx.post(`${API_URL}/positions`, {
         headers: { Authorization: `Bearer ${ceo_token}` },
         data: {
-          positionName: 'E2E岗位测试',
+          positionName: position_name,
           employeeCategory: 'OFFICE',
           defaultRoleCode: 'employee'
         }
       })
 
       if (create_resp.status() === 409) {
-        // Conflict: a position with this name already exists from a previous run.
-        // Cannot proceed safely — the duplicate state makes cleanup ambiguous.
         console.warn('[C-E2E-08] POST /positions returned 409 (conflict). Skipping remaining steps.')
-        test.skip(true, 'Position E2E岗位测试 already exists (409); cannot proceed safely')
+        test.skip(true, `Position ${position_name} already exists (409); cannot proceed safely`)
         return
       }
 
@@ -72,7 +72,7 @@ test.describe('C-E2E-08 岗位与薪级 CRUD', () => {
       })
       expect(list_resp.status()).toBe(200)
       const positions = await list_resp.json() as Array<{ id: number; positionName: string }>
-      const found = positions.find(p => p.positionName === 'E2E岗位测试')
+      const found = positions.find(p => p.positionName === position_name)
       expect(found).toBeDefined()
     } finally {
       await api_ctx.dispose()

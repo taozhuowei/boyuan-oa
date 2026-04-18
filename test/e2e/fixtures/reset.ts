@@ -20,6 +20,10 @@ export async function resetData(): Promise<void> {
     if (!response.ok()) {
       throw new Error(`[resetData] POST /dev/reset failed: ${response.status()} ${await response.text()}`)
     }
+    // Restore initialized=true so auth middleware does not redirect to /setup.
+    // Required because e2e_08_setup_wizard.spec.ts calls /dev/reset-setup which sets initialized=false.
+    // The H2 in-memory DB persists across test runs within the same server session.
+    await ctx.post(`${API_URL}/dev/skip-setup`)
   } finally {
     await ctx.dispose()
   }

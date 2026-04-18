@@ -55,6 +55,11 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/setup')
   }
 
+  // Redirect away from /setup if already initialized
+  if (initState.value === true && to.path === '/setup') {
+    return navigateTo('/login')
+  }
+
   // Skip auth check for public paths
   if (publicPaths.includes(to.path)) {
     return

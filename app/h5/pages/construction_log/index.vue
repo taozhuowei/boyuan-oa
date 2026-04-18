@@ -36,11 +36,13 @@
       :confirm-loading="submitting"
       @cancel="resetForm"
       ok-text="提交"
-      :okButtonProps="({ 'data-catch': 'form-log-submit' } as any)" <!-- 原因：antd ButtonProps 不含 data-* 属性，必须 as any 以传入 data-catch 测试标识 -->
+      :okButtonProps="({ 'data-catch': 'form-log-submit' } as any)"
     >
       <a-form :model="form" layout="vertical">
         <a-form-item label="日志日期" required>
-          <a-date-picker v-model:value="form.logDate" style="width:100%;" placeholder="请选择日期" data-catch="form-log-date" />
+          <div data-catch="form-log-date" style="display:block;">
+            <a-date-picker v-model:value="form.logDate" style="width:100%;" placeholder="请选择日期" />
+          </div>
         </a-form-item>
 
         <!-- workItems 动态列表 -->

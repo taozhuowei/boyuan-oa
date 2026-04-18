@@ -14,6 +14,8 @@ import com.oa.backend.service.PositionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -45,8 +47,8 @@ public class PositionServiceImpl implements PositionService {
     @Override
     public PositionResponse getPosition(Long id) {
         Position position = positionMapper.selectById(id);
-        if (position == null || position.getDeleted() != 0) {
-            throw new IllegalArgumentException("岗位不存在");
+        if (position == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "岗位不存在");
         }
         PositionResponse baseResponse = toPositionResponse(position);
         
@@ -179,10 +181,10 @@ public class PositionServiceImpl implements PositionService {
     @Transactional
     public void deletePosition(Long id) {
         Position position = positionMapper.selectById(id);
-        if (position == null || position.getDeleted() != 0) {
-            throw new IllegalArgumentException("岗位不存在");
+        if (position == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "岗位不存在");
         }
-        
+
         // 检查是否有员工关联该岗位
         QueryWrapper<Employee> empWrapper = new QueryWrapper<>();
         empWrapper.eq("position_id", id);
@@ -191,10 +193,8 @@ public class PositionServiceImpl implements PositionService {
         if (empCount > 0) {
             throw new IllegalArgumentException("该岗位下存在员工，无法删除");
         }
-        
-        position.setDeleted(1);
-        position.setUpdatedAt(LocalDateTime.now());
-        positionMapper.updateById(position);
+
+        positionMapper.deleteById(id);
     }
 
     @Override
@@ -275,13 +275,11 @@ public class PositionServiceImpl implements PositionService {
     @Transactional
     public void deleteLevel(Long positionId, Long levelId) {
         PositionLevel level = positionLevelMapper.selectById(levelId);
-        if (level == null || level.getDeleted() != 0 || !level.getPositionId().equals(positionId)) {
-            throw new IllegalArgumentException("等级不存在");
+        if (level == null || !level.getPositionId().equals(positionId)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "等级不存在");
         }
-        
-        level.setDeleted(1);
-        level.setUpdatedAt(LocalDateTime.now());
-        positionLevelMapper.updateById(level);
+
+        positionLevelMapper.deleteById(levelId);
     }
 
     /**
@@ -301,15 +299,11 @@ public class PositionServiceImpl implements PositionService {
      * 生成岗位编码：POS + 4位序号
      */
     private String generatePositionCode() {
-        QueryWrapper<Position> wrapper = new QueryWrapper<>();
-        wrapper.like("position_code", "POS%");
-        wrapper.orderByDesc("position_code");
-        wrapper.last("LIMIT 1");
-        
-        Position lastPosition = positionMapper.selectOne(wrapper);
+        // Use raw SQL (bypasses @TableLogic) so soft-deleted codes are also considered.
+        // This prevents unique-constraint violations when re-creating after a soft delete.
+        String lastCode = positionMapper.findMaxPositionCode();
         int seq = 1;
-        if (lastPosition != null) {
-            String lastCode = lastPosition.getPositionCode();
+        if (lastCode != null) {
             try {
                 seq = Integer.parseInt(lastCode.substring(3)) + 1;
             } catch (NumberFormatException e) {

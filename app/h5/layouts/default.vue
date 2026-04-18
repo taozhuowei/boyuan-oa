@@ -18,11 +18,13 @@
         <template v-for="item in menuItems" :key="item.key">
           <a-sub-menu v-if="item.children?.length" :key="item.key">
             <template #title>{{ item.label }}</template>
-            <a-menu-item v-for="child in item.children" :key="child.path" :data-catch="'nav-item-' + child.path">
-              {{ child.label }}
+            <a-menu-item v-for="child in item.children" :key="child.path">
+              <span :data-catch="'nav-item-' + child.path">{{ child.label }}</span>
             </a-menu-item>
           </a-sub-menu>
-          <a-menu-item v-else :key="item.path" :data-catch="'nav-item-' + item.path">{{ item.label }}</a-menu-item>
+          <a-menu-item v-else :key="item.path">
+            <span :data-catch="'nav-item-' + item.path">{{ item.label }}</span>
+          </a-menu-item>
         </template>
       </a-menu>
     </a-layout-sider>

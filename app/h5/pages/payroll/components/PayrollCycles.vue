@@ -51,7 +51,6 @@
       :confirm-loading="creatingCycle"
       @ok="doCreateCycle"
       @cancel="createCycleForm.period = ''"
-      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
       :okButtonProps="({ 'data-catch': 'payroll-cycle-create-ok' } as unknown as ButtonProps)"
     >
       <a-form layout="vertical">

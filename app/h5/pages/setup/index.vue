@@ -179,7 +179,7 @@
         />
         <div class="step-actions">
           <a-button @click="goToStep(2)">上一步</a-button>
-          <a-button type="primary" :loading="submitting" @click="submitSetup">
+          <a-button type="primary" data-catch="setup-submit-btn" :loading="submitting" @click="submitSetup">
             提交
           </a-button>
         </div>

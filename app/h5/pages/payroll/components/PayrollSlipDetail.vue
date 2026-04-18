@@ -102,7 +102,6 @@
       :confirm-loading="confirmingSlip"
       @ok="submitPinConfirm"
       @cancel="closePinModal"
-      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
       :okButtonProps="({ 'data-catch': 'payroll-sign-confirm-btn' } as unknown as ButtonProps)"
     >
       <a-form layout="vertical">
@@ -149,7 +148,6 @@
       title="发起薪资更正"
       :confirm-loading="submittingCorrection"
       width="640px"
-      <!-- 原因：antd ButtonProps 无 data-* 索引签名，data-catch 测试锚点需断言 -->
       :okButtonProps="({ 'data-catch': 'correction-submit-btn' } as unknown as ButtonProps)"
       @ok="submitCorrection"
       @cancel="showCorrectionModal = false"

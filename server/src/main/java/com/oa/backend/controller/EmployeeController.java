@@ -80,10 +80,10 @@ public class EmployeeController {
 
     /**
      * 创建员工
-     * 权限：CEO only
+     * 权限：CEO、HR（DESIGN.md §5.3 HR 负责人员信息录入）
      */
     @PostMapping
-    @PreAuthorize("hasRole('CEO')")
+    @PreAuthorize("hasAnyRole('CEO','HR')")
     public ResponseEntity<EmployeeResponse> createEmployee(@Valid @RequestBody EmployeeCreateRequest request,
                                                            Authentication authentication) {
         Employee employee = employeeService.createEmployee(request);
@@ -92,10 +92,10 @@ public class EmployeeController {
 
     /**
      * 更新员工
-     * 权限：CEO only
+     * 权限：CEO、HR（DESIGN.md §5.3 HR 负责人员信息录入与维护）
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('CEO')")
+    @PreAuthorize("hasAnyRole('CEO','HR')")
     @OperationLogRecord(action = "UPDATE_EMPLOYEE", targetType = "EMPLOYEE")
     public ResponseEntity<EmployeeResponse> updateEmployee(
             @PathVariable Long id,

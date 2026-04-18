@@ -118,27 +118,26 @@
     <template v-if="isPmOrCeo">
       <a-divider>第二角色</a-divider>
       <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: end;">
-        <a-form-item label="员工" style="margin: 0;">
-          <a-select
-            v-model:value="srForm.employeeId"
-            show-search
-            :filter-option="false"
-            :options="srEmployeeOptions"
-            placeholder="搜索员工姓名"
-            style="width: 200px"
-            allow-clear
-            @search="debouncedSearchSrEmployees"
+        <a-form-item label="员工ID" style="margin: 0;">
+          <input
+            type="number"
+            :value="srForm.employeeId"
+            @input="(e: Event) => { srForm.employeeId = Number((e.target as HTMLInputElement).value) || undefined }"
+            min="1"
+            placeholder="输入员工ID"
+            class="ant-input"
+            style="width: 200px; padding: 4px 11px;"
           />
         </a-form-item>
         <a-form-item label="第二角色" style="margin: 0;">
-          <a-select v-model:value="srForm.roleCode" style="width: 200px">
-            <a-select-option
+          <a-radio-group v-model:value="srForm.roleCode" style="display: flex; flex-wrap: wrap; gap: 8px;">
+            <a-radio-button
               v-for="d in srDefs"
               :key="d.code"
               :value="d.code"
               :data-catch="d.code === 'FOREMAN' ? 'second-role-option-FOREMAN' : undefined"
-            >{{ d.name }}（{{ d.appliesTo === 'OFFICE' ? '员工' : '劳工' }}）</a-select-option>
-          </a-select>
+            >{{ d.name }}</a-radio-button>
+          </a-radio-group>
         </a-form-item>
         <a-button data-catch="assign-second-role-btn" type="primary" :loading="srLoading" @click="assignSecondRole">分配</a-button>
         <a-button @click="loadSecondRoles">刷新</a-button>

@@ -7,7 +7,9 @@
     <a-card>
       <a-tabs v-model:activeKey="active_tab" @change="onTabChange">
         <a-tab-pane key="records" tab="我的记录" />
-        <a-tab-pane key="leave" tab="请假申请" data-catch="attendance-tab-leave" />
+        <a-tab-pane key="leave">
+          <template #tab><span data-catch="attendance-tab-leave">请假申请</span></template>
+        </a-tab-pane>
         <a-tab-pane key="overtime" tab="加班申报" />
         <a-tab-pane key="self-report" tab="自补加班" />
         <a-tab-pane key="notifications" tab="加班通知" />

@@ -151,7 +151,7 @@ public class WorkLogController {
      * PROJECT_MANAGER: 查看所有相关记录（CEO 也可查看）
      */
     @GetMapping("/records")
-    @PreAuthorize("hasAnyRole('WORKER','PROJECT_MANAGER','CEO')")
+    @PreAuthorize("hasAnyRole('WORKER','PROJECT_MANAGER','CEO','FINANCE')")
     public ResponseEntity<List<FormRecordResponse>> getRecords(Authentication authentication) {
         Long currentEmployeeId = getCurrentEmployeeId(authentication);
         if (currentEmployeeId == null) {

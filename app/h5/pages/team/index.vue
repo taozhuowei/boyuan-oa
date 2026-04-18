@@ -10,7 +10,7 @@
         :pagination="false"
         row-key="id"
         size="small"
-        :customRow="() => ({ 'data-catch': 'team-member-row' } as any)" <!-- 原因：antd TableCustomRow 返回类型不含 data-* 属性 -->
+        :customRow="() => ({ 'data-catch': 'team-member-row' } as any)"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'roleCode'">

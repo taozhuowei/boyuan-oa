@@ -20,7 +20,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -170,27 +172,25 @@ class PositionServiceImplTest {
     }
 
     @Test
-    @DisplayName("getPosition: throws IllegalArgumentException when not found")
+    @DisplayName("getPosition: throws ResponseStatusException when not found")
     void getPosition_notFound_throwsException() {
         when(positionMapper.selectById(99L)).thenReturn(null);
 
-        assertThrows(IllegalArgumentException.class, () -> service.getPosition(99L));
+        assertThrows(ResponseStatusException.class, () -> service.getPosition(99L));
     }
 
     @Test
-    @DisplayName("getPosition: throws IllegalArgumentException when deleted=1")
-    void getPosition_deleted_throwsException() {
-        Position deleted = position(1L, "已删除岗位");
-        deleted.setDeleted(1);
-        when(positionMapper.selectById(1L)).thenReturn(deleted);
+    @DisplayName("getPosition: deleted record treated as not found, throws ResponseStatusException")
+    void getPosition_deleted_treatedAsNotFound_throwsResponseStatusException() {
+        when(positionMapper.selectById(1L)).thenReturn(null);
 
-        assertThrows(IllegalArgumentException.class, () -> service.getPosition(1L));
+        assertThrows(ResponseStatusException.class, () -> service.getPosition(1L));
     }
 
     // ─── deletePosition ──────────────────────────────────────
 
     @Test
-    @DisplayName("deletePosition: success calls updateById with deleted=1")
+    @DisplayName("deletePosition: success calls deleteById")
     void deletePosition_success_setsDeletedToOne() {
         Position p = position(1L, "待删除岗位");
         when(positionMapper.selectById(1L)).thenReturn(p);
@@ -198,9 +198,7 @@ class PositionServiceImplTest {
 
         service.deletePosition(1L);
 
-        ArgumentCaptor<Position> captor = ArgumentCaptor.forClass(Position.class);
-        verify(positionMapper).updateById(captor.capture());
-        assertEquals(1, captor.getValue().getDeleted());
+        verify(positionMapper).deleteById(1L);
     }
 
     @Test
@@ -211,27 +209,25 @@ class PositionServiceImplTest {
         when(employeeMapper.selectCount(any())).thenReturn(1L);
 
         assertThrows(IllegalArgumentException.class, () -> service.deletePosition(1L));
-        verify(positionMapper, never()).updateById(any());
+        verify(positionMapper, never()).deleteById((Serializable) any());
     }
 
     @Test
-    @DisplayName("deletePosition: throws when not found")
+    @DisplayName("deletePosition: throws ResponseStatusException when not found")
     void deletePosition_notFound_throwsException() {
         when(positionMapper.selectById(99L)).thenReturn(null);
 
-        assertThrows(IllegalArgumentException.class, () -> service.deletePosition(99L));
-        verify(positionMapper, never()).updateById(any());
+        assertThrows(ResponseStatusException.class, () -> service.deletePosition(99L));
+        verify(positionMapper, never()).deleteById((Serializable) any());
     }
 
     @Test
-    @DisplayName("deletePosition: throws when already deleted")
-    void deletePosition_alreadyDeleted_throwsException() {
-        Position deleted = position(1L, "已删除岗位");
-        deleted.setDeleted(1);
-        when(positionMapper.selectById(1L)).thenReturn(deleted);
+    @DisplayName("deletePosition: already deleted treated as not found, throws ResponseStatusException")
+    void deletePosition_alreadyDeleted_treatedAsNotFound_throwsResponseStatusException() {
+        when(positionMapper.selectById(1L)).thenReturn(null);
 
-        assertThrows(IllegalArgumentException.class, () -> service.deletePosition(1L));
-        verify(positionMapper, never()).updateById(any());
+        assertThrows(ResponseStatusException.class, () -> service.deletePosition(1L));
+        verify(positionMapper, never()).deleteById((Serializable) any());
     }
 
     // ─── updatePosition success path ─────────────────────────
@@ -358,25 +354,23 @@ class PositionServiceImplTest {
     // ─── deleteLevel ─────────────────────────────────────────
 
     @Test
-    @DisplayName("deleteLevel: not found - positionLevelMapper.selectById returns null; throws IllegalArgumentException")
+    @DisplayName("deleteLevel: not found - positionLevelMapper.selectById returns null; throws ResponseStatusException")
     void deleteLevel_notFound_throwsException() {
         when(positionLevelMapper.selectById(99L)).thenReturn(null);
 
-        assertThrows(IllegalArgumentException.class, () -> service.deleteLevel(1L, 99L));
-        verify(positionLevelMapper, never()).updateById(any());
+        assertThrows(ResponseStatusException.class, () -> service.deleteLevel(1L, 99L));
+        verify(positionLevelMapper, never()).deleteById((Serializable) any());
     }
 
     @Test
-    @DisplayName("deleteLevel: success - mock selectById returns valid PositionLevel; verify updateById called with deleted=1")
+    @DisplayName("deleteLevel: success calls deleteById")
     void deleteLevel_success_setsDeletedToOne() {
         PositionLevel level = positionLevel(1L, 1L, "初级");
         when(positionLevelMapper.selectById(1L)).thenReturn(level);
 
         service.deleteLevel(1L, 1L);
 
-        ArgumentCaptor<PositionLevel> captor = ArgumentCaptor.forClass(PositionLevel.class);
-        verify(positionLevelMapper).updateById(captor.capture());
-        assertEquals(1, captor.getValue().getDeleted());
+        verify(positionLevelMapper).deleteById(1L);
     }
 
     // ─── helpers ─────────────────────────────────────────────

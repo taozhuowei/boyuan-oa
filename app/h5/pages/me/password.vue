@@ -4,7 +4,7 @@
     <a-card class="password-card">
       <a-form
         :model="formState"
-        :rules="(rules as any)" <!-- 原因：自定义 validator 签名 (_rule: unknown, value: string) 与 antd RuleObject 期望的 (rule, value, callback) 不完全兼容，必须 as any -->
+        :rules="(rules as any)"
         layout="vertical"
         @finish="handleSubmit"
       >

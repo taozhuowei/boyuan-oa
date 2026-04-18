@@ -11,6 +11,26 @@ INSERT INTO department (id, parent_id, name, sort) VALUES
 (4, NULL, '运营管理部', 4),
 (5, NULL, '施工一部', 5);
 
+-- ============================================
+-- 测试账号（7条）- 密码统一为 "123456"
+-- bcrypt hash: $2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi
+-- ============================================
+MERGE INTO employee (id, employee_no, password_hash, is_default_password, name, phone, email,
+    role_code, employee_type, department_id, account_status, entry_date)
+KEY (id) VALUES
+(1, 'employee.demo',     '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '张晓宁', '13800000001', 'zhangxn@oa.demo',  'employee',           'OFFICE', 1, 'ACTIVE', '2024-01-01'),
+(2, 'finance.demo',      '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '李静',   '13800000002', 'lij@oa.demo',       'finance',            'OFFICE', 2, 'ACTIVE', '2024-01-01'),
+(3, 'pm.demo',           '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '王建国', '13800000003', 'wangjg@oa.demo',    'project_manager',    'OFFICE', 3, 'ACTIVE', '2024-01-01'),
+(4, 'ceo.demo',          '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '陈明远', '13800000004', 'chenmy@oa.demo',    'ceo',                'OFFICE', 4, 'ACTIVE', '2024-01-01'),
+(5, 'worker.demo',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '赵铁柱', '13800000005', 'zhaotz@oa.demo',    'worker',             'LABOR',  5, 'ACTIVE', '2024-01-01'),
+(6, 'hr.demo',           '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '李思文', '13800000006', 'lsw@oa.demo',       'hr',                 'OFFICE', 1, 'ACTIVE', '2024-01-01'),
+(7, 'dept_manager.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '周伟',   '13800000007', 'zhouw@oa.demo',     'department_manager', 'OFFICE', 1, 'ACTIVE', '2024-01-01');
+
+-- 直系领导关系
+UPDATE employee SET direct_supervisor_id = 7 WHERE id = 1;
+UPDATE employee SET direct_supervisor_id = 3 WHERE id = 5;
+UPDATE employee SET direct_supervisor_id = 4 WHERE id IN (3, 6, 7);
+
 -- 角色数据（9条）- 使用 MERGE INTO 避免重复
 MERGE INTO sys_role (id, role_code, role_name, description, status, is_system)
 KEY (id) VALUES
@@ -31,6 +51,13 @@ MERGE INTO project (id, name, status, start_date, log_cycle_days)
 KEY (id) VALUES
 (1, '万达广场中央空调安装工程', 'ACTIVE', '2026-01-15', 1),
 (2, '科技园区通风改造项目', 'ACTIVE', '2026-02-01', 1);
+
+-- 项目成员：pm.demo(id=3) 作为 PM，worker.demo(id=5) 作为 MEMBER
+MERGE INTO project_member (project_id, employee_id, role)
+KEY (project_id, employee_id) VALUES
+(1, 3, 'PM'),
+(1, 5, 'MEMBER'),
+(2, 3, 'PM');
 
 -- ============================================
 -- Phase 4: 审批流定义种子数据
@@ -73,6 +100,9 @@ ALTER TABLE project ALTER COLUMN id RESTART WITH 100;
 ALTER TABLE project_member ALTER COLUMN id RESTART WITH 100;
 ALTER TABLE approval_flow_def ALTER COLUMN id RESTART WITH 100;
 ALTER TABLE approval_flow_node ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE position ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE allowance_def ALTER COLUMN id RESTART WITH 100;
+ALTER TABLE allowance_config ALTER COLUMN id RESTART WITH 100;
 
 -- ============================================
 -- System Config: initialization status

@@ -3,6 +3,17 @@
   <div class="employees-page">
     <h2 class="page-title">员工管理</h2>
 
+    <a-alert
+      v-if="disableSuccess"
+      data-catch="disable-success"
+      message="员工账号已停用"
+      type="success"
+      show-icon
+      closable
+      style="margin-bottom: 12px;"
+      @close="disableSuccess = false"
+    />
+
     <a-card>
       <div class="search-bar">
         <a-input
@@ -13,7 +24,7 @@
           @press-enter="onSearch"
         />
         <a-button type="primary" @click="onSearch">搜索</a-button>
-        <a-button v-if="canEdit" style="margin-left: auto" type="primary" data-catch="employees-list-create-btn" @click="openCreate">+ 新增员工</a-button>
+        <a-button v-if="canEdit" style="margin-left: auto" type="primary" data-catch="employee-create-btn" @click="openCreate">+ 新增员工</a-button>
       </div>
 
       <a-table
@@ -29,9 +40,12 @@
         }"
         row-key="id"
         size="small"
-        :customRow="(record: Employee) => ({ 'data-catch': 'employee-row-' + record.id } as Record<string, string>)"
+        :customRow="(record: Employee) => ({ 'data-catch': 'employee-row' } as Record<string, string>)"
       >
         <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'name'">
+            <span data-catch="employee-name">{{ record.name }}</span>
+          </template>
           <template v-if="column.key === 'entryDate'">
             {{ record.entryDate ?? '—' }}
           </template>
@@ -43,7 +57,15 @@
           <template v-if="column.key === 'action'">
             <a-space>
               <a-button type="link" size="small" :data-catch="'employees-row-detail-btn-' + record.id" @click="openDetail(record as Employee)">详情</a-button>
-              <a-button v-if="canEdit" type="link" size="small" :data-catch="'employees-row-edit-btn-' + record.id" @click="openEdit(record as Employee)">编辑</a-button>
+              <a-button v-if="canEdit" type="link" size="small" data-catch="employee-edit-btn" @click="openEdit(record as Employee)">编辑</a-button>
+              <a-button
+                v-if="userStore.userInfo?.role === 'ceo' && record.accountStatus === 'ACTIVE'"
+                type="link"
+                size="small"
+                danger
+                data-catch="employee-disable-btn"
+                @click="openDisable(record as Employee)"
+              >停用</a-button>
             </a-space>
           </template>
         </template>
@@ -85,7 +107,6 @@
       :title="formMode === 'create' ? '新增员工' : '编辑员工'"
       :confirm-loading="submitting"
       width="700px"
-      <!-- 原因：antd ButtonProps 无 data-* 索引签名，传 data-catch 测试锚点需断言；仅此一处，最小副作用 -->
       :okButtonProps="({ 'data-catch': 'employee-save-btn' } as unknown as ButtonProps)"
       @ok="submitForm"
       @cancel="showForm = false"
@@ -250,6 +271,22 @@
         <a-button type="dashed" block @click="addContact">+ 添加紧急联系人</a-button>
       </a-form>
     </a-modal>
+
+    <!-- 停用确认弹窗 -->
+    <a-modal
+      v-model:open="showDisableModal"
+      data-catch="disable-confirm-dialog"
+      title="确认停用员工账号"
+      :confirm-loading="!!disablingId"
+      @ok="doDisable"
+      @cancel="showDisableModal = false"
+    >
+      <template #footer>
+        <a-button @click="showDisableModal = false">取消</a-button>
+        <a-button type="primary" danger data-catch="disable-confirm-ok" :loading="!!disablingId" @click="doDisable">确认停用</a-button>
+      </template>
+      <p>停用后该员工将无法登录系统。确认停用 <strong>{{ disableTarget?.name }}</strong> 的账号？</p>
+    </a-modal>
   </div>
 </template>
 
@@ -318,6 +355,11 @@ let skipDeptWatch = false
 
 const showDetail = ref(false)
 const detailRecord = ref<Employee | null>(null)
+
+const disablingId = ref<number | null>(null)
+const showDisableModal = ref(false)
+const disableTarget = ref<Employee | null>(null)
+const disableSuccess = ref(false)
 
 const showForm = ref(false)
 const submitting = ref(false)
@@ -439,6 +481,26 @@ async function openEdit(record: Employee) {
     }
   }
   showForm.value = true
+}
+
+function openDisable(record: Employee) {
+  disableTarget.value = record
+  showDisableModal.value = true
+}
+
+async function doDisable() {
+  if (!disableTarget.value) return
+  disablingId.value = disableTarget.value.id
+  try {
+    await request({ url: `/employees/${disableTarget.value.id}/status`, method: 'PATCH', body: { accountStatus: 'DISABLED' } })
+    showDisableModal.value = false
+    disableSuccess.value = true
+    await loadEmployees()
+  } catch {
+    // handled
+  } finally {
+    disablingId.value = null
+  }
 }
 
 function addContact() {

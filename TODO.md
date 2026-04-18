@@ -899,39 +899,39 @@
 
 ### C-INT — API 集成测试
 
-- `[>]` **C-INT-01 假期类型 API**（`test/integration/api.test.ts` 扩展）
+- `[x]` **C-INT-01 假期类型 API**（`test/integration/api.test.ts` 扩展）
   - `GET /config/leave-types` → 200，数组非空
   - `POST /config/leave-types`（HR token）→ 201；（worker token）→ 403
   - `DELETE /config/leave-types/{id}`（HR token）→ 200
   - 验收：三条用例全通过，权限控制正确
 
-- `[>]` **C-INT-02 考勤/请假 API**
+- `[x]` **C-INT-02 考勤/请假 API**
   - `POST /attendance/leave`（employee token，有效数据）→ 200，返回 formId
   - `POST /attendance/leave`（缺必填字段 leaveType）→ 400
   - `GET /attendance/records`（employee token）→ 200，仅含本人记录
   - `GET /attendance/records`（CEO token）→ 200，含全员记录
   - 验收：数据隔离验证
 
-- `[>]` **C-INT-03 报销 API**
+- `[x]` **C-INT-03 报销 API**
   - `GET /expense/types` → 200 非空
   - `POST /expense`（employee token）→ 201
   - `GET /expense/records`（employee）→ 200 仅本人；（finance）→ 200 全员
   - `POST /expense/{id}/approve`（finance）→ 200；（employee）→ 403
   - 验收：审批权限双层验证
 
-- `[>]` **C-INT-04 工伤 API**
+- `[x]` **C-INT-04 工伤 API**
   - `POST /injury`（worker token，含必填字段）→ 200
   - `GET /injury`（finance token）→ 200
   - `PUT /injury/{id}/compensation`（finance）→ 200；（worker）→ 403
   - 验收：理赔仅财务可录入
 
-- `[>]` **C-INT-05 系统配置 API**（CEO 专属）
+- `[x]` **C-INT-05 系统配置 API**（CEO 专属）
   - `GET/PUT /config/company-name`（CEO）→ 200；（HR）→ 403
   - `GET/PUT /config/payroll-cycle`（CEO）→ 200
   - `GET /config/retention-period`（CEO）→ 200
   - 验收：6 条用例全通过，配置读写权限隔离
 
-- `[>]` **C-INT-06 权限越权直调（≥15 条）**
+- `[x]` **C-INT-06 权限越权直调（≥15 条）**
   - employee → `GET /employees` → 403
   - worker → `GET /payroll/cycles` → 403
   - employee → `GET /operation-logs` → 403
@@ -944,13 +944,13 @@
   - （补足至 ≥15 条，覆盖所有高敏感接口）
   - 验收：每个接口独立验证后端权限，不依赖前端路由守卫
 
-- `[>]` **C-INT-07 密码变更 API**
+- `[x]` **C-INT-07 密码变更 API**
   - 正确旧密码，新密码≥8位 → 200
   - 错误旧密码 → 400
   - 新密码5位 → 400
   - 验收：BUG-B-P3-08 修复回归测试
 
-- `[>]` **C-INT-08 薪资结算链路 API**
+- `[x]` **C-INT-08 薪资结算链路 API**
   - `POST /payroll/cycles`（finance）→ 201，status=OPEN
   - `PUT /payroll/cycles/{id}/settle`（finance）→ 200，status=SETTLED
   - `GET /payroll/slips?cycleId={id}`（employee 本人）→ 200，仅本人工资条
@@ -976,68 +976,68 @@
 
 ### C-E2E — E2E 自动化测试
 
-- `[>]` **C-E2E-01 请假审批完整流程**（`test/e2e/specs/leave_flow.spec.ts`）
+- `[x]` **C-E2E-01 请假审批完整流程**（`test/e2e/specs/leave_flow.spec.ts`）
   - employee 提交请假 → dept_manager 审批通过 → employee 确认状态
   - 三断言：提交后"审批中"、dept_manager 待办列表出现、审批后"已通过"
   - 验收：Claude 检查断言质量（不接受空洞断言）
 
-- `[>]` **C-E2E-02 报销审批完整流程**（`test/e2e/specs/expense_flow.spec.ts`）
+- `[x]` **C-E2E-02 报销审批完整流程**（`test/e2e/specs/expense_flow.spec.ts`）
   - employee 提交报销（含发票上传 + 关联项目）→ finance 审批通过
   - 三断言：不上传发票拦截、finance 可见记录、审批后状态更新
 
-- `[>]` **C-E2E-03 加班申报审批流程**（`test/e2e/specs/overtime_flow.spec.ts`）
+- `[x]` **C-E2E-03 加班申报审批流程**（`test/e2e/specs/overtime_flow.spec.ts`）
   - employee 提交加班（时长字段自动计算）→ dept_manager 审批通过
   - 二断言：时长自动计算非空、审批后状态"已通过"
 
-- `[>]` **C-E2E-04 申请驳回后重新提交**（`test/e2e/specs/rejection_resubmit.spec.ts`）
+- `[x]` **C-E2E-04 申请驳回后重新提交**（`test/e2e/specs/rejection_resubmit.spec.ts`）
   - employee 提交请假 → dept_manager 驳回（原因"时间冲突"）→ employee 重新发起
   - 二断言：驳回原因文本可读、重新发起后新记录（ID 不同）
 
-- `[>]` **C-E2E-05 施工日志提交和 PM 审批**（`test/e2e/specs/construction_log_flow.spec.ts`）
+- `[x]` **C-E2E-05 施工日志提交和 PM 审批**（`test/e2e/specs/construction_log_flow.spec.ts`）
   - worker 提交施工日志 → pm 在项目详情审批通过
   - 三断言：worker 日志状态"待审核"、pm 可见该日志、审批后状态更新
 
-- `[>]` **C-E2E-06 薪资周期完整流程**（`test/e2e/specs/payroll_cycle_flow.spec.ts`）
+- `[x]` **C-E2E-06 薪资周期完整流程**（`test/e2e/specs/payroll_cycle_flow.spec.ts`）
   - finance 创建周期 → 结算 → employee 查看工资单并确认签收
   - 含工资单金额 > 0 断言
 
-- `[>]` **C-E2E-07 员工管理 CRUD**（`test/e2e/specs/employee_crud.spec.ts`）
+- `[x]` **C-E2E-07 员工管理 CRUD**（`test/e2e/specs/employee_crud.spec.ts`）
   - 创建（含所有必填字段）→ 修改部门 → 停用
   - 停用后真实登录尝试被拒绝（不接受仅检查状态标签文字）
 
-- `[>]` **C-E2E-08 岗位与薪级 CRUD**（`test/e2e/specs/position_crud.spec.ts`）
+- `[x]` **C-E2E-08 岗位与薪级 CRUD**（`test/e2e/specs/position_crud.spec.ts`）
   - 创建岗位 + 等级 → 删除有在职员工的岗位 → 拦截提示
   - 约束删除场景断言验证提示文本
 
-- `[>]` **C-E2E-09 假期类型 CRUD**（`test/e2e/specs/leave_type_crud.spec.ts`）
+- `[x]` **C-E2E-09 假期类型 CRUD**（`test/e2e/specs/leave_type_crud.spec.ts`）
   - HR 创建"调休假" → employee 请假下拉可选到"调休假"
   - 验证前后端联动
 
-- `[>]` **C-E2E-10 项目与里程碑 CRUD**（`test/e2e/specs/project_crud.spec.ts`）
+- `[x]` **C-E2E-10 项目与里程碑 CRUD**（`test/e2e/specs/project_crud.spec.ts`）
   - 创建项目（含客户名称/合同编号/合同附件）→ 添加里程碑 → 修改进度
   - 合同附件验证服务端存储成功（详情页可访问）
 
-- `[>]` **C-E2E-11 报销发票上传边界**（`test/e2e/specs/expense_upload.spec.ts`）
+- `[x]` **C-E2E-11 报销发票上传边界**（`test/e2e/specs/expense_upload.spec.ts`）
   - 场景A：不上传直接提交 → Toast 含"请上传"
   - 场景B：有效 JPG 上传 → 提交后详情页附件可访问（非仅前端预览）
   - 场景C：上传超量（若有限制）→ 拦截提示
 
-- `[>]` **C-E2E-12 表单日期边界**（`test/e2e/specs/date_boundaries.spec.ts`）
+- `[x]` **C-E2E-12 表单日期边界**（`test/e2e/specs/date_boundaries.spec.ts`）
   - 结束日早于开始日 → 校验提示
   - Toast 不暴露 HTTP 错误字符串
 
-- `[>]` **C-E2E-13 数字计算与零值校验**（`test/e2e/specs/calculation_accuracy.spec.ts`）
+- `[x]` **C-E2E-13 数字计算与零值校验**（`test/e2e/specs/calculation_accuracy.spec.ts`）
   - 三行明细 100+200+300 → 总金额 600
   - 零金额/负数 → 拦截提示
 
-- `[>]` **C-E2E-14 密码修改错误提示回归**（`test/e2e/specs/password_error_toast.spec.ts`）
+- `[x]` **C-E2E-14 密码修改错误提示回归**（`test/e2e/specs/password_error_toast.spec.ts`）
   - 错误当前密码 → Toast 为业务语言，不含 HTTP 格式字符串
 
 ---
 
 ### C-BLK — 黑盒测试用例设计
 
-- `[?]` **C-BLK-01 新建 `test/manual/TEST_CASES.md`**
+- `[x]` **C-BLK-01 新建 `test/manual/TEST_CASES.md`**
   - MB-01 请假申请完整审批流（employee + dept_manager）
   - MB-02 报销审批（含发票上传必填拦截）（employee + finance）
   - MB-03 工伤申报及财务理赔录入（worker + finance）
@@ -1055,7 +1055,7 @@
 
 ### C-AUTO — Claude 自执行黑盒自动化验证
 
-- `[~]` **C-AUTO-01 Claude 操控浏览器执行 MB-01~MB-10**
+- `[x]` **C-AUTO-01 Claude 操控浏览器执行 MB-01~MB-10**
   - 前置：后端和前端服务均运行中；Phase B 全部 `[?]`；C-BLK-01 设计文档已完成
   - 按 `test/manual/TEST_CASES.md` 逐条执行，截图关键步骤
   - 发现新缺陷立即追加至 Phase B 对应优先级
