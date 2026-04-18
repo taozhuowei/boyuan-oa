@@ -22,7 +22,7 @@ When: Nuxt 3 page/component/store/middleware/composable, Vue SFC, TypeScript UI 
 When: cross-cutting architecture decisions, new module design, integration pattern selection
 
 **WeChat Mini Program Developer** — `subagent_type: "WeChat Mini Program Developer"`
-When: Phase F — app/mp uni-app implementation, WeChat API integration
+When: Phase G — app/mp uni-app implementation, WeChat API integration
 
 **Kimi CLI** — fallback for bulk operations (5+ files or large-scale generation)
 ```
@@ -42,10 +42,10 @@ Output for review: PASS or NEEDS WORK with specific findings
 ### Infrastructure Agents (spawn via Agent tool)
 
 **DevOps Engineer** — `subagent_type: "DevOps Engineer"`
-When: Phase E — GitHub Actions CI/CD pipeline setup, Docker, deployment scripts
+When: Phase F — GitHub Actions CI/CD pipeline setup, Docker, deployment scripts
 
 **Ops Engineer** — `subagent_type: "Ops Engineer"`
-When: Phase G — production monitoring, alerting, incident response, capacity planning
+When: Phase H — production monitoring, alerting, incident response, capacity planning
 
 ### Phase → Agent Map
 
@@ -69,27 +69,33 @@ Phase C (Test Coverage)
 - Code review after test changes → QA Engineer (review role)
 - Phase acceptance gate → QA Engineer runs full suite, outputs Pass/Fail matrix
 
-Phase D (Human Acceptance)
+Phase D (Design Alignment Audit)
+- BIZ: orchestrator reads DESIGN.md section, confirms with user, updates DESIGN.md
+- REV: QA Engineer audits code against confirmed design
+- FIX: Backend Engineer or Frontend Engineer → QA Engineer
+- CHK: QA Engineer re-checks
+
+Phase E (Human Acceptance)
 - Bug fixes from user walkthrough → Backend Engineer or Frontend Engineer → QA Engineer
 - Regression validation → QA Engineer
 
-Phase E (Production Deploy + Standards)
+Phase F (Production Deploy + Standards)
 - CI/CD pipeline → DevOps Engineer
 - Production environment setup → Ops Engineer
 - Standards docs (RUNBOOK/CHANGELOG) → orchestrator
 
-Phase F (WeChat Mini Program)
+Phase G (WeChat Mini Program)
 - MP implementation → WeChat Mini Program Developer → QA Engineer
 - Backend API extensions → Backend Engineer → QA Engineer
 - Phase acceptance gate → QA Engineer
 
-Phase G (Operations)
+Phase H (Operations)
 - Incident response + maintenance → Ops Engineer
 - Code fixes → Backend Engineer or Frontend Engineer → QA Engineer regression
 
 ## DIRS
 h5 frontend: D:/Taozhuowei/Project/boyuan-oa/app/h5          (Nuxt 3 + Ant Design Vue)
-mp frontend: D:/Taozhuowei/Project/boyuan-oa/app/mp          (uni-app, Phase F not started)
+mp frontend: D:/Taozhuowei/Project/boyuan-oa/app/mp          (uni-app, Phase G not started)
 backend:     D:/Taozhuowei/Project/boyuan-oa/server           (Spring Boot 3 + MyBatis-Plus + H2/PostgreSQL)
 shared:      D:/Taozhuowei/Project/boyuan-oa/app/shared       (types + utils, shared by h5 and mp)
 root:        D:/Taozhuowei/Project/boyuan-oa
@@ -113,8 +119,8 @@ Task status is NOT binary. Every task must pass through all 5 states:
   1. Independent Code Reviewer agent gives PASS
   2. Black-box curl tests pass (key endpoints + forbidden-role 403 check)
   3. `mvn test` (392 backend tests) + `yarn workspace oa-h5 test` (21 frontend tests) all pass
-  Phase C will add full e2e coverage on top; Phase D is still a mandatory human browser walkthrough for Phase B features.
-- **Phase B+ tasks**: original flow applies — `[?]` requires automated tests pass, `[x]` requires human browser validation in Phase D.
+  Phase C will add full e2e coverage on top; Phase E is still a mandatory human browser walkthrough for Phase B features.
+- **Phase B+ tasks**: original flow applies — `[?]` requires automated tests pass, `[x]` requires human browser validation in Phase E.
 
 **Mandatory rules:**
 
@@ -179,24 +185,26 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 > **Task state single source of truth: `TODO.md`**
 > Do NOT trust any "what is done" list in this or any other file.
 > Last manual test: 2026-04-17 — 25 bugs found (recorded in TODO.md Phase B).
-> TODO.md was fully rewritten 2026-04-17 into a 7-phase roadmap (A→G).
+> TODO.md was fully rewritten 2026-04-17 into a 7-phase roadmap (A→G), expanded to 8 phases (A→H) on 2026-04-18.
 > **Phase A complete — all 46 tasks `[x]`, validated 2026-04-18.**
-> **Phase B complete — all tasks `[?]`; B-INFRA-01 deferred to Phase E (6 migrations need PostgreSQL syntax conversion).**
-> **Current active phase: Phase C (full test coverage).**
+> **Phase B complete — all tasks `[?]`; B-INFRA-01 deferred to Phase F (6 migrations need PostgreSQL syntax conversion).**
+> **Phase C complete — all tests pass, black-box MB-01~MB-10 done.**
+> **Current active phase: Phase D (design alignment audit).**
 
-### 7-Phase Roadmap (see TODO.md for full detail)
+### 8-Phase Roadmap (see TODO.md for full detail)
 - Phase A — Architecture governance + cleanup (COMPLETE — 2026-04-18)
-- Phase B — Feature completeness + bug fixes (COMPLETE — 2026-04-18, all `[?]`, pending Phase D browser)
-- Phase C — Full test coverage + Claude black-box self-test (CURRENT)
-- Phase D — Human browser acceptance
-- Phase E — Production deploy + ALL engineering standards (git/PR/branch/SemVer/CHANGELOG/RUNBOOK)
-- Phase F — WeChat mini-program
-- Phase G — Operational maintenance
+- Phase B — Feature completeness + bug fixes (COMPLETE — 2026-04-18, all `[?]`, pending Phase E browser)
+- Phase C — Full test coverage + Claude black-box self-test (COMPLETE)
+- Phase D — Design alignment audit: module-by-module BIZ confirm → REV → FIX → CHK (CURRENT)
+- Phase E — Human browser acceptance
+- Phase F — Production deploy + ALL engineering standards (git/PR/branch/SemVer/CHANGELOG/RUNBOOK)
+- Phase G — WeChat mini-program
+- Phase H — Operational maintenance
 
 ### Known critical facts
 - Flyway migrations: V1–V17 exist. Next new migration = **V18**.
   V14 = DB indexes, V15 = ops role, V16 = gm→general_manager data migration, V17 = add COMPENSATORY leave type.
-- B-INFRA-01 deferred: V2–V9 migrations use PostgreSQL-only syntax (ON CONFLICT, setval); cannot run in H2 dev. CI job validates prod migrations. Will be resolved in Phase E.
+- B-INFRA-01 deferred: V2–V9 migrations use PostgreSQL-only syntax (ON CONFLICT, setval); cannot run in H2 dev. CI job validates prod migrations. Will be resolved in Phase F.
 - Page dir rename complete (A-CLEAN-02 `[x]`): construction_log, data_export, data_viewer, leave_types, operation_logs.
   All route keys in auth.global.ts and ROLE_MENUS use snake_case paths.
 - Controller layer Mapper injections removed (A-AUDIT-DEBT-07 `[x]`): all 32 controllers cleaned.

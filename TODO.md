@@ -19,10 +19,11 @@
 - **Phase A — 架构治理 + 清理**：安全加固、DB 索引、代码分层、命名规范、临时文件清除。A 阶段决定后续是否返工。
 - **Phase B — 功能补全 + Bug 修复**：基于 A 阶段干净架构，补全所有功能缺口和已知缺陷。
 - **Phase C — 测试覆盖**：编写并执行全部自动化测试，Claude 自执行黑盒测试。
-- **Phase D — 人工验收**：用户在真实浏览器完成完整业务链路验收，Claude 跟进修复。
-- **Phase E — 生产部署 + 工程规范**：首版上线 + 建立 git/PR/分支/代码审查/issue/SemVer/CHANGELOG/RUNBOOK 全套规范。规范越早建立越好。
-- **Phase F — 微信小程序**：补齐小程序完整能力，含测试。
-- **Phase G — 运维维护**：日常运维操作，引用 Phase E 建立的规范文档。
+- **Phase D — 设计对齐审计**：以 DESIGN.md 为权威，逐模块确认业务规则 → 审计代码 → 整改差距 → 再次检查；确保实现 1:1 还原设计，不错漏、不新增。
+- **Phase E — 人工验收**：用户在真实浏览器完成完整业务链路验收，Claude 跟进修复。
+- **Phase F — 生产部署 + 工程规范**：首版上线 + 建立 git/PR/分支/代码审查/issue/SemVer/CHANGELOG/RUNBOOK 全套规范。规范越早建立越好。
+- **Phase G — 微信小程序**：补齐小程序完整能力，含测试。
+- **Phase H — 运维维护**：日常运维操作，引用 Phase F 建立的规范文档。
 
 ---
 
@@ -115,7 +116,7 @@
 - **验收点**：V14 迁移在两种数据库均成功；`EXPLAIN` 显示 Index Scan（PG）或 INDEX 关键字（H2）
 - **验收流程**：启动后端，查看 Flyway 日志确认 V14 applied；执行 `EXPLAIN` 语句
 - **实施补记**：本任务附带修复了一个 Phase A 前就存在的预存 bug — `db/schema.sql`（dev 用）未同步 V11/V12/V13 的 ALTER TABLE（project.contract_no/client_name/..、leave_type_def.quota_days/deduction_basis、employee.gender/id_card_no/birth_date），导致 dev 启动后 `/auth/login` 触发 BadSqlGrammarException（Column "gender" not found）返回 500。现将 V11/V12/V13 的列和 V14 的索引都补入 `schema.sql`，让 dev（schema.sql）与 prod（Flyway）等价。后续更彻底的方案（dev 也走 Flyway 单一 source）在 B-INFRA-01 跟进。
-- **状态**：`[x]`（dev H2 端启动无错 + curl 登录/业务接口返回 200 / 401 符合预期；prod PostgreSQL 的 Flyway V14 应用待 Phase E 生产部署时验证）
+- **状态**：`[x]`（dev H2 端启动无错 + curl 登录/业务接口返回 200 / 401 符合预期；prod PostgreSQL 的 Flyway V14 应用待 Phase F 生产部署时验证）
 
 ---
 
@@ -233,7 +234,7 @@
   4. 逐一解决或将 TODO 内容转为本文档对应任务项
 - **验收点**：`find app server/src test -type d -empty` 输出为空（或仅有 .gitkeep 的占位目录）；源码无遗留 TODO 注释
 - **验收流程**：命令输出为空；代码 review 无 TODO 注释残留
-- **实施**：删除 13 条 data-catch TODO 注释（forms/projects/construction_log/injury/payroll/Permission.vue）+ 1 条 EmployeeServiceImpl TODO。空目录无。所有 TODO/FIXME/XXX 搜索结果为 0。功能缺口线索已分别归入 Phase B B-FEAT-10/11/12（工伤/项目/施工日志）；forms 过滤器与 mp Permission 细粒度权限在 Phase B 验收或 Phase F 实施时处理。
+- **实施**：删除 13 条 data-catch TODO 注释（forms/projects/construction_log/injury/payroll/Permission.vue）+ 1 条 EmployeeServiceImpl TODO。空目录无。所有 TODO/FIXME/XXX 搜索结果为 0。功能缺口线索已分别归入 Phase B B-FEAT-10/11/12（工伤/项目/施工日志）；forms 过滤器与 mp Permission 细粒度权限在 Phase B 验收或 Phase G 实施时处理。
 - **状态**：`[x]`
 
 #### A-CLEAN-06 vitest 配置文件整理
@@ -297,11 +298,11 @@
 - **状态**：`[x]`
 
 #### A-OPS-02 CI frontend-mp-test job 必定失败
-- **目标**：`app/mp/` 为 Phase F 尚未开发，CI 每次 push 必定失败
+- **目标**：`app/mp/` 为 Phase G 尚未开发，CI 每次 push 必定失败
 - **范围**：`.github/workflows/ci.yml`
 - **步骤**
   1. 将 `frontend-mp-test` job 用条件跳过：`if: false`（或注释该 job）
-  2. 添加注释说明：Phase F 启动时恢复
+  2. 添加注释说明：Phase G 启动时恢复
   3. 推送一次测试，确认 CI 三个 job 为：backend-test（绿）、frontend-h5-test（绿）、frontend-mp-test（跳过/无）
 - **验收点**：push main 后 CI 全绿；无 `frontend-mp-test` 失败记录
 - **验收流程**：GitHub Actions 页面确认 workflow 状态
@@ -517,7 +518,7 @@
 - **步骤**：HR 账号登录，侧边栏可见"假期配额管理"入口并可点击进入
 - **验收点**：侧边栏入口可见且可用
 - **验收流程**：hr.demo 登录浏览器验收
-- **状态**：`[?]`（代码核查已过；等待 Phase D 浏览器验收）
+- **状态**：`[?]`（代码核查已过；等待 Phase E 浏览器验收）
 
 #### B-P2-02 Worker 侧边栏"考勤管理"浏览器验收
 - **目标**：代码层已修复（ROLE_MENUS.worker 含 `/attendance`），需浏览器确认
@@ -525,7 +526,7 @@
 - **步骤**：Worker 账号登录，侧边栏可见"考勤申请"入口
 - **验收点**：入口可见且可用
 - **验收流程**：worker.demo 登录浏览器验收
-- **状态**：`[?]`（代码核查已过；等待 Phase D 浏览器验收）
+- **状态**：`[?]`（代码核查已过；等待 Phase E 浏览器验收）
 
 #### B-P2-03 角色管理仅显示 5 个角色
 - **目标**：CEO `/role` 页面应显示至少 7 个内置角色
@@ -814,8 +815,8 @@
   6. `mvn test` 全量通过（392 tests）
 - **验收点**：`schema.sql` 不再参与 dev 初始化；H2 dev 环境通过 Flyway 完成全量迁移；`mvn test` 通过
 - **验收流程**：启动后端查看 Flyway 日志确认 V1~Vxx 全部 applied；curl `/api/auth/login` 返回 200
-- **注意**：V2–V9 共 6 个 migration 文件含 PostgreSQL 专用语法（ON CONFLICT / setval / pg_get_serial_sequence），全量改造超出 Phase B 范围；A-AUDIT-INFRA-01 CI job 已作为安全网。延期至 Phase E（生产部署基础设施）统一处理。
-- **状态**：`[ ]`（延期至 Phase E）
+- **注意**：V2–V9 共 6 个 migration 文件含 PostgreSQL 专用语法（ON CONFLICT / setval / pg_get_serial_sequence），全量改造超出 Phase B 范围；A-AUDIT-INFRA-01 CI job 已作为安全网。延期至 Phase F（生产部署基础设施）统一处理。
+- **状态**：`[ ]`（延期至 Phase F）
 
 ---
 
@@ -877,7 +878,7 @@
 
 ## Phase C — 测试覆盖
 
-> **前置条件**：Phase B 全部 `[?]`（P0/P1/P2/P3/FEAT 自动化测试全通过；`[x]` 待 Phase D 人工走查后补齐）。
+> **前置条件**：Phase B 全部 `[?]`（P0/P1/P2/P3/FEAT 自动化测试全通过；`[x]` 待 Phase E 人工走查后补齐）。
 > **目标**：编写并执行全部自动化测试；Claude 自执行黑盒测试；测试文档修复。
 > **完成标准**：`yarn test:integration` 全通过；`yarn playwright test` 全通过；MB-01~MB-10 黑盒用例全部 Pass。
 
@@ -968,7 +969,7 @@
     - 启动后端服务（`mvn spring-boot:run`，dev profile）
     - 等待后端就绪（`wait-on http://localhost:8080/api/health`）
     - 执行 `yarn test:integration`
-  - 步骤4 — CI 补充 shared 单元测试：确认 `frontend-mp-test`（Phase F 恢复后）已包含 shared 测试（mp vitest config 包含 shared 路径，无需独立 job）
+  - 步骤4 — CI 补充 shared 单元测试：确认 `frontend-mp-test`（Phase G 恢复后）已包含 shared 测试（mp vitest config 包含 shared 路径，无需独立 job）
   - 步骤5 — 确认 `frontend-h5-test` job 上传 coverage 报告到 Artifacts
   - 验收：`yarn test:integration` 本地可执行；CI `integration-test` job 绿
 
@@ -1064,9 +1065,88 @@
 
 ---
 
-## Phase D — 人工验收
+## Phase D — 设计对齐审计
 
-> **前置条件**：Phase C 全部 `[x]`（所有自动化测试通过，Claude 黑盒测试通过）。
+> **前置条件**：Phase C 全部 `[x]`。
+> **目标**：以 DESIGN.md 为权威，逐模块确认业务规则 → 审计代码 → 整改差距 → 再次检查；确保实现 1:1 还原设计，不错漏、不新增。
+> **完成标准**：全部 9 模块四步均通过，无遗留整改项。
+
+每个模块固定四步：
+- **BIZ**：通读 DESIGN.md 对应章节，与用户逐条确认业务规则，更新文档补充歧义后方可进入审计
+- **REV**：对照确认后的设计，审计后端接口、前端页面、权限控制、种子数据
+- **FIX**：修复差距（缺的补、多的删），QA 审计通过后才算完成
+- **CHK**：整改后重新审计，确认无遗留
+
+---
+
+### D-INIT — §2 初始化向导
+
+- `[ ]` **D-INIT-BIZ** 业务确认：初始化步骤完整性、初始密码机制、各配置项默认值与初始化顺序
+- `[ ]` **D-INIT-REV** 代码审计：/setup 页面字段完整性、后端初始化逻辑、步骤幂等性
+- `[ ]` **D-INIT-FIX** 整改
+- `[ ]` **D-INIT-CHK** 再次检查
+
+### D-ORG — §3 组织架构与人员
+
+- `[ ]` **D-ORG-BIZ** 业务确认：角色系统与权限边界、人员档案字段、岗位与等级结构、直系领导取值规则、ops 角色定义
+- `[ ]` **D-ORG-REV** 代码审计：员工/岗位/组织架构 CRUD、角色权限注解、直系领导查找逻辑
+- `[ ]` **D-ORG-FIX** 整改
+- `[ ]` **D-ORG-CHK** 再次检查
+
+### D-FLOW — §4 审批流引擎
+
+- `[ ]` **D-FLOW-BIZ** 业务确认：审批节点结构、末端节点配置、各业务类型审批路由规则、驳回与重提逻辑、代为提交设计
+- `[ ]` **D-FLOW-REV** 代码审计：ApprovalFlowService 路由逻辑、各表单类型的审批人取值、驳回重提状态机
+- `[ ]` **D-FLOW-FIX** 整改
+- `[ ]` **D-FLOW-CHK** 再次检查
+
+### D-PERM — §5 权限与视图
+
+- `[ ]` **D-PERM-BIZ** 业务确认：各角色（CEO/总经理/HR/财务/部门经理/项目经理/员工/劳工/运维）菜单、页面字段、操作权限
+- `[ ]` **D-PERM-REV** 代码审计：各角色菜单入口、PAGE_ACCESS 路由守卫、后端 @PreAuthorize 注解、页面字段级权限
+- `[ ]` **D-PERM-FIX** 整改
+- `[ ]` **D-PERM-CHK** 再次检查
+
+### D-PAY — §6 薪资结算
+
+- `[ ]` **D-PAY-BIZ** 业务确认：五险一金两种模式（代缴/补贴）、补贴/扣款三级配置+单月覆盖体系、工资条完整构成、结算流程与锁定、电子签名
+- `[ ]` **D-PAY-REV** 代码审计：社保配置、补贴/扣款体系（AllowanceController + payroll_bonus 待重构）、PayrollEngine 计算逻辑、工资条字段完整性
+- `[ ]` **D-PAY-FIX** 整改（预计工作量最大：补贴/扣款体系重构、五险一金两模式实现）
+- `[ ]` **D-PAY-CHK** 再次检查
+
+### D-ATT — §7 考勤管理
+
+- `[ ]` **D-ATT-BIZ** 业务确认：请假类型默认值与扣款规则、加班类型与倍率、工伤三字段、窗口期规则
+- `[ ]` **D-ATT-REV** 代码审计：请假/加班/工伤 CRUD、扣款计算、时长计算、附件上传
+- `[ ]` **D-ATT-FIX** 整改
+- `[ ]` **D-ATT-CHK** 再次检查
+
+### D-PROJ — §8 项目管理
+
+- `[ ]` **D-PROJ-BIZ** 业务确认：项目信息字段、里程碑与状态流转、施工日志、成本管理、营收管理、售后管理
+- `[ ]` **D-PROJ-REV** 代码审计：六个 Tab 字段完整性、权限控制、成本与营收计算逻辑
+- `[ ]` **D-PROJ-FIX** 整改
+- `[ ]` **D-PROJ-CHK** 再次检查
+
+### D-EXP — §9 报销管理
+
+- `[ ]` **D-EXP-BIZ** 业务确认：报销类型与配额、申请表单字段、审批流路由、与工资条的关联逻辑
+- `[ ]` **D-EXP-REV** 代码审计：报销申请/审批/计入工资条全流程
+- `[ ]` **D-EXP-FIX** 整改
+- `[ ]` **D-EXP-CHK** 再次检查
+
+### D-ARC — §10 数据归档
+
+- `[ ]` **D-ARC-BIZ** 业务确认：数据保留期规则、导出格式与范围、历史数据查看权限
+- `[ ]` **D-ARC-REV** 代码审计：RetentionController、DataExportController、DataViewerController
+- `[ ]` **D-ARC-FIX** 整改
+- `[ ]` **D-ARC-CHK** 再次检查
+
+---
+
+## Phase E — 人工验收
+
+> **前置条件**：Phase D 全部 `[x]`（设计对齐审计全部模块通过）。
 > **目标**：用户在真实浏览器完成完整业务链路验收，Claude 跟进修复问题。
 
 ---
@@ -1086,13 +1166,13 @@
   - 修复后 Claude 重新执行对应场景的自动化验证
 
 - `[ ]` **D-SIGN — 人工验收签收**
-  - 用户确认所有核心业务链路可用，签收 Phase D
+  - 用户确认所有核心业务链路可用，签收 Phase E
 
 ---
 
-## Phase E — 生产部署 + 工程规范
+## Phase F — 生产部署 + 工程规范
 
-> **前置条件**：Phase D 全部 `[x]`。
+> **前置条件**：Phase E 全部 `[x]`。
 > **目标**：首版上线 + 建立全套工程规范。规范从这里起建立，后续所有维护遵循这套规范。
 
 ---
@@ -1195,22 +1275,22 @@
   - git tag → JAR manifest + 前端 `VITE_APP_VERSION` 正确注入
 
 - `[ ]` **E-DEPLOY-05 生产环境 7 角色全菜单走查**
-  - 在真实服务器重跑 Phase D 验收清单
+  - 在真实服务器重跑 Phase E 验收清单
   - 全部通过后 v1.0.0 正式上线
 
 ---
 
-## Phase F — 微信小程序
+## Phase G — 微信小程序
 
-> **前置条件**：Phase E 全部 `[x]`（v1.0.0 已在生产环境运行稳定）。
+> **前置条件**：Phase F 全部 `[x]`（v1.0.0 已在生产环境运行稳定）。
 
 ---
 
 ### F-PREP — 前置清理
 
 - `[ ]` **F-PREP-01** 清理 `app/mp/src/pages.json`：仅保留 6 个入口（登录、工作台、待办、考勤、项目、忘记密码）
-- `[ ]` **F-PREP-02** 恢复 CI `frontend-mp-test` job（A-OPS-02 中已跳过，Phase F 启动时恢复）
-- `[ ]` **F-PREP-03 短信验证码找回密码**（延期自 Phase B）：后端 PasswordResetController 及短信发送逻辑已实现，前端忘记密码页已存在；Phase F 启动时对接真实短信服务商，补充 E2E 测试。延期原因：小程序上线后才需要通用短信找回，H5 端优先使用初始密码+HR重置流程。
+- `[ ]` **F-PREP-02** 恢复 CI `frontend-mp-test` job（A-OPS-02 中已跳过，Phase G 启动时恢复）
+- `[ ]` **F-PREP-03 短信验证码找回密码**（延期自 Phase B）：后端 PasswordResetController 及短信发送逻辑已实现，前端忘记密码页已存在；Phase G 启动时对接真实短信服务商，补充 E2E 测试。延期原因：小程序上线后才需要通用短信找回，H5 端优先使用初始密码+HR重置流程。
 
 ---
 
@@ -1233,10 +1313,10 @@
 
 ---
 
-## Phase G — 运维维护
+## Phase H — 运维维护
 
-> **前置条件**：Phase E 完成，生产环境运行中。
-> **说明**：运维操作规范已在 Phase E（E-STD-05 RUNBOOK）建立，本阶段为日常维护执行层。
+> **前置条件**：Phase F 完成，生产环境运行中。
+> **说明**：运维操作规范已在 Phase F（E-STD-05 RUNBOOK）建立，本阶段为日常维护执行层。
 
 ---
 
