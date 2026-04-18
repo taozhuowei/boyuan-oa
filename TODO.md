@@ -756,7 +756,7 @@
   2. 确认 `approval_flow` 表有 EXPENSE 类型记录，无则补充种子数据
 - **验收点**：CEO 在审批流配置中可看到"报销申请"审批流并可编辑节点
 - **验收流程**：ceo.demo 操作浏览器验收
-- **状态**：`[>]`（data.sql 追加 EXPENSE 审批流；BUSINESS_TYPE_LABELS 已有；等待自动化测试）
+- **状态**：`[?]`（data.sql 追加 EXPENSE 审批流；BUSINESS_TYPE_LABELS 已有；审计 PASS；等待浏览器验收）
 
 #### B-FEAT-17 Layout 待办数量统计修复
 - **目标**：todo 角标仅对部分角色生效，应对所有角色生效
@@ -777,7 +777,7 @@
   3. **注意（B-P0 审计发现）**：`default.vue` finance 菜单包含 `/positions`，但 `auth.global.ts` 第 18 行 `/positions: ['ceo', 'hr']` 不包含 `finance`，导致 finance 侧边栏有死链入口。本任务实施时须同步修复：要么将 `/positions` 路由守卫追加 `finance`（推荐），要么从 finance 菜单移除该入口
 - **验收点**：finance 账号侧边栏可进入岗位薪资配置并修改等级薪资；`/positions` 入口无死链
 - **验收流程**：finance.demo 操作浏览器验收
-- **状态**：`[>]`（auth.global.ts `/positions` 追加 finance；等待自动化测试）
+- **状态**：`[?]`（auth.global.ts `/positions` 追加 finance；后端移除 PROJECT_MANAGER；审计 PASS；等待浏览器验收）
 
 #### B-FEAT-19 运维角色基础支持
 - **目标**：ops 角色登录后不显示空白工作台（DESIGN.md §5.9）

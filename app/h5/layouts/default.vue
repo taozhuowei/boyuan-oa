@@ -31,7 +31,7 @@
       <!-- Top bar: 博渊 OA · [角色] [姓名]  [⚙系统]  [🔔通知 N]  [📋待办 N]  [●]▼ -->
       <a-layout-header class="app-header">
         <div class="header-brand">
-          博渊 OA
+          {{ companyName ? companyName + ' OA' : '博渊 OA' }}
           <span v-if="userStore.userInfo" class="header-user-label">
             · {{ userStore.userInfo.roleName ?? userStore.userInfo.role }}
             {{ userStore.userInfo.displayName }}
@@ -257,7 +257,10 @@ onMounted(async () => {
       .catch(() => {/* keep computed fallback */}),
     $fetch<unknown[]>('/api/forms/todo', { headers })
       .then((list) => { todoCount.value = list?.length ?? 0 })
-      .catch(() => { todoCount.value = 0 })
+      .catch(() => { todoCount.value = 0 }),
+    $fetch<{ companyName: string | null }>('/api/config/company-name', { headers })
+      .then((data) => { companyName.value = data.companyName ?? null })
+      .catch(() => {/* keep fallback display */})
   ])
 })
 
