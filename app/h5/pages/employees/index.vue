@@ -118,16 +118,16 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="主角色" required>
-              <a-select v-model:value="form.roleCode" style="width: 100%" data-catch="employee-role-select">
-                <a-select-option value="employee">员工</a-select-option>
-                <a-select-option value="worker">劳工</a-select-option>
-                <a-select-option value="hr">人力资源</a-select-option>
-                <a-select-option value="finance">财务</a-select-option>
-                <a-select-option value="project_manager">项目经理</a-select-option>
-                <a-select-option value="department_manager">部门经理</a-select-option>
-                <a-select-option value="ceo">总裁</a-select-option>
-                <a-select-option value="ops">运维</a-select-option>
-              </a-select>
+              <!-- 从 GET /roles 动态加载角色列表，避免静态硬编码与后端不同步 -->
+              <a-select
+                v-model:value="form.roleCode"
+                :options="roles"
+                :loading="loadingRoles"
+                style="width: 100%"
+                data-catch="employee-role-select"
+                show-search
+                option-filter-prop="label"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -147,7 +147,19 @@
           </a-col>
           <a-col :span="12">
             <a-form-item label="岗位">
-              <a-select v-model:value="form.positionId" :options="positions.map(p => ({ value: p.id, label: p.positionName }))" placeholder="选择岗位" show-search option-filter-prop="label" style="width: 100%" @change="onPositionChange" allow-clear />
+              <!-- 岗位列表按部门过滤（部门变更时自动重新加载） -->
+              <a-select
+                v-model:value="form.positionId"
+                :options="positions.map(p => ({ value: p.id, label: p.positionName }))"
+                :loading="loadingPositions"
+                :disabled="!form.departmentId"
+                placeholder="请先选择部门"
+                show-search
+                option-filter-prop="label"
+                style="width: 100%"
+                allow-clear
+                @change="onPositionChange"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -184,7 +196,13 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="出生日期">
-              <a-input v-model:value="form.birthDate" placeholder="YYYY-MM-DD" data-catch="employee-birthday-input" />
+              <a-date-picker
+                v-model:value="form.birthDate"
+                style="width: 100%"
+                placeholder="选择出生日期"
+                data-catch="employee-birthday-input"
+                :disabled-date="(d: Dayjs) => d.isAfter(dayjs())"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -236,10 +254,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, onMounted, watch, h } from 'vue'
 import { message } from 'ant-design-vue'
 import type { ButtonProps } from 'ant-design-vue'
 import type { SelectValue } from 'ant-design-vue/es/select'
+import dayjs from 'dayjs'
+import type { Dayjs } from 'dayjs'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 
@@ -273,6 +293,7 @@ interface Employee {
 
 interface Department { id: number; name: string; children?: Department[] }
 interface Position { id: number; positionCode: string; positionName: string; levels: { id: number; levelName: string }[] }
+interface Role { id: number; roleCode: string; roleName: string }
 
 const userStore = useUserStore()
 const canEdit = computed(() => ['ceo', 'hr'].includes(userStore.userInfo?.role ?? ''))
@@ -287,9 +308,13 @@ const totalElements = ref(0)
 const departments = ref<{ value: number; label: string }[]>([])
 const positions = ref<Position[]>([])
 const levels = ref<{ value: number; label: string }[]>([])
+const roles = ref<{ value: string; label: string }[]>([])
+const loadingRoles = ref(false)
 const supervisorOptions = ref<{ value: number; label: string }[]>([])
-const loadingLevels = ref(false)
+const loadingPositions = ref(false)
 const searchingSupervisor = ref(false)
+// 编辑回填时跳过部门 watch 清空逻辑
+let skipDeptWatch = false
 
 const showDetail = ref(false)
 const detailRecord = ref<Employee | null>(null)
@@ -316,7 +341,7 @@ const form = ref<{
   emergencyContacts: EmergencyContact[]
   gender: string
   idCardNo: string
-  birthDate: string
+  birthDate: Dayjs | null
   directSupervisorId: number | undefined
   levelId: number | undefined
 }>({
@@ -324,7 +349,7 @@ const form = ref<{
   departmentId: undefined, positionId: undefined, entryDate: '',
   socialSeniority: undefined, contractType: undefined, dailySubsidy: undefined, expenseLimit: undefined,
   performanceRatio: undefined, emergencyContacts: [],
-  gender: '', idCardNo: '', birthDate: '', directSupervisorId: undefined, levelId: undefined
+  gender: '', idCardNo: '', birthDate: null, directSupervisorId: undefined, levelId: undefined
 })
 
 const columns = [
@@ -354,8 +379,10 @@ function resetForm() {
     departmentId: undefined, positionId: undefined, entryDate: new Date().toISOString().slice(0, 10),
     socialSeniority: undefined, contractType: undefined, dailySubsidy: undefined, expenseLimit: undefined,
     performanceRatio: undefined, emergencyContacts: [],
-    gender: '', idCardNo: '', birthDate: '', directSupervisorId: undefined, levelId: undefined
+    gender: '', idCardNo: '', birthDate: null, directSupervisorId: undefined, levelId: undefined
   }
+  levels.value = []
+  supervisorOptions.value = []
 }
 
 function openCreate() {
@@ -365,9 +392,12 @@ function openCreate() {
   showForm.value = true
 }
 
-function openEdit(record: Employee) {
+async function openEdit(record: Employee) {
   formMode.value = 'edit'
   editingId.value = record.id
+  supervisorOptions.value = []
+  levels.value = []
+  skipDeptWatch = true
   form.value = {
     name: record.name,
     phone: record.phone ?? '',
@@ -387,11 +417,26 @@ function openEdit(record: Employee) {
     levelId: record.levelId ?? undefined,
     gender: record.gender ?? '',
     idCardNo: record.idCardNo ?? '',
-    birthDate: record.birthDate ?? ''
+    birthDate: record.birthDate ? dayjs(record.birthDate) : null
   }
-  onPositionChange(record.positionId ?? undefined)
+  // 岗位全量已在 onMounted 加载，直接回填等级选项（skipDeptWatch 保证 watch 不清空此赋值）
+  skipDeptWatch = false
+  if (record.positionId) {
+    onPositionChange(record.positionId)
+  }
+  // 直系领导：先从当前列表查找，找不到则发请求获取姓名
   if (record.directSupervisorId) {
-    supervisorOptions.value = [{ value: record.directSupervisorId, label: record.name }]
+    const found = employees.value.find(e => e.id === record.directSupervisorId)
+    if (found) {
+      supervisorOptions.value = [{ value: found.id, label: found.name + (found.departmentName ? ` (${found.departmentName})` : '') }]
+    } else {
+      try {
+        const emp = await request<Employee>({ url: `/employees/${record.directSupervisorId}` })
+        if (emp) {
+          supervisorOptions.value = [{ value: emp.id, label: emp.name + (emp.departmentName ? ` (${emp.departmentName})` : '') }]
+        }
+      } catch { /* ignore — 直系领导可能已离职 */ }
+    }
   }
   showForm.value = true
 }
@@ -413,7 +458,11 @@ async function submitForm() {
   if (formMode.value === 'create' && !form.value.entryDate) { message.warning('请填写入职日期'); return }
   submitting.value = true
   try {
-    const body = { ...form.value, entryDate: form.value.entryDate || null }
+    const body = {
+      ...form.value,
+      entryDate: form.value.entryDate || null,
+      birthDate: form.value.birthDate ? form.value.birthDate.format('YYYY-MM-DD') : null
+    }
     if (formMode.value === 'create') {
       await request({ url: '/employees', method: 'POST', body })
       message.success(h('span', { 'data-catch': 'employee-create-success' }, '员工已创建'))
@@ -440,9 +489,20 @@ async function loadDepartments() {
   departments.value = flat
 }
 
-async function loadPositions() {
-  const data = await request<Position[]>({ url: '/positions' })
-  positions.value = data ?? []
+/**
+ * 加载全量岗位列表（后端岗位独立于部门，不支持 departmentId 过滤）
+ * 三级联动通过 watch departmentId 清空已选岗位/等级实现，岗位列表全量共享
+ */
+async function loadAllPositions() {
+  loadingPositions.value = true
+  try {
+    const data = await request<Position[]>({ url: '/positions' })
+    positions.value = data ?? []
+  } catch {
+    positions.value = []
+  } finally {
+    loadingPositions.value = false
+  }
 }
 
 function onPositionChange(posId: SelectValue) {
@@ -453,14 +513,32 @@ function onPositionChange(posId: SelectValue) {
   levels.value = (pos?.levels ?? []).map(l => ({ value: l.id, label: l.levelName }))
 }
 
+async function loadRoles() {
+  loadingRoles.value = true
+  try {
+    const data = await request<Role[]>({ url: '/roles' })
+    roles.value = (data ?? []).map(r => ({ value: r.roleCode, label: r.roleName }))
+  } catch {
+    roles.value = []
+  } finally {
+    loadingRoles.value = false
+  }
+}
+
 let supervisorTimer: ReturnType<typeof setTimeout> | null = null
-async function searchSupervisor(keyword: string) {
-  if (!keyword) { supervisorOptions.value = []; return }
+/**
+ * 直系领导可搜索下拉 — 防抖 300ms
+ * 按姓名搜索，限定角色为部门经理或项目经理（role=department_manager,project_manager）
+ */
+async function searchSupervisor(kw: string) {
+  if (!kw) { supervisorOptions.value = []; return }
   if (supervisorTimer) clearTimeout(supervisorTimer)
   supervisorTimer = setTimeout(async () => {
     searchingSupervisor.value = true
     try {
-      const data = await request<{ content: Employee[] }>({ url: '/employees?keyword=' + encodeURIComponent(keyword) + '&size=20' })
+      const data = await request<{ content: Employee[] }>({
+        url: '/employees?search=' + encodeURIComponent(kw) + '&role=department_manager,project_manager&size=20'
+      })
       supervisorOptions.value = (data?.content ?? []).map(e => ({ value: e.id, label: e.name + (e.departmentName ? ' (' + e.departmentName + ')' : '') }))
     } catch {}
     finally { searchingSupervisor.value = false }
@@ -491,10 +569,23 @@ async function loadEmployees() {
 function onSearch() { page.value = 0; loadEmployees() }
 function onPageChange(p: number) { page.value = p - 1; loadEmployees() }
 
+// 三级联动：部门变更时清空已选岗位和等级（岗位列表全量，不按部门重载）
+// skipDeptWatch 为 true 时（openEdit 回填期间）跳过清空，避免覆盖回填值
+watch(
+  () => form.value.departmentId,
+  (deptId, prevDeptId) => {
+    if (skipDeptWatch || deptId === prevDeptId) return
+    form.value.positionId = undefined
+    form.value.levelId = undefined
+    levels.value = []
+  }
+)
+
 onMounted(() => {
   loadEmployees()
   loadDepartments()
-  loadPositions()
+  loadAllPositions()
+  loadRoles()
 })
 </script>
 
