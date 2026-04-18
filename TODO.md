@@ -573,15 +573,15 @@
 
 ### B-P3 — 种子数据 / 表单校验轻微问题
 
-- `[>]` **B-P3-01 岗位管理无种子数据** — `db/data.sql` 补 3–5 条 position 记录；`yarn test:integration` 中岗位相关断言通过
-- `[>]` **B-P3-02 补贴配置无种子数据** — `db/data.sql` 补 allowance_def 记录（全局补贴、岗位补贴各 1 条）
-- `[>]` **B-P3-03 CEO 考勤「我的记录」为空** — `db/data.sql` 为 ceo.demo 补 1–3 条考勤记录
-- `[>]` **B-P3-04 数据查看器文件格式描述错误** — `pages/data_viewer/index.vue` 页面提示改为 ".obk" 格式（DESIGN.md §10.3）
-- `[>]` **B-P3-05 Finance 侧边栏含「通讯录导入」入口** — 对照 DESIGN.md §5.4 确认 Finance 是否应有此入口；确认后删除或保留
-- `[>]` **B-P3-06 初始化向导 CEO 手机号无格式校验** — `pages/setup/index.vue` 追加 `/^1[3-9]\d{9}$/` 正则校验，不合格则禁止提交
-- `[>]` **B-P3-07 新增员工身份证号无格式校验** — `pages/employees/index.vue` 追加 18 位格式规则（前 17 位数字 + 末位数字或 X）
-- `[>]` **B-P3-08 密码策略不一致（setup ≥8 位 vs change ≥6 位）** — `pages/me/password.vue` 中 `min: 6` 改为 `min: 8`
-- `[>]` **B-P3-09 报销明细金额接受负数和零** — `pages/expense/apply/index.vue` 金额输入框追加 `:min="0.01"`
+- `[?]` **B-P3-01 岗位管理无种子数据** — `db/data.sql` 补 3–5 条 position 记录；`yarn test:integration` 中岗位相关断言通过
+- `[?]` **B-P3-02 补贴配置无种子数据** — `db/data.sql` 补 allowance_def 记录（全局补贴、岗位补贴各 1 条）
+- `[?]` **B-P3-03 CEO 考勤「我的记录」为空** — `db/data.sql` 为 ceo.demo 补 1–3 条考勤记录
+- `[?]` **B-P3-04 数据查看器文件格式描述错误** — `pages/data_viewer/index.vue` 页面提示改为 ".obk" 格式（DESIGN.md §10.3）
+- `[?]` **B-P3-05 Finance 侧边栏含「通讯录导入」入口** — 对照 DESIGN.md §5.4 确认 Finance 是否应有此入口；确认后删除或保留
+- `[?]` **B-P3-06 初始化向导 CEO 手机号无格式校验** — `pages/setup/index.vue` 追加 `/^1[3-9]\d{9}$/` 正则校验，不合格则禁止提交
+- `[?]` **B-P3-07 新增员工身份证号无格式校验** — `pages/employees/index.vue` 追加 18 位格式规则（前 17 位数字 + 末位数字或 X）
+- `[?]` **B-P3-08 密码策略不一致（setup ≥8 位 vs change ≥6 位）** — `pages/me/password.vue` 中 `min: 6` 改为 `min: 8`
+- `[?]` **B-P3-09 报销明细金额接受负数和零** — `pages/expense/apply/index.vue` 金额输入框追加 `:min="0.01"`
 
 ---
 

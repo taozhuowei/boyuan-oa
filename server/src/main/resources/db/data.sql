@@ -204,3 +204,5 @@ SELECT 1003, 'LEAVE', e.id,
     'APPROVED', 2
 FROM employee e WHERE e.employee_no = 'ceo.demo'
 AND NOT EXISTS (SELECT 1 FROM form_record WHERE id = 1003);
+
+ALTER TABLE form_record ALTER COLUMN id RESTART WITH 2000;
