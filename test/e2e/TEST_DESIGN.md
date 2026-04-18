@@ -1,6 +1,6 @@
 # E2E 测试用例设计
 
-> 本文档为 E2E 层专项测试用例，主测试策略见 `test/TEST_DESIGN.md`。  
+> 本文档为 E2E 层专项测试用例，主测试策略见 [TEST_DESIGN.md](../TEST_DESIGN.md)。  
 > 最后全量审查日期：**2026-04-17**（对照 DESIGN.md 和当前 spec 文件逐条核实）。
 
 ---
@@ -9,7 +9,7 @@
 
 - 每条用例验证**数据库最终状态**，不仅依赖页面反馈（通过 REST API 查询验证）
 - 每个 spec 文件执行前调用 `POST /api/dev/reset` 重置业务数据（保留账号 / 配置 / 参照数据）
-- 测试账号来自 `local/seed-data.sql`（dev profile，本地手动执行一次）
+- 测试账号来自 [local/seed-data.sql](../../local/seed-data.sql)（dev profile，本地手动执行一次）
 - 所有元素定位使用 `data-testid` 属性，禁止依赖 CSS class / id
 - **禁止**在断言中仅判断元素存在，必须验证内容（status 文本、记录数量、金额数值）
 
@@ -160,7 +160,7 @@
 ## E2E-09 跨角色完整请假审批流（核心优先级，当前完全未实现）
 
 **目的**：验证从提交到审批通过/驳回的完整状态转换链路。这是当前测试体系最大的缺口。  
-**目标文件**：`test/e2e/specs/e2e_09_leave_approval_flow.spec.ts`（需新建）  
+**目标文件**：[e2e_09_leave_approval_flow.spec.ts](specs/e2e_09_leave_approval_flow.spec.ts)（需新建）  
 **前置**：dev reset 已执行；employee.demo 和 dept_manager.demo 均属同一部门。
 
 | 步骤 | 操作角色 | 操作 | 期望结果 | 断言类型 | 状态 |
@@ -183,7 +183,7 @@
 
 ## BC-01 认证安全边界（E2E 层）
 
-> BC-02 薪资边界 / BC-03 数据保留 / BC-04 表单输入校验属于 HTTP 接口契约验证，见 `test/integration/api.test.ts`。
+> BC-02 薪资边界 / BC-03 数据保留 / BC-04 表单输入校验属于 HTTP 接口契约验证，见 [api.test.ts](../integration/api.test.ts)。
 
 | 场景 | 操作角色 | 操作步骤 | 期望结果 | 状态 |
 | --- | --- | --- | --- | --- |

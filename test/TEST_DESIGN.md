@@ -2,7 +2,7 @@
 
 > **文档职责**：测试策略、测试范围、各层用例规格，是测试质量的唯一权威来源。  
 > **更新规则**：功能变更后必须同步更新本文档，禁止事后补文档。  
-> **基准文档**：`DESIGN.md`（业务需求）、`TODO.md`（开发任务状态）。  
+> **基准文档**：[DESIGN.md](../DESIGN.md)（业务需求）、[TODO.md](../TODO.md)（开发任务状态）。  
 > 最后全量审查日期：**2026-04-17**（对照代码和 DESIGN.md 逐条核实）。
 
 ---
@@ -107,118 +107,24 @@
 
 ## 4 API 集成测试规格
 
-> 执行文件：`test/integration/api.test.ts`  
-> 前置：后端服务在 `localhost:8080` 运行（不可达时自动跳过）  
-> 当前已覆盖：M0-M2、V5 补贴/薪资开关、Phase-B 冒烟 4 条
+> 详细测试用例规格见 [test/integration/TEST_DESIGN.md](integration/TEST_DESIGN.md)。
+> 执行文件：`test/integration/api.test.ts`
+> 前置：后端服务在 `localhost:8080` 运行（不可达时自动跳过）
 
-### 4.1 已有用例（保留，不重复）
+### 4.1 当前已覆盖（摘要）
 
-- M0: GET /health → 200
-- M1 认证: 登录成功/失败/无 token/roles/me
-- M1 员工: CEO 列表、worker 403、详情、404
-- M2 组织: 部门列表、项目列表/详情、操作日志 CEO/finance
-- V5 补贴: 列表/创建/配置/worker403、薪资开关 CEO/worker
-- 冒烟: 请假审批链、施工日志审批、工作台摘要、薪资周期创建
+M0 健康检查、M1 认证、M1 员工、M2 组织/项目/操作日志、V5 补贴/薪资开关、Phase-B 冒烟 4 条（共约 25 条用例）
 
-### 4.2 T0 新增用例（对照 TODO T0 节）
+### 4.2 待新增（C-INT-01~09）
 
-#### 4.2.1 假期类型（LeaveType）
-
-| ID | 请求 | Token | 期望状态 | 断言 |
-|----|------|-------|---------|------|
-| LT-01 | GET /config/leave-types | ceo | 200 | body 为数组 |
-| LT-02 | POST /config/leave-types {name:'年假',quota:15,deductible:false} | hr | 201 | body.id 非空 |
-| LT-03 | POST /config/leave-types | worker | 403 | — |
-| LT-04 | DELETE /config/leave-types/{id} | hr | 200 | — |
-| LT-05 | DELETE /config/leave-types/{id}（不存在） | hr | 404 | — |
-
-#### 4.2.2 考勤/请假（Attendance）
-
-| ID | 请求 | Token | 期望状态 | 断言 |
-|----|------|-------|---------|------|
-| AT-01 | POST /attendance/leave {leaveType:'ANNUAL',startDate:'2026-06-01',endDate:'2026-06-02',reason:'休假'} | employee | 200 | body.id 非空，body.status='PENDING' |
-| AT-02 | POST /attendance/leave（缺 leaveType 字段） | employee | 400 | — |
-| AT-03 | GET /attendance/records | employee | 200 | 每条 record.employeeId == 本人 id |
-| AT-04 | GET /attendance/records | ceo | 200 | 可含多员工记录 |
-| AT-05 | POST /attendance/{formId}/approve {action:'APPROVE'} | dept_manager | 200 | — |
-| AT-06 | POST /attendance/{formId}/approve | employee | 403 | — |
-
-#### 4.2.3 报销（Expense）
-
-| ID | 请求 | Token | 期望状态 | 断言 |
-|----|------|-------|---------|------|
-| EX-01 | GET /expense/types | employee | 200 | 数组非空（需 BUG-03 修复后） |
-| EX-02 | POST /expense {type:'TRAVEL',amount:500,description:'差旅'} | employee | 201 | body.id 非空 |
-| EX-03 | GET /expense/records | employee | 200 | 每条 record.applicantId == 本人 |
-| EX-04 | GET /expense/records | finance | 200 | 可含多员工记录 |
-| EX-05 | POST /expense/{id}/approve {action:'APPROVE'} | finance | 200 | — |
-| EX-06 | POST /expense/{id}/approve | employee | 403 | — |
-
-#### 4.2.4 工伤（Injury）
-
-| ID | 请求 | Token | 期望状态 | 断言 |
-|----|------|-------|---------|------|
-| IN-01 | POST /injury {injuryDate:'2026-05-01',injuryTime:'10:00',diagnosis:'手部割伤',description:'操作失误'} | worker | 200 | body.id 非空 |
-| IN-02 | GET /injury | finance | 200 | 数组 |
-| IN-03 | GET /injury | worker | 200（仅本人）或 200（全量，按设计确认） | — |
-| IN-04 | PUT /injury/{id}/compensation {amount:5000} | finance | 200 | — |
-| IN-05 | PUT /injury/{id}/compensation | worker | 403 | — |
-
-#### 4.2.5 系统配置（SystemConfig）
-
-| ID | 请求 | Token | 期望状态 | 断言 |
-|----|------|-------|---------|------|
-| SC-01 | GET /config/company-name | ceo | 200 | body.value 字符串 |
-| SC-02 | PUT /config/company-name {value:'测试企业'} | ceo | 200 | — |
-| SC-03 | PUT /config/company-name | hr | 403 | — |
-| SC-04 | GET /config/payroll-cycle | ceo | 200 | body.payDay 数字 |
-| SC-05 | PUT /config/payroll-cycle {payDay:20} | ceo | 200 | — |
-| SC-06 | GET /config/retention-period | ceo | 200 | body.years 数字 |
-
-#### 4.2.6 越权直调安全测试（最少 15 条）
-
-| ID | 请求 | 越权 Token | 期望 | 说明 |
-|----|------|-----------|------|------|
-| SEC-01 | GET /employees | employee | 403 | 员工不可查全体名单 |
-| SEC-02 | GET /employees | worker | 403 | — |
-| SEC-03 | DELETE /employees/1 | employee | 403 | — |
-| SEC-04 | GET /payroll/cycles | worker | 403 | — |
-| SEC-05 | POST /payroll/cycles | worker | 403 | — |
-| SEC-06 | PUT /payroll/cycles/1/settle | employee | 403 | — |
-| SEC-07 | GET /operation-logs | employee | 403 | — |
-| SEC-08 | GET /operation-logs | finance | 403 | 已验证，保留回归 |
-| SEC-09 | PUT /config/company-name | hr | 403 | — |
-| SEC-10 | PUT /config/payroll-cycle | finance | 403（如 CEO 专属）| 按实现确认 |
-| SEC-11 | PUT /injury/{id}/compensation | worker | 403 | — |
-| SEC-12 | POST /expense/{id}/approve | employee | 403 | — |
-| SEC-13 | POST /allowances | worker | 403 | 已验证，保留回归 |
-| SEC-14 | GET /payroll/slips（他人工资条） | employee | 403 or 空列表 | 数据隔离 |
-| SEC-15 | POST /dev/reset | employee | 403（dev only）| 非 dev profile 时 404 |
-
-#### 4.2.7 密码变更
-
-| ID | 请求 | 场景 | 期望 |
-|----|------|-----|------|
-| PW-01 | POST /auth/change-password {current:'123456',newPwd:'Abc12345!'} | 正确旧密码 | 200 |
-| PW-02 | POST /auth/change-password {current:'wrong',newPwd:'Abc12345!'} | 错误旧密码 | 400 |
-| PW-03 | POST /auth/change-password {current:'123456',newPwd:'12345'} | 新密码5位 | 400 |
-
-#### 4.2.8 薪资主链 API
-
-| ID | 请求 | Token | 期望 | 断言 |
-|----|------|-------|------|------|
-| PR-01 | POST /payroll/cycles {period:'2026-06'} | finance | 201 | status='OPEN' |
-| PR-02 | PUT /payroll/cycles/{id}/settle | finance | 200 | status='SETTLED' |
-| PR-03 | GET /payroll/slips?cycleId={id} | employee | 200 | 每条 slip.employeeId == 本人 |
-| PR-04 | POST /payroll/slips/{id}/confirm | employee | 200 | — |
-| PR-05 | POST /payroll/slips/{id}/confirm（他人工资条）| employee | 403 | — |
+假期类型、考勤/请假、报销、工伤、系统配置、越权直调（≥15 条）、密码变更、薪资主链，共 8 个测试任务。
 
 ---
 
 ## 5 E2E 测试规格
 
-> 执行文件：`test/e2e/specs/`  
-> 详细测试用例见 `test/e2e/TEST_DESIGN.md`（E2E 专项文档）  
+> 执行文件：`test/e2e/specs/`
+> 详细测试用例见 [test/e2e/TEST_DESIGN.md](e2e/TEST_DESIGN.md)（E2E 专项文档）
 > 下方为总体矩阵，以说明覆盖范围和当前状态。
 
 ### 5.1 E2E 测试矩阵（当前状态）
@@ -338,7 +244,7 @@
 
 ### 7.1 手工测试发现缺陷（2026-04-17，共 25 条）
 
-> 完整记录见 `test/manual-test-2026-04-17/TEST_REPORT.md`，TODO 对应任务见 `TODO.md §A10`。
+> 完整记录见 [test/manual-test-2026-04-17/TEST_REPORT.md](manual-test-2026-04-17/TEST_REPORT.md)，TODO 对应任务见 [TODO.md](../TODO.md) §A10。
 
 | 缺陷 ID | 严重级 | 简述 | TODO 任务 | 状态 |
 |--------|-------|------|---------|------|

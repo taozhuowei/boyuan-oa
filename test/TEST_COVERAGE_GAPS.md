@@ -2,8 +2,8 @@
 
 > **基准**：2026-04-17 全量审查（手工测试 Round 1+2，代码审查，对照 DESIGN.md）  
 > **对标标准**：等价类划分、边界值分析、状态转换测试、场景测试（ISTQB 基础级）  
-> **已规划修复**：缺口对应的 TODO 任务见 `TODO.md §A10`（bug 修复）、`§T0-T6`（测试任务）  
-> **详细用例规格**：`test/TEST_DESIGN.md`（主文档）、`test/e2e/TEST_DESIGN.md`（E2E 详情）
+> **已规划修复**：缺口对应的 TODO 任务见 [TODO.md](../TODO.md) §A10（bug 修复）、§T0-T6（测试任务）
+> **详细用例规格**：[TEST_DESIGN.md](TEST_DESIGN.md)（主文档）、[e2e/TEST_DESIGN.md](e2e/TEST_DESIGN.md)（E2E 详情）
 
 ---
 
@@ -22,7 +22,7 @@
 8个spec文件，但：
 - 无任何完整跨角色审批流
 - E2E-03全部使用错误账号（employee替代dept_manager）
-- 全部8个套件均有缺失步骤（详见`test/e2e/TEST_DESIGN.md`状态列）
+- 全部8个套件均有缺失步骤（详见 [e2e/TEST_DESIGN.md](e2e/TEST_DESIGN.md) 状态列）
 
 ### 手工测试（`test/manual-test-2026-04-17/`）
 已执行：7角色页面可访问性、基础安全（SQL注入/XSS/越权）、表单必填校验、部分边界值  

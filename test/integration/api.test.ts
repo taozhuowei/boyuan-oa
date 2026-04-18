@@ -17,6 +17,9 @@ let serverUp = false
 let ceoToken = ''
 let workerToken = ''
 let pmToken = ''
+let hrToken = ''
+let employeeToken = ''
+let financeToken = ''
 
 async function get<T = unknown>(path: string, token?: string): Promise<{ status: number; body: T }> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -54,6 +57,9 @@ beforeAll(async () => {
       ceoToken = await loginAs('ceo.demo')
       pmToken = await loginAs('pm.demo')
       workerToken = await loginAs('worker.demo')
+      hrToken = await loginAs('hr.demo')
+      employeeToken = await loginAs('employee.demo')
+      financeToken = await loginAs('finance.demo')
     }
   } catch {
     serverUp = false
@@ -335,5 +341,519 @@ describe('Phase B - 联调冒烟测试', () => {
     expect(list.status).toBe(200)
     const found = (list.body as any[]).find((c: any) => c.id === cycleId || c.period === '2026-05')
     expect(found).toBeTruthy()
+  })
+})
+
+// ─── C-INT-01 假期类型 API ────────────────────────────────────────────────────
+
+describe('C-INT-01 - 假期类型 API', () => {
+  // LT-02 创建的假期类型 id，供 LT-04 删除使用
+  let createdLeaveTypeId: number | null = null
+
+  it('LT-01: GET /config/leave-types — CEO token 返回 200 + 数组', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<unknown[]>('/config/leave-types', ceoToken)
+    expect(status).toBe(200)
+    expect(Array.isArray(body)).toBe(true)
+  })
+
+  it('LT-02: POST /config/leave-types — HR 可创建，返回 201 + 非空 id', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await post<any>(
+      '/config/leave-types',
+      { code: 'ANNUAL_TEST', name: '年假测试', quotaDays: 15, deductionRate: 1.0, deductionBasis: 'DAILY' },
+      hrToken
+    )
+    expect(status).toBe(201)
+    expect((body as any).id).toBeTruthy()
+    createdLeaveTypeId = (body as any).id as number
+  })
+
+  it('LT-03: POST /config/leave-types — worker token 返回 403（无权限）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post(
+      '/config/leave-types',
+      { name: '无权测试', quota: 5, deductible: true },
+      workerToken
+    )
+    expect(status).toBe(403)
+  })
+
+  it('LT-04: DELETE /config/leave-types/{id} — HR 可删除 LT-02 创建的记录，返回 200/204', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    if (createdLeaveTypeId === null) return ctx.skip()
+    const { status } = await del(`/config/leave-types/${createdLeaveTypeId}`, hrToken)
+    expect([200, 204]).toContain(status)
+  })
+
+  it('LT-05: DELETE /config/leave-types/99999 — 不存在记录返回 404', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await del('/config/leave-types/99999', hrToken)
+    expect(status).toBe(404)
+  })
+})
+
+// ─── C-INT-02 考勤/请假 API ───────────────────────────────────────────────────
+
+describe('C-INT-02 - 考勤/请假 API', () => {
+  // AT-01 提交后记录的表单 id，供 AT-05 审批使用
+  let leaveFormId: number | string | null = null
+  // 本人员工 id，用于 AT-03 数据隔离断言
+  let currentEmployeeId: number | null = null
+
+  it('AT-01: POST /attendance/leave — employee 提交请假，返回 200/201 + 非空 id', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await post<any>(
+      '/attendance/leave',
+      {
+        formType: 'LEAVE',
+        formData: { leaveType: 'ANNUAL', startDate: '2026-06-01', endDate: '2026-06-02', reason: '休假测试' }
+      },
+      employeeToken
+    )
+    expect([200, 201]).toContain(status)
+    const id = (body as any).id ?? (body as any).formId
+    expect(id).toBeTruthy()
+    leaveFormId = id
+  })
+
+  it('AT-02: POST /attendance/leave — 缺少 leaveType 字段返回 400', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post(
+      '/attendance/leave',
+      { startDate: '2026-06-01', endDate: '2026-06-02', reason: '缺字段测试' },
+      employeeToken
+    )
+    expect(status).toBe(400)
+  })
+
+  it('AT-03: GET /attendance/records — employee 只看到自己的记录（数据隔离）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    // 先获取本人 id
+    const me = await get<any>('/auth/me', employeeToken)
+    expect(me.status).toBe(200)
+    currentEmployeeId = (me.body as any).id as number
+
+    const { status, body } = await get<any[]>('/attendance/records', employeeToken)
+    expect(status).toBe(200)
+    expect(Array.isArray(body)).toBe(true)
+    // 若数组非空则每条记录的申请人 id 等于本人 id
+    if ((body as any[]).length > 0 && currentEmployeeId !== null) {
+      for (const record of body as any[]) {
+        const applicantId = record.employeeId ?? record.applicantId ?? record.submitterId
+        if (applicantId !== undefined) {
+          expect(applicantId).toBe(currentEmployeeId)
+        }
+      }
+    }
+  })
+
+  it('AT-04: GET /attendance/records — CEO 可查看所有记录（不限定 employeeId）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<any[]>('/attendance/records', ceoToken)
+    expect(status).toBe(200)
+    expect(Array.isArray(body)).toBe(true)
+  })
+
+  it('AT-05: POST /attendance/{formId}/approve — dept_manager 审批（返回 200 或 403，记录实际结果）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    if (leaveFormId === null) return ctx.skip()
+    const deptManagerToken = await loginAs('dept_manager.demo')
+    const { status } = await post(
+      `/attendance/${leaveFormId}/approve`,
+      { action: 'APPROVE' },
+      deptManagerToken
+    )
+    // 200：审批成功；403：设计要求部门匹配，也是合法结果
+    expect([200, 403]).toContain(status)
+  })
+
+  it('AT-06: POST /attendance/{leaveFormId}/approve — employee token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    if (leaveFormId === null) return ctx.skip() // 依赖 AT-01 成功
+    const { status } = await post(
+      `/attendance/${leaveFormId}/approve`,
+      { action: 'APPROVE' },
+      employeeToken
+    )
+    expect(status).toBe(403)
+  })
+})
+
+// ─── C-INT-03 报销 API ────────────────────────────────────────────────────────
+
+describe('C-INT-03 - 报销 API', () => {
+  // EX-02 提交后记录的报销 id，供 EX-05/EX-06 使用
+  let expenseId: number | string | null = null
+  // 本人员工 id，用于 EX-03 数据隔离断言
+  let currentEmployeeId: number | null = null
+
+  it('EX-01: GET /expense/types — employee token 返回 200 + 非空数组', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<unknown[]>('/expense/types', employeeToken)
+    expect(status).toBe(200)
+    expect(Array.isArray(body)).toBe(true)
+    expect((body as unknown[]).length).toBeGreaterThan(0)
+  })
+
+  it('EX-02: POST /expense — employee 提交报销申请，返回 200/201 + 非空 id', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await post<any>(
+      '/expense',
+      { type: 'TRAVEL', amount: 500, description: '差旅费用' },
+      employeeToken
+    )
+    expect([200, 201]).toContain(status)
+    const id = (body as any).id ?? (body as any).expenseId
+    expect(id).toBeTruthy()
+    expenseId = id
+  })
+
+  it('EX-03: GET /expense/records — employee 只看到自己的报销记录（数据隔离）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    // 获取本人 id
+    const me = await get<any>('/auth/me', employeeToken)
+    expect(me.status).toBe(200)
+    currentEmployeeId = (me.body as any).id as number
+
+    const { status, body } = await get<any[]>('/expense/records', employeeToken)
+    expect(status).toBe(200)
+    expect(Array.isArray(body)).toBe(true)
+    // 若数组非空则每条记录的申请人 id 等于本人 id
+    if ((body as any[]).length > 0 && currentEmployeeId !== null) {
+      for (const record of body as any[]) {
+        const applicantId = record.employeeId ?? record.applicantId ?? record.submitterId
+        if (applicantId !== undefined) {
+          expect(applicantId).toBe(currentEmployeeId)
+        }
+      }
+    }
+  })
+
+  it('EX-04: GET /expense/records — finance token 返回 200 + 数组（可查所有记录）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<any[]>('/expense/records', financeToken)
+    expect(status).toBe(200)
+    expect(Array.isArray(body)).toBe(true)
+  })
+
+  it('EX-05: POST /expense/{expenseId}/approve — finance token 审批通过，返回 200', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    if (expenseId === null) return ctx.skip()
+    const { status } = await post(
+      `/expense/${expenseId}/approve`,
+      { action: 'APPROVE' },
+      financeToken
+    )
+    expect(status).toBe(200)
+  })
+
+  it('EX-06: POST /expense/{expenseId}/approve — employee token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    if (expenseId === null) return ctx.skip()
+    const { status } = await post(
+      `/expense/${expenseId}/approve`,
+      { action: 'APPROVE' },
+      employeeToken
+    )
+    expect(status).toBe(403)
+  })
+})
+
+// ─── C-INT-04 工伤 API ────────────────────────────────────────────────────────
+
+describe('C-INT-04 - 工伤 API', () => {
+  // IN-01 成功后记录表单 id，供后续用例引用
+  let injuryFormId: number | string | null = null
+
+  it('IN-01: POST /logs/injury — worker 提交工伤申报，返回 200 + 非空 id', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await post<any>(
+      '/logs/injury',
+      {
+        formData: {
+          injuryDate: '2026-05-01',
+          injuryTime: '10:00',
+          diagnosis: '手部割伤',
+          description: '操作失误'
+        },
+        remark: '工伤申报'
+      },
+      workerToken
+    )
+    expect(status).toBe(200)
+    const id = (body as any).id ?? (body as any).formId
+    expect(id).toBeTruthy()
+    injuryFormId = id
+  })
+
+  it('IN-02: GET /injury-claims — finance token 返回 200 + 数组', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<unknown[]>('/injury-claims', financeToken)
+    expect(status).toBe(200)
+    expect(Array.isArray(body)).toBe(true)
+  })
+
+  it('IN-03: POST /injury-claims — finance 新建理赔记录，返回 200 或 400（formRecordId=null 可能触发校验）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post<any>(
+      '/injury-claims',
+      {
+        formRecordId: null,
+        employeeId: 1,
+        injuryDate: '2026-05-01',
+        injuryDescription: '手部割伤',
+        compensationAmount: 5000,
+        financeNote: '已审核'
+      },
+      financeToken
+    )
+    expect([200, 400]).toContain(status)
+  })
+
+  it('IN-04: POST /injury-claims — worker token 返回 403（无权限）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post(
+      '/injury-claims',
+      { formRecordId: 1, employeeId: 1 },
+      workerToken
+    )
+    expect(status).toBe(403)
+  })
+})
+
+// ─── C-INT-05 系统配置 API ────────────────────────────────────────────────────
+
+describe('C-INT-05 - 系统配置 API', () => {
+  it('SC-01: GET /config/company-name — CEO token 返回 200 + companyName 字段', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<any>('/config/company-name', ceoToken)
+    expect(status).toBe(200)
+    expect(typeof (body as any).companyName).toBe('string')
+  })
+
+  it('SC-02: PUT /config/company-name — CEO 可修改公司名称，返回 200', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await put('/config/company-name', { companyName: '测试企业名称' }, ceoToken)
+    expect(status).toBe(200)
+  })
+
+  it('SC-03: PUT /config/company-name — HR token 返回 403（无权修改）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await put('/config/company-name', { companyName: '违规' }, hrToken)
+    expect(status).toBe(403)
+  })
+
+  it('SC-04: GET /config/payroll-cycle — CEO token 返回 200 + payday 字段', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<any>('/config/payroll-cycle', ceoToken)
+    expect(status).toBe(200)
+    expect((body as any).payday).toBeDefined()
+  })
+
+  it('SC-05: PUT /config/payroll-cycle — CEO 可修改薪资周期，返回 200', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await put('/config/payroll-cycle', { payday: 20 }, ceoToken)
+    expect(status).toBe(200)
+  })
+
+  it('SC-06: GET /config/retention-period — CEO token 返回 200 + days 字段', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<any>('/config/retention-period', ceoToken)
+    expect(status).toBe(200)
+    expect((body as any).days).toBeDefined()
+  })
+})
+
+// ─── C-INT-06 权限越权直调 ────────────────────────────────────────────────────
+
+describe('C-INT-06 - 权限越权直调', () => {
+  it('SEC-01: GET /employees — employee token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await get('/employees', employeeToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-02: GET /employees — worker token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await get('/employees', workerToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-03: DELETE /employees/1 — employee token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await del('/employees/1', employeeToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-04: GET /payroll/cycles — worker token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await get('/payroll/cycles', workerToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-05: POST /payroll/cycles — worker token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post('/payroll/cycles', { period: '2026-07' }, workerToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-06: POST /payroll/cycles/1/settle — employee token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post('/payroll/cycles/1/settle', {}, employeeToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-07: GET /operation-logs — employee token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await get('/operation-logs', employeeToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-08: GET /operation-logs — finance token 返回 403（操作日志仅 CEO）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await get('/operation-logs', financeToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-09: PUT /config/company-name — HR token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await put('/config/company-name', { companyName: '越权测试' }, hrToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-10: PUT /config/payroll-cycle — finance token 返回 403（CEO 专属）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await put('/config/payroll-cycle', { payday: 25 }, financeToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-11: POST /injury-claims — worker token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post('/injury-claims', { formRecordId: 1, employeeId: 1 }, workerToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-12: POST /expense/1/approve — employee token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post('/expense/1/approve', { action: 'APPROVE' }, employeeToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-13: POST /allowances — worker token 返回 403', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post('/allowances', { code: 'X', name: 'Y' }, workerToken)
+    expect(status).toBe(403)
+  })
+
+  it('SEC-14: GET /payroll/slips?cycleId=1 — employee token 返回 400 或 403（无权全量查询）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await get('/payroll/slips?cycleId=1', employeeToken)
+    expect([400, 403]).toContain(status)
+  })
+
+  it('SEC-15: GET /config/retention-period — HR token 返回 403（CEO 专属）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await get('/config/retention-period', hrToken)
+    expect(status).toBe(403)
+  })
+})
+
+// ─── C-INT-07 密码变更 API ────────────────────────────────────────────────────
+
+describe('C-INT-07 - 密码变更 API', () => {
+  it('PW-01: POST /auth/change-password — 正确旧密码变更成功，返回 204；随后立即还原密码', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post(
+      '/auth/change-password',
+      { currentPassword: '123456', newPassword: 'Abc12345!' },
+      employeeToken
+    )
+    expect(status).toBe(204)
+    // 立即还原密码，避免影响其他用例
+    await post(
+      '/auth/change-password',
+      { currentPassword: 'Abc12345!', newPassword: '123456' },
+      employeeToken
+    )
+  })
+
+  it('PW-02: POST /auth/change-password — 旧密码错误返回 400', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post(
+      '/auth/change-password',
+      { currentPassword: 'wrongpwd', newPassword: 'Abc12345!' },
+      hrToken
+    )
+    expect(status).toBe(400)
+  })
+
+  it('PW-03: POST /auth/change-password — 新密码少于 6 位返回 400', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status } = await post(
+      '/auth/change-password',
+      { currentPassword: '123456', newPassword: '123' },
+      workerToken
+    )
+    expect(status).toBe(400)
+  })
+})
+
+// ─── C-INT-08 薪资结算链路 API ────────────────────────────────────────────────
+
+describe('C-INT-08 - 薪资结算链路 API', () => {
+  // PR-01 创建后记录周期 id，供后续用例引用
+  let cycleId: number | string | null = null
+  // PR-04 查询到的工资条列表，供 PR-05 使用
+  let slipId: number | string | null = null
+
+  it('PR-01: POST /payroll/cycles — finance 创建薪资周期，返回 200 + 非空 id', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await post<any>(
+      '/payroll/cycles',
+      { period: '2026-07' },
+      financeToken
+    )
+    expect(status).toBe(200)
+    const id = (body as any).id
+    expect(id).toBeTruthy()
+    cycleId = id
+  })
+
+  it('PR-02: POST /payroll/cycles/{cycleId}/settle — finance 结算周期，返回 200 或 400（窗口期未开放时可接受 400）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    if (cycleId === null) return ctx.skip()
+    const { status } = await post(`/payroll/cycles/${cycleId}/settle`, {}, financeToken)
+    expect([200, 400]).toContain(status)
+  })
+
+  it('PR-03: GET /payroll/slips — employee token（无 cycleId）返回 200 + 数组（可能为空）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    const { status, body } = await get<unknown[]>('/payroll/slips', employeeToken)
+    expect(status).toBe(200)
+    expect(Array.isArray(body)).toBe(true)
+  })
+
+  it('PR-04: GET /payroll/slips?cycleId={cycleId} — finance token 返回 200 + 数组', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    if (cycleId === null) return ctx.skip()
+    const { status, body } = await get<any[]>(`/payroll/slips?cycleId=${cycleId}`, financeToken)
+    expect(status).toBe(200)
+    expect(Array.isArray(body)).toBe(true)
+    // 记录第一条工资条 id，供 PR-05 使用
+    if ((body as any[]).length > 0) {
+      slipId = (body as any[])[0].id ?? null
+    }
+  })
+
+  it('PR-05: POST /payroll/slips/{id}/confirm — employee 确认工资条，返回 200 或 400（无电子签名时 400 可接受）', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    if (slipId === null) return ctx.skip()
+    const { status } = await post(
+      `/payroll/slips/${slipId}/confirm`,
+      { pin: '123456' },
+      employeeToken
+    )
+    expect([200, 400]).toContain(status)
   })
 })

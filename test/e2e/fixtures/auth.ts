@@ -11,15 +11,16 @@
 import { request as playwrightRequest, BrowserContext } from '@playwright/test'
 import { API_URL } from '../playwright.config'
 
-export type RoleKey = 'ceo' | 'hr' | 'finance' | 'pm' | 'employee' | 'worker'
+export type RoleKey = 'ceo' | 'hr' | 'finance' | 'pm' | 'employee' | 'worker' | 'dept_manager'
 
 const CREDENTIALS: Record<RoleKey, { username: string; password: string }> = {
-  ceo:      { username: 'ceo.demo',      password: '123456' },
-  hr:       { username: 'hr.demo',       password: '123456' },
-  finance:  { username: 'finance.demo',  password: '123456' },
-  pm:       { username: 'pm.demo',       password: '123456' },
-  employee: { username: 'employee.demo', password: '123456' },
-  worker:   { username: 'worker.demo',   password: '123456' }
+  ceo:          { username: 'ceo.demo',          password: '123456' },
+  hr:           { username: 'hr.demo',           password: '123456' },
+  finance:      { username: 'finance.demo',      password: '123456' },
+  pm:           { username: 'pm.demo',           password: '123456' },
+  employee:     { username: 'employee.demo',     password: '123456' },
+  worker:       { username: 'worker.demo',       password: '123456' },
+  dept_manager: { username: 'dept_manager.demo', password: '123456' }
 }
 
 /** Backend login response shape (AuthLoginResponse.java) */
