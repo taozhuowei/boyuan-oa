@@ -1037,7 +1037,7 @@
 
 ### C-BLK — 黑盒测试用例设计
 
-- `[ ]` **C-BLK-01 新建 `test/manual/TEST_CASES.md`**
+- `[?]` **C-BLK-01 新建 `test/manual/TEST_CASES.md`**
   - MB-01 请假申请完整审批流（employee + dept_manager）
   - MB-02 报销审批（含发票上传必填拦截）（employee + finance）
   - MB-03 工伤申报及财务理赔录入（worker + finance）
@@ -1055,7 +1055,7 @@
 
 ### C-AUTO — Claude 自执行黑盒自动化验证
 
-- `[ ]` **C-AUTO-01 Claude 操控浏览器执行 MB-01~MB-10**
+- `[~]` **C-AUTO-01 Claude 操控浏览器执行 MB-01~MB-10**
   - 前置：后端和前端服务均运行中；Phase B 全部 `[?]`；C-BLK-01 设计文档已完成
   - 按 `test/manual/TEST_CASES.md` 逐条执行，截图关键步骤
   - 发现新缺陷立即追加至 Phase B 对应优先级
