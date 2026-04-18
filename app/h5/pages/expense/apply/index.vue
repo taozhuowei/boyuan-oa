@@ -92,6 +92,15 @@
           <a-form-item :name="['items', index, 'description']">
             <a-textarea v-model:value="item.description" :rows="1" placeholder="费用说明（可选）" />
           </a-form-item>
+          <a-form-item :name="['items', index, 'attachmentId']" label="明细附件（可选）">
+            <customized-file-upload
+              business-type="EXPENSE_ITEM"
+              :max-count="1"
+              accept="image/*,.pdf"
+              hint="可上传该笔明细的票据，最多 1 个"
+              @change="(files: { attachmentId: number }[]) => { item.attachmentId = files[0]?.attachmentId }"
+            />
+          </a-form-item>
         </div>
 
         <a-button type="dashed" block @click="addItem" style="margin-bottom: 24px">

@@ -21,6 +21,15 @@
       <a-descriptions-item label="汇报周期">{{ project.logReportCycleDays ?? 1 }} 天</a-descriptions-item>
       <a-descriptions-item label="客户名称">{{ project.clientName ?? '—' }}</a-descriptions-item>
       <a-descriptions-item label="合同编号">{{ project.contractNo ?? '—' }}</a-descriptions-item>
+      <a-descriptions-item label="合同附件">
+        <a
+          v-if="project.contractAttachmentId"
+          :href="`/api/attachments/${project.contractAttachmentId}`"
+          target="_blank"
+          rel="noopener noreferrer"
+        >下载合同附件</a>
+        <span v-else>—</span>
+      </a-descriptions-item>
       <a-descriptions-item label="项目说明" :span="2">{{ project.projectDescription ?? '—' }}</a-descriptions-item>
     </a-descriptions>
 
@@ -39,6 +48,16 @@
         </a-form-item>
         <a-form-item label="合同编号">
           <a-input v-model:value="configForm.contractNo" placeholder="合同编号" style="width: 200px" />
+        </a-form-item>
+        <a-form-item label="合同附件">
+          <customized-file-upload
+            ref="contractFileRef"
+            business-type="CONTRACT"
+            :max-count="1"
+            accept="image/*,.pdf,.doc,.docx"
+            hint="可上传合同扫描件，最多 1 个"
+            @change="(files: { attachmentId: number }[]) => { configForm.contractAttachmentId = files[0]?.attachmentId ?? null }"
+          />
         </a-form-item>
         <a-form-item label="项目说明">
           <a-textarea v-model:value="configForm.projectDescription" :rows="2" style="width: 400px" placeholder="项目背景与说明" />
@@ -99,8 +118,17 @@
     <template v-if="isPmOrCeo">
       <a-divider>第二角色</a-divider>
       <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: end;">
-        <a-form-item label="员工 ID" style="margin: 0;">
-          <a-input-number v-model:value="srForm.employeeId" :precision="0" style="width: 140px" />
+        <a-form-item label="员工" style="margin: 0;">
+          <a-select
+            v-model:value="srForm.employeeId"
+            show-search
+            :filter-option="false"
+            :options="srEmployeeOptions"
+            placeholder="搜索员工姓名"
+            style="width: 200px"
+            allow-clear
+            @search="debouncedSearchSrEmployees"
+          />
         </a-form-item>
         <a-form-item label="第二角色" style="margin: 0;">
           <a-select v-model:value="srForm.roleCode" style="width: 200px">
@@ -184,9 +212,11 @@ const configForm = ref({
   logReportCycleDays: props.project.logReportCycleDays ?? 1,
   clientName: props.project.clientName ?? '',
   contractNo: props.project.contractNo ?? '',
+  contractAttachmentId: null as number | null,
   projectDescription: props.project.projectDescription ?? ''
 })
 const configLoading = ref(false)
+const contractFileRef = ref<{ clear: () => void } | undefined>(undefined)
 
 // 父页面 project 刷新后同步配置表单默认值（用户未修改时）
 watch(() => props.project, (p) => {
@@ -195,19 +225,27 @@ watch(() => props.project, (p) => {
   configForm.value.clientName = p.clientName ?? ''
   configForm.value.contractNo = p.contractNo ?? ''
   configForm.value.projectDescription = p.projectDescription ?? ''
+  // 刷新后清空上传槽（已保存的附件通过展示区的下载链接体现）
+  configForm.value.contractAttachmentId = null
+  contractFileRef.value?.clear()
 })
 
 async function doUpdateConfig() {
   configLoading.value = true
   try {
+    // 使用 PUT /projects/{id} 以支持 contractAttachmentId 字段
     await request({
-      url: `/projects/${props.projectId}/config`,
-      method: 'PATCH',
+      url: `/projects/${props.projectId}`,
+      method: 'PUT',
       body: {
+        name: props.project.name,
+        startDate: props.project.startDate ?? null,
+        actualEndDate: props.project.actualEndDate ?? null,
         logCycleDays: configForm.value.logCycleDays,
         logReportCycleDays: configForm.value.logReportCycleDays,
         clientName: configForm.value.clientName || null,
         contractNo: configForm.value.contractNo || null,
+        contractAttachmentId: configForm.value.contractAttachmentId ?? props.project.contractAttachmentId ?? null,
         projectDescription: configForm.value.projectDescription || null
       }
     })
@@ -276,6 +314,25 @@ async function doRemoveMember(employeeId: number) {
   }
 }
 
+// ── 第二角色员工搜索（独立 options，不与成员添加下拉共用） ─────────
+const srEmployeeOptions = ref<{ label: string; value: number }[]>([])
+let srSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+function debouncedSearchSrEmployees(keyword: string) {
+  if (srSearchTimer) clearTimeout(srSearchTimer)
+  srSearchTimer = setTimeout(async () => {
+    if (!keyword || keyword.length < 1) { srEmployeeOptions.value = []; return }
+    try {
+      const res = await request<{ content: { id: number; name: string; employeeNo: string }[] }>(
+        { url: '/employees?page=0&size=20&keyword=' + encodeURIComponent(keyword) }
+      )
+      srEmployeeOptions.value = (res.content ?? []).map(e => ({ label: e.name + ' (' + e.employeeNo + ')', value: e.id }))
+    } catch {
+      srEmployeeOptions.value = []
+    }
+  }, 300)
+}
+
 // ── 第二角色 ───────────────────────────────────────────
 interface SecondRoleDef { code: string; name: string; appliesTo: 'OFFICE' | 'LABOR'; projectBound: boolean }
 interface SecondRoleAssignment { id: number; employeeId: number; roleCode: string; projectId: number | null }
@@ -306,13 +363,14 @@ async function loadSecondRoles() {
 function srRoleName(code: string) { return srDefs.value.find(d => d.code === code)?.name ?? code }
 
 async function assignSecondRole() {
-  if (!srForm.value.employeeId || !srForm.value.roleCode) { message.warning('请填写员工 ID 与第二角色'); return }
+  if (!srForm.value.employeeId || !srForm.value.roleCode) { message.warning('请选择员工与第二角色'); return }
   try {
     await request({ url: '/second-roles', method: 'POST', body: {
       employeeId: srForm.value.employeeId, roleCode: srForm.value.roleCode, projectId: props.projectId
     }})
     message.success('已分配')
     srForm.value = { employeeId: undefined, roleCode: undefined }
+    srEmployeeOptions.value = []
     await loadSecondRoles()
   } catch {}
 }

@@ -25,6 +25,9 @@
         size="small"
       >
         <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'isDeductible'">
+            <a-tag :color="record.deductionRate > 0 ? 'orange' : 'default'">{{ record.deductionRate > 0 ? '是' : '否' }}</a-tag>
+          </template>
           <template v-if="column.key === 'deductionRate'">
             {{ (record.deductionRate * 100).toFixed(0) + '%' }}
           </template>
@@ -72,22 +75,27 @@
         <a-form-item label="年度配额(天)">
           <a-input-number v-model:value="form.quotaDays" :min="0" style="width: 100%" />
         </a-form-item>
-        <a-form-item label="扣款比例">
-          <a-input-number
-            v-model:value="form.deductionRate"
-            :min="0"
-            :max="1"
-            :step="0.1"
-            :precision="2"
-            style="width: 100%"
-          />
+        <a-form-item label="是否扣款">
+          <a-switch v-model:checked="form.isDeductible" @change="onDeductibleChange" />
         </a-form-item>
-        <a-form-item label="扣款基准">
-          <a-select v-model:value="form.deductionBasis" style="width: 100%">
-            <a-select-option value="DAILY_SALARY">日薪</a-select-option>
-            <a-select-option value="MONTHLY_SALARY">月薪</a-select-option>
-          </a-select>
-        </a-form-item>
+        <template v-if="form.isDeductible">
+          <a-form-item label="扣款比例">
+            <a-input-number
+              v-model:value="form.deductionRate"
+              :min="0.01"
+              :max="1"
+              :step="0.1"
+              :precision="2"
+              style="width: 100%"
+            />
+          </a-form-item>
+          <a-form-item label="扣款基准">
+            <a-select v-model:value="form.deductionBasis" style="width: 100%">
+              <a-select-option value="DAILY_SALARY">日薪</a-select-option>
+              <a-select-option value="MONTHLY_SALARY">月薪</a-select-option>
+            </a-select>
+          </a-form-item>
+        </template>
         <a-form-item v-if="isEdit" label="是否启用">
           <a-switch v-model:checked="form.isEnabled" />
         </a-form-item>
@@ -127,10 +135,20 @@ const form = reactive({
   code: '',
   name: '',
   quotaDays: 0,
+  isDeductible: true,
   deductionRate: 1.0,
   deductionBasis: 'DAILY_SALARY' as 'DAILY_SALARY' | 'MONTHLY_SALARY',
   isEnabled: true
 })
+
+/** 关闭扣款开关时强制将扣款比例清零 */
+function onDeductibleChange(val: boolean) {
+  if (!val) {
+    form.deductionRate = 0
+  } else if (form.deductionRate === 0) {
+    form.deductionRate = 1.0
+  }
+}
 
 const modalTitle = computed(() => (isEdit.value ? '编辑假期类型' : '新增假期类型'))
 
@@ -138,6 +156,7 @@ const columns = [
   { title: '假种名称', dataIndex: 'name', key: 'name' },
   { title: '代码', dataIndex: 'code', key: 'code', width: 140 },
   { title: '年度配额(天)', dataIndex: 'quotaDays', key: 'quotaDays', width: 120 },
+  { title: '是否扣款', key: 'isDeductible', width: 90 },
   { title: '扣款比例', key: 'deductionRate', width: 100 },
   { title: '扣款基准', key: 'deductionBasis', width: 100 },
   { title: '系统内置', key: 'isSystem', width: 100 },
@@ -168,6 +187,7 @@ function openAdd() {
   form.code = ''
   form.name = ''
   form.quotaDays = 0
+  form.isDeductible = true
   form.deductionRate = 1.0
   form.deductionBasis = 'DAILY_SALARY'
   form.isEnabled = true
@@ -180,6 +200,7 @@ function openEdit(record: LeaveType) {
   form.code = record.code
   form.name = record.name
   form.quotaDays = record.quotaDays
+  form.isDeductible = record.deductionRate > 0
   form.deductionRate = record.deductionRate
   form.deductionBasis = record.deductionBasis
   form.isEnabled = record.isEnabled
@@ -201,7 +222,7 @@ async function handleSave() {
       code: form.code.trim(),
       name: form.name.trim(),
       quotaDays: form.quotaDays,
-      deductionRate: form.deductionRate,
+      deductionRate: form.isDeductible ? form.deductionRate : 0,
       deductionBasis: form.deductionBasis,
       isEnabled: form.isEnabled
     }
