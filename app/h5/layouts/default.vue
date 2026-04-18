@@ -127,6 +127,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/allowances', label: '补贴配置', path: '/allowances' },
     { key: '/leave_types', label: '假期配额', path: '/leave_types' },
     { key: '/role', label: '角色管理', path: '/role' },
+    { key: '/attendance', label: '考勤管理', path: '/attendance' },
     { key: '/projects', label: '项目管理', path: '/projects' },
     { key: '/payroll', label: '薪资管理', path: '/payroll' },
     { key: '/construction_log', label: '施工日志', path: '/construction_log' },

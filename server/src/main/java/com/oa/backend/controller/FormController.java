@@ -28,10 +28,10 @@ public class FormController {
 
     /**
      * 获取待审批列表
-     * 权限：项目经理、CEO、财务（各类表单审批流的不同节点审批人）
+     * 权限：所有登录角色均可调用，各角色只见自己关联的待办项（HR/EMPLOYEE/WORKER 查看本人提交的待审单据）
      */
     @GetMapping("/todo")
-    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE','DEPARTMENT_MANAGER')")
+    @PreAuthorize("hasAnyRole('PROJECT_MANAGER','CEO','FINANCE','DEPARTMENT_MANAGER','HR','EMPLOYEE','WORKER')")
     public ResponseEntity<List<FormRecordResponse>> getTodoList(Authentication authentication) {
         Long currentEmployeeId = getCurrentEmployeeId(authentication);
         if (currentEmployeeId == null) {

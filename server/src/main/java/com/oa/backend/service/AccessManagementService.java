@@ -67,12 +67,22 @@ public class AccessManagementService {
             List.of("终审审批", "角色与权限配置", "数据有效期配置", "经营总览"));
         seedRole(5L, "worker", "劳工", "施工现场工作人员，可使用施工日志和工伤补偿相关功能。", true,
             List.of("施工日志", "工伤补偿", "查看本人信息", "工资条确认与异议"));
+        seedRole(6L, "hr", "人力资源", "维护人员与组织架构，配置假期规则。不含薪资数据访问。", true,
+            List.of("人员信息录入与维护", "组织架构配置", "假期规则管理"));
+        seedRole(7L, "department_manager", "部门经理", "员工考勤审批、部门管理，可查看本部门员工基本信息与考勤记录。", true,
+            List.of("考勤审批", "部门成员查看", "考勤记录查看"));
+        seedRole(8L, "general_manager", "总经理", "介于 CEO 与各部门负责人之间；可加入审批流末端链；可见全项目但不可见考勤/薪资/HR 档案。", true,
+            List.of("项目总览", "审批流末端", "报销审批"));
+        seedRole(9L, "ops", "运维", "系统运维，仅访问运维工具与操作日志，不参与业务流程。", true,
+            List.of("操作日志查看", "数据导出", "数据查看器"));
 
         seedAccount("employee.demo", "123456", "张晓宁", "employee", "综合管理部", "OFFICE");
         seedAccount("finance.demo", "123456", "李静", "finance", "财务管理部", "OFFICE");
         seedAccount("pm.demo", "123456", "王建国", "project_manager", "项目一部", "OFFICE");
         seedAccount("ceo.demo", "123456", "陈明远", "ceo", "运营管理部", "OFFICE");
         seedAccount("worker.demo", "123456", "赵铁柱", "worker", "施工一部", "LABOR");
+        seedAccount("hr.demo", "123456", "孙丽华", "hr", "综合管理部", "OFFICE");
+        seedAccount("dept_manager.demo", "123456", "周伟", "department_manager", "综合管理部", "OFFICE");
         roleSequence.set(roles.keySet().stream().mapToLong(Long::longValue).max().orElse(0L));
     }
 

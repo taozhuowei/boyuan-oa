@@ -135,3 +135,15 @@ MERGE INTO after_sale_type_def (code, name, display_order, is_system, is_enabled
 ('QUALITY',      '质量问题',                1, TRUE, TRUE),
 ('CONSTRUCTION', '施工问题',                2, TRUE, TRUE),
 ('NON_QUALITY',  '非质量问题（客户原因）', 3, TRUE, TRUE);
+
+-- ============================================
+-- B-P1-02: 假期类型种子数据（6条内置类型）
+-- 字段来源：schema.sql leave_type_def 表定义
+-- ============================================
+MERGE INTO leave_type_def (code, name, deduction_rate, is_enabled, is_system, display_order, quota_days, deduction_basis) KEY (code) VALUES
+('ANNUAL',       '年假',   0.00, TRUE, TRUE, 1,  5,   'DAILY_SALARY'),
+('SICK',         '病假',   0.50, TRUE, TRUE, 2,  0,   'DAILY_SALARY'),
+('PERSONAL',     '事假',   1.00, TRUE, TRUE, 3,  0,   'DAILY_SALARY'),
+('MARRIAGE',     '婚假',   0.00, TRUE, TRUE, 4,  3,   'DAILY_SALARY'),
+('MATERNITY',    '产假',   0.00, TRUE, TRUE, 5,  90,  'DAILY_SALARY'),
+('COMPENSATORY', '调休假', 0.00, TRUE, TRUE, 6,  0,   'DAILY_SALARY');

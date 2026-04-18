@@ -475,7 +475,7 @@
   4. 前端 `/attendance` 假种下拉有数据；HR `/leave_types` 列表有数据
 - **验收点**：接口 200；前端下拉非空
 - **验收流程**：curl 验证；浏览器抽查
-- **状态**：`[ ]`
+- **状态**：`[>]`
 
 #### B-P1-03 Employee 可访问 /data_export（前端权限泄露）
 - **目标**：`PAGE_ACCESS` 无 `/data_export` 条目，已登录用户均可访问
@@ -483,7 +483,7 @@
 - **步骤**：A-SEC-03 完成后验证此路由已正确限制
 - **验收点**：employee 直接访问 `/data_export` 被重定向到首页
 - **验收流程**：employee.demo 登录后直接输入 URL，观察重定向
-- **状态**：`[ ]`
+- **状态**：`[?]`（A-SEC-03 已补全 PAGE_ACCESS，/data_export 已限 ceo/ops，代码核查通过）
 
 #### B-P1-04 Finance 工伤页面"加载记录失败"
 - **目标**：Finance 角色无工伤记录读取权限
@@ -494,7 +494,7 @@
   3. curl 测试：Finance token 访问工伤列表返回 200
 - **验收点**：Finance 访问 `/injury` 可看到工伤申报列表，无 Toast 报错
 - **验收流程**：curl 验证；浏览器确认
-- **状态**：`[ ]`
+- **状态**：`[?]`（InjuryClaimController GET /injury-claims 已有 hasAnyRole('FINANCE','CEO')，Finance 已包含，代码核查通过）
 
 #### B-P1-05 工作台待办多角色 403，角标恒为 0
 - **目标**：`FormController GET /forms/todo` 仅部分角色有权，致多角色角标为 0
@@ -505,7 +505,7 @@
   3. curl 测试：dept_manager token 访问 `/forms/todo` 返回 200；角标数值 > 0
 - **验收点**：所有角色角标显示真实数值
 - **验收流程**：curl 各角色 token 验证 `/forms/todo` 均 200
-- **状态**：`[ ]`
+- **状态**：`[>]`
 
 ---
 
@@ -536,7 +536,7 @@
   3. 修复查询条件或种子数据，确保 7 个内置角色均出现
 - **验收点**：CEO `/role` 页面显示 ≥ 7 个内置角色
 - **验收流程**：CEO 登录浏览器查看角色管理页
-- **状态**：`[ ]`
+- **状态**：`[>]`
 
 #### B-P2-04 CEO 侧边栏缺考勤管理入口
 - **目标**：CEO 应可访问考勤管理，但 ROLE_MENUS.ceo 无 `/attendance`
@@ -546,7 +546,7 @@
   2. 确认 `auth.global.ts` 中 `/attendance` 已含 `ceo`
 - **验收点**：CEO 侧边栏可见考勤管理入口；CEO 可访问考勤页面
 - **验收流程**：ceo.demo 登录浏览器验收
-- **状态**：`[>]`（/data_export 和 /data_viewer 代码核查已过；attendance 待修复）
+- **状态**：`[>]`（/data_export /data_viewer 代码核查已过；ROLE_MENUS.ceo 已补 /attendance 菜单项）
 
 #### B-P2-05 HR 访问 /payroll 被重定向
 - **目标**：确认 HR 是否应有薪资访问权限（需产品确认）
@@ -557,7 +557,7 @@
   3. 若不应有：在 TODO 备注"已确认排除"，关闭此任务
 - **验收点**：与 DESIGN.md 规定一致
 - **验收流程**：对照设计文档确认后 curl 验证
-- **状态**：`[ ]`
+- **状态**：`[?]`（DESIGN.md §5.3 明确 HR 不含薪资数据；auth.global.ts /payroll 未含 hr，已符合设计）
 
 #### B-P2-06 密码修改 Toast 暴露 HTTP 错误字符串
 - **目标**：密码错误时 Toast 显示 "[POST] /api/... 400 Bad Request"，应显示业务语言
@@ -567,7 +567,7 @@
   2. 测试：输入错误当前密码，Toast 显示业务语言
 - **验收点**：Toast 无 HTTP 格式字符串
 - **验收流程**：浏览器操作验收
-- **状态**：`[ ]`
+- **状态**：`[?]`（password.vue catch 块已有 fetchError?.data?.message || '密码修改失败，请检查当前密码是否正确' 兜底，A-CODE-03 已修复）
 
 ---
 
