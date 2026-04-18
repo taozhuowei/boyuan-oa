@@ -401,6 +401,10 @@
 
 - `[x]` **A-AUDIT-TEST-01** 修复 Backend 单元测试编译失败 — Phase A 前就存在的预存 bug：`ProjectServiceImplTest.java` / `EmployeeServiceImplTest.java` 使用了旧 DTO 构造签名，V11/V13 扩展 DTO 字段后 `mvn test-compile` 失败，`mvn test` 整体阻塞。更新两个测试类的构造函数调用，补齐新字段（多数可传 null）；确保 `mvn test` 全量通过（已有的 Integration Test 500 同时修或至少定位）
 
+#### A-AUDIT-REGRESSION — 验收阶段发现的遗留问题（2026-04-18）
+
+- `[ ]` **A-AUDIT-REGRESSION-01** InjuryClaimController Mapper 注入未清理 — `InjuryClaimController.java:29` 直接注入 `FormRecordMapper`，违反 A-AUDIT-DEBT-07 "Controller 层零 Mapper 注入"规则；将 `formRecordMapper.selectById(req.formRecordId())` 调用迁入 `InjuryClaimService` 中，Controller 改为调用 Service 方法
+
 ---
 
 ## Phase B — 功能补全 + Bug 修复
@@ -574,8 +578,8 @@
 
 ### B-P3 — 种子数据 / 表单校验轻微问题
 
-- `[?]` **B-P3-01 岗位管理无种子数据** — `db/data.sql` 补 3–5 条 position 记录；`yarn test:integration` 中岗位相关断言通过
-- `[?]` **B-P3-02 补贴配置无种子数据** — `db/data.sql` 补 allowance_def 记录（全局补贴、岗位补贴各 1 条）
+- `[x]` **B-P3-01 岗位管理无种子数据** — 已废弃原方案。Phase D 设计审计确认 DESIGN.md §3.4 明确"系统不内置固定岗位表"，正确做法是删除内置种子数据而非新增；data.sql 中 position MERGE 块已于 2026-04-18 删除。岗位通过运营期 HR/财务自行创建，集成测试已独立通过。
+- `[x]` **B-P3-02 补贴配置无种子数据** — 已废弃原方案。设计审计确认 allowance_def 不应预置，data.sql 中 allowance_def/allowance_config MERGE 块已删除；补贴由财务在运营期自行配置。
 - `[?]` **B-P3-03 CEO 考勤「我的记录」为空** — `db/data.sql` 为 ceo.demo 补 1–3 条考勤记录
 - `[?]` **B-P3-04 数据查看器文件格式描述错误** — `pages/data_viewer/index.vue` 页面提示改为 ".obk" 格式（DESIGN.md §10.3）
 - `[?]` **B-P3-05 Finance 侧边栏含「通讯录导入」入口** — 对照 DESIGN.md §5.4 确认 Finance 是否应有此入口；确认后删除或保留
@@ -583,6 +587,10 @@
 - `[?]` **B-P3-07 新增员工身份证号无格式校验** — `pages/employees/index.vue` 追加 18 位格式规则（前 17 位数字 + 末位数字或 X）
 - `[?]` **B-P3-08 密码策略不一致（setup ≥8 位 vs change ≥6 位）** — `pages/me/password.vue` 中 `min: 6` 改为 `min: 8`
 - `[?]` **B-P3-09 报销明细金额接受负数和零** — `pages/expense/apply/index.vue` 金额输入框追加 `:min="0.01"`
+
+#### B-P3-REGRESSION — 验收阶段发现的遗留问题（2026-04-18）
+
+- `[ ]` **B-P3-REGRESSION-01 ops.demo 未加入 access.test.ts 账号完整性检查** — `test/unit/h5/access.test.ts` defaultTestAccounts 列表中缺少 ops.demo；补充该账号的存在性断言，确保种子数据覆盖所有角色
 
 ---
 
@@ -1062,6 +1070,12 @@
   - 发现新缺陷立即追加至 Phase B 对应优先级
   - 全部通过后将结果写入 `test/manual/TEST_CASES.md` 实际结果栏
   - 验收：10 条用例实际结果栏全部为"通过"，无遗留"失败"或"阻塞"
+
+#### C-REGRESSION — 验收阶段发现的测试缺陷（2026-04-18）
+
+- `[ ]` **C-REGRESSION-01 集成测试非幂等 — 薪资周期 period 冲突** — `test/integration/api.test.ts` TC-B1-04（period="2026-05"）和 PR-01（period="2026-07"）使用固定 period，第二次运行时该 period 已存在返回 400，测试失败。根本原因：测试未在 afterAll 清理创建的数据，且 period 值硬编码。修复方案：每次运行用动态 period（如当前年份+月份+随机后缀），或在 beforeAll 检查并删除已存在的周期。
+- `[ ]` **C-REGRESSION-02 SC-01 company-name 断言错误** — `test/integration/api.test.ts:632` 断言 `typeof companyName === 'string'`，但系统未初始化时返回 `null`，`typeof null === 'object'` 导致失败。修复：改为 `expect(body.companyName === null || typeof body.companyName === 'string').toBe(true)`。
+- `[ ]` **C-REGRESSION-03 ops.demo 未纳入账号完整性测试** — `test/unit/h5/access.test.ts` defaultTestAccounts 未包含 ops.demo（已在 data.sql 和 test-accounts.sql 添加）。补充断言：`ops.demo / 123456` 存在于种子数据中。
 
 ---
 
