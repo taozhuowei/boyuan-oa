@@ -33,7 +33,6 @@ public class ApprovalFlowService {
     private final OperationLogMapper operationLogMapper;
     private final ObjectMapper objectMapper;
     private final NotificationService notificationService;
-    private final TemporaryDelegationService delegationService;
 
     // ── ApprovalFlow configuration methods (moved from ApprovalFlowController) ──
 
@@ -231,28 +230,9 @@ public class ApprovalFlowService {
             return false;
         }
 
-        // 检查员工是否是当前节点的审批人
+        // 检查员工是否是当前节点的审批人（审批禁止委托，见 DESIGN.md §6.3）
         Long expectedApproverId = resolveApproverId(currentNode, formRecord.getSubmitterId());
-        if (Objects.equals(expectedApproverId, employeeId)) return true;
-        // 临时委托：被委托人持有 expectedApproverId 的有效委托即可代审
-        if (expectedApproverId != null && delegationService != null
-                && delegationService.canActOnBehalfOf(employeeId, expectedApproverId, formRecord.getFormType())) {
-            return true;
-        }
-        return false;
-    }
-
-    /** 当前操作人是否在以委托方式代审本表单（用于操作日志加 [代操作] 标记） */
-    private boolean isDelegated(FormRecord formRecord, Long actingEmployeeId) {
-        if (formRecord == null || actingEmployeeId == null || delegationService == null) return false;
-        ApprovalFlowDef flowDef = approvalFlowDefMapper.findActiveByBusinessType(formRecord.getFormType());
-        if (flowDef == null) return false;
-        ApprovalFlowNode currentNode = approvalFlowNodeMapper.findByFlowIdAndNodeOrder(
-                flowDef.getId(), formRecord.getCurrentNodeOrder());
-        if (currentNode == null) return false;
-        Long expected = resolveApproverId(currentNode, formRecord.getSubmitterId());
-        return expected != null && !expected.equals(actingEmployeeId)
-                && delegationService.canActOnBehalfOf(actingEmployeeId, expected, formRecord.getFormType());
+        return Objects.equals(expectedApproverId, employeeId);
     }
 
     /**
@@ -361,10 +341,8 @@ public class ApprovalFlowService {
             }
         }
 
-        // 记录操作日志：代审标记前缀
-        boolean delegated = isDelegated(formRecord, approverId);
-        String tagged = delegated ? "[代操作] " + action : action;
-        writeOperationLog(approverId, tagged, "FORM_RECORD", formRecordId,
+        // 记录操作日志（审批禁止委托，无代审标记，见 DESIGN.md §6.3）
+        writeOperationLog(approverId, action, "FORM_RECORD", formRecordId,
                 buildOperationDetail(formRecord, action, comment));
 
         log.info("审批流推进完成: formId={}, action={}, newStatus={}", 

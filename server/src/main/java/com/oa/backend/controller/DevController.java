@@ -102,7 +102,6 @@ public class DevController {
         "cleanup_task",
         "export_backup_task",
         "second_role_assignment",
-        "temporary_delegation",
         "after_sale_ticket",
         "project_material_cost",
         "expense_claim",

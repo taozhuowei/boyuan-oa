@@ -1,5 +1,5 @@
 <template>
-  <!-- LeaveTab — 请假申请 tab: leave application form with delegation support -->
+  <!-- LeaveTab — 请假申请 tab: leave application form -->
   <a-form
     :model="leave_form"
     layout="vertical"
@@ -43,22 +43,6 @@
       />
     </a-form-item>
 
-    <a-divider style="margin: 8px 0;" />
-    <a-form-item>
-      <a-checkbox v-model:checked="leave_form.enableDelegation">启用临时委托（请假期间，由代办人代为处理我的审批事务）</a-checkbox>
-    </a-form-item>
-    <template v-if="leave_form.enableDelegation">
-      <a-form-item label="代办人手机号" :rules="[{ required: true, message: '请填写代办人手机号' }]">
-        <a-input v-model:value="leave_form.delegatePhone" placeholder="必填" />
-      </a-form-item>
-      <a-form-item label="委托范围（可选）">
-        <a-select v-model:value="leave_form.delegateScope" allow-clear placeholder="留空 = 所有审批事务">
-          <a-select-option value="LEAVE">仅请假</a-select-option>
-          <a-select-option value="OVERTIME">仅加班</a-select-option>
-        </a-select>
-      </a-form-item>
-    </template>
-
     <a-form-item>
       <a-button type="primary" html-type="submit" :loading="is_submitting" data-catch="leave-form-submit">
         提交申请
@@ -72,11 +56,11 @@
  * LeaveTab — 请假申请 Tab
  *
  * Purpose: render and submit the leave application form.
- * Supports retroactive leave, attachment upload, and optional delegation setup.
+ * Supports retroactive leave and attachment upload.
  *
  * Data flow:
  *   - Fetches /config/leave-types on mount for the leave type dropdown
- *   - On submit: POST /attendance/leave, then optionally POST /delegations
+ *   - On submit: POST /attendance/leave
  *   - Emits 'submitted' so parent can switch to records tab and reload records
  *   - Accepts optional 'prefill' prop for resubmit flow from MyRecordsTab
  */
@@ -92,9 +76,6 @@ interface LeaveFormState {
   startDate: Dayjs | undefined
   endDate: Dayjs | undefined
   reason: string
-  enableDelegation: boolean
-  delegatePhone: string
-  delegateScope: string | undefined
   retroactive: boolean
   attachmentIds: number[]
 }
@@ -130,9 +111,6 @@ function makeEmptyForm(): LeaveFormState {
     startDate: undefined,
     endDate: undefined,
     reason: '',
-    enableDelegation: false,
-    delegatePhone: '',
-    delegateScope: undefined,
     retroactive: false,
     attachmentIds: []
   }
@@ -198,23 +176,6 @@ async function submitLeave() {
         remark: leave_form.value.reason
       }
     })
-    // Delegation: created after leave submission succeeds
-    if (leave_form.value.enableDelegation && leave_form.value.delegatePhone.trim() && leave_form.value.endDate) {
-      try {
-        await request({
-          url: '/delegations',
-          method: 'POST',
-          body: {
-            delegatePhone: leave_form.value.delegatePhone.trim(),
-            scope: leave_form.value.delegateScope || null,
-            startsAt: leave_form.value.startDate ? `${leave_form.value.startDate.format('YYYY-MM-DD')}T00:00:00` : null,
-            expiresAt: `${leave_form.value.endDate.format('YYYY-MM-DD')}T23:59:59`
-          }
-        })
-      } catch {
-        alert('请假已提交，但临时委托创建失败，请到委托管理手动创建')
-      }
-    }
     leave_file_ref.value?.clear()
     leave_form.value = makeEmptyForm()
     emit('submitted')
