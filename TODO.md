@@ -814,8 +814,8 @@
   6. `mvn test` 全量通过（392 tests）
 - **验收点**：`schema.sql` 不再参与 dev 初始化；H2 dev 环境通过 Flyway 完成全量迁移；`mvn test` 通过
 - **验收流程**：启动后端查看 Flyway 日志确认 V1~Vxx 全部 applied；curl `/api/auth/login` 返回 200
-- **注意**：若 V2 语法改造工作量过大，可接受方案 B：保留 `data.sql` 仅做种子数据，`schema.sql` 替换为空文件（让 Flyway 建表），dev 也走 Flyway；C-INT-09 的 CI migration-validate job 已作为短期安全网
-- **状态**：`[ ]`
+- **注意**：V2–V9 共 6 个 migration 文件含 PostgreSQL 专用语法（ON CONFLICT / setval / pg_get_serial_sequence），全量改造超出 Phase B 范围；A-AUDIT-INFRA-01 CI job 已作为安全网。延期至 Phase E（生产部署基础设施）统一处理。
+- **状态**：`[ ]`（延期至 Phase E）
 
 ---
 
