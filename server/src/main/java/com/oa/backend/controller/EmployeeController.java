@@ -35,10 +35,10 @@ public class EmployeeController {
 
     /**
      * 获取员工列表（分页）
-     * 权限：CEO、HR、财务、项目经理
+     * 权限：CEO、HR、财务、项目经理、部门主管
      */
     @GetMapping
-    @PreAuthorize("hasAnyRole('CEO','HR','FINANCE','PROJECT_MANAGER')")
+    @PreAuthorize("hasAnyRole('CEO','HR','FINANCE','PROJECT_MANAGER','DEPARTMENT_MANAGER')")
     public ResponseEntity<Map<String, Object>> listEmployees(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
@@ -68,10 +68,10 @@ public class EmployeeController {
 
     /**
      * 获取员工详情
-     * 权限：CEO、HR、财务、项目经理
+     * 权限：CEO、HR、财务、项目经理、部门主管
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('CEO','HR','FINANCE','PROJECT_MANAGER')")
+    @PreAuthorize("hasAnyRole('CEO','HR','FINANCE','PROJECT_MANAGER','DEPARTMENT_MANAGER')")
     public ResponseEntity<EmployeeResponse> getEmployee(@PathVariable Long id, Authentication authentication) {
         return employeeService.findById(id)
             .map(emp -> ResponseEntity.ok(toResponse(emp, authentication)))
