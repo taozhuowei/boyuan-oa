@@ -1077,6 +1077,69 @@
 - `[ ]` **C-REGRESSION-02 SC-01 company-name 断言错误** — `test/integration/api.test.ts:632` 断言 `typeof companyName === 'string'`，但系统未初始化时返回 `null`，`typeof null === 'object'` 导致失败。修复：改为 `expect(body.companyName === null || typeof body.companyName === 'string').toBe(true)`。
 - `[ ]` **C-REGRESSION-03 ops.demo 未纳入账号完整性测试** — `test/unit/h5/access.test.ts` defaultTestAccounts 未包含 ops.demo（已在 data.sql 和 test-accounts.sql 添加）。补充断言：`ops.demo / 123456` 存在于种子数据中。
 
+### C-QUALITY — 测试、审计、验收体系强化（最高优先级，阻塞 Phase D）
+
+> **背景**：Phase C 验收暴露两类系统性缺陷：①代码级错误（Controller 层 Mapper 注入）未被工具自动拦截；②集成测试非幂等，仅"首次运行通过"不等于"真正通过"。
+> **原则**：能被工具自动检测的错误，属于红线，一律不允许出现；逻辑错误通过结构化 Checklist + 幂等测试双重保障。
+> **完成条件**：全部 C-QUALITY 任务通过后，`mvn test` + `yarn test:integration`（连续三次）+ `yarn lint` 全部干净，方可开始 Phase D。
+
+---
+
+#### C-QUALITY-01 ArchUnit 架构约束测试（后端红线自动化）
+
+- `[ ]` **C-QUALITY-01**
+  - 新建 `server/src/test/java/com/oa/backend/architecture/ArchitectureTest.java`
+  - 强制规则（随 `mvn test` 自动运行，任一失败则 BUILD FAILURE）：
+    - Controller 层类不得直接依赖任何 `*.mapper.*` 包中的类（`com.fasterxml.jackson.databind.ObjectMapper` 除外）
+    - Controller 层类不得直接依赖 `*.entity.*` 包（必须通过 Service/DTO 层）
+    - `*.service.*` 层不得依赖 `*.controller.*` 层（单向依赖）
+    - 禁止包级循环依赖
+  - 验收：
+    - `mvn test` 包含 ArchUnit 测试类且全部通过
+    - 故意在一个 Controller 中注入 Mapper，确认 `mvn test` 立即失败（验证规则有效）
+    - InjuryClaimController 当前违规被自动检出 → 修复后规则通过
+
+#### C-QUALITY-02 集成测试幂等化改造
+
+- `[ ]` **C-QUALITY-02**
+  - 修复 C-REGRESSION-01/02（fix test/integration/api.test.ts）
+  - 制定并写入 `test/TEST_DESIGN.md` 集成测试幂等性规范：
+    - POST 创建类测试的入参中，会造成唯一冲突的字段（period、code、employeeNo 等）必须使用动态值，格式：`TEST-{随机4位}-{字段含义}`，如 `2099-${Math.random().toString(36).slice(2,6)}`
+    - 有副作用的测试（创建/修改数据）必须在 `afterAll` 中清理，或明确说明为何无需清理（如使用独立隔离数据）
+    - 断言中禁止 `typeof x === 'string'` 这类未处理 null 的类型断言；必须写 `x === null || typeof x === 'string'` 或明确期望非 null
+  - 验收：`yarn test:integration` 连续运行三次，三次全部通过，无任何失败
+
+#### C-QUALITY-03 Code Reviewer 强制 Checklist 落地
+
+- `[ ]` **C-QUALITY-03**
+  - 更新 `CLAUDE.md` Code Reviewer 节，新增强制 Checklist（见下方条目），QA Engineer 每次 review 必须逐项确认并在输出中列出每项结论
+  - Checklist 内容（写入 CLAUDE.md）：
+    - 架构红线：`grep -rn "private final.*Mapper" server/.../controller/` 输出为空（ObjectMapper 除外）
+    - 架构红线：Controller 不直接引用 Entity（必须经过 DTO/Service）
+    - 测试幂等：新增集成测试中创建类用例使用动态数据，或有 afterAll 清理
+    - 测试断言：无 `typeof x === 'string/number'` 类断言（未处理 null 的情况）
+    - 权限完整：每个新增 HTTP endpoint 有 `@PreAuthorize` 注解
+    - 设计对齐：新增字段/接口已在 DESIGN.md 对应章节找到出处，无额外实现
+  - 验收：CLAUDE.md 中 Code Reviewer 节包含上述 Checklist 全文，可逐项核查
+
+#### C-QUALITY-04 前端静态分析强化
+
+- `[ ]` **C-QUALITY-04**
+  - `app/h5/tsconfig.json` 确认 `strict: true`（含 `noImplicitAny`、`strictNullChecks`）；若开启后有编译错误则修复
+  - ESLint 规则：`@typescript-eslint/no-explicit-any: warn`（已有原因注释的 `as any` 豁免）
+  - 新增 `yarn workspace oa-h5 lint` 作为 CI 检查步骤（后续 Phase F 配置 CI 时落地，本任务先确认本地零错误）
+  - 验收：`yarn workspace oa-h5 lint` 本地运行零 error，warning 仅限已注释说明的 `as any`
+
+#### C-QUALITY-05 Phase 验收门规则强化
+
+- `[ ]` **C-QUALITY-05**
+  - 更新 CLAUDE.md Phase 验收门，在所有阶段验收条件中新增：
+    - 前置：`mvn test`（含 ArchUnit）全部通过
+    - 前置：`yarn test:integration` 连续运行三次全部通过（非一次性通过）
+    - 前置：`yarn workspace oa-h5 lint` 零 error
+  - Phase A/B/C/D 遗留问题修复后，以新标准重新执行验收
+  - 验收：CLAUDE.md 各阶段验收门包含上述三条前置要求
+
 ---
 
 ## Phase D — 设计对齐审计
