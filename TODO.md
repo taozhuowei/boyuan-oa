@@ -19,6 +19,7 @@
 - **Phase A — 架构治理 + 清理**：安全加固、DB 索引、代码分层、命名规范、临时文件清除。A 阶段决定后续是否返工。
 - **Phase B — 功能补全 + Bug 修复**：基于 A 阶段干净架构，补全所有功能缺口和已知缺陷。
 - **Phase C — 测试覆盖**：编写并执行全部自动化测试，Claude 自执行黑盒测试。
+- **Phase C+ — 遗留修复 + 质量体系建设 + 完整验收**：补齐 A/B/C 遗留问题，建立工具链（k6/ZAP/schemathesis/Dependency-Check），执行全维度五轮测试，用户确认测试用例设计与验收报告，方可进入 D。
 - **Phase D — 设计对齐审计**：以 DESIGN.md 为权威，逐模块确认业务规则 → 审计代码 → 整改差距 → 再次检查；确保实现 1:1 还原设计，不错漏、不新增。
 - **Phase E — 人工验收**：用户在真实浏览器完成完整业务链路验收，Claude 跟进修复。
 - **Phase F — 生产部署 + 工程规范**：首版上线 + 建立 git/PR/分支/代码审查/issue/SemVer/CHANGELOG/RUNBOOK 全套规范。规范越早建立越好。
@@ -1142,9 +1143,197 @@
 
 ---
 
+## Phase C+ — 遗留修复 + 质量体系建设 + 完整验收
+
+> **前置条件**：Phase C 全部任务记录完毕（含 C-QUALITY 设计）。
+> **目标**：补齐 A/B/C 三阶段遗留问题，建立完整测试与审计规范，执行全维度测试，完整确认三个阶段真实完成。
+> **完成标准**：四节全部通过，用户确认测试用例设计和最终验收报告，方可进入 Phase D。
+
+---
+
+### C+-DESIGN — 测试设计与质量规范落地
+
+> 全部完成后由用户确认测试用例设计文档，通过后才能进入 C+-FIX。
+
+#### 架构约束自动化
+
+- `[ ]` **C+-D-01 ArchUnit 架构约束测试**
+  - 新建 `server/src/test/java/com/oa/backend/architecture/ArchitectureTest.java`
+  - 引入 `archunit-junit5` 依赖到 `server/pom.xml`
+  - 规则（随 `mvn test` 自动运行，任一违规则 BUILD FAILURE）：
+    - Controller 层不得依赖 `*.mapper.*`（`com.fasterxml.jackson.databind.ObjectMapper` 除外）
+    - Controller 层不得依赖 `*.entity.*`（必须经 Service/DTO）
+    - Service 层不得依赖 Controller 层
+    - 禁止包级循环依赖
+  - 验收：`mvn test` 包含并通过 ArchitectureTest；故意注入一个 Mapper 到 Controller 确认测试立即失败
+
+#### OpenAPI 规范生成
+
+- `[ ]` **C+-D-02 后端接入 springdoc-openapi**
+  - `server/pom.xml` 添加 `springdoc-openapi-starter-webmvc-ui`
+  - 启动后访问 `/api/v3/api-docs` 返回完整 OpenAPI JSON
+  - 验收：所有 Controller 的 endpoint 均出现在规范中，供 schemathesis 使用
+
+#### 测试工具框架建立
+
+- `[ ]` **C+-D-03 k6 负载/并发/压力/稳定性/竞态测试框架**
+  - 位置：`tools/k6/`
+  - 脚本：
+    - `normal.js`：50 并发 × 5 分钟，P99 < 500ms，错误率 < 1%
+    - `peak.js`：200 并发 × 5 分钟，P99 < 1s，错误率 < 1%
+    - `stress.js`：400 并发 × 5 分钟（记录降级边界）
+    - `soak.js`：200 并发 × 30 分钟（无内存泄漏、无错误累积）
+    - `race.js`：多用户同时操作同一审批流（确认无数据竞争）
+  - `tools/k6/README.md`：启动说明与各场景通过标准
+  - 验收：各脚本可独立运行，输出结构化报告
+
+- `[ ]` **C+-D-04 OWASP ZAP 安全扫描配置**
+  - 位置：`tools/zap/`
+  - 配置 baseline scan 与 full scan 两种模式（Docker CLI）
+  - 扫描范围：全部 `/api/*` 端点，含认证后接口
+  - `tools/zap/README.md`：运行方式与风险评级说明
+  - 验收：baseline scan 可对本地服务执行，输出 HTML 报告
+
+- `[ ]` **C+-D-05 schemathesis API 模糊测试配置**
+  - 位置：`tools/schemathesis/`
+  - 基于 `/api/v3/api-docs` 自动生成异常入参（边界值、空值、超长字符串、注入字符）
+  - `tools/schemathesis/README.md`：安装（pip）与运行方式
+  - 验收：可对本地服务执行并输出测试结果
+
+- `[ ]` **C+-D-06 OWASP Dependency-Check 后端依赖安全**
+  - `server/pom.xml` 添加 `dependency-check-maven` plugin
+  - 报告输出：`tools/dep-check/`
+  - 验收：`mvn dependency-check:check` 可执行，无 CVSS ≥ 7 的高危漏洞
+
+#### 测试设计文档补全
+
+- `[ ]` **C+-D-07 补全 `test/TEST_DESIGN.md`**
+  - 新增：集成测试幂等性规范（动态数据、afterAll 清理、null-safe 断言）
+  - 新增：k6 各场景通过标准与告警阈值
+  - 新增：ZAP 扫描范围定义与高/中/低风险处理规则
+  - 新增：schemathesis 目标接口列表与豁免说明
+  - 新增：异常字段测试清单（空值、超长、特殊字符、SQL 注入字符、负数金额）
+  - 验收：文档覆盖所有测试维度，可作为上线后重复执行的操作手册
+
+#### 审计规则与验收门规范
+
+- `[ ]` **C+-D-08 Code Reviewer 强制 Checklist 写入 CLAUDE.md（C-QUALITY-03）**
+  - CLAUDE.md QA Engineer 节新增强制 Checklist，每次 review 必须逐项输出结论：
+    1. 架构红线：Controller 层无 Mapper 注入（`grep -rn "private final.*Mapper" controller/` 为空，ObjectMapper 除外）
+    2. 架构红线：Controller 不直接引用 Entity（必须经 DTO/Service）
+    3. 测试幂等：新增集成测试创建类用例使用动态数据或有 afterAll 清理
+    4. 测试断言：无 `typeof x === 'string/number'` 的 null 不安全断言
+    5. 权限完整：每个新增 HTTP endpoint 有 `@PreAuthorize` 注解
+    6. 设计对齐：新增字段/接口可追溯到 DESIGN.md 对应章节，无额外实现
+  - 验收：CLAUDE.md 中 Checklist 全文可见，条目可逐项核查
+
+- `[ ]` **C+-D-09 前端 TypeScript strict 强化（C-QUALITY-04）**
+  - `app/h5/tsconfig.json` 确认 `strict: true`（含 `noImplicitAny`、`strictNullChecks`）
+  - ESLint 规则加 `@typescript-eslint/no-explicit-any: warn`
+  - 修复开启 strict 后的所有编译/lint 错误
+  - 验收：`yarn workspace oa-h5 lint` 零 error
+
+- `[ ]` **C+-D-10 Phase 验收门规则更新（C-QUALITY-05）**
+  - CLAUDE.md 各阶段验收门新增三条强制前置：
+    - `mvn test`（含 ArchUnit）全部通过
+    - `yarn test:integration` 连续三次全部通过
+    - `yarn workspace oa-h5 lint` 零 error
+  - 验收：CLAUDE.md 各阶段验收门包含上述三条
+
+---
+
+### C+-FIX — 遗留问题修复
+
+> 全部修复完成后进入 C+-TEST。
+
+- `[ ]` **C+-F-01 A-AUDIT-REGRESSION-01：InjuryClaimController Mapper 注入迁移**
+  - `InjuryClaimController.java:29` 的 `FormRecordMapper` 注入迁移至 `InjuryClaimService`
+  - Controller 改为调用 Service 方法，移除 Controller 中的 Mapper 依赖
+  - 验收：`grep -rn "FormRecordMapper" controller/` 为空；`mvn test` 全通过（含 ArchUnit）
+
+- `[ ]` **C+-F-02 ops.demo 加入 access.test.ts（合并 B-P3-REGRESSION-01 + C-REGRESSION-03）**
+  - `test/unit/h5/access.test.ts` 的 `defaultTestAccounts` 补充 `ops.demo / 123456`
+  - 补充 ops 角色可访问 `/config`、`/data_export`、`/data_viewer`、`/operation_logs` 的断言
+  - 验收：`yarn workspace oa-h5 test` 全通过
+
+- `[ ]` **C+-F-03 C-REGRESSION-01：集成测试幂等化**
+  - `test/integration/api.test.ts`：TC-B1-04（`period:"2026-05"`）和 PR-01（`period:"2026-07"`）改为动态 period（`2099-xxxx` 格式）
+  - 验收：`yarn test:integration` 连续三次全部通过，无 400 冲突
+
+- `[ ]` **C+-F-04 C-REGRESSION-02：companyName null-safe 断言**
+  - `test/integration/api.test.ts:632` 断言改为 `expect(body.companyName === null || typeof body.companyName === 'string').toBe(true)`
+  - 验收：新账号环境（未配置公司名）下断言通过
+
+- `[ ]` **C+-F-05 DESIGN.md §6 工资模块设计补全**
+  - 补充确认的设计内容：AllowanceDef 条目定义、三级覆盖（GLOBAL→POSITION→EMPLOYEE）、单月临时覆盖层、批量多选（岗位/个人）、唯一性约束、扣款同结构、五险一金两种模式（公司代缴 / 公司补贴）
+  - 验收：DESIGN.md §6 完整描述上述规则，Phase D D-PAY-BIZ 可直接对照执行
+
+---
+
+### C+-TEST — 全维度测试执行（五轮，全通过才能继续）
+
+> 任一轮失败，修复后从该轮重新执行，不跳轮次。
+
+- `[ ]` **C+-T-01 Round 1 — 功能回归**
+  - `mvn test`（含 ArchUnit）全通过
+  - `yarn workspace oa-h5 test` 全通过
+  - `yarn test:integration` 连续三次全通过
+  - `yarn workspace oa-h5 lint` 零 error
+
+- `[ ]` **C+-T-02 Round 2 — E2E 浏览器**
+  - `yarn test:e2e`（Playwright 全场景）全通过
+  - 覆盖关键业务链路：登录/审批/考勤/工资/报销/工伤/施工日志
+
+- `[ ]` **C+-T-03 Round 3 — 安全**
+  - OWASP ZAP baseline scan：无高危（High）漏洞
+  - schemathesis 模糊测试：无 5xx 错误，无异常数据泄露
+  - OWASP Dependency-Check：无 CVSS ≥ 7 漏洞
+  - `npm audit`：无 high/critical 漏洞
+
+- `[ ]` **C+-T-04 Round 4 — 负载/并发**
+  - k6 正常（50并发×5min）：P99 < 500ms，错误率 < 1%
+  - k6 峰值（200并发×5min）：P99 < 1s，错误率 < 1%
+  - k6 压力（400并发×5min）：记录降级边界，无数据损坏
+  - k6 稳定性（200并发×30min）：全程错误率 < 1%，内存无增长趋势
+  - k6 竞态（多用户同时操作同一审批流）：审批结果唯一，无数据竞争
+
+- `[ ]` **C+-T-05 Round 5 — 覆盖率**
+  - 后端：`mvn test jacoco:report`，核心业务逻辑 ≥ 100%，整体 ≥ 80%
+  - 前端：`yarn workspace oa-h5 test --coverage`，整体 ≥ 80%
+
+---
+
+### C+-GATE — 阶段完成确认
+
+- `[ ]` **C+-G-01 Phase A 完成确认**
+  - 对照 TODO.md A-SEC / A-DB / A-CODE / A-CLEAN 各节，逐条确认 `[x]`
+  - curl 抽查：无 token → 401；低权角色访问受限接口 → 403；ArchUnit 规则全通过
+  - 输出 Phase A 验收小结
+
+- `[ ]` **C+-G-02 Phase B 完成确认**
+  - 对照 TODO.md B-P0 / B-P1 / B-P2 / B-P3 / B-FEAT 各节，确认全部 `[?]`（等 Phase E 人工走查）
+  - curl 抽查 B 阶段新增接口：返回预期响应
+  - 输出 Phase B 验收小结
+
+- `[ ]` **C+-G-03 Phase C/C+ 完成确认**
+  - 对照 C-REGRESSION + C-QUALITY + C+-DESIGN + C+-FIX 各节，确认全部 `[x]`
+  - 输出 Phase C/C+ 验收小结
+
+- `[ ]` **C+-G-04 用户确认测试用例设计**
+  - 用户逐节阅读 `test/TEST_DESIGN.md` 并确认
+  - 用户确认 k6 / ZAP / schemathesis 各场景通过标准
+  - **用户明确确认后方可进入 Phase D**
+
+- `[ ]` **C+-G-05 用户确认验收报告**
+  - 汇总五轮测试结果（通过数/总数、各工具结果摘要、覆盖率数字）
+  - 列出所有遗留风险（若有）
+  - **用户签收后 Phase C+ 正式关闭，进入 Phase D**
+
+---
+
 ## Phase D — 设计对齐审计
 
-> **前置条件**：Phase C 全部 `[x]`。
+> **前置条件**：Phase C+ 全部 `[x]`，用户已确认测试用例设计与验收报告。
 > **目标**：以 DESIGN.md 为权威，逐模块确认业务规则 → 审计代码 → 整改差距 → 再次检查；确保实现 1:1 还原设计，不错漏、不新增。
 > **完成标准**：全部 9 模块四步均通过，无遗留整改项。
 

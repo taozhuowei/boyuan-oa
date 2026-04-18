@@ -69,6 +69,16 @@ Phase C (Test Coverage)
 - Code review after test changes → QA Engineer (review role)
 - Phase acceptance gate → QA Engineer runs full suite, outputs Pass/Fail matrix
 
+Phase C+ (Leftover Fixes + Quality System + Full Acceptance)
+- C+-DESIGN: ArchUnit → springdoc-openapi → tools setup (k6/ZAP/schemathesis/dep-check) → TEST_DESIGN.md → CLAUDE.md Checklist → frontend strict → phase gate rules
+  - Backend tasks (C+-D-01/02/06) → Backend Engineer → QA Engineer
+  - Tools setup (C+-D-03/04/05) → QA Engineer
+  - Docs/rules (C+-D-07/08/09/10) → orchestrator
+  - User confirms test case design before proceeding
+- C+-FIX: each fix → Backend/Frontend Engineer → QA Engineer (review)
+- C+-TEST: 5 rounds executed by QA Engineer + orchestrator; all must pass
+- C+-GATE: orchestrator outputs acceptance report; user confirms test design (C+-G-04) and signs off (C+-G-05)
+
 Phase D (Design Alignment Audit)
 - BIZ: orchestrator reads DESIGN.md section, confirms with user, updates DESIGN.md
 - REV: QA Engineer audits code against confirmed design
@@ -189,7 +199,7 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 > **Phase A complete — all 46 tasks `[x]`, validated 2026-04-18.**
 > **Phase B complete — all tasks `[?]`; B-INFRA-01 deferred to Phase F (6 migrations need PostgreSQL syntax conversion).**
 > **Phase C complete — all tests pass, black-box MB-01~MB-10 done.**
-> **Current active phase: Phase D (design alignment audit).**
+> **Current active phase: Phase C+ (leftover fixes + quality system + full acceptance).**
 
 ### 8-Phase Roadmap (see TODO.md for full detail)
 - Phase A — Architecture governance + cleanup (COMPLETE — 2026-04-18)
