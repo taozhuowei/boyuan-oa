@@ -193,7 +193,6 @@ const applyForm = ref({
   injuryTime: undefined as Dayjs | undefined,
   description: '',
   medicalDiagnosis: '',
-  accidentDescription: '',
   remark: '',
   attachmentIds: [] as number[]
 })
@@ -295,7 +294,7 @@ async function doApply() {
 }
 
 function resetApplyForm() {
-  applyForm.value = { proxyEmployeeId: undefined, injuryDate: undefined, injuryTime: undefined, description: '', medicalDiagnosis: '', accidentDescription: '', remark: '', attachmentIds: [] }
+  applyForm.value = { proxyEmployeeId: undefined, injuryDate: undefined, injuryTime: undefined, description: '', medicalDiagnosis: '', remark: '', attachmentIds: [] }
   injuryFileRef.value?.clear()
 }
 

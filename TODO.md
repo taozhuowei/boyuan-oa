@@ -840,6 +840,41 @@
 
 ---
 
+### B-REM — 遗留问题修复（B 阶段发现，须在 B 阶段解决）
+
+#### B-REM-01 injury/index.vue — accidentDescription 死字段清理
+- **目标**：`applyForm` 中声明了 `accidentDescription` 字段，但表单无对应输入控件；实际输入绑定的是 `description`，提交时手动映射为 `accidentDescription`；死字段造成语义混淆
+- **范围**：`app/h5/pages/injury/index.vue`
+- **步骤**
+  1. 删除 `applyForm` 中的 `accidentDescription: ''` 字段
+  2. 删除 `resetApplyForm` 中的同名重置项
+  3. 确认 `doApply` 中 `accidentDescription: applyForm.value.description` 映射保持不变
+- **验收点**：`applyForm` 无 `accidentDescription` 冗余字段；提交 payload 仍正确携带 `accidentDescription` 值
+- **状态**：`[?]`
+
+#### B-REM-02 OvertimeTab.vue — self-report 模式缺少时长显示和附件上传
+- **目标**：self-report 模式与 overtime 模式字段一致（DESIGN.md §7.3 加班字段表），但缺少：加班时长只读展示、附件上传控件
+- **范围**：`app/h5/pages/attendance/tabs/OvertimeTab.vue`
+- **步骤**
+  1. 新增 `self_report_duration` computed（逻辑同 `overtime_duration`，读 `self_report_form` startTime/endTime）
+  2. `SelfReportFormState` 接口新增 `attachmentIds: number[]`
+  3. `makeEmptySelfReportForm` 新增 `attachmentIds: []`
+  4. 新增 `self_report_file_ref` ref 和 `handleSelfReportFilesChange` handler
+  5. self-report 模板：endTime 后插入时长只读行；提交按钮前插入附件上传
+  6. `submitSelfReport` POST body 携带 `attachmentIds`；成功后清空文件 ref
+- **验收点**：self-report 模式显示时长（含时间顺序错误提示）；可上传附件；附件 id 随表单提交
+- **状态**：`[?]`
+
+#### B-REM-03 OvertimeTab.vue — 时间顺序错误时提示措辞不准确
+- **目标**：时长计算返回 `null` 时展示"请先选择开始和结束时间"，但未区分"未选时间"与"时间顺序错误"两种情况
+- **范围**：`app/h5/pages/attendance/tabs/OvertimeTab.vue`
+- **步骤**
+  1. 修改 `overtime_duration`（及新增的 `self_report_duration`）：区分"未选"返回 `null`，"顺序错误"返回 `'结束时间须晚于开始时间'`
+- **验收点**：时间顺序错误时显示"结束时间须晚于开始时间"；未选时间时显示"请先选择开始和结束时间"
+- **状态**：`[?]`（与 B-REM-02 合并实现）
+
+---
+
 ## Phase C — 测试覆盖
 
 > **前置条件**：Phase B 全部 `[x]`（P0/P1 全通过，P2/P3 全通过，所有 FEAT `[x]`）。
