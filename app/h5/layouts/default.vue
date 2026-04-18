@@ -200,6 +200,9 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
   ],
   ops: [
     { key: '/', label: '工作台', path: '/' },
+    { key: '/config', label: '系统配置', path: '/config' },
+    { key: '/data_export', label: '数据导出', path: '/data_export' },
+    { key: '/data_viewer', label: '数据查看', path: '/data_viewer' },
     { key: '/operation_logs', label: '操作日志', path: '/operation_logs' }
   ],
   employee: [

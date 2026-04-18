@@ -24,7 +24,8 @@ KEY (id) VALUES
 (4, 'ceo.demo',          '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '陈明远', '13800000004', 'chenmy@oa.demo',    'ceo',                'OFFICE', 4, 'ACTIVE', '2024-01-01'),
 (5, 'worker.demo',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '赵铁柱', '13800000005', 'zhaotz@oa.demo',    'worker',             'LABOR',  5, 'ACTIVE', '2024-01-01'),
 (6, 'hr.demo',           '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '李思文', '13800000006', 'lsw@oa.demo',       'hr',                 'OFFICE', 1, 'ACTIVE', '2024-01-01'),
-(7, 'dept_manager.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '周伟',   '13800000007', 'zhouw@oa.demo',     'department_manager', 'OFFICE', 1, 'ACTIVE', '2024-01-01');
+(7, 'dept_manager.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '周伟',   '13800000007', 'zhouw@oa.demo',     'department_manager', 'OFFICE', 1, 'ACTIVE', '2024-01-01'),
+(8, 'ops.demo',          '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '刘运维', '13800000008', 'lyw@oa.demo',       'ops',                'OFFICE', 1, 'ACTIVE', '2024-01-01');
 
 -- 直系领导关系
 UPDATE employee SET direct_supervisor_id = 7 WHERE id = 1;
@@ -181,41 +182,12 @@ MERGE INTO after_sale_type_def (code, name, display_order, is_system, is_enabled
 MERGE INTO leave_type_def (code, name, deduction_rate, is_enabled, is_system, display_order, quota_days, deduction_basis) KEY (code) VALUES
 ('ANNUAL',       '年假',   0.00, TRUE, TRUE, 1,  10,  'DAILY_SALARY'),
 ('SICK',         '病假',   0.50, TRUE, TRUE, 2,  30,  'DAILY_SALARY'),
-('PERSONAL',     '事假',   1.00, TRUE, TRUE, 3,  5,   'DAILY_SALARY'),
+('PERSONAL',     '事假',   1.00, TRUE, TRUE, 3,  0,   'DAILY_SALARY'),
 ('MARRIAGE',     '婚假',   0.00, TRUE, TRUE, 4,  3,   'DAILY_SALARY'),
 ('MATERNITY',    '产假',   0.00, TRUE, TRUE, 5,  90,  'DAILY_SALARY'),
 ('COMPENSATORY', '调休假', 0.00, TRUE, FALSE, 6, 3,   'DAILY_WAGE');
 
--- ============================================
--- B-P3-01: 岗位管理种子数据（5条内置岗位）
--- 字段来源：schema.sql position 表定义
--- employee_category: OFFICE（办公室）/ LABOR（劳工）
--- ============================================
-MERGE INTO position (id, position_code, position_name, employee_category, default_role_code,
-                     requires_construction_log, has_performance_bonus)
-KEY (id) VALUES
-(1, 'ENGINEER',     '工程师',   'OFFICE', 'employee',         FALSE, TRUE),
-(2, 'PM',           '项目经理', 'OFFICE', 'project_manager',  FALSE, TRUE),
-(3, 'FINANCE_SUP',  '财务主管', 'OFFICE', 'finance',          FALSE, TRUE),
-(4, 'HR_SPECIALIST','人事专员', 'OFFICE', 'hr',               FALSE, FALSE),
-(5, 'OPS_ENGINEER', '运维工程师','OFFICE','employee',         FALSE, FALSE);
-
--- ============================================
--- B-P3-02: 补贴配置种子数据
--- allowance_def: 补贴项定义（字段来源：V5__payroll_composition.sql）
--- allowance_config: 三级覆盖配置（scope: GLOBAL/POSITION/EMPLOYEE）
--- ============================================
-MERGE INTO allowance_def (id, code, name, description, display_order, is_enabled, is_system)
-KEY (id) VALUES
-(1, 'ATTENDANCE_BONUS', '全勤奖',       '每月全勤（无请假/迟到）额外奖励', 1, TRUE, FALSE),
-(2, 'TECH_ALLOWANCE',   '技术岗位津贴', '适用于技术类岗位的固定月度津贴',   2, TRUE, FALSE);
-
--- 全勤奖：GLOBAL 全员适用，500元/月
--- 技术岗位津贴：POSITION 限定岗位（position_id=1 工程师），200元/月
-MERGE INTO allowance_config (id, allowance_def_id, scope, scope_target_id, amount)
-KEY (id) VALUES
-(1, 1, 'GLOBAL',   NULL, 500.00),
-(2, 2, 'POSITION', 1,    200.00);
+-- 岗位和补贴配置由财务/HR 在运营期自由创建，系统不内置固定数据（DESIGN.md §3.4, §6.4）
 
 -- ============================================
 -- B-P3-03: CEO 考勤记录种子数据

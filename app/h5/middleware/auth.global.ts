@@ -11,7 +11,7 @@
  * Source of truth: DESIGN.md §5.
  */
 const PAGE_ACCESS: Record<string, string[]> = {
-  '/config':           ['ceo'],
+  '/config':           ['ceo', 'ops'],
   '/org':              ['ceo', 'hr'],
   '/role':             ['ceo'],
   '/employees':        ['ceo', 'hr', 'finance', 'project_manager', 'department_manager'],

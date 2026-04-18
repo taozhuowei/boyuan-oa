@@ -42,10 +42,10 @@ public class PositionController {
 
     /**
      * 创建岗位
-     * 权限：CEO only
+     * 权限：CEO、HR
      */
     @PostMapping
-    @PreAuthorize("hasRole('CEO')")
+    @PreAuthorize("hasAnyRole('CEO','HR')")
     @com.oa.backend.annotation.OperationLogRecord(action = "POSITION_CREATE", targetType = "POSITION")
     public ResponseEntity<PositionResponse> createPosition(@RequestBody PositionUpsertRequest request) {
         PositionResponse response = positionService.createPosition(request);
@@ -54,10 +54,10 @@ public class PositionController {
 
     /**
      * 更新岗位
-     * 权限：CEO only
+     * 权限：CEO、HR
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('CEO')")
+    @PreAuthorize("hasAnyRole('CEO','HR')")
     @com.oa.backend.annotation.OperationLogRecord(action = "POSITION_UPDATE", targetType = "POSITION")
     public ResponseEntity<PositionResponse> updatePosition(
             @PathVariable Long id,
@@ -67,10 +67,10 @@ public class PositionController {
 
     /**
      * 删除岗位（软删除）
-     * 权限：CEO only
+     * 权限：CEO、HR
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('CEO')")
+    @PreAuthorize("hasAnyRole('CEO','HR')")
     @com.oa.backend.annotation.OperationLogRecord(action = "POSITION_DELETE", targetType = "POSITION")
     public ResponseEntity<Void> deletePosition(@PathVariable Long id) {
         positionService.deletePosition(id);
@@ -89,10 +89,10 @@ public class PositionController {
 
     /**
      * 创建岗位等级
-     * 权限：CEO only
+     * 权限：CEO、HR
      */
     @PostMapping("/{id}/levels")
-    @PreAuthorize("hasRole('CEO')")
+    @PreAuthorize("hasAnyRole('CEO','HR')")
     public ResponseEntity<PositionLevelResponse> createLevel(
             @PathVariable Long id,
             @RequestBody PositionLevelUpsertRequest request) {
@@ -102,10 +102,10 @@ public class PositionController {
 
     /**
      * 更新岗位等级
-     * 权限：CEO only
+     * 权限：CEO、HR
      */
     @PutMapping("/{id}/levels/{levelId}")
-    @PreAuthorize("hasRole('CEO')")
+    @PreAuthorize("hasAnyRole('CEO','HR')")
     public ResponseEntity<PositionLevelResponse> updateLevel(
             @PathVariable Long id,
             @PathVariable Long levelId,
@@ -115,10 +115,10 @@ public class PositionController {
 
     /**
      * 删除岗位等级（软删除）
-     * 权限：CEO only
+     * 权限：CEO、HR
      */
     @DeleteMapping("/{id}/levels/{levelId}")
-    @PreAuthorize("hasRole('CEO')")
+    @PreAuthorize("hasAnyRole('CEO','HR')")
     public ResponseEntity<Void> deleteLevel(@PathVariable Long id, @PathVariable Long levelId) {
         positionService.deleteLevel(id, levelId);
         return ResponseEntity.noContent().build();

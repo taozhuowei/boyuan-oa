@@ -24,10 +24,10 @@ public class DirectoryImportController {
 
     /**
      * 通讯录导入预览
-     * 权限：仅财务
+     * 权限：仅HR
      */
     @PostMapping("/import-preview")
-    @PreAuthorize("hasRole('FINANCE')")
+    @PreAuthorize("hasRole('HR')")
     public ResponseEntity<DirectoryImportPreviewResponse> importPreview(
             @Valid @RequestBody DirectoryImportPreviewRequest request) {
         int total = request.records().size();
@@ -75,10 +75,10 @@ public class DirectoryImportController {
 
     /**
      * 通讯录导入应用
-     * 权限：仅财务
+     * 权限：仅HR
      */
     @PostMapping("/import-apply")
-    @PreAuthorize("hasRole('FINANCE')")
+    @PreAuthorize("hasRole('HR')")
     public ResponseEntity<String> importApply(@Valid @RequestBody DirectoryImportApplyRequest request) {
         return ResponseEntity.ok("导入成功，共导入 " + request.selectedIndices().size() + " 条记录");
     }

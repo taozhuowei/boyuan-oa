@@ -1210,6 +1210,7 @@
 
 - `[ ]` **F-PREP-01** 清理 `app/mp/src/pages.json`：仅保留 6 个入口（登录、工作台、待办、考勤、项目、忘记密码）
 - `[ ]` **F-PREP-02** 恢复 CI `frontend-mp-test` job（A-OPS-02 中已跳过，Phase F 启动时恢复）
+- `[ ]` **F-PREP-03 短信验证码找回密码**（延期自 Phase B）：后端 PasswordResetController 及短信发送逻辑已实现，前端忘记密码页已存在；Phase F 启动时对接真实短信服务商，补充 E2E 测试。延期原因：小程序上线后才需要通用短信找回，H5 端优先使用初始密码+HR重置流程。
 
 ---
 
