@@ -41,10 +41,23 @@ test.describe('E2E-07 HR 主线', () => {
 
     await page.getByTestId('employee-name-input').fill('E2E测试员工')
     await page.getByTestId('employee-phone-input').fill('13900000001')
-    await page.getByTestId('employee-dept-select').fill('1')
-    await page.getByTestId('employee-save-btn').click()
 
-    await expect(page.getByTestId('employee-create-success')).toBeVisible({ timeout: 10_000 })
+    // antd Select does not accept fill(); click to open dropdown and pick first option
+    await page.getByTestId('employee-dept-select').click()
+    const deptOption = page.locator('.ant-select-item-option').first()
+    await deptOption.waitFor({ state: 'visible', timeout: 10_000 })
+    await deptOption.click()
+
+    // Gender is required — select 男
+    await page.getByTestId('employee-gender-select').click()
+    const maleOption = page.locator('.ant-select-item-option').filter({ hasText: '男' }).first()
+    await maleOption.waitFor({ state: 'visible', timeout: 5_000 })
+    await maleOption.click()
+
+    await page.getByTestId('employee-save-btn').click()
+    // On success, modal closes and list refreshes with the new employee
+    await expect(page.locator('.ant-modal')).not.toBeVisible({ timeout: 15_000 })
+    await expect(page.locator('table')).toContainText('E2E测试员工', { timeout: 5_000 })
 
     await context.close()
   })
@@ -61,8 +74,20 @@ test.describe('E2E-07 HR 主线', () => {
     const firstRow = page.getByTestId('employee-row').first()
     await firstRow.getByTestId('employee-edit-btn').click()
     await page.getByTestId('employee-phone-input').fill('13900000099')
+
+    // Seed employees lack gender — select 男 to pass validation
+    await page.getByTestId('employee-gender-select').click()
+    const maleOption = page.locator('.ant-select-item-option').filter({ hasText: '男' }).first()
+    await maleOption.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {})
+    if (await maleOption.isVisible()) {
+      await maleOption.click()
+    } else {
+      await page.keyboard.press('Escape')
+    }
+
     await page.getByTestId('employee-save-btn').click()
-    await expect(page.getByTestId('employee-save-success')).toBeVisible({ timeout: 10_000 })
+    // On success, modal closes and list refreshes
+    await expect(page.locator('.ant-modal')).not.toBeVisible({ timeout: 15_000 })
 
     await context.close()
   })

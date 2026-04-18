@@ -51,7 +51,7 @@ test.describe('E2E-02 劳工主线', () => {
     // 断言补偿金额字段不存在（DESIGN.md §8.4）
     await forms.expectAmountFieldHidden()
 
-    await forms.fillInjuryForm({ description: '手部割伤，需要处理' })
+    await forms.fillInjuryForm({ description: '手部割伤，需要处理', injuryDate: '2026-06-01', injuryTime: '10:00', medicalDiagnosis: '手部切割伤' })
     await forms.submitInjuryForm()
     await forms.expectSubmitSuccess()
 

@@ -1,7 +1,9 @@
 package com.oa.backend.controller;
 
 import com.oa.backend.dto.InjuryClaimRequest;
+import com.oa.backend.entity.FormRecord;
 import com.oa.backend.entity.InjuryClaim;
+import com.oa.backend.mapper.FormRecordMapper;
 import com.oa.backend.service.InjuryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ import java.util.List;
 public class InjuryClaimController {
 
     private final InjuryService injuryService;
+    private final FormRecordMapper formRecordMapper;
 
     /** 查询所有工伤理赔记录（财务/CEO 可查） */
     @GetMapping
@@ -41,9 +44,15 @@ public class InjuryClaimController {
     public ResponseEntity<InjuryClaim> create(
             @Valid @RequestBody InjuryClaimRequest req,
             Authentication auth) {
+        // Resolve employeeId: use request value if provided, otherwise derive from form record submitter
+        Long employeeId = req.employeeId();
+        if (employeeId == null && req.formRecordId() != null) {
+            FormRecord fr = formRecordMapper.selectById(req.formRecordId());
+            if (fr != null) employeeId = fr.getSubmitterId();
+        }
         InjuryClaim claim = new InjuryClaim();
         claim.setFormId(req.formRecordId());
-        claim.setEmployeeId(req.employeeId());
+        claim.setEmployeeId(employeeId);
         claim.setInjuryDate(req.injuryDate());
         claim.setInjuryDescription(req.injuryDescription());
         claim.setCompensationAmount(req.compensationAmount());

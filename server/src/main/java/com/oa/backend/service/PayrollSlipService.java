@@ -49,6 +49,15 @@ public class PayrollSlipService {
     }
 
     /**
+     * 查询全部工资条（Finance/CEO 无周期过滤，用于更正选单等场景）。
+     *
+     * @return 所有工资条
+     */
+    public List<PayrollSlip> listAll() {
+        return slipMapper.selectList(null);
+    }
+
+    /**
      * 按员工 ID 查询该员工的所有工资条（Employee/Worker 自查）。
      *
      * @param employeeId 员工 ID

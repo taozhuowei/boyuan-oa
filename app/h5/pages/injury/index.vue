@@ -14,6 +14,28 @@
       </a-space>
     </div>
 
+    <!-- 提交成功提示 -->
+    <a-alert
+      v-if="applySuccess"
+      data-catch="form-submit-success"
+      message="工伤申报已提交，等待审批"
+      type="success"
+      show-icon
+      closable
+      style="margin-bottom: 12px;"
+      @close="applySuccess = false"
+    />
+    <a-alert
+      v-if="claimSuccess"
+      data-catch="injury-amount-success"
+      message="理赔金额已录入"
+      type="success"
+      show-icon
+      closable
+      style="margin-bottom: 12px;"
+      @close="claimSuccess = false"
+    />
+
     <!-- 历史记录 -->
     <a-spin :spinning="loading">
       <a-card v-if="records.length === 0 && !loading">
@@ -49,7 +71,7 @@
       :confirm-loading="applying"
       @cancel="resetApplyForm"
       ok-text="提交"
-      :ok-button-props="({ 'data-catch': 'injury-apply-modal-submit' } as any)" <!-- 原因：antd ButtonProps 不含 data-* 属性，必须 as any 以传入 data-catch 测试标识 -->
+      :ok-button-props="({ 'data-catch': 'injury-apply-modal-submit' } as any)"
     >
       <a-form :model="applyForm" layout="vertical">
         <!-- PM 代录：选择受伤员工 -->
@@ -66,11 +88,15 @@
         </a-form-item>
 
         <a-form-item label="受伤日期" required>
-          <a-date-picker v-model:value="applyForm.injuryDate" style="width:100%;" placeholder="请选择日期" data-catch="injury-date" />
+          <div data-catch="injury-date" style="display:block;">
+            <a-date-picker v-model:value="applyForm.injuryDate" style="width:100%;" placeholder="请选择日期" />
+          </div>
         </a-form-item>
 
         <a-form-item label="受伤时间" required>
-          <a-time-picker v-model:value="applyForm.injuryTime" format="HH:mm" style="width:100%;" placeholder="请选择受伤时间" data-catch="injury-time" />
+          <div data-catch="injury-time" style="display:block;">
+            <a-time-picker v-model:value="applyForm.injuryTime" format="HH:mm" style="width:100%;" placeholder="请选择受伤时间" />
+          </div>
         </a-form-item>
 
         <a-form-item label="事故经过" required>
@@ -78,7 +104,7 @@
             v-model:value="applyForm.description"
             :rows="4"
             placeholder="请描述事故发生经过和受伤部位"
-            data-catch="injury-accident"
+            data-catch="injury-description"
           />
         </a-form-item>
 
@@ -113,7 +139,7 @@
       :confirm-loading="claiming"
       @cancel="resetClaimForm"
       ok-text="提交理赔"
-      :ok-button-props="({ 'data-catch': 'injury-amount-submit' } as any)" <!-- 原因：antd ButtonProps 不含 data-* 属性，必须 as any 以传入 data-catch 测试标识 -->
+      :ok-button-props="({ 'data-catch': 'injury-amount-submit' } as any)"
     >
       <a-form :model="claimForm" layout="vertical">
         <a-form-item label="选择已通过的申报单" required>
@@ -153,7 +179,7 @@
  * 劳工申报（不含金额）→ PM 初审 → CEO 终审；PM 可代录（触发 skipCondition）
  * 财务角色可录入理赔（POST /injury-claims）
  */
-import { ref, computed, onMounted, h } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 import { message } from 'ant-design-vue'
@@ -176,6 +202,8 @@ const isPm = computed(() => role.value === 'project_manager')
 const loading = ref(false)
 const applying = ref(false)
 const claiming = ref(false)
+const applySuccess = ref(false)
+const claimSuccess = ref(false)
 
 const records = ref<InjuryRecord[]>([])
 const workerOptions = ref<{ label: string; value: number }[]>([])
@@ -221,12 +249,23 @@ async function loadWorkers() {
 
 async function loadApprovedInjuries() {
   try {
-    const res = await request<{ id: number; formNo: string; formData?: Record<string, unknown>; submitter?: string }[]>(
-      { url: '/logs/records?status=APPROVED', method: 'GET' }
+    const res = await request<{ id: number; formNo: string; status: string; formData?: Record<string, unknown>; submitter?: string }[]>(
+      { url: '/logs/records', method: 'GET' }
     )
     approvedInjuryRecords.value = (res as typeof res)
-      .filter((r: { formNo?: string }) => r.formNo?.startsWith('INJ'))
+      .filter(r => r.formNo?.startsWith('INJ') && r.status === 'APPROVED')
       .map(r => ({ id: r.id, formNo: r.formNo, submitter: r.submitter }))
+    // Auto-select first approved injury and pre-fill injury date for convenience
+    if (approvedInjuryRecords.value.length > 0 && !claimForm.value.formRecordId) {
+      const first = approvedInjuryRecords.value[0]
+      claimForm.value.formRecordId = first.id
+      const matched = (res as typeof res).find(r => r.id === first.id)
+      const injDate = matched?.formData?.injuryDate as string | undefined
+      if (injDate && !claimForm.value.injuryDate) {
+        const { default: dayjs } = await import('dayjs')
+        claimForm.value.injuryDate = dayjs(injDate)
+      }
+    }
   } catch {
     approvedInjuryRecords.value = []
   }
@@ -282,8 +321,8 @@ async function doApply() {
       method: 'POST',
       body: { formData, remark: applyForm.value.remark }
     })
-    message.success('工伤申报已提交，等待审批')
     showApplyModal.value = false
+    applySuccess.value = true
     resetApplyForm()
     await loadRecords()
   } catch {
@@ -317,8 +356,8 @@ async function doCreateClaim() {
         financeNote: claimForm.value.financeNote
       }
     })
-    message.success(h('span', { 'data-catch': 'injury-amount-success' }, '理赔已录入'))
     showClaimModal.value = false
+    claimSuccess.value = true
     resetClaimForm()
   } catch {
     message.error('录入失败')

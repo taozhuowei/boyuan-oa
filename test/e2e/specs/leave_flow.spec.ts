@@ -41,18 +41,19 @@ test.describe('C-E2E-01 请假审批完整流程', () => {
       await first_option.click()
     }
 
-    // Fill start date via antd date-picker input
-    // antd DatePicker renders an <input> inside the component wrapper
-    const start_date_input = page.getByTestId('form-leave-start-date').locator('input')
-    await start_date_input.fill('2026-06-01')
-    await page.keyboard.press('Escape')
+    // antd DatePicker inputs are readonly — must click first then pressSequentially
+    const start_date_input = page.getByTestId('form-leave-start-date').locator('input').first()
+    await start_date_input.click()
+    await start_date_input.pressSequentially('2026-06-01', { delay: 50 })
+    await start_date_input.press('Enter')
 
-    const end_date_input = page.getByTestId('form-leave-end-date').locator('input')
-    await end_date_input.fill('2026-06-02')
-    await page.keyboard.press('Escape')
+    const end_date_input = page.getByTestId('form-leave-end-date').locator('input').first()
+    await end_date_input.click()
+    await end_date_input.pressSequentially('2026-06-02', { delay: 50 })
+    await end_date_input.press('Enter')
 
-    // Fill reason — a-textarea renders as <textarea>
-    await page.locator('textarea').first().fill('E2E测试请假') // 表单中唯一的多行文本输入框
+    // Fill reason via data-catch="form-leave-reason"
+    await page.getByTestId('form-leave-reason').fill('E2E测试请假申请')
 
     // Submit
     await page.getByTestId('leave-form-submit').click()
@@ -123,9 +124,18 @@ test.describe('C-E2E-01 请假审批完整流程', () => {
     // Skip DOM assertion gracefully if form id was not captured
     expect(submittedFormId).not.toBeNull()
 
+    // LEAVE flow has two nodes: dept_manager (node 1) + CEO (node 2).
+    // After test 01-2, status is APPROVING. CEO must approve to reach APPROVED.
+    const { token: ceo_token } = await loginViaApi('ceo')
+    const api_ctx = await request.newContext()
+    const ceo_approve = await api_ctx.post(`${API_URL}/forms/${submittedFormId}/approve`, {
+      headers: { Authorization: `Bearer ${ceo_token}` },
+      data: { comment: '同意' }
+    })
+    expect(ceo_approve.ok()).toBeTruthy()
+
     // API assertion: record status must be APPROVED
     const { token } = await loginViaApi('employee')
-    const api_ctx = await request.newContext()
     const resp = await api_ctx.get(`${API_URL}/attendance/records`, {
       headers: { Authorization: `Bearer ${token}` }
     })

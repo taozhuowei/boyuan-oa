@@ -60,6 +60,12 @@ public class DevController {
             for (String table : BUSINESS_TABLES) {
                 jdbcTemplate.execute("TRUNCATE TABLE " + table);
             }
+            // Remove setup-wizard-created accounts (CEO001/HR001/OPS001/GM001) and
+            // any test-created employees (auto-increment starts at 100, seeds are 1–7)
+            jdbcTemplate.execute(
+                "DELETE FROM employee WHERE employee_no IN ('CEO001','HR001','OPS001','GM001') OR id >= 100");
+            // Restore seed employee statuses — E2E-06 disables an employee; reset must undo that
+            jdbcTemplate.execute("UPDATE employee SET account_status = 'ACTIVE' WHERE id <= 7");
         } finally {
             jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
         }
@@ -99,6 +105,8 @@ public class DevController {
         "temporary_delegation",
         "after_sale_ticket",
         "project_material_cost",
+        "expense_claim",
+        "expense_item",
         "emergency_contact"
     };
 

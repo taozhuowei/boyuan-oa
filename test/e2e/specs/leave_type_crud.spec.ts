@@ -16,8 +16,11 @@ import { API_URL } from '../playwright.config'
 // Shared across tests — populated in 09-1, guarded in 09-2 and 09-3
 let leave_type_id = -1
 
-const TEST_CODE = 'COMPENSATORY_E2E'
-const TEST_NAME = '调休假E2E'
+// Use a timestamp-based suffix to avoid conflicts with soft-deleted records from previous runs
+// (MyBatis-Plus soft delete keeps the row; UNIQUE constraint on `code` fires on re-insert)
+const RUN_ID = Date.now().toString().slice(-6)
+const TEST_CODE = `COMP_E2E_${RUN_ID}`
+const TEST_NAME = `调休假E2E_${RUN_ID}`
 
 test.describe('C-E2E-09 假期类型 CRUD', () => {
   // ── Test 1: HR 创建自定义假期类型，GET 列表可见 ────────────────────────────
@@ -136,8 +139,10 @@ test.describe('C-E2E-09 假期类型 CRUD', () => {
       })
       expect([204, 404]).toContain(delete_resp.status())
 
-      // Verify the type is no longer present in the public enabled list
-      const list_resp = await api_ctx.get(`${API_URL}/config/leave-types`)
+      // Verify the type is no longer present in the list
+      const list_resp = await api_ctx.get(`${API_URL}/config/leave-types`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
       expect(list_resp.ok()).toBeTruthy()
       const enabled_types = await list_resp.json() as Array<{ id: number; code: string }>
       const still_present = enabled_types.find(t => t.code === TEST_CODE)

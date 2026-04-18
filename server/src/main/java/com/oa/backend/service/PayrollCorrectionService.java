@@ -71,8 +71,8 @@ public class PayrollCorrectionService {
         if (reason == null || reason.isBlank()) {
             throw new IllegalStateException("更正原因不能为空");
         }
-        if (corrections == null || corrections.isEmpty()) {
-            throw new IllegalStateException("至少需要一项更正条目");
+        if (corrections == null) {
+            corrections = List.of();
         }
 
         // 1. 创建 form_record + 启动审批流

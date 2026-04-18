@@ -10,7 +10,7 @@ import java.time.LocalDate;
  */
 public record InjuryClaimRequest(
         @NotNull Long formRecordId,
-        @NotNull Long employeeId,
+        Long employeeId,
         @NotNull LocalDate injuryDate,
         String injuryDescription,
         @NotNull BigDecimal compensationAmount,

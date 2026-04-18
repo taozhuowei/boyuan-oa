@@ -37,16 +37,18 @@ test.describe('C-E2E-04 申请驳回后重新提交', () => {
       await first_option.click()
     }
 
-    // Fill dates — antd DatePicker wraps the native input
-    const start_input = page.getByTestId('form-leave-start-date').locator('input')
-    await start_input.fill('2026-07-01')
-    await page.keyboard.press('Escape')
+    // antd DatePicker inputs are readonly — must click first then pressSequentially
+    const start_input = page.getByTestId('form-leave-start-date').locator('input').first()
+    await start_input.click()
+    await start_input.pressSequentially('2026-07-01', { delay: 50 })
+    await start_input.press('Enter')
 
-    const end_input = page.getByTestId('form-leave-end-date').locator('input')
-    await end_input.fill('2026-07-02')
-    await page.keyboard.press('Escape')
+    const end_input = page.getByTestId('form-leave-end-date').locator('input').first()
+    await end_input.click()
+    await end_input.pressSequentially('2026-07-02', { delay: 50 })
+    await end_input.press('Enter')
 
-    await page.locator('textarea').first().fill('驳回测试') // 表单中唯一的多行文本输入框
+    await page.getByTestId('form-leave-reason').fill('驳回测试')
 
     await page.getByTestId('leave-form-submit').click()
 
@@ -204,19 +206,32 @@ test.describe('C-E2E-04 申请驳回后重新提交', () => {
       }
     }
 
-    // After 重新发起, the form should be pre-filled on the leave tab — update dates
-    const start_input = page.getByTestId('form-leave-start-date').locator('input')
+    // After 重新发起, the form should be pre-filled on the leave tab — update all fields
+    const start_input = page.getByTestId('form-leave-start-date').locator('input').first()
     await start_input.waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {})
     if (await start_input.isVisible()) {
-      // Clear and re-fill with new dates (selectAll + fill replaces existing value)
-      await start_input.click({ clickCount: 3 })
-      await start_input.fill('2026-07-08')
-      await page.keyboard.press('Escape')
+      // Ensure leaveType is selected (prefill may lag behind options loading)
+      const leave_type_select = page.getByTestId('form-leave-type')
+      const is_empty = await leave_type_select.locator('.ant-select-selection-placeholder').isVisible().catch(() => false)
+      if (is_empty) {
+        await leave_type_select.click()
+        const first_option = page.locator('.ant-select-item-option').first()
+        await first_option.waitFor({ state: 'visible', timeout: 5_000 }).catch(() => {})
+        if (await first_option.isVisible()) await first_option.click()
+      }
 
-      const end_input = page.getByTestId('form-leave-end-date').locator('input')
-      await end_input.click({ clickCount: 3 })
-      await end_input.fill('2026-07-09')
-      await page.keyboard.press('Escape')
+      // antd DatePicker inputs are readonly — click to open then pressSequentially
+      await start_input.click()
+      await start_input.pressSequentially('2026-07-08', { delay: 50 })
+      await start_input.press('Enter')
+
+      const end_input = page.getByTestId('form-leave-end-date').locator('input').first()
+      await end_input.click()
+      await end_input.pressSequentially('2026-07-09', { delay: 50 })
+      await end_input.press('Enter')
+
+      // Fill reason (required field)
+      await page.getByTestId('form-leave-reason').fill('重新发起测试')
 
       // Submit the resubmitted form
       await page.getByTestId('leave-form-submit').click()
@@ -237,15 +252,17 @@ test.describe('C-E2E-04 申请驳回后重新提交', () => {
         await first_option.click()
       }
 
-      const start = page.getByTestId('form-leave-start-date').locator('input')
-      await start.fill('2026-07-08')
-      await page.keyboard.press('Escape')
+      const start = page.getByTestId('form-leave-start-date').locator('input').first()
+      await start.click()
+      await start.pressSequentially('2026-07-08', { delay: 50 })
+      await start.press('Enter')
 
-      const end = page.getByTestId('form-leave-end-date').locator('input')
-      await end.fill('2026-07-09')
-      await page.keyboard.press('Escape')
+      const end = page.getByTestId('form-leave-end-date').locator('input').first()
+      await end.click()
+      await end.pressSequentially('2026-07-09', { delay: 50 })
+      await end.press('Enter')
 
-      await page.locator('textarea').first().fill('重新发起测试') // 表单中唯一的多行文本输入框
+      await page.getByTestId('form-leave-reason').fill('重新发起测试')
       await page.getByTestId('leave-form-submit').click()
 
       await expect(

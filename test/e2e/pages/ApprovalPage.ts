@@ -25,9 +25,11 @@ export class ApprovalPage {
     return items.count()
   }
 
-  /** 点击第一条待办进入审批详情 */
+  /** 点击第一条待办进入审批详情（点击"查看审批"按钮打开模态框） */
   async openFirst(): Promise<void> {
-    await this.firstItem().click()
+    await this.page.locator('[data-catch^="todo-row-detail-btn"]').first().click()
+    // Wait for the approval modal to be fully visible
+    await this.page.getByTestId('approval-approve-btn').waitFor({ state: 'visible', timeout: 10_000 })
   }
 
   /** 填写审批意见 */

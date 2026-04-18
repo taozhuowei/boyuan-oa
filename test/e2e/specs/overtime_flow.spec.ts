@@ -44,23 +44,30 @@ test.describe('C-E2E-03 加班申报审批流程', () => {
     const time_pickers = page.locator('.ant-picker')
     await time_pickers.first().waitFor({ state: 'visible', timeout: 15_000 })
 
-    // 填写加班日期（DatePicker）
+    // antd picker inputs are readonly — click to open then pressSequentially
     const date_picker_input = page.locator('.ant-picker-input input').first()
-    await date_picker_input.fill('2026-06-01')
-    await date_picker_input.press('Escape')
+    await date_picker_input.click()
+    await date_picker_input.pressSequentially('2026-06-01', { delay: 50 })
+    await date_picker_input.press('Enter')
 
     // 填写开始时间 09:00（time-picker）
     const time_inputs = page.locator('.ant-picker-input input')
     // attendance/index.vue 中 overtime tab 渲染三个 picker：date、startTime、endTime
     // 取第 2 个（index 1）为 startTime picker input
     const start_time_input = time_inputs.nth(1)
-    await start_time_input.fill('09:00')
-    await start_time_input.press('Escape')
+    await start_time_input.click()
+    await start_time_input.pressSequentially('09:00', { delay: 50 })
+    await start_time_input.press('Enter')
+    const ok_btn_1 = page.locator('.ant-picker-ok button')
+    if (await ok_btn_1.isVisible({ timeout: 500 }).catch(() => false)) await ok_btn_1.click().catch(() => {})
 
     // 填写结束时间 13:00（index 2）
     const end_time_input = time_inputs.nth(2)
-    await end_time_input.fill('13:00')
-    await end_time_input.press('Escape')
+    await end_time_input.click()
+    await end_time_input.pressSequentially('13:00', { delay: 50 })
+    await end_time_input.press('Enter')
+    const ok_btn_2 = page.locator('.ant-picker-ok button')
+    if (await ok_btn_2.isVisible({ timeout: 500 }).catch(() => false)) await ok_btn_2.click().catch(() => {})
 
     // 时长显示：OvertimeTab 通过 computed overtime_duration 渲染 <span>
     // 内容格式为 "4 小时" 或 "X 小时 Y 分钟"

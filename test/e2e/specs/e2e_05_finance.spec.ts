@@ -5,12 +5,49 @@
  * 前置：薪资周期窗口期开放；员工数据完整。
  * 注意：步骤 6（重新结算）依赖 E2E-06 步骤 8（CEO 审批解锁），需跨 spec 协调。
  */
-import { test, expect } from '@playwright/test'
-import { loginAs } from '../fixtures/auth'
+import { test, expect, request as pwRequest } from '@playwright/test'
+import { loginAs, loginViaApi } from '../fixtures/auth'
 import { resetData } from '../fixtures/reset'
+import { API_URL } from '../playwright.config'
 
 test.beforeAll(async () => {
   await resetData()
+
+  const { token: finance_token } = await loginViaApi('finance')
+  const { token: pm_token } = await loginViaApi('pm')
+  const { token: ceo_token } = await loginViaApi('ceo')
+  const ctx = await pwRequest.newContext()
+
+  // Create a payroll cycle for settlement tests
+  await ctx.post(`${API_URL}/payroll/cycles`, {
+    headers: { Authorization: `Bearer ${finance_token}` },
+    data: { period: '2026-04' }
+  })
+
+  // Create an approved injury record for 05-4 (finance injury claim amount test).
+  // PM submits → node 1 (PM Review) auto-SKIPPED → CEO approves → APPROVED.
+  const injury_resp = await ctx.post(`${API_URL}/logs/injury`, {
+    headers: { Authorization: `Bearer ${pm_token}` },
+    data: {
+      formData: {
+        injuryDate: '2026-04-01',
+        injuryTime: '10:00',
+        accidentDescription: 'E2E 05-4 test injury',
+        medicalDiagnosis: 'Minor test injury',
+        attachmentIds: []
+      },
+      remark: 'E2E 05-4 injury setup'
+    }
+  })
+  const injury_body = await injury_resp.json() as { id: number }
+  if (injury_body.id) {
+    await ctx.post(`${API_URL}/forms/${injury_body.id}/approve`, {
+      headers: { Authorization: `Bearer ${ceo_token}` },
+      data: { comment: 'Auto-approved for E2E test' }
+    })
+  }
+
+  await ctx.dispose()
 })
 
 test.describe('E2E-05 财务主线', () => {
@@ -37,20 +74,21 @@ test.describe('E2E-05 财务主线', () => {
     await page.goto('/payroll')
     await page.waitForLoadState('networkidle')
 
-    // 切换到"结算操作"Tab
-    await page.getByRole('tab', { name: '结算操作' }).click()
+    // Click "结算" button on the cycle row to pre-select the cycle and switch to settle tab
+    const cycle_row = page.locator('tr').filter({ hasText: '2026-04' })
+    await cycle_row.getByRole('button', { name: '结算' }).click()
+    await page.waitForTimeout(500)
 
-    // 先执行预结算检查
+    // Precheck button should now be enabled (cycle pre-selected via preselectedCycleId)
     await page.getByTestId('payroll-settle-precheck-btn').click()
-    // 等待检查通过（最多 10s）
+    // Wait for precheck to complete
     await page.waitForTimeout(3_000)
 
     // 正式结算
     await page.getByTestId('payroll-settle-run-btn').click()
     await page.waitForLoadState('networkidle', { timeout: 30_000 })
 
-    // 返回"周期管理"Tab 确认状态已变 SETTLED
-    await page.getByRole('tab', { name: '周期管理' }).click()
+    // Settled — auto-returns to cycles tab; verify status shows
     await expect(page.getByTestId('payroll-cycle-status')).toBeVisible({ timeout: 10_000 })
 
     await context.close()
@@ -65,9 +103,12 @@ test.describe('E2E-05 财务主线', () => {
     await page.goto('/injury')
     await page.waitForLoadState('networkidle')
 
-    // 找到已归档工伤记录，录入金额
-    const firstArchived = page.getByTestId('injury-row-archived').first()
-    await firstArchived.getByTestId('injury-fill-amount-btn').click()
+    // Use the global "录入理赔" button (opens claim modal with approved injury list)
+    const fill_btn = page.getByTestId('injury-fill-amount-btn').first()
+    await fill_btn.waitFor({ state: 'visible', timeout: 10_000 })
+    await fill_btn.click()
+
+    // Fill amount and submit
     await page.getByTestId('injury-amount-input').fill('5000')
     await page.getByTestId('injury-amount-submit').click()
     await expect(page.getByTestId('injury-amount-success')).toBeVisible({ timeout: 10_000 })
@@ -82,9 +123,16 @@ test.describe('E2E-05 财务主线', () => {
 
     const page = await context.newPage()
     await page.goto('/payroll')
+    await page.waitForLoadState('networkidle')
+
     // 切换到"更正记录"Tab，点击"发起更正"
     await page.getByRole('tab', { name: '更正记录' }).click()
+    await page.waitForLoadState('networkidle')
+
     await page.getByTestId('payroll-correction-open-btn').click()
+    // loadSlipsForCorrection auto-selects first slip if slips exist
+    await page.waitForTimeout(1_000)
+
     await page.getByTestId('correction-reason-input').fill('数据录入错误，需更正基本工资')
     await page.getByTestId('correction-submit-btn').click()
     await expect(page.getByTestId('correction-pending-badge')).toBeVisible({ timeout: 10_000 })

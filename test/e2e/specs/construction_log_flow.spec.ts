@@ -118,7 +118,7 @@ test.describe('C-E2E-05 施工日志提交和 PM 审批', () => {
     await loginAs(context, 'worker')
 
     const page = await context.newPage()
-    await page.goto('/construction-log')
+    await page.goto('/construction_log')
     await page.waitForLoadState('networkidle')
 
     // 验证创建按钮可见（data-catch="construction-log-create-btn"）

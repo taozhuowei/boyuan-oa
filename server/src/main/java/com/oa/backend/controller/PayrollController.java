@@ -156,7 +156,7 @@ public class PayrollController {
 
         if (SecurityUtils.hasFinanceAccess(authentication)) {
             if (cycleId == null) {
-                return ResponseEntity.badRequest().body(Map.of("message", "Finance/CEO 查询工资条时 cycleId 为必填"));
+                return ResponseEntity.ok(payrollSlipService.listAll());
             }
             return ResponseEntity.ok(payrollSlipService.listByCycleId(cycleId));
         }

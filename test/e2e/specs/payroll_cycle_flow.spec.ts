@@ -177,8 +177,9 @@ test.describe('C-E2E-06 薪资周期完整流程', () => {
     await page.waitForLoadState('networkidle')
 
     // 页面不应出现全局错误（Nuxt error boundary）
-    await expect(page.locator('body')).not.toContainText('500')
+    // Note: check for '服务器内部错误' text, not bare '500' which matches salary amounts like ¥500.00
     await expect(page.locator('body')).not.toContainText('服务器内部错误')
+    await expect(page.locator('body')).not.toContainText('NuxtError')
 
     await context.close()
   })

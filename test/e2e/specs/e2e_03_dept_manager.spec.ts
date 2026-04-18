@@ -5,15 +5,32 @@
  * 前置：employee 已提交请假申请（PENDING）。
  * 本套件在 E2E-01 之后运行以复用已提交的请假单。
  */
-import { test, expect } from '@playwright/test'
-import { loginAs } from '../fixtures/auth'
+import { test, expect, request as pwRequest } from '@playwright/test'
+import { loginAs, loginViaApi } from '../fixtures/auth'
 import { resetData } from '../fixtures/reset'
 import { ApprovalPage } from '../pages/ApprovalPage'
+import { API_URL } from '../playwright.config'
 
 test.beforeAll(async () => {
   await resetData()
-  // TODO: 通过 employee 账号 API 预先提交一张请假单（PENDING）
-  // 待 E2E fixtures 支持跨角色数据预置后实现
+  // Create a PENDING leave record so dept_manager has items to approve
+  const { token } = await loginViaApi('employee')
+  const ctx = await pwRequest.newContext()
+  await ctx.post(`${API_URL}/attendance/leave`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: {
+      formType: 'LEAVE',
+      formData: {
+        leaveType: '年假',
+        startDate: '2026-06-01',
+        endDate: '2026-06-03',
+        days: 3,
+        reason: 'E2E 测试请假'
+      },
+      remark: 'E2E 测试请假'
+    }
+  })
+  await ctx.dispose()
 })
 
 test.describe('E2E-03 部门经理主线', () => {
