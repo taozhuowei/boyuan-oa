@@ -421,7 +421,8 @@
   3. curl 测试：HR token 访问两个接口均返回 200
 - **验收点**：HR token 访问员工列表 200；员工创建弹框部门/岗位下拉有数据
 - **验收流程**：`curl -H "Authorization: Bearer {hr-token}" /api/employees` → 200
-- **状态**：`[>]`
+- **附注**：同步追加了 `DEPARTMENT_MANAGER`，与 auth.global.ts `/employees` 路由守卫对齐。PositionController GET 端点暂未追加 `DEPARTMENT_MANAGER`（设计意图待确认，见 B-FEAT-04）
+- **状态**：`[?]`
 
 #### B-P0-02 PM 角色无法读取团队成员数据
 - **目标**：PM 访问 `/team` 报 403，无法查看项目成员
@@ -431,7 +432,7 @@
   2. curl 测试：PM token 访问 `GET /team` 返回 200
 - **验收点**：PM token 访问团队接口 200
 - **验收流程**：curl 验证
-- **状态**：`[>]`
+- **状态**：`[?]`
 
 #### B-P0-03 报销类型接口 500，报销申请全程阻断
 - **目标**：`expense_type_def` 表无数据导致 500，报销功能完全不可用
@@ -443,7 +444,8 @@
   4. 重启后端，curl 测试 `GET /expense/types` 返回非空数组
 - **验收点**：`GET /api/expense/types` 返回 200 且数组非空
 - **验收流程**：curl 确认
-- **状态**：`[>]`
+- **附注**：同步将 `expense_type_def` 的 CREATE TABLE 补入 `schema.sql`，确保 H2 dev 启动时表存在
+- **状态**：`[?]`
 
 ---
 
@@ -772,7 +774,8 @@
 - **步骤**
   1. 确认 finance 菜单含：薪资管理、岗位薪资配置、社保配置、项目成本、营收管理、报销审批
   2. 若部分为 `/payroll` 子 Tab，添加锚点路径入口
-- **验收点**：finance 账号侧边栏可进入岗位薪资配置并修改等级薪资
+  3. **注意（B-P0 审计发现）**：`default.vue` finance 菜单包含 `/positions`，但 `auth.global.ts` 第 18 行 `/positions: ['ceo', 'hr']` 不包含 `finance`，导致 finance 侧边栏有死链入口。本任务实施时须同步修复：要么将 `/positions` 路由守卫追加 `finance`（推荐），要么从 finance 菜单移除该入口
+- **验收点**：finance 账号侧边栏可进入岗位薪资配置并修改等级薪资；`/positions` 入口无死链
 - **验收流程**：finance.demo 操作浏览器验收
 - **状态**：`[>]`（代码层已有，待功能验证）
 
