@@ -42,7 +42,7 @@ Output for review: PASS or NEEDS WORK with specific findings
 ### Infrastructure Agents (spawn via Agent tool)
 
 **DevOps Engineer** — `subagent_type: "DevOps Engineer"`
-When: Phase F — GitHub Actions CI/CD pipeline setup, Docker, deployment scripts
+When: Phase C+-INFRA (husky hooks, GitHub Actions quality workflows) + Phase F (production deploy pipeline, Docker)
 
 **Ops Engineer** — `subagent_type: "Ops Engineer"`
 When: Phase H — production monitoring, alerting, incident response, capacity planning
@@ -194,24 +194,23 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 - Open DESIGN.md, find the section for this feature
 - Count every field listed → verify each exists as a form input or display element in the Vue component
 
-## PROJECT STATE (2026-04-18)
+## PROJECT STATE (2026-04-19)
 
 > **Task state single source of truth: `TODO.md`**
 > Do NOT trust any "what is done" list in this or any other file.
-> Last manual test: 2026-04-17 — 25 bugs found (recorded in TODO.md Phase B).
-> TODO.md was fully rewritten 2026-04-17 into a 7-phase roadmap (A→G), expanded to 8 phases (A→H) on 2026-04-18.
 > **Phase A complete — all 46 tasks `[x]`, validated 2026-04-18.**
-> **Phase B complete — all tasks `[?]`; B-INFRA-01 deferred to Phase F (6 migrations need PostgreSQL syntax conversion).**
+> **Phase B complete — all tasks `[?]`; B-INFRA-01 deferred to Phase F.**
 > **Phase C complete — all tests pass, black-box MB-01~MB-10 done.**
-> **Current active phase: Phase C+ (leftover fixes + quality system + full acceptance).**
+> **Current active phase: Phase C+ (CI/CD infra + leftover fixes + quality system + full acceptance).**
 
-### 8-Phase Roadmap (see TODO.md for full detail)
-- Phase A — Architecture governance + cleanup (COMPLETE — 2026-04-18)
-- Phase B — Feature completeness + bug fixes (COMPLETE — 2026-04-18, all `[?]`, pending Phase E browser)
+### 9-Phase Roadmap (see TODO.md for full detail)
+- Phase A — Architecture governance + cleanup (COMPLETE)
+- Phase B — Feature completeness + bug fixes (COMPLETE, all `[?]`, pending Phase E browser)
 - Phase C — Full test coverage + Claude black-box self-test (COMPLETE)
-- Phase D — Design alignment audit: module-by-module BIZ confirm → REV → FIX → CHK (CURRENT)
+- Phase C+ — CI/CD infra + quality toolchain + leftover fixes + full acceptance (CURRENT)
+- Phase D — Design alignment audit: module-by-module BIZ confirm → REV → FIX → CHK
 - Phase E — Human browser acceptance
-- Phase F — Production deploy + ALL engineering standards (git/PR/branch/SemVer/CHANGELOG/RUNBOOK)
+- Phase F — Production deploy pipeline + engineering standards (CHANGELOG/RUNBOOK/SemVer)
 - Phase G — WeChat mini-program
 - Phase H — Operational maintenance
 
@@ -221,7 +220,7 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 - B-INFRA-01 deferred: V2–V9 migrations use PostgreSQL-only syntax (ON CONFLICT, setval); cannot run in H2 dev. CI job validates prod migrations. Will be resolved in Phase F.
 - Page dir rename complete (A-CLEAN-02 `[x]`): construction_log, data_export, data_viewer, leave_types, operation_logs.
   All route keys in auth.global.ts and ROLE_MENUS use snake_case paths.
-- Controller layer Mapper injections removed (A-AUDIT-DEBT-07 `[x]`): all 32 controllers cleaned.
+- Controller layer Mapper injections removed (A-AUDIT-DEBT-07 `[x]`): 31/32 controllers cleaned. InjuryClaimController still has FormRecordMapper injection — tracked as A-AUDIT-REGRESSION-01 in C+-FIX.
 - Large Vue files split (A-AUDIT-FOLLOWUP `[x]`): projects/[id].vue, payroll/index.vue, attendance/index.vue, config/index.vue.
 - auth.global.ts PAGE_ACCESS routes complete (A-SEC-03 `[x]`).
 - WorkbenchService quick-action paths use `/forms?type=leave` and `/forms?type=overtime`.
@@ -243,7 +242,7 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 - DB migration: `server/src/main/resources/db/migration/` (V1__init_schema.sql, V2__init_data.sql)
 - Dev seed data: `server/src/main/resources/db/data.sql` (H2 only); `local/seed-data.sql` (gitignored)
 - company_name: stored in `system_config` table; key = `"company_name"`
-- Test users: `ceo.demo/123456`, `hr.demo/123456`, `finance.demo/123456`, `pm.demo/123456`, `employee.demo/123456`, `worker.demo/123456`, `dept_manager.demo/123456`
+- Test users: `ceo.demo/123456`, `hr.demo/123456`, `finance.demo/123456`, `pm.demo/123456`, `employee.demo/123456`, `worker.demo/123456`, `dept_manager.demo/123456`, `ops.demo/123456`
 
 ---
 

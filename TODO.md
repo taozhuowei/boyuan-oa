@@ -1566,7 +1566,6 @@
 
 > **前置条件**：Phase E 全部 `[x]`。
 > **目标**：首版上线 + 建立全套工程规范。规范从这里起建立，后续所有维护遵循这套规范。
-> **注**：CI/CD 基础流水线（fast-check / full-test / nightly 三个 workflow）已在 C+-INFRA 建立并运行。Phase F 的 CI/CD 任务聚焦于生产部署流水线（build → Docker image → 推送生产环境），而非重建已有的质量门禁。
 
 ---
 
