@@ -171,6 +171,14 @@
                     <consoleOutputReporter>
                         <disable>false</disable>
                     </consoleOutputReporter>
+                    <!-- Include all test classes including numbered variants (e.g. CoverageBoostTest2, CoverageBoostTest16) -->
+                    <includes>
+                        <include>**/*Test.java</include>
+                        <include>**/*Test?.java</include>
+                        <include>**/*Test??.java</include>
+                        <include>**/*Tests.java</include>
+                        <include>**/*TestCase.java</include>
+                    </includes>
                 </configuration>
             </plugin>
 
