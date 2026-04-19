@@ -22,10 +22,7 @@
         <!-- 财务：录入理赔按钮 -->
         <a-button
           v-if="isFinance"
-          @click="
-            showClaimModal = true
-            loadApprovedInjuries()
-          "
+          @click="showClaimModal = true; loadApprovedInjuries()"
           data-catch="injury-fill-amount-btn"
         >
           录入理赔
@@ -73,10 +70,7 @@
                 v-if="isFinance && item.status === 'APPROVED'"
                 size="small"
                 type="link"
-                @click="
-                  showClaimModal = true
-                  loadApprovedInjuries()
-                "
+                @click="showClaimModal = true; loadApprovedInjuries()"
                 data-catch="injury-fill-amount-btn"
               >
                 录入金额

@@ -8,7 +8,10 @@
     <!-- 财务 / CEO 视图 -->
     <template v-if="isFinanceOrCeo">
       <a-card>
-        <a-tabs v-model:activeKey="activeTab" @change="(key: string | number) => onTabChange(String(key))">
+        <a-tabs
+          v-model:activeKey="activeTab"
+          @change="(key: string | number) => onTabChange(String(key))"
+        >
           <a-tab-pane key="cycles" tab="周期管理" />
           <a-tab-pane key="settle" tab="结算操作" />
           <a-tab-pane key="slips" tab="工资条查看" />
@@ -55,15 +58,17 @@
 
         <!-- 薪资更正记录 -->
         <template v-if="activeTab === 'corrections'">
-          <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+          <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center">
             <a-button :loading="loadingCorrections" @click="loadCorrections">刷新</a-button>
             <a-button
               v-if="isFinance"
               type="primary"
               data-catch="payroll-correction-open-btn"
               @click="showCorrectionModal = true; loadSlipsForCorrection()"
-            >发起更正</a-button>
-            <span style="color: #999; font-size: 12px;">列表会自动应用 CEO 已审批通过的更正</span>
+            >
+              发起更正
+            </a-button>
+            <span style="color: #999; font-size: 12px">列表会自动应用 CEO 已审批通过的更正</span>
           </div>
           <a-table
             :columns="correctionColumns"
@@ -74,10 +79,17 @@
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
-                <a-tag data-catch="correction-pending-badge" :color="bonusStatusColor(record.status)">{{ bonusStatusLabel(record.status) }}</a-tag>
+                <a-tag
+                  data-catch="correction-pending-badge"
+                  :color="bonusStatusColor(record.status)"
+                >
+                  {{ bonusStatusLabel(record.status) }}
+                </a-tag>
               </template>
               <template v-if="column.key === 'applied'">
-                <a-tag :color="record.applied ? 'green' : 'default'">{{ record.applied ? '已应用' : '未应用' }}</a-tag>
+                <a-tag :color="record.applied ? 'green' : 'default'">
+                  {{ record.applied ? '已应用' : '未应用' }}
+                </a-tag>
               </template>
               <template v-if="column.key === 'createdAt'">
                 {{ formatTime(record.createdAt) }}
@@ -91,8 +103,8 @@
     <!-- 员工 / 劳工视图 -->
     <template v-else>
       <a-card>
-        <div style="margin-bottom: 12px;">
-          <span style="margin-right: 8px; font-weight: 500;">工资条</span>
+        <div style="margin-bottom: 12px">
+          <span style="margin-right: 8px; font-weight: 500">工资条</span>
           <a-button size="small" :loading="loadingSlips" @click="loadMySlips">刷新</a-button>
         </div>
 
@@ -103,17 +115,15 @@
           :locale="{ emptyText: '暂无工资条' }"
         >
           <template #renderItem="{ item }">
-            <a-list-item style="cursor: pointer;" @click="openSlipDetail(item)">
+            <a-list-item style="cursor: pointer" @click="openSlipDetail(item)">
               <a-list-item-meta>
                 <template #title>
                   <span>{{ item.period ?? '工资条' }}</span>
-                  <a-tag :color="slipStatusColor(item.status)" style="margin-left: 8px;">
+                  <a-tag :color="slipStatusColor(item.status)" style="margin-left: 8px">
                     {{ slipStatusLabel(item.status) }}
                   </a-tag>
                 </template>
-                <template #description>
-                  实发 ¥{{ formatAmount(item.netPay) }}
-                </template>
+                <template #description>实发 ¥{{ formatAmount(item.netPay) }}</template>
               </a-list-item-meta>
               <template #extra>
                 <a-button type="link" size="small">查看详情</a-button>
@@ -143,14 +153,30 @@
       @cancel="showCorrectionModal = false; correctionForm = { slipId: undefined, reason: '' }"
     >
       <template #footer>
-        <a-button @click="showCorrectionModal = false; correctionForm = { slipId: undefined, reason: '' }">取消</a-button>
-        <a-button type="primary" data-catch="correction-submit-btn" :loading="submittingCorrection" @click="submitCorrection">提交更正</a-button>
+        <a-button
+          @click="showCorrectionModal = false; correctionForm = { slipId: undefined, reason: '' }"
+        >
+          取消
+        </a-button>
+        <a-button
+          type="primary"
+          data-catch="correction-submit-btn"
+          :loading="submittingCorrection"
+          @click="submitCorrection"
+        >
+          提交更正
+        </a-button>
       </template>
       <a-form layout="vertical">
         <a-form-item label="工资条" required>
           <a-select
             v-model:value="correctionForm.slipId"
-            :options="availableSlips.map(s => ({ value: s.id, label: `ID:${s.id}${s.period ? ' (' + s.period + ')' : ''}` }))"
+            :options="
+              availableSlips.map((s) => ({
+                value: s.id,
+                label: `ID:${s.id}${s.period ? ' (' + s.period + ')' : ''}`,
+              }))
+            "
             placeholder="选择需要更正的工资条"
             style="width: 100%"
           />
@@ -208,7 +234,7 @@ interface PayrollSlip {
   employeeId: number
   status: string
   netPay: number | string
-  period?: string  // 前端拼接用
+  period?: string // 前端拼接用
 }
 
 interface PayrollCorrection {
@@ -237,11 +263,13 @@ const router = useRouter()
 // ── 共享 Tab 状态 ──────────────────────────────────────────────
 
 const VALID_PAYROLL_TABS = ['cycles', 'settle', 'slips', 'bonuses', 'corrections'] as const
-type PayrollTabKey = typeof VALID_PAYROLL_TABS[number]
+type PayrollTabKey = (typeof VALID_PAYROLL_TABS)[number]
 
 const initial_tab = (() => {
   const q = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
-  return typeof q === 'string' && (VALID_PAYROLL_TABS as readonly string[]).includes(q) ? q as PayrollTabKey : 'cycles'
+  return typeof q === 'string' && (VALID_PAYROLL_TABS as readonly string[]).includes(q)
+    ? (q as PayrollTabKey)
+    : 'cycles'
 })()
 
 const activeTab = ref<PayrollTabKey>(initial_tab)
@@ -251,14 +279,12 @@ const activeTab = ref<PayrollTabKey>(initial_tab)
 const cycles = ref<PayrollCycle[]>([])
 const loadingCycles = ref(false)
 
-const cycleOptions = computed(() =>
-  cycles.value.map(c => ({ label: c.period, value: c.id }))
-)
+const cycleOptions = computed(() => cycles.value.map((c) => ({ label: c.period, value: c.id })))
 
 const settleableCycles = computed(() =>
   cycles.value
-    .filter(c => ['OPEN', 'WINDOW_OPEN', 'WINDOW_CLOSED'].includes(c.status))
-    .map(c => ({ label: `${c.period}（${cycleStatusLabel(c.status)}）`, value: c.id }))
+    .filter((c) => ['OPEN', 'WINDOW_OPEN', 'WINDOW_CLOSED'].includes(c.status))
+    .map((c) => ({ label: `${c.period}（${cycleStatusLabel(c.status)}）`, value: c.id }))
 )
 
 // PayrollCycles 子组件每次加载完成后更新此处共享列表
@@ -335,7 +361,9 @@ const availableSlips = ref<{ id: number; period?: string; employeeId: number }[]
 
 async function loadSlipsForCorrection() {
   try {
-    const data = await request<{ id: number; period?: string; employeeId: number }[]>({ url: '/payroll/slips' })
+    const data = await request<{ id: number; period?: string; employeeId: number }[]>({
+      url: '/payroll/slips',
+    })
     availableSlips.value = data ?? []
     if (availableSlips.value.length > 0 && !correctionForm.value.slipId) {
       correctionForm.value.slipId = availableSlips.value[0].id
@@ -355,7 +383,7 @@ async function submitCorrection() {
     await request({
       url: `/payroll/slips/${correctionForm.value.slipId}/correction`,
       method: 'POST',
-      body: { reason: correctionForm.value.reason }
+      body: { reason: correctionForm.value.reason },
     })
     showCorrectionModal.value = false
     correctionForm.value = { slipId: undefined, reason: '' }
@@ -379,7 +407,7 @@ const correctionColumns = [
   { title: '状态', key: 'status', width: 100 },
   { title: '是否应用', key: 'applied', width: 100 },
   { title: '新工资条', dataIndex: 'newSlipId', key: 'newSlipId', width: 100 },
-  { title: '发起时间', key: 'createdAt', width: 160 }
+  { title: '发起时间', key: 'createdAt', width: 160 },
 ]
 
 async function loadCorrections() {
@@ -411,41 +439,59 @@ function formatAmount(val: number | string | undefined): string {
 }
 
 function cycleStatusLabel(status: string): string {
-  return ({
-    OPEN: '待处理',
-    WINDOW_OPEN: '申报中',
-    WINDOW_CLOSED: '窗口已关闭',
-    SETTLED: '已结算',
-    LOCKED: '已锁定',
-  } as Record<string, string>)[status] ?? status
+  return (
+    (
+      {
+        OPEN: '待处理',
+        WINDOW_OPEN: '申报中',
+        WINDOW_CLOSED: '窗口已关闭',
+        SETTLED: '已结算',
+        LOCKED: '已锁定',
+      } as Record<string, string>
+    )[status] ?? status
+  )
 }
 
 function slipStatusLabel(status: string): string {
-  return ({
-    DRAFT: '草稿',
-    PUBLISHED: '待确认',
-    CONFIRMED: '已确认',
-    DISPUTED: '异议中',
-    SUPERSEDED: '已更正',
-  } as Record<string, string>)[status] ?? status
+  return (
+    (
+      {
+        DRAFT: '草稿',
+        PUBLISHED: '待确认',
+        CONFIRMED: '已确认',
+        DISPUTED: '异议中',
+        SUPERSEDED: '已更正',
+      } as Record<string, string>
+    )[status] ?? status
+  )
 }
 
 function slipStatusColor(status: string): string {
-  return ({
-    DRAFT: 'default',
-    PUBLISHED: 'blue',
-    CONFIRMED: 'green',
-    DISPUTED: 'red',
-    SUPERSEDED: 'default',
-  } as Record<string, string>)[status] ?? 'default'
+  return (
+    (
+      {
+        DRAFT: 'default',
+        PUBLISHED: 'blue',
+        CONFIRMED: 'green',
+        DISPUTED: 'red',
+        SUPERSEDED: 'default',
+      } as Record<string, string>
+    )[status] ?? 'default'
+  )
 }
 
 function bonusStatusLabel(s: string) {
-  return ({ PENDING: '待审批', APPROVED: '已批准', REJECTED: '已驳回' } as Record<string, string>)[s] ?? s
+  return (
+    ({ PENDING: '待审批', APPROVED: '已批准', REJECTED: '已驳回' } as Record<string, string>)[s] ??
+    s
+  )
 }
 
 function bonusStatusColor(s: string) {
-  return ({ PENDING: 'orange', APPROVED: 'green', REJECTED: 'red' } as Record<string, string>)[s] ?? 'default'
+  return (
+    ({ PENDING: 'orange', APPROVED: 'green', REJECTED: 'red' } as Record<string, string>)[s] ??
+    'default'
+  )
 }
 
 function formatTime(t: string | undefined) {

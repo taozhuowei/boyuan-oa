@@ -115,7 +115,7 @@ test.describe('C-E2E-08 岗位与薪级 CRUD', () => {
     }
   })
 
-  // ── Test 08-3: 非 CEO 角色无权创建岗位，返回 403 ─────────────────────────
+  // ── Test 08-3: 普通员工无权创建岗位，返回 403（HR 有权限，见 DESIGN §3.4）────
   test('08-3: 非 CEO 角色无权创建岗位，返回 403', async () => {
     const api_ctx = await request.newContext()
 
@@ -127,12 +127,13 @@ test.describe('C-E2E-08 岗位与薪级 CRUD', () => {
       })
       expect(emp_resp.status()).toBe(403)
 
+      // HR can create positions per DESIGN §3.4 (HR 负责：创建部门、岗位名称与等级名称)
       const { token: hr_token } = await loginViaApi('hr')
       const hr_resp = await api_ctx.post(`${API_URL}/positions`, {
         headers: { Authorization: `Bearer ${hr_token}` },
         data: { positionName: 'E2E越权测试岗位' }
       })
-      expect(hr_resp.status()).toBe(403)
+      expect([201, 409]).toContain(hr_resp.status())
     } finally {
       await api_ctx.dispose()
     }
