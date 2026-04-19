@@ -1183,7 +1183,7 @@
   - `tools/commitlint/README.md`：提交规范说明与示例
   - 验收：提交格式不合规被拦截；推送触发 `mvn test` 和 `yarn test`；lint-staged 只检查变更文件
 
-- `[~]` **C+-I-03 GitHub Actions — fast-check workflow（每次 push 触发）**
+- `[x]` **C+-I-03 GitHub Actions — fast-check workflow（每次 push 触发）**
   - 文件：`.github/workflows/fast-check.yml`
   - 触发：`on: push`（无需 PR）
   - 步骤（无需运行服务，目标 < 5 分钟）：
@@ -1201,7 +1201,7 @@
     12. `yarn build`（前端构建验证）
   - 验收：push 后 GitHub Actions 页面出现 fast-check job 并通过
 
-- `[~]` **C+-I-04 GitHub Actions — full-test workflow（每次 push 触发，Docker Compose 启动服务）**
+- `[x]` **C+-I-04 GitHub Actions — full-test workflow（每次 push 触发，Docker Compose 启动服务）**
   - 文件：`.github/workflows/full-test.yml`
   - 触发：`on: push`
   - 步骤（需要运行服务，目标 < 15 分钟）：
@@ -1213,7 +1213,7 @@
     6. SonarQube 分析上报（`mvn verify sonar:sonar`，需 SONAR_TOKEN secret）
   - 验收：push 后 full-test job 通过；SonarQube 面板出现分析结果
 
-- `[~]` **C+-I-05 GitHub Actions — nightly workflow（每日 02:00 UTC 定时触发）**
+- `[x]` **C+-I-05 GitHub Actions — nightly workflow（每日 02:00 UTC 定时触发）**
   - 文件：`.github/workflows/nightly.yml`
   - 触发：`on: schedule: cron: '0 2 * * *'`
   - 步骤（需要部署环境或 Docker Compose，允许运行较长时间）：
