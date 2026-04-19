@@ -20,7 +20,7 @@
     "test:unit:h5": "yarn workspace oa-h5 test",
     "test:unit:mp": "yarn workspace oa-mp test",
     "test:integration": "cd app && npx vitest run --config mp/vitest.integration.config.ts",
-    "test:e2e": "playwright test --config test/e2e/playwright.config.ts",
+    "test:e2e": "node_modules/.bin/playwright test --config test/e2e/playwright.config.ts",
     "test:e2e:report": "playwright show-report test/e2e/playwright-report",
     "format:check": "prettier --check \"app/h5/**/*.{ts,vue,js}\"",
     "format:write": "prettier --write \"app/h5/**/*.{ts,vue,js}\"",
