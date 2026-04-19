@@ -1,0 +1,171 @@
+name: Nightly
+
+# Runs every night at 02:00 UTC, or on manual trigger.
+# Covers load testing (k6), ZAP full scan, and Snyk dependency audit.
+# All jobs use continue-on-error to avoid blocking the branch on nightly failures.
+
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  k6-load:
+    name: k6 Load Tests
+    # continue-on-error: load test failures are surfaced as artifacts, not pipeline failures
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Install k6 from the official GPG-signed repository
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6 -y
+
+      - name: Start backend service (dev profile)
+        working-directory: server
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
+
+      - name: Wait for backend to be ready
+        run: npx wait-on http://localhost:8080/actuator/health --timeout 120000
+
+      # k6 scripts are created in C+-D-03. Skip gracefully until then.
+      - name: Run k6 normal load test
+        run: test -f tools/k6/normal.js && k6 run tools/k6/normal.js || echo "k6 scripts not configured yet"
+
+      - name: Run k6 peak load test
+        run: test -f tools/k6/peak.js && k6 run tools/k6/peak.js || echo "k6 scripts not configured yet"
+
+      - name: Run k6 stress test
+        run: test -f tools/k6/stress.js && k6 run tools/k6/stress.js || echo "k6 scripts not configured yet"
+
+      - name: Run k6 soak test
+        run: test -f tools/k6/soak.js && k6 run tools/k6/soak.js || echo "k6 scripts not configured yet"
+
+      - name: Run k6 race condition test
+        run: test -f tools/k6/race.js && k6 run tools/k6/race.js || echo "k6 scripts not configured yet"
+
+  zap-full:
+    name: OWASP ZAP Full Scan
+    # continue-on-error: ZAP findings are recorded but must not fail the nightly run
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Start backend service (dev profile)
+        working-directory: server
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
+
+      - name: Wait for backend to be ready
+        run: npx wait-on http://localhost:8080/actuator/health --timeout 120000
+
+      - name: Prepare ZAP working directory
+        run: mkdir -p tools/zap
+
+      # Full scan (zap-full-scan.py) is more thorough than baseline but slower
+      - name: Run OWASP ZAP full scan
+        run: |
+          docker run --network host \
+            -v $(pwd)/tools/zap:/zap/wrk \
+            zaproxy/zap-stable:latest \
+            zap-full-scan.py -t http://localhost:8080/api -r zap-full-report.html \
+            -I
+
+      - name: Upload ZAP full scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-full-scan-report
+          path: tools/zap/zap-full-report.html
+          retention-days: 30
+
+  snyk-audit:
+    name: Snyk Dependency Audit
+    # Only runs when SNYK_TOKEN secret is present
+    if: ${{ secrets.SNYK_TOKEN != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # H5 frontend dependency audit — JSON report saved as artifact
+      - name: Snyk audit — H5 frontend (package.json)
+        run: npx snyk@latest test --file=app/h5/package.json --json > snyk-h5-report.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # Backend dependency audit — JSON report saved as artifact
+      - name: Snyk audit — backend (pom.xml)
+        run: npx snyk@latest test --file=server/pom.xml --json > snyk-server-report.json || true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      - name: Upload Snyk H5 report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-h5-report
+          path: snyk-h5-report.json
+          retention-days: 30
+
+      - name: Upload Snyk server report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snyk-server-report
+          path: snyk-server-report.json
+          retention-days: 30

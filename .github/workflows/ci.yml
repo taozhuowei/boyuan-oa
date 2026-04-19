@@ -21,10 +21,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 17 (Temurin)
+      - name: Setup Java 21 (Temurin)
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
@@ -126,10 +126,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java 17 (Temurin)
+      - name: Setup Java 21 (Temurin)
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
@@ -155,7 +155,7 @@ jobs:
         run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
 
       - name: Wait for backend to be ready
-        run: npx wait-on http://localhost:8080/health --timeout 120000
+        run: npx wait-on http://localhost:8080/actuator/health --timeout 120000
 
       - name: Run integration tests
         run: yarn test:integration

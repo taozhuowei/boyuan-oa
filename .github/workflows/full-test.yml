@@ -1,0 +1,222 @@
+name: Full Test
+
+# Runs on every push to every branch.
+# Target: complete in under 15 minutes.
+# Covers integration tests (3×), E2E (Playwright, non-blocking), ZAP baseline, and SonarCloud.
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  contents: read
+
+jobs:
+  integration-tests:
+    name: API Integration Tests (3× consecutive)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+
+      - name: Install Node dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Start backend service (dev profile)
+        working-directory: server
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
+
+      - name: Wait for backend to be ready
+        run: npx wait-on http://localhost:8080/actuator/health --timeout 120000
+
+      # Three consecutive runs — all must pass to satisfy the quality gate
+      - name: Run integration tests — pass 1 of 3
+        run: yarn test:integration
+
+      - name: Run integration tests — pass 2 of 3
+        run: yarn test:integration
+
+      - name: Run integration tests — pass 3 of 3
+        run: yarn test:integration
+
+      - name: Upload integration test report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-report
+          path: test/integration/
+          retention-days: 7
+
+  e2e-tests:
+    name: E2E Tests (Playwright)
+    # continue-on-error: E2E suite not fully configured yet; failures are recorded, not blocking
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+
+      - name: Install Node dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Start backend service (dev profile)
+        working-directory: server
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
+
+      - name: Start frontend (dev mode)
+        run: yarn workspace oa-h5 dev &
+
+      - name: Wait for backend and frontend to be ready
+        run: |
+          npx wait-on http://localhost:8080/actuator/health --timeout 120000
+          npx wait-on http://localhost:3000 --timeout 120000
+
+      - name: Run E2E tests
+        run: yarn test:e2e
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: test/e2e/playwright-report/
+          retention-days: 7
+
+  zap-baseline:
+    name: OWASP ZAP Baseline Scan
+    # continue-on-error: ZAP findings are recorded but must not block the pipeline
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Start backend service (dev profile)
+        working-directory: server
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
+
+      - name: Wait for backend to be ready
+        run: npx wait-on http://localhost:8080/actuator/health --timeout 120000
+
+      - name: Prepare ZAP working directory
+        run: mkdir -p tools/zap
+
+      # -I: ignore alert rules (never blocks pipeline); report saved as artifact
+      - name: Run OWASP ZAP baseline scan
+        run: |
+          docker run --network host \
+            -v $(pwd)/tools/zap:/zap/wrk \
+            zaproxy/zap-stable:latest \
+            zap-baseline.py -t http://localhost:8080/api -r zap-report.html \
+            -I
+
+      - name: Upload ZAP report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-baseline-report
+          path: tools/zap/zap-report.html
+          retention-days: 14
+
+  sonarqube:
+    name: SonarCloud Analysis
+    # Only runs when SONAR_TOKEN secret is present
+    if: ${{ secrets.SONAR_TOKEN != '' }}
+    # continue-on-error: SonarCloud analysis failures must not block deployment
+    continue-on-error: true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Fetch full history so SonarCloud can compute blame info
+          fetch-depth: 0
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Run Maven verify and SonarCloud analysis
+        working-directory: server
+        run: mvn verify sonar:sonar
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io

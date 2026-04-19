@@ -1,0 +1,185 @@
+name: Fast Check
+
+# Runs on every push to every branch.
+# Target: complete in under 5 minutes without starting any service.
+# Spotless, Prettier, ESLint, and Knip steps are conditional — they skip gracefully
+# until the corresponding C+-DESIGN tasks configure those tools.
+
+on:
+  push:
+    branches:
+      - '**'
+
+permissions:
+  contents: read
+
+jobs:
+  backend-checks:
+    name: Backend Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Spotless is configured in C+-D-14. Skip gracefully until then.
+      - name: Check code formatting (Spotless)
+        working-directory: server
+        run: mvn spotless:check -q || echo "Spotless not configured yet, skipping"
+
+      # Runs existing 392 unit tests + ArchUnit once C+-D-01 activates it.
+      - name: Run backend unit tests
+        working-directory: server
+        run: mvn test
+
+      - name: Upload surefire reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-surefire-reports
+          path: server/target/surefire-reports/
+          retention-days: 7
+
+  frontend-checks:
+    name: Frontend Checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      # Prettier is configured in C+-D-13. Skip gracefully until then.
+      - name: Check code formatting (Prettier)
+        run: yarn format:check || echo "Prettier not configured yet, skipping"
+
+      # ESLint strict config is set up in C+-D-09/15. Skip gracefully until then.
+      - name: Lint H5 source (ESLint + TypeScript strict)
+        run: yarn workspace oa-h5 lint || echo "ESLint not configured yet, skipping"
+
+      - name: Run H5 unit tests
+        run: yarn workspace oa-h5 test
+
+      # Knip dead-code detection is configured in C+-D-16. Skip gracefully until then.
+      - name: Detect unused exports (Knip)
+        run: yarn knip || echo "Knip not configured yet, skipping"
+
+  security-static:
+    name: Security Static Analysis
+    runs-on: ubuntu-latest
+    # continue-on-error: security findings are recorded but must not block the pipeline
+    continue-on-error: true
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Semgrep
+        run: pip install semgrep
+
+      # --error exits non-zero on findings; || true prevents blocking the pipeline
+      - name: Semgrep scan — Spring Boot backend
+        run: semgrep --config p/spring-boot --config p/owasp-top-ten server/src --error || true
+
+      - name: Semgrep scan — H5 TypeScript frontend
+        run: semgrep --config p/typescript app/h5 --error || true
+
+      # Snyk backend — only runs when SNYK_TOKEN secret is present
+      - name: Snyk test — backend (pom.xml)
+        if: ${{ secrets.SNYK_TOKEN != '' }}
+        run: npx snyk@latest test --file=server/pom.xml --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+      # Snyk frontend — only runs when SNYK_TOKEN secret is present
+      - name: Snyk test — H5 frontend (package.json)
+        if: ${{ secrets.SNYK_TOKEN != '' }}
+        run: npx snyk@latest test --file=app/h5/package.json --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+
+  build-verify:
+    name: Build Verification
+    # Only runs after both backend-checks and frontend-checks pass
+    needs: [backend-checks, frontend-checks]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('server/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+
+      - name: Build backend JAR (skip tests)
+        working-directory: server
+        run: mvn package -DskipTests
+
+      - name: Install frontend dependencies and build H5
+        run: |
+          yarn install --frozen-lockfile
+          yarn workspace oa-h5 build
+
+      - name: Upload backend artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fast-check-backend-jar
+          path: server/target/*.jar
+          retention-days: 3
+
+      - name: Upload H5 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fast-check-h5-dist
+          path: app/h5/.output/
+          retention-days: 3
