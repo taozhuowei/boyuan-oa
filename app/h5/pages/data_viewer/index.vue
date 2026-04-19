@@ -1,14 +1,29 @@
 <template>
   <div>
     <h2 class="page-title">历史数据查看</h2>
-    <a-card style="margin-bottom: 16px;">
-      <p style="color: #888; margin-bottom: 12px;">上传从「数据导出」页面下载的 .obk 文件，查看其中的历史数据。</p>
-      <input type="file" accept=".obk" style="display:none" ref="fileInput" @change="onFileChange" />
-      <a-button @click="() => fileInput?.click()" data-catch="data-viewer-upload-btn">选择文件</a-button>
-      <span v-if="fileName" style="margin-left: 12px; color: #555;">{{ fileName }}</span>
+    <a-card style="margin-bottom: 16px">
+      <p style="color: #888; margin-bottom: 12px">
+        上传从「数据导出」页面下载的 .obk 文件，查看其中的历史数据。
+      </p>
+      <input
+        type="file"
+        accept=".obk"
+        style="display: none"
+        ref="fileInput"
+        @change="onFileChange"
+      />
+      <a-button @click="() => fileInput?.click()" data-catch="data-viewer-upload-btn">
+        选择文件
+      </a-button>
+      <span v-if="fileName" style="margin-left: 12px; color: #555">{{ fileName }}</span>
     </a-card>
     <template v-if="viewData">
-      <a-card v-for="(rows, tableName) in viewData" :key="tableName" :title="String(tableName)" style="margin-bottom: 12px;">
+      <a-card
+        v-for="(rows, tableName) in viewData"
+        :key="tableName"
+        :title="String(tableName)"
+        style="margin-bottom: 12px"
+      >
         <a-table
           v-if="Array.isArray(rows) && rows.length > 0"
           :data-source="rows as Record<string, unknown>[]"
@@ -67,7 +82,7 @@ function getColumns(rows: Record<string, unknown>[]) {
     title: key,
     dataIndex: key,
     key,
-    ellipsis: true
+    ellipsis: true,
   }))
 }
 </script>

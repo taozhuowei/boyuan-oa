@@ -34,8 +34,16 @@
           <template v-if="column.key === 'action'">
             <template v-if="!record.myResponse && record.notification.status !== 'ARCHIVED'">
               <a-space>
-                <a-button size="small" type="primary" @click="respondNotif(record.notification.id, true, '')">确认</a-button>
-                <a-button size="small" danger @click="openRejectModal(record.notification.id)">拒绝</a-button>
+                <a-button
+                  size="small"
+                  type="primary"
+                  @click="respondNotif(record.notification.id, true, '')"
+                >
+                  确认
+                </a-button>
+                <a-button size="small" danger @click="openRejectModal(record.notification.id)">
+                  拒绝
+                </a-button>
               </a-space>
             </template>
             <span v-else class="text-muted">—</span>
@@ -178,22 +186,31 @@ const initiated_notifs = ref<InitiatedNotifRecord[]>([])
 
 // Column definitions — source of truth for notification tables
 const notif_columns = [
-  { title: '加班日期', key: 'date', width: 110 }, { title: '类型', key: 'type', width: 100 },
-  { title: '说明', key: 'content' }, { title: '状态', key: 'status', width: 90 },
-  { title: '操作', key: 'action', width: 130 }
+  { title: '加班日期', key: 'date', width: 110 },
+  { title: '类型', key: 'type', width: 100 },
+  { title: '说明', key: 'content' },
+  { title: '状态', key: 'status', width: 90 },
+  { title: '操作', key: 'action', width: 130 },
 ]
 const initiated_columns = [
-  { title: '加班日期', key: 'date', width: 110 }, { title: '类型', key: 'type', width: 100 },
-  { title: '通知内容', key: 'content' }, { title: '状态', key: 'status', width: 90 },
-  { title: '响应', key: 'responseCount', width: 90 }
+  { title: '加班日期', key: 'date', width: 110 },
+  { title: '类型', key: 'type', width: 100 },
+  { title: '通知内容', key: 'content' },
+  { title: '状态', key: 'status', width: 90 },
+  { title: '响应', key: 'responseCount', width: 90 },
 ]
 const response_detail_columns = [
   { title: '员工ID', dataIndex: 'employeeId', key: 'employeeId', width: 90 },
-  { title: '响应', key: 'accepted', width: 80 }, { title: '拒绝原因', key: 'rejectReason' }
+  { title: '响应', key: 'accepted', width: 80 },
+  { title: '拒绝原因', key: 'rejectReason' },
 ]
 
 function overtimeTypeLabel(t: string) {
-  const map: Record<string, string> = { WEEKDAY: '工作日加班', WEEKEND: '周末加班', HOLIDAY: '节假日加班' }
+  const map: Record<string, string> = {
+    WEEKDAY: '工作日加班',
+    WEEKEND: '周末加班',
+    HOLIDAY: '节假日加班',
+  }
   return map[t] ?? t
 }
 
@@ -236,7 +253,7 @@ async function respondNotif(id: number, accepted: boolean, reason: string) {
     await request({
       url: `/overtime-notifications/${id}/respond`,
       method: 'POST',
-      body: { accepted, rejectReason: reason }
+      body: { accepted, rejectReason: reason },
     })
     await loadNotifications()
   } catch (e: unknown) {

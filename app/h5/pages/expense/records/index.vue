@@ -27,26 +27,25 @@
             {{ getExpenseTypeLabel(record.formData?.expenseType) }}
           </template>
           <template v-if="column.key === 'action'">
-            <a-button type="link" size="small" @click="viewDetail(record as FormRecord)">查看详情</a-button>
+            <a-button type="link" size="small" @click="viewDetail(record as FormRecord)">
+              查看详情
+            </a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
     <!-- 详情弹窗 -->
-    <a-modal
-      v-model:open="modalVisible"
-      title="报销详情"
-      width="600px"
-      :footer="null"
-    >
+    <a-modal v-model:open="modalVisible" title="报销详情" width="600px" :footer="null">
       <div v-if="selectedRecord" class="detail-content">
         <a-descriptions :column="2" size="small" bordered>
           <a-descriptions-item label="表单编号">{{ selectedRecord.formNo }}</a-descriptions-item>
           <a-descriptions-item label="报销类型">
             {{ getExpenseTypeLabel(selectedRecord.formData?.expenseType as string | undefined) }}
           </a-descriptions-item>
-          <a-descriptions-item label="报销金额">¥{{ selectedRecord.formData?.totalAmount }}</a-descriptions-item>
+          <a-descriptions-item label="报销金额">
+            ¥{{ selectedRecord.formData?.totalAmount }}
+          </a-descriptions-item>
           <a-descriptions-item label="状态">
             <a-tag :color="statusColor(selectedRecord.status)">
               {{ statusLabel(selectedRecord.status) }}
@@ -64,7 +63,10 @@
         </a-descriptions>
 
         <!-- 审批历史 -->
-        <div v-if="selectedRecord.history && selectedRecord.history.length > 0" class="history-section">
+        <div
+          v-if="selectedRecord.history && selectedRecord.history.length > 0"
+          class="history-section"
+        >
           <h4 class="section-title">审批历史</h4>
           <a-timeline>
             <a-timeline-item v-for="(item, index) in selectedRecord.history" :key="index">
@@ -119,7 +121,7 @@ const columns = [
   { title: '金额', key: 'totalAmount', width: 100 },
   { title: '状态', key: 'status', width: 100 },
   { title: '提交时间', key: 'submitTime' },
-  { title: '操作', key: 'action', width: 100 }
+  { title: '操作', key: 'action', width: 100 },
 ]
 
 const EXPENSE_TYPE_LABELS: Record<string, string> = {
@@ -128,14 +130,14 @@ const EXPENSE_TYPE_LABELS: Record<string, string> = {
   ACCOMMODATION: '住宿费',
   TRANSPORT: '交通费',
   OFFICE: '办公用品',
-  OTHER: '其他'
+  OTHER: '其他',
 }
 
 const STATUS_LABELS: Record<string, string> = {
   PENDING: '待审批',
   APPROVED: '已通过',
   REJECTED: '已驳回',
-  CANCELLED: '已取消'
+  CANCELLED: '已取消',
 }
 
 const HISTORY_ACTION_LABELS: Record<string, string> = {
@@ -145,7 +147,7 @@ const HISTORY_ACTION_LABELS: Record<string, string> = {
   REJECTED: '驳回',
   SKIP: '跳过',
   SUBMIT: '提交',
-  RECALL: '撤回'
+  RECALL: '撤回',
 }
 
 function getExpenseTypeLabel(type: string | undefined): string {
@@ -162,7 +164,7 @@ function statusColor(status: string): string {
     PENDING: 'blue',
     APPROVED: 'green',
     REJECTED: 'red',
-    CANCELLED: 'gray'
+    CANCELLED: 'gray',
   }
   return colorMap[status] || 'default'
 }

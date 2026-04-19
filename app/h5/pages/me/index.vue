@@ -39,15 +39,11 @@
           <a-descriptions-item label="员工类型">
             {{ formatEmployeeType(userInfo?.employeeType) }}
           </a-descriptions-item>
-          <a-descriptions-item label="账号状态">
-            正常
-          </a-descriptions-item>
+          <a-descriptions-item label="账号状态">正常</a-descriptions-item>
         </a-descriptions>
 
         <div class="actions">
-          <a-button type="primary" @click="navigateTo('/me/password')">
-            修改密码
-          </a-button>
+          <a-button type="primary" @click="navigateTo('/me/password')">修改密码</a-button>
         </div>
       </a-spin>
     </a-card>
@@ -83,7 +79,7 @@ async function loadUserInfo() {
   loading.value = true
   try {
     const data = await request<UserInfo>({
-      url: '/auth/me'
+      url: '/auth/me',
     })
     userInfo.value = data
   } catch {

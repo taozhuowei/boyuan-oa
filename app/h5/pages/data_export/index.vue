@@ -1,7 +1,7 @@
 <template>
   <div>
     <h2 class="page-title">数据导出</h2>
-    <a-card title="新建导出任务" style="margin-bottom: 16px;">
+    <a-card title="新建导出任务" style="margin-bottom: 16px">
       <a-form layout="inline">
         <a-form-item label="开始日期">
           <a-date-picker v-model:value="exportForm.startDate" placeholder="开始日期" />
@@ -10,7 +10,12 @@
           <a-date-picker v-model:value="exportForm.endDate" placeholder="结束日期" />
         </a-form-item>
         <a-form-item>
-          <a-button type="primary" :loading="exporting" @click="startExport" data-catch="data-export-btn">
+          <a-button
+            type="primary"
+            :loading="exporting"
+            @click="startExport"
+            data-catch="data-export-btn"
+          >
             开始导出
           </a-button>
         </a-form-item>
@@ -27,13 +32,22 @@
                 :description="item.createdAt?.slice(0, 16).replace('T', ' ')"
               />
               <a-space>
-                <a-tag :color="item.status === 'DONE' ? 'green' : item.status === 'FAILED' ? 'red' : 'blue'">{{ item.status }}</a-tag>
+                <a-tag
+                  :color="
+                    item.status === 'DONE' ? 'green' : item.status === 'FAILED' ? 'red' : 'blue'
+                  "
+                >
+                  {{ item.status }}
+                </a-tag>
                 <a-button
                   v-if="item.status === 'DONE' && item.downloadToken"
-                  type="link" size="small"
+                  type="link"
+                  size="small"
                   @click="downloadExport(item.downloadToken)"
                   data-catch="data-export-download-btn"
-                >下载</a-button>
+                >
+                  下载
+                </a-button>
               </a-space>
             </a-list-item>
           </template>
@@ -60,7 +74,8 @@ const loading = ref(false)
 const exporting = ref(false)
 const tasks = ref<ExportTask[]>([])
 const exportForm = ref<{ startDate: Dayjs | undefined; endDate: Dayjs | undefined }>({
-  startDate: undefined, endDate: undefined
+  startDate: undefined,
+  endDate: undefined,
 })
 
 async function loadTasks() {
@@ -87,8 +102,8 @@ async function startExport() {
       method: 'POST',
       body: {
         startDate: exportForm.value.startDate.format('YYYY-MM-DD'),
-        endDate: exportForm.value.endDate.format('YYYY-MM-DD')
-      }
+        endDate: exportForm.value.endDate.format('YYYY-MM-DD'),
+      },
     })
     message.success('导出任务已创建，请稍后刷新查看')
     exportForm.value = { startDate: undefined, endDate: undefined }

@@ -11,24 +11,32 @@
  * Source of truth: DESIGN.md §5.
  */
 const PAGE_ACCESS: Record<string, string[]> = {
-  '/config':           ['ceo', 'ops'],
-  '/org':              ['ceo', 'hr'],
-  '/role':             ['ceo'],
-  '/employees':        ['ceo', 'hr', 'finance', 'project_manager', 'department_manager'],
-  '/positions':        ['ceo', 'hr', 'finance'],
-  '/retention':        ['ceo'],
-  '/allowances':       ['ceo'],
-  '/leave_types':      ['ceo', 'hr'],
-  '/directory':        ['ceo', 'hr', 'finance'],
-  '/team':             ['ceo', 'hr', 'project_manager', 'department_manager'],
-  '/operation_logs':   ['ceo', 'ops'],
-  '/data_export':      ['ceo', 'ops'],
-  '/data_viewer':      ['ceo', 'ops'],
-  '/attendance':       ['ceo', 'hr', 'finance', 'project_manager', 'department_manager', 'employee', 'worker'],
-  '/payroll':          ['ceo', 'finance', 'worker', 'employee'],
-  '/projects':         ['ceo', 'finance', 'project_manager', 'employee', 'general_manager'],
+  '/config': ['ceo', 'ops'],
+  '/org': ['ceo', 'hr'],
+  '/role': ['ceo'],
+  '/employees': ['ceo', 'hr', 'finance', 'project_manager', 'department_manager'],
+  '/positions': ['ceo', 'hr', 'finance'],
+  '/retention': ['ceo'],
+  '/allowances': ['ceo'],
+  '/leave_types': ['ceo', 'hr'],
+  '/directory': ['ceo', 'hr', 'finance'],
+  '/team': ['ceo', 'hr', 'project_manager', 'department_manager'],
+  '/operation_logs': ['ceo', 'ops'],
+  '/data_export': ['ceo', 'ops'],
+  '/data_viewer': ['ceo', 'ops'],
+  '/attendance': [
+    'ceo',
+    'hr',
+    'finance',
+    'project_manager',
+    'department_manager',
+    'employee',
+    'worker',
+  ],
+  '/payroll': ['ceo', 'finance', 'worker', 'employee'],
+  '/projects': ['ceo', 'finance', 'project_manager', 'employee', 'general_manager'],
   '/construction_log': ['ceo', 'project_manager', 'worker'],
-  '/injury':           ['ceo', 'finance', 'worker', 'project_manager'],
+  '/injury': ['ceo', 'finance', 'worker', 'project_manager'],
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {
@@ -40,9 +48,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   // Check system initialization status
   if (initState.value === null) {
     try {
-      const response = await $fetch<{ initialized: boolean }>(
-        '/api/setup/status'
-      )
+      const response = await $fetch<{ initialized: boolean }>('/api/setup/status')
       initState.value = response.initialized
     } catch {
       // If API fails, assume system is initialized to avoid blocking

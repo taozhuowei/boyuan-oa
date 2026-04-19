@@ -6,9 +6,11 @@
     事件输出：select-for-settle(cycleId) — 通知父层切换到结算 Tab 并预填周期
   -->
   <div>
-    <div class="tab-actions" style="margin-bottom: 12px;">
+    <div class="tab-actions" style="margin-bottom: 12px">
       <a-button type="primary" @click="showCreateCycleModal = true">+ 创建周期</a-button>
-      <a-button style="margin-left: 8px;" @click="handleRefresh" :loading="loadingCycles">刷新</a-button>
+      <a-button style="margin-left: 8px" @click="handleRefresh" :loading="loadingCycles">
+        刷新
+      </a-button>
     </div>
 
     <a-table
@@ -21,10 +23,9 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'status'">
-          <a-tag
-            data-catch="payroll-cycle-status"
-            :color="cycleStatusColor(record.status)"
-          >{{ cycleStatusLabel(record.status) }}</a-tag>
+          <a-tag data-catch="payroll-cycle-status" :color="cycleStatusColor(record.status)">
+            {{ cycleStatusLabel(record.status) }}
+          </a-tag>
         </template>
         <template v-if="column.key === 'action'">
           <a-button
@@ -33,13 +34,17 @@
             size="small"
             :data-catch="'payroll-cycle-open-btn-' + record.id"
             @click="doOpenWindow(record.id as number)"
-          >开放申报窗口</a-button>
+          >
+            开放申报窗口
+          </a-button>
           <a-button
-            v-if="['OPEN','WINDOW_OPEN','WINDOW_CLOSED'].includes(record.status as string)"
+            v-if="['OPEN', 'WINDOW_OPEN', 'WINDOW_CLOSED'].includes(record.status as string)"
             type="link"
             size="small"
             @click="emit('select-for-settle', record.id as number)"
-          >结算</a-button>
+          >
+            结算
+          </a-button>
         </template>
       </template>
     </a-table>
@@ -51,7 +56,7 @@
       :confirm-loading="creatingCycle"
       @ok="doCreateCycle"
       @cancel="createCycleForm.period = ''"
-      :okButtonProps="({ 'data-catch': 'payroll-cycle-create-ok' } as unknown as ButtonProps)"
+      :okButtonProps="{ 'data-catch': 'payroll-cycle-create-ok' } as unknown as ButtonProps"
     >
       <a-form layout="vertical">
         <a-form-item label="周期（格式：YYYY-MM）">
@@ -139,7 +144,10 @@ function handleRefresh() {
 
 async function doCreateCycle() {
   const period = createCycleForm.value.period.trim()
-  if (!period) { message.warning('请填写周期，格式：YYYY-MM'); return }
+  if (!period) {
+    message.warning('请填写周期，格式：YYYY-MM')
+    return
+  }
   creatingCycle.value = true
   try {
     await request({ url: '/payroll/cycles', method: 'POST', body: { period } })
@@ -169,22 +177,30 @@ async function doOpenWindow(cycleId: number) {
 // ── 格式化工具 ─────────────────────────────────────────────────
 
 function cycleStatusLabel(status: string): string {
-  return ({
-    OPEN: '待处理',
-    WINDOW_OPEN: '申报中',
-    WINDOW_CLOSED: '窗口已关闭',
-    SETTLED: '已结算',
-    LOCKED: '已锁定',
-  } as Record<string, string>)[status] ?? status
+  return (
+    (
+      {
+        OPEN: '待处理',
+        WINDOW_OPEN: '申报中',
+        WINDOW_CLOSED: '窗口已关闭',
+        SETTLED: '已结算',
+        LOCKED: '已锁定',
+      } as Record<string, string>
+    )[status] ?? status
+  )
 }
 
 function cycleStatusColor(status: string): string {
-  return ({
-    OPEN: 'default',
-    WINDOW_OPEN: 'blue',
-    WINDOW_CLOSED: 'orange',
-    SETTLED: 'green',
-    LOCKED: 'purple',
-  } as Record<string, string>)[status] ?? 'default'
+  return (
+    (
+      {
+        OPEN: 'default',
+        WINDOW_OPEN: 'blue',
+        WINDOW_CLOSED: 'orange',
+        SETTLED: 'green',
+        LOCKED: 'purple',
+      } as Record<string, string>
+    )[status] ?? 'default'
+  )
 }
 </script>

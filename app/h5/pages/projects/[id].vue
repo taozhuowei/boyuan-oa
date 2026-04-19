@@ -3,11 +3,20 @@
        职责：加载项目基础数据，渲染 Tab 容器，将 project + projectId 下发给各 Tab 子组件。
        数据来源：GET /api/projects/{id} -->
   <div class="project-detail-page">
-    <div class="page-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-      <a-button type="link" style="padding: 0;" @click="navigateTo('/projects')">← 返回列表</a-button>
-      <h2 class="page-title" style="margin: 0;">
+    <div
+      class="page-header"
+      style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px"
+    >
+      <a-button type="link" style="padding: 0" @click="navigateTo('/projects')">
+        ← 返回列表
+      </a-button>
+      <h2 class="page-title" style="margin: 0">
         {{ project?.name ?? '加载中…' }}
-        <a-tag v-if="project" :color="project.status === 'ACTIVE' ? 'green' : 'default'" style="margin-left: 8px; vertical-align: middle;">
+        <a-tag
+          v-if="project"
+          :color="project.status === 'ACTIVE' ? 'green' : 'default'"
+          style="margin-left: 8px; vertical-align: middle"
+        >
           {{ project.status === 'ACTIVE' ? '进行中' : '已关闭' }}
         </a-tag>
       </h2>
@@ -36,16 +45,8 @@
             :project="project"
             :project-id="projectId"
           />
-          <CostTab
-            v-if="activeTab === 'cost'"
-            :project="project"
-            :project-id="projectId"
-          />
-          <RevenueTab
-            v-if="activeTab === 'revenue'"
-            :project="project"
-            :project-id="projectId"
-          />
+          <CostTab v-if="activeTab === 'cost'" :project="project" :project-id="projectId" />
+          <RevenueTab v-if="activeTab === 'revenue'" :project="project" :project-id="projectId" />
           <LogsTab
             v-if="activeTab === 'logs' && isPmOrCeo"
             :project="project"
@@ -81,26 +82,26 @@ import { message } from 'ant-design-vue'
 import type { ProjectDetail } from './types'
 
 // ── 异步懒加载各 Tab 子组件 ──────────────────────────────
-const MembersTab  = defineAsyncComponent(() => import('./tabs/members.vue'))
+const MembersTab = defineAsyncComponent(() => import('./tabs/members.vue'))
 const ProgressTab = defineAsyncComponent(() => import('./tabs/progress.vue'))
-const CostTab     = defineAsyncComponent(() => import('./tabs/cost.vue'))
-const RevenueTab  = defineAsyncComponent(() => import('./tabs/revenue.vue'))
-const LogsTab     = defineAsyncComponent(() => import('./tabs/logs.vue'))
+const CostTab = defineAsyncComponent(() => import('./tabs/cost.vue'))
+const RevenueTab = defineAsyncComponent(() => import('./tabs/revenue.vue'))
+const LogsTab = defineAsyncComponent(() => import('./tabs/logs.vue'))
 const AftersaleTab = defineAsyncComponent(() => import('./tabs/aftersale.vue'))
 
 // ── 页面元数据与权限 ─────────────────────────────────────
 definePageMeta({ requiresAuth: true })
 
-const route  = useRoute()
+const route = useRoute()
 const router = useRouter()
 
-const userStore  = useUserStore()
-const role       = computed(() => userStore.userInfo?.role ?? '')
-const isPmOrCeo  = computed(() => ['project_manager', 'ceo'].includes(role.value))
+const userStore = useUserStore()
+const role = computed(() => userStore.userInfo?.role ?? '')
+const isPmOrCeo = computed(() => ['project_manager', 'ceo'].includes(role.value))
 
 // ── Tab 激活状态与 URL 同步 ──────────────────────────────
 const VALID_TABS = ['members', 'progress', 'cost', 'revenue', 'logs', 'aftersale'] as const
-type TabKey = typeof VALID_TABS[number]
+type TabKey = (typeof VALID_TABS)[number]
 
 const activeTab = ref<TabKey>(
   (VALID_TABS as readonly string[]).includes(String(route.query.tab))

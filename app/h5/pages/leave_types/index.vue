@@ -26,7 +26,9 @@
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'isDeductible'">
-            <a-tag :color="record.deductionRate > 0 ? 'orange' : 'default'">{{ record.deductionRate > 0 ? '是' : '否' }}</a-tag>
+            <a-tag :color="record.deductionRate > 0 ? 'orange' : 'default'">
+              {{ record.deductionRate > 0 ? '是' : '否' }}
+            </a-tag>
           </template>
           <template v-if="column.key === 'deductionRate'">
             {{ (record.deductionRate * 100).toFixed(0) + '%' }}
@@ -35,14 +37,20 @@
             {{ deductionBasisMap[record.deductionBasis] ?? record.deductionBasis }}
           </template>
           <template v-if="column.key === 'isSystem'">
-            <a-tag :color="record.isSystem ? 'green' : 'default'">{{ record.isSystem ? '是' : '否' }}</a-tag>
+            <a-tag :color="record.isSystem ? 'green' : 'default'">
+              {{ record.isSystem ? '是' : '否' }}
+            </a-tag>
           </template>
           <template v-if="column.key === 'isEnabled'">
-            <a-tag :color="record.isEnabled ? 'green' : 'default'">{{ record.isEnabled ? '启用' : '停用' }}</a-tag>
+            <a-tag :color="record.isEnabled ? 'green' : 'default'">
+              {{ record.isEnabled ? '启用' : '停用' }}
+            </a-tag>
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button v-if="isHR" type="link" size="small" @click="openEdit(record as LeaveType)">编辑</a-button>
+              <a-button v-if="isHR" type="link" size="small" @click="openEdit(record as LeaveType)">
+                编辑
+              </a-button>
               <a-popconfirm
                 v-if="isHR && !record.isSystem"
                 title="确定删除该假期类型吗？"
@@ -138,7 +146,7 @@ const form = reactive({
   isDeductible: true,
   deductionRate: 1.0,
   deductionBasis: 'DAILY_SALARY' as 'DAILY_SALARY' | 'MONTHLY_SALARY',
-  isEnabled: true
+  isEnabled: true,
 })
 
 /** 关闭扣款开关时强制将扣款比例清零 */
@@ -161,12 +169,12 @@ const columns = [
   { title: '扣款基准', key: 'deductionBasis', width: 100 },
   { title: '系统内置', key: 'isSystem', width: 100 },
   { title: '状态', key: 'isEnabled', width: 90 },
-  { title: '操作', key: 'action', width: 140 }
+  { title: '操作', key: 'action', width: 140 },
 ]
 
 const deductionBasisMap: Record<string, string> = {
   DAILY_SALARY: '日薪',
-  MONTHLY_SALARY: '月薪'
+  MONTHLY_SALARY: '月薪',
 }
 
 async function loadTypes() {
@@ -224,19 +232,19 @@ async function handleSave() {
       quotaDays: form.quotaDays,
       deductionRate: form.isDeductible ? form.deductionRate : 0,
       deductionBasis: form.deductionBasis,
-      isEnabled: form.isEnabled
+      isEnabled: form.isEnabled,
     }
     if (isEdit.value && editingId.value != null) {
       await request({
         url: `/config/leave-types/${editingId.value}`,
         method: 'PUT',
-        body: payload
+        body: payload,
       })
     } else {
       await request({
         url: '/config/leave-types',
         method: 'POST',
-        body: payload
+        body: payload,
       })
     }
     message.success('保存成功')

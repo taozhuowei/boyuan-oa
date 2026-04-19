@@ -74,7 +74,7 @@ async function handleSave() {
     await request({
       url: '/config/retention-period',
       method: 'PUT',
-      body: { days: retention_days.value }
+      body: { days: retention_days.value },
     })
     message.success('保留期已更新')
   } catch {

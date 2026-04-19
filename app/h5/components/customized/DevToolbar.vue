@@ -1,13 +1,7 @@
 <template>
   <div v-if="isDev" class="dev-toolbar">
     <!-- Collapsed: FAB button -->
-    <button
-      v-if="!expanded"
-      class="dev-fab"
-      @click="expanded = true"
-    >
-      🛠️ 调试
-    </button>
+    <button v-if="!expanded" class="dev-fab" @click="expanded = true">🛠️ 调试</button>
 
     <!-- Expanded: Card panel -->
     <div v-else class="dev-panel">
@@ -21,19 +15,13 @@
         <div class="dev-section">
           <div class="section-title">系统设置</div>
           <div class="btn-group">
-            <button
-              class="dev-btn"
-              :disabled="resetting"
-              @click="resetSetup"
-            >
-              <span v-if="resetting">⏳</span> 重置初始化
+            <button class="dev-btn" :disabled="resetting" @click="resetSetup">
+              <span v-if="resetting">⏳</span>
+              重置初始化
             </button>
-            <button
-              class="dev-btn"
-              :disabled="skipping"
-              @click="skipSetup"
-            >
-              <span v-if="skipping">⏳</span> 跳过初始化
+            <button class="dev-btn" :disabled="skipping" @click="skipSetup">
+              <span v-if="skipping">⏳</span>
+              跳过初始化
             </button>
           </div>
         </div>
@@ -91,7 +79,7 @@ const quickUsers = ref<QuickUser[]>([
   { username: 'hr.demo', label: '人事', loading: false },
   { username: 'pm.demo', label: '项目经理', loading: false },
   { username: 'ceo.demo', label: 'CEO', loading: false },
-  { username: 'worker.demo', label: '劳工', loading: false }
+  { username: 'worker.demo', label: '劳工', loading: false },
 ])
 
 function showError(msg: string) {
@@ -106,7 +94,7 @@ async function resetSetup() {
   try {
     const response = await fetch('/api/dev/reset-setup', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     })
 
     if (!response.ok) {
@@ -131,7 +119,7 @@ async function skipSetup() {
   try {
     const response = await fetch('/api/dev/skip-setup', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
     })
 
     if (!response.ok) {

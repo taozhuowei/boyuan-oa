@@ -11,17 +11,39 @@
         style="max-width: 480px"
         @finish="submitOvertime"
       >
-        <a-form-item label="加班日期" name="date" :rules="[{ required: true, message: '请选择日期' }]">
-          <a-date-picker v-model:value="overtime_form.date" style="width: 100%" placeholder="请选择日期" />
+        <a-form-item
+          label="加班日期"
+          name="date"
+          :rules="[{ required: true, message: '请选择日期' }]"
+        >
+          <a-date-picker
+            v-model:value="overtime_form.date"
+            style="width: 100%"
+            placeholder="请选择日期"
+          />
         </a-form-item>
-        <a-form-item label="开始时间" name="startTime" :rules="[{ required: true, message: '请选择开始时间' }]">
-          <a-time-picker v-model:value="overtime_form.startTime" format="HH:mm" style="width: 100%" />
+        <a-form-item
+          label="开始时间"
+          name="startTime"
+          :rules="[{ required: true, message: '请选择开始时间' }]"
+        >
+          <a-time-picker
+            v-model:value="overtime_form.startTime"
+            format="HH:mm"
+            style="width: 100%"
+          />
         </a-form-item>
-        <a-form-item label="结束时间" name="endTime" :rules="[{ required: true, message: '请选择结束时间' }]">
+        <a-form-item
+          label="结束时间"
+          name="endTime"
+          :rules="[{ required: true, message: '请选择结束时间' }]"
+        >
           <a-time-picker v-model:value="overtime_form.endTime" format="HH:mm" style="width: 100%" />
         </a-form-item>
         <a-form-item label="加班时长">
-          <span :style="{ color: overtime_duration === '结束时间须晚于开始时间' ? '#f5222d' : '#555' }">
+          <span
+            :style="{ color: overtime_duration === '结束时间须晚于开始时间' ? '#f5222d' : '#555' }"
+          >
             {{ overtime_duration ?? '请先选择开始和结束时间' }}
           </span>
         </a-form-item>
@@ -46,7 +68,12 @@
           />
         </a-form-item>
         <a-form-item>
-          <a-button type="primary" html-type="submit" :loading="is_submitting_overtime" data-catch="attendance-overtime-submit">
+          <a-button
+            type="primary"
+            html-type="submit"
+            :loading="is_submitting_overtime"
+            data-catch="attendance-overtime-submit"
+          >
             提交申报
           </a-button>
         </a-form-item>
@@ -61,29 +88,69 @@
         style="max-width: 480px"
         @finish="submitSelfReport"
       >
-        <a-form-item label="加班日期" name="date" :rules="[{ required: true, message: '请选择日期' }]">
-          <a-date-picker v-model:value="self_report_form.date" style="width: 100%" placeholder="请选择日期" />
+        <a-form-item
+          label="加班日期"
+          name="date"
+          :rules="[{ required: true, message: '请选择日期' }]"
+        >
+          <a-date-picker
+            v-model:value="self_report_form.date"
+            style="width: 100%"
+            placeholder="请选择日期"
+          />
         </a-form-item>
-        <a-form-item label="开始时间" name="startTime" :rules="[{ required: true, message: '请选择开始时间' }]">
-          <a-time-picker v-model:value="self_report_form.startTime" format="HH:mm" style="width: 100%" />
+        <a-form-item
+          label="开始时间"
+          name="startTime"
+          :rules="[{ required: true, message: '请选择开始时间' }]"
+        >
+          <a-time-picker
+            v-model:value="self_report_form.startTime"
+            format="HH:mm"
+            style="width: 100%"
+          />
         </a-form-item>
-        <a-form-item label="结束时间" name="endTime" :rules="[{ required: true, message: '请选择结束时间' }]">
-          <a-time-picker v-model:value="self_report_form.endTime" format="HH:mm" style="width: 100%" />
+        <a-form-item
+          label="结束时间"
+          name="endTime"
+          :rules="[{ required: true, message: '请选择结束时间' }]"
+        >
+          <a-time-picker
+            v-model:value="self_report_form.endTime"
+            format="HH:mm"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="加班时长">
-          <span :style="{ color: self_report_duration === '结束时间须晚于开始时间' ? '#f5222d' : '#555' }">
+          <span
+            :style="{
+              color: self_report_duration === '结束时间须晚于开始时间' ? '#f5222d' : '#555',
+            }"
+          >
             {{ self_report_duration ?? '请先选择开始和结束时间' }}
           </span>
         </a-form-item>
-        <a-form-item label="加班类型" name="overtimeType" :rules="[{ required: true, message: '请选择类型' }]">
+        <a-form-item
+          label="加班类型"
+          name="overtimeType"
+          :rules="[{ required: true, message: '请选择类型' }]"
+        >
           <a-select v-model:value="self_report_form.overtimeType" placeholder="请选择">
             <a-select-option value="WEEKDAY">工作日加班</a-select-option>
             <a-select-option value="WEEKEND">周末加班</a-select-option>
             <a-select-option value="HOLIDAY">节假日加班</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="补申报原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
-          <a-textarea v-model:value="self_report_form.reason" :rows="3" placeholder="请说明未能及时申报的原因" />
+        <a-form-item
+          label="补申报原因"
+          name="reason"
+          :rules="[{ required: true, message: '请填写原因' }]"
+        >
+          <a-textarea
+            v-model:value="self_report_form.reason"
+            :rows="3"
+            placeholder="请说明未能及时申报的原因"
+          />
         </a-form-item>
         <a-form-item label="附件（可选）">
           <customized-file-upload
@@ -96,7 +163,12 @@
           />
         </a-form-item>
         <a-form-item>
-          <a-button type="primary" html-type="submit" :loading="is_submitting_self_report" data-catch="attendance-selfreport-submit">
+          <a-button
+            type="primary"
+            html-type="submit"
+            :loading="is_submitting_self_report"
+            data-catch="attendance-selfreport-submit"
+          >
             提交申请
           </a-button>
         </a-form-item>
@@ -162,7 +234,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   /** Emitted after successful submission so parent can switch tab and reload records */
-  'submitted': []
+  submitted: []
 }>()
 
 const is_submitting_overtime = ref(false)
@@ -171,19 +243,33 @@ const overtime_file_ref = ref<{ clear: () => void } | null>(null)
 const self_report_file_ref = ref<{ clear: () => void } | null>(null)
 
 function handleOvertimeFilesChange(files: Array<{ attachmentId: number }>) {
-  overtime_form.value.attachmentIds = files.map(f => f.attachmentId)
+  overtime_form.value.attachmentIds = files.map((f) => f.attachmentId)
 }
 
 function handleSelfReportFilesChange(files: Array<{ attachmentId: number }>) {
-  self_report_form.value.attachmentIds = files.map(f => f.attachmentId)
+  self_report_form.value.attachmentIds = files.map((f) => f.attachmentId)
 }
 
 function makeEmptyOvertimeForm(): OvertimeFormState {
-  return { date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '', attachmentIds: [] }
+  return {
+    date: undefined,
+    startTime: undefined,
+    endTime: undefined,
+    overtimeType: undefined,
+    reason: '',
+    attachmentIds: [],
+  }
 }
 
 function makeEmptySelfReportForm(): SelfReportFormState {
-  return { date: undefined, startTime: undefined, endTime: undefined, overtimeType: undefined, reason: '', attachmentIds: [] }
+  return {
+    date: undefined,
+    startTime: undefined,
+    endTime: undefined,
+    overtimeType: undefined,
+    reason: '',
+    attachmentIds: [],
+  }
 }
 
 const overtime_form = ref<OvertimeFormState>(makeEmptyOvertimeForm())
@@ -219,7 +305,7 @@ watch(
       startTime: data.startTime ? dayjs(data.startTime, 'HH:mm') : undefined,
       endTime: data.endTime ? dayjs(data.endTime, 'HH:mm') : undefined,
       overtimeType: data.overtimeType,
-      reason: data.reason
+      reason: data.reason,
     }
   }
 )
@@ -237,10 +323,10 @@ async function submitOvertime() {
           startTime: overtime_form.value.startTime?.format('HH:mm'),
           endTime: overtime_form.value.endTime?.format('HH:mm'),
           overtimeType: overtime_form.value.overtimeType,
-          attachmentIds: overtime_form.value.attachmentIds
+          attachmentIds: overtime_form.value.attachmentIds,
         },
-        remark: overtime_form.value.reason
-      }
+        remark: overtime_form.value.reason,
+      },
     })
     overtime_file_ref.value?.clear()
     overtime_form.value = makeEmptyOvertimeForm()
@@ -265,10 +351,10 @@ async function submitSelfReport() {
           startTime: self_report_form.value.startTime?.format('HH:mm'),
           endTime: self_report_form.value.endTime?.format('HH:mm'),
           overtimeType: self_report_form.value.overtimeType,
-          attachmentIds: self_report_form.value.attachmentIds
+          attachmentIds: self_report_form.value.attachmentIds,
         },
-        remark: self_report_form.value.reason
-      }
+        remark: self_report_form.value.reason,
+      },
     })
     self_report_file_ref.value?.clear()
     self_report_form.value = makeEmptySelfReportForm()

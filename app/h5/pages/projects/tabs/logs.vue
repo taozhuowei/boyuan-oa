@@ -10,7 +10,7 @@
          GET   /api/projects/{id}/construction-log/materials-summary — 材料汇总 -->
   <div>
     <a-spin :spinning="loadingLogs">
-      <div style="margin-bottom: 12px; display: flex; gap: 8px;">
+      <div style="margin-bottom: 12px; display: flex; gap: 8px">
         <a-button :loading="loadingLogs" @click="loadLogs">刷新</a-button>
         <a-button @click="openMaterialsSummary">材料汇总（本期）</a-button>
       </div>
@@ -23,13 +23,24 @@
               :title="`${item.submitterName} — ${item.formNo}`"
               :description="`提交于 ${item.createdAt?.slice(0, 16).replace('T', ' ')}`"
             />
-            <a-tag :color="item.status === 'PENDING' ? 'orange' : item.status === 'APPROVED' ? 'green' : 'red'">
+            <a-tag
+              :color="
+                item.status === 'PENDING' ? 'orange' : item.status === 'APPROVED' ? 'green' : 'red'
+              "
+            >
               {{ LOG_STATUS_LABELS[item.status] ?? item.status }}
             </a-tag>
-            <a-space style="margin-left: 8px;">
+            <a-space style="margin-left: 8px">
               <a-button size="small" @click="openReviewModal(item)">批注</a-button>
               <template v-if="item.status === 'PENDING' || item.status === 'APPROVING'">
-                <a-button type="primary" size="small" :loading="approveLoading" @click="doApproveLog(item.id)">通过</a-button>
+                <a-button
+                  type="primary"
+                  size="small"
+                  :loading="approveLoading"
+                  @click="doApproveLog(item.id)"
+                >
+                  通过
+                </a-button>
                 <a-button danger size="small" @click="openRejectLog(item)">驳回</a-button>
               </template>
               <a-popconfirm
@@ -46,16 +57,30 @@
     </a-spin>
 
     <!-- 批注弹窗 -->
-    <a-modal v-model:open="showReviewModal" title="批注" @ok="doReviewLog" :confirm-loading="approveLoading">
+    <a-modal
+      v-model:open="showReviewModal"
+      title="批注"
+      @ok="doReviewLog"
+      :confirm-loading="approveLoading"
+    >
       <a-form layout="vertical">
         <a-form-item label="批注内容">
-          <a-textarea v-model:value="reviewNote" :rows="4" placeholder="输入批注（不影响审批状态）" />
+          <a-textarea
+            v-model:value="reviewNote"
+            :rows="4"
+            placeholder="输入批注（不影响审批状态）"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- 驳回弹窗 -->
-    <a-modal v-model:open="showRejectLogModal" title="驳回施工日志" @ok="doRejectLog" :confirm-loading="approveLoading">
+    <a-modal
+      v-model:open="showRejectLogModal"
+      title="驳回施工日志"
+      @ok="doRejectLog"
+      :confirm-loading="approveLoading"
+    >
       <a-form layout="vertical">
         <a-form-item label="驳回原因">
           <a-textarea v-model:value="rejectLogComment" :rows="3" />
@@ -64,8 +89,13 @@
     </a-modal>
 
     <!-- 材料汇总弹窗 -->
-    <a-modal v-model:open="showMaterialsSummaryModal" title="材料用量汇总（本期）" :footer="null" width="760px">
-      <div v-if="!materialsSummary.materials?.length" style="color: #999;">本期无材料记录</div>
+    <a-modal
+      v-model:open="showMaterialsSummaryModal"
+      title="材料用量汇总（本期）"
+      :footer="null"
+      width="760px"
+    >
+      <div v-if="!materialsSummary.materials?.length" style="color: #999">本期无材料记录</div>
       <a-table
         v-else
         :columns="materialsSummaryColumns"
@@ -106,8 +136,8 @@ const props = defineProps<Props>()
 
 // ── 权限 ──────────────────────────────────────────────
 const userStore = useUserStore()
-const role      = computed(() => userStore.userInfo?.role ?? '')
-const isCeo     = computed(() => role.value === 'ceo')
+const role = computed(() => userStore.userInfo?.role ?? '')
+const isCeo = computed(() => role.value === 'ceo')
 
 // ── 常量 ───────────────────────────────────────────────
 // 原因：Record<string, string> 断言用于 antd 模板 status map
@@ -116,7 +146,7 @@ const LOG_STATUS_LABELS: Record<string, string> = {
   APPROVING: '审批中',
   APPROVED: '已通过',
   REJECTED: '已驳回',
-  RECALLED: '已追溯'
+  RECALLED: '已追溯',
 }
 
 // ── 类型定义 ───────────────────────────────────────────
@@ -134,8 +164,8 @@ interface MaterialsSummary {
 }
 
 // ── 施工日志列表 ────────────────────────────────────────
-const loadingLogs  = ref(false)
-const logRecords   = ref<LogRecord[]>([])
+const loadingLogs = ref(false)
+const logRecords = ref<LogRecord[]>([])
 
 async function loadLogs() {
   loadingLogs.value = true
@@ -150,13 +180,13 @@ async function loadLogs() {
 }
 
 // ── 审批操作 ───────────────────────────────────────────
-const approveLoading    = ref(false)
-const showReviewModal   = ref(false)
+const approveLoading = ref(false)
+const showReviewModal = ref(false)
 const showRejectLogModal = ref(false)
-const reviewNote        = ref('')
-const rejectLogComment  = ref('')
-const reviewingLogId    = ref<number | null>(null)
-const rejectingLogId    = ref<number | null>(null)
+const reviewNote = ref('')
+const rejectLogComment = ref('')
+const reviewingLogId = ref<number | null>(null)
+const rejectingLogId = ref<number | null>(null)
 
 function openReviewModal(item: LogRecord) {
   reviewingLogId.value = item.id
@@ -176,7 +206,7 @@ async function doReviewLog() {
     await request({
       url: `/logs/construction-logs/${reviewingLogId.value}/review`,
       method: 'PATCH',
-      body: { pmNote: reviewNote.value }
+      body: { pmNote: reviewNote.value },
     })
     message.success('批注已保存')
     showReviewModal.value = false
@@ -202,7 +232,11 @@ async function doRejectLog() {
   if (!rejectingLogId.value) return
   approveLoading.value = true
   try {
-    await request({ url: `/logs/${rejectingLogId.value}/reject`, method: 'POST', body: { comment: rejectLogComment.value } })
+    await request({
+      url: `/logs/${rejectingLogId.value}/reject`,
+      method: 'POST',
+      body: { comment: rejectLogComment.value },
+    })
     message.success('已驳回')
     showRejectLogModal.value = false
     await loadLogs()
@@ -231,7 +265,7 @@ const materialsSummaryColumns = computed(() => {
   const cols: Array<Record<string, unknown>> = [
     { title: '材料', dataIndex: 'name', key: 'name', width: 150, fixed: 'left' },
     { title: '单位', dataIndex: 'unit', key: 'unit', width: 80 },
-    { title: '合计', dataIndex: 'total', key: 'total', width: 100 }
+    { title: '合计', dataIndex: 'total', key: 'total', width: 100 },
   ]
   for (const d of materialsSummary.value.dates ?? []) {
     cols.push({ title: d.slice(5), key: 'd_' + d, align: 'right' })
@@ -242,9 +276,9 @@ const materialsSummaryColumns = computed(() => {
 async function openMaterialsSummary() {
   showMaterialsSummaryModal.value = true
   try {
-    materialsSummary.value = await request<MaterialsSummary>({
-      url: `/projects/${props.projectId}/construction-log/materials-summary`
-    }) ?? { materials: [], dates: [] }
+    materialsSummary.value = (await request<MaterialsSummary>({
+      url: `/projects/${props.projectId}/construction-log/materials-summary`,
+    })) ?? { materials: [], dates: [] }
   } catch {
     materialsSummary.value = { materials: [], dates: [] }
   }

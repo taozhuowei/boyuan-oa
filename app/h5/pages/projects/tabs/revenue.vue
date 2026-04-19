@@ -6,11 +6,30 @@
          GET /api/projects/{id}/revenue/summary — 营收汇总（合同合计/已收/待收）
          PUT /api/projects/{id}/revenue/{rowId} — 更新营收行 -->
   <div>
-    <div style="margin-bottom: 12px; display: flex; gap: 16px; align-items: center;">
-      <a-statistic title="合同合计" :value="revenueSummary.contractTotal ?? 0" :precision="2" prefix="¥" />
-      <a-statistic title="已收款" :value="revenueSummary.received ?? 0" :precision="2" prefix="¥" :value-style="{ color: '#52c41a' }" />
-      <a-statistic title="待收款" :value="revenueSummary.pending ?? 0" :precision="2" prefix="¥" :value-style="{ color: '#fa8c16' }" />
-      <a-button style="margin-left: auto" :loading="revenueLoading" @click="loadRevenue">刷新</a-button>
+    <div style="margin-bottom: 12px; display: flex; gap: 16px; align-items: center">
+      <a-statistic
+        title="合同合计"
+        :value="revenueSummary.contractTotal ?? 0"
+        :precision="2"
+        prefix="¥"
+      />
+      <a-statistic
+        title="已收款"
+        :value="revenueSummary.received ?? 0"
+        :precision="2"
+        prefix="¥"
+        :value-style="{ color: '#52c41a' }"
+      />
+      <a-statistic
+        title="待收款"
+        :value="revenueSummary.pending ?? 0"
+        :precision="2"
+        prefix="¥"
+        :value-style="{ color: '#fa8c16' }"
+      />
+      <a-button style="margin-left: auto" :loading="revenueLoading" @click="loadRevenue">
+        刷新
+      </a-button>
     </div>
 
     <a-table
@@ -22,13 +41,24 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'completed'">
-          <a-tag :color="record.actualCompletionDate ? 'green' : 'default'">{{ record.actualCompletionDate ?? '未完成' }}</a-tag>
+          <a-tag :color="record.actualCompletionDate ? 'green' : 'default'">
+            {{ record.actualCompletionDate ?? '未完成' }}
+          </a-tag>
         </template>
         <template v-if="column.key === 'receiptStatus'">
-          <a-tag :color="record.receiptStatus === 'RECEIVED' ? 'green' : 'orange'">{{ record.receiptStatus === 'RECEIVED' ? '已收款' : '待收款' }}</a-tag>
+          <a-tag :color="record.receiptStatus === 'RECEIVED' ? 'green' : 'orange'">
+            {{ record.receiptStatus === 'RECEIVED' ? '已收款' : '待收款' }}
+          </a-tag>
         </template>
         <template v-if="column.key === 'action'">
-          <a-button v-if="canEditRevenue" type="link" size="small" @click="openRevenueEdit(record as RevenueRow)">编辑</a-button>
+          <a-button
+            v-if="canEditRevenue"
+            type="link"
+            size="small"
+            @click="openRevenueEdit(record as RevenueRow)"
+          >
+            编辑
+          </a-button>
         </template>
       </template>
     </a-table>
@@ -42,16 +72,34 @@
       width="540px"
     >
       <a-form layout="vertical" :model="revenueForm">
-        <a-form-item label="合同金额（元）"><a-input-number v-model:value="revenueForm.contractAmount" :precision="2" :min="0" style="width: 100%" /></a-form-item>
+        <a-form-item label="合同金额（元）">
+          <a-input-number
+            v-model:value="revenueForm.contractAmount"
+            :precision="2"
+            :min="0"
+            style="width: 100%"
+          />
+        </a-form-item>
         <a-form-item label="收款状态">
           <a-select v-model:value="revenueForm.receiptStatus">
             <a-select-option value="PENDING">待收款</a-select-option>
             <a-select-option value="RECEIVED">已收款</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="实际收款金额（元）"><a-input-number v-model:value="revenueForm.actualReceiptAmount" :precision="2" :min="0" style="width: 100%" /></a-form-item>
-        <a-form-item label="收款日期"><a-input v-model:value="revenueForm.receiptDate" placeholder="YYYY-MM-DD" /></a-form-item>
-        <a-form-item label="备注"><a-textarea v-model:value="revenueForm.receiptRemark" :rows="2" /></a-form-item>
+        <a-form-item label="实际收款金额（元）">
+          <a-input-number
+            v-model:value="revenueForm.actualReceiptAmount"
+            :precision="2"
+            :min="0"
+            style="width: 100%"
+          />
+        </a-form-item>
+        <a-form-item label="收款日期">
+          <a-input v-model:value="revenueForm.receiptDate" placeholder="YYYY-MM-DD" />
+        </a-form-item>
+        <a-form-item label="备注">
+          <a-textarea v-model:value="revenueForm.receiptRemark" :rows="2" />
+        </a-form-item>
       </a-form>
     </a-modal>
   </div>
@@ -77,8 +125,8 @@ interface Props {
 const props = defineProps<Props>()
 
 // ── 权限 ──────────────────────────────────────────────
-const userStore      = useUserStore()
-const role           = computed(() => userStore.userInfo?.role ?? '')
+const userStore = useUserStore()
+const role = computed(() => userStore.userInfo?.role ?? '')
 const canEditRevenue = computed(() => ['ceo', 'finance'].includes(role.value))
 
 // ── 类型定义 ───────────────────────────────────────────
@@ -95,21 +143,24 @@ interface RevenueRow {
 }
 
 // ── 状态 ───────────────────────────────────────────────
-const revenueRows    = ref<RevenueRow[]>([])
+const revenueRows = ref<RevenueRow[]>([])
 const revenueLoading = ref(false)
 const revenueSummary = ref<{ contractTotal?: number; received?: number; pending?: number }>({})
 const showRevenueModal = ref(false)
-const revenueSaving  = ref(false)
+const revenueSaving = ref(false)
 const editingRevenue = ref<RevenueRow | null>(null)
-const revenueForm    = ref<{
+const revenueForm = ref<{
   contractAmount: number | undefined
   receiptStatus: string
   actualReceiptAmount: number | undefined
   receiptDate: string
   receiptRemark: string
 }>({
-  contractAmount: undefined, receiptStatus: 'PENDING',
-  actualReceiptAmount: undefined, receiptDate: '', receiptRemark: ''
+  contractAmount: undefined,
+  receiptStatus: 'PENDING',
+  actualReceiptAmount: undefined,
+  receiptDate: '',
+  receiptRemark: '',
 })
 
 const revenueColumns = [
@@ -119,7 +170,7 @@ const revenueColumns = [
   { title: '收款状态', key: 'receiptStatus', width: 100 },
   { title: '实收', dataIndex: 'actualReceiptAmount', key: 'actualReceiptAmount', width: 110 },
   { title: '收款日期', dataIndex: 'receiptDate', key: 'receiptDate', width: 110 },
-  { title: '操作', key: 'action', width: 80 }
+  { title: '操作', key: 'action', width: 80 },
 ]
 
 async function loadRevenue() {
@@ -127,12 +178,15 @@ async function loadRevenue() {
   try {
     const [list, sum] = await Promise.all([
       request<RevenueRow[]>({ url: `/projects/${props.projectId}/revenue` }),
-      request<{ contractTotal: number; received: number; pending: number }>({ url: `/projects/${props.projectId}/revenue/summary` })
+      request<{ contractTotal: number; received: number; pending: number }>({
+        url: `/projects/${props.projectId}/revenue/summary`,
+      }),
     ])
-    revenueRows.value    = list ?? []
+    revenueRows.value = list ?? []
     revenueSummary.value = sum ?? {}
   } catch {
-    revenueRows.value = []; revenueSummary.value = {}
+    revenueRows.value = []
+    revenueSummary.value = {}
   } finally {
     revenueLoading.value = false
   }
@@ -141,11 +195,11 @@ async function loadRevenue() {
 function openRevenueEdit(record: RevenueRow) {
   editingRevenue.value = record
   revenueForm.value = {
-    contractAmount:       record.contractAmount ?? undefined,
-    receiptStatus:        record.receiptStatus ?? 'PENDING',
-    actualReceiptAmount:  record.actualReceiptAmount ?? undefined,
-    receiptDate:          record.receiptDate ?? '',
-    receiptRemark:        record.receiptRemark ?? ''
+    contractAmount: record.contractAmount ?? undefined,
+    receiptStatus: record.receiptStatus ?? 'PENDING',
+    actualReceiptAmount: record.actualReceiptAmount ?? undefined,
+    receiptDate: record.receiptDate ?? '',
+    receiptRemark: record.receiptRemark ?? '',
   }
   showRevenueModal.value = true
 }
@@ -157,12 +211,15 @@ async function saveRevenue() {
     await request({
       url: `/projects/${props.projectId}/revenue/${editingRevenue.value.id}`,
       method: 'PUT',
-      body: revenueForm.value
+      body: revenueForm.value,
     })
     message.success('已保存')
     showRevenueModal.value = false
     await loadRevenue()
-  } catch {} finally { revenueSaving.value = false }
+  } catch {
+  } finally {
+    revenueSaving.value = false
+  }
 }
 
 // ── 初始化 ─────────────────────────────────────────────

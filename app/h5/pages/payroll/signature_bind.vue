@@ -40,11 +40,7 @@
     <div v-else-if="currentStep === 1" class="step-content">
       <a-card title="设置 PIN 码" class="pin-card">
         <a-form layout="vertical" class="pin-form">
-          <a-form-item
-            label="PIN 码"
-            :validate-status="pinError ? 'error' : ''"
-            :help="pinError"
-          >
+          <a-form-item label="PIN 码" :validate-status="pinError ? 'error' : ''" :help="pinError">
             <a-input
               v-model:value="pinForm.pin"
               type="password"
@@ -69,9 +65,7 @@
         </a-form>
         <div class="form-actions">
           <a-button @click="goBackToSignature">返回上一步</a-button>
-          <a-button type="primary" :disabled="!isPinValid" @click="goToSubmit">
-            下一步
-          </a-button>
+          <a-button type="primary" :disabled="!isPinValid" @click="goToSubmit">下一步</a-button>
         </div>
       </a-card>
     </div>
@@ -89,7 +83,12 @@
         </a-descriptions>
         <div class="form-actions">
           <a-button @click="goBackToPin">返回修改</a-button>
-          <a-button type="primary" data-catch="signature-submit" :loading="submitting" @click="handleSubmit">
+          <a-button
+            type="primary"
+            data-catch="signature-submit"
+            :loading="submitting"
+            @click="handleSubmit"
+          >
             确认绑定
           </a-button>
         </div>

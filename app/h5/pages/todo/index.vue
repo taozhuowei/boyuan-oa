@@ -10,7 +10,7 @@
       type="success"
       show-icon
       closable
-      style="margin-bottom: 12px;"
+      style="margin-bottom: 12px"
       @close="approvalResult = ''"
     />
 
@@ -32,7 +32,7 @@
         :pagination="{ pageSize: 20, showTotal: (t: number) => `共 ${t} 条` }"
         row-key="id"
         size="small"
-        :customRow="() => ({ 'data-catch': 'todo-item' } as any)"
+        :customRow="() => ({ 'data-catch': 'todo-item' }) as any"
       >
         <template #emptyText>
           <a-empty data-catch="todo-empty" description="暂无数据" />
@@ -45,7 +45,14 @@
             {{ getSummary(record as FormRecord) }}
           </template>
           <template v-if="column.key === 'action'">
-            <a-button type="link" size="small" :data-catch="'todo-row-detail-btn-' + record.id" @click="viewApproval(record as FormRecord)">查看审批</a-button>
+            <a-button
+              type="link"
+              size="small"
+              :data-catch="'todo-row-detail-btn-' + record.id"
+              @click="viewApproval(record as FormRecord)"
+            >
+              查看审批
+            </a-button>
           </template>
         </template>
       </a-table>
@@ -54,7 +61,11 @@
     <!-- Approval detail modal -->
     <a-modal
       v-model:open="modalVisible"
-      :title="selectedRecord ? `审批 · ${selectedRecord.submitter} ${selectedRecord.formTypeName}` : '审批'"
+      :title="
+        selectedRecord
+          ? `审批 · ${selectedRecord.submitter} ${selectedRecord.formTypeName}`
+          : '审批'
+      "
       width="600px"
       :footer="null"
     >
@@ -62,7 +73,9 @@
         <a-descriptions :column="2" size="small" bordered>
           <a-descriptions-item label="申请人">{{ selectedRecord.submitter }}</a-descriptions-item>
           <a-descriptions-item label="类型">{{ selectedRecord.formTypeName }}</a-descriptions-item>
-          <a-descriptions-item label="提交时间">{{ formatTime(selectedRecord.submitTime) }}</a-descriptions-item>
+          <a-descriptions-item label="提交时间">
+            {{ formatTime(selectedRecord.submitTime) }}
+          </a-descriptions-item>
           <a-descriptions-item label="状态">{{ selectedRecord.status }}</a-descriptions-item>
         </a-descriptions>
 
@@ -70,9 +83,16 @@
 
         <div class="modal-actions">
           <a-space>
-            <a-input v-model:value="approvalComment" data-catch="approval-comment" placeholder="审批意见（选填）" style="width: 280px" />
+            <a-input
+              v-model:value="approvalComment"
+              data-catch="approval-comment"
+              placeholder="审批意见（选填）"
+              style="width: 280px"
+            />
             <a-button data-catch="approval-reject-btn" danger @click="handleReject">驳回</a-button>
-            <a-button data-catch="approval-approve-btn" type="primary" @click="handleApprove">通过</a-button>
+            <a-button data-catch="approval-approve-btn" type="primary" @click="handleApprove">
+              通过
+            </a-button>
           </a-space>
         </div>
       </div>
@@ -110,7 +130,7 @@ const columns = [
   { title: '申请人', dataIndex: 'submitter', key: 'submitter', width: 100 },
   { title: '摘要', key: 'summary' },
   { title: '提交时间', key: 'submitTime', width: 160 },
-  { title: '操作', key: 'action', width: 100 }
+  { title: '操作', key: 'action', width: 100 },
 ]
 
 const ATTENDANCE_TYPES = ['LEAVE', 'OVERTIME', 'INJURY']
@@ -160,7 +180,7 @@ async function handleApprove() {
     await request({
       url: `/forms/${selectedRecord.value.id}/approve`,
       method: 'POST',
-      body: { action: 'APPROVE', comment: approvalComment.value }
+      body: { action: 'APPROVE', comment: approvalComment.value },
     })
     approvalResult.value = '审批通过'
     modalVisible.value = false
@@ -177,7 +197,7 @@ async function handleReject() {
     await request({
       url: `/forms/${selectedRecord.value.id}/reject`,
       method: 'POST',
-      body: { action: 'REJECT', comment: approvalComment.value }
+      body: { action: 'REJECT', comment: approvalComment.value },
     })
     approvalResult.value = '已驳回'
     modalVisible.value = false

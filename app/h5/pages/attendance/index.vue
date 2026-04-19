@@ -86,19 +86,40 @@ const is_pm_or_ceo = computed(() => {
 })
 
 // Valid tab keys; invalid ?tab= values fall back to 'records'
-const VALID_TABS = ['records', 'leave', 'overtime', 'self-report', 'notifications', 'notify-create', 'notify-initiated'] as const
-type TabKey = typeof VALID_TABS[number]
+const VALID_TABS = [
+  'records',
+  'leave',
+  'overtime',
+  'self-report',
+  'notifications',
+  'notify-create',
+  'notify-initiated',
+] as const
+type TabKey = (typeof VALID_TABS)[number]
 
 const initial_tab = (() => {
   const q = Array.isArray(route.query.tab) ? route.query.tab[0] : route.query.tab
-  return typeof q === 'string' && (VALID_TABS as readonly string[]).includes(q) ? q as TabKey : 'records'
+  return typeof q === 'string' && (VALID_TABS as readonly string[]).includes(q)
+    ? (q as TabKey)
+    : 'records'
 })()
 
 const active_tab = ref<TabKey>(initial_tab)
 
 // Cross-tab prefill state for resubmit flow (MyRecordsTab → form tabs)
-const leave_prefill = ref<{ leaveType: string | undefined; startDate: string | undefined; endDate: string | undefined; reason: string } | null>(null)
-const overtime_prefill = ref<{ date: string | undefined; startTime: string | undefined; endTime: string | undefined; overtimeType: string | undefined; reason: string } | null>(null)
+const leave_prefill = ref<{
+  leaveType: string | undefined
+  startDate: string | undefined
+  endDate: string | undefined
+  reason: string
+} | null>(null)
+const overtime_prefill = ref<{
+  date: string | undefined
+  startTime: string | undefined
+  endTime: string | undefined
+  overtimeType: string | undefined
+  reason: string
+} | null>(null)
 
 // Template refs for exposing child methods
 const records_tab_ref = ref<InstanceType<typeof MyRecordsTab> | null>(null)
@@ -112,13 +133,24 @@ function onTabChange(key: string | number) {
 }
 
 /** Called by MyRecordsTab when user clicks 重新发起 on a rejected leave record */
-function onResubmitLeave(data: { leaveType: string | undefined; startDate: string | undefined; endDate: string | undefined; reason: string }) {
+function onResubmitLeave(data: {
+  leaveType: string | undefined
+  startDate: string | undefined
+  endDate: string | undefined
+  reason: string
+}) {
   leave_prefill.value = data
   active_tab.value = 'leave'
 }
 
 /** Called by MyRecordsTab when user clicks 重新发起 on a rejected overtime record */
-function onResubmitOvertime(data: { date: string | undefined; startTime: string | undefined; endTime: string | undefined; overtimeType: string | undefined; reason: string }) {
+function onResubmitOvertime(data: {
+  date: string | undefined
+  startTime: string | undefined
+  endTime: string | undefined
+  overtimeType: string | undefined
+  reason: string
+}) {
   overtime_prefill.value = data
   active_tab.value = 'overtime'
 }
@@ -127,7 +159,7 @@ function onResubmitOvertime(data: { date: string | undefined; startTime: string 
 async function onFormSubmitted() {
   active_tab.value = 'records'
   // nextTick-equivalent: allow records_tab_ref to mount before calling loadRecords
-  await new Promise(resolve => setTimeout(resolve, 0))
+  await new Promise((resolve) => setTimeout(resolve, 0))
   records_tab_ref.value?.loadRecords()
 }
 
@@ -135,7 +167,7 @@ async function onFormSubmitted() {
 async function onNotificationSent() {
   active_tab.value = 'notify-initiated'
   // Allow OvertimeNotifyTab to mount, then reload its list
-  await new Promise(resolve => setTimeout(resolve, 0))
+  await new Promise((resolve) => setTimeout(resolve, 0))
   notify_tab_ref.value?.loadInitiatedNotifs()
 }
 </script>

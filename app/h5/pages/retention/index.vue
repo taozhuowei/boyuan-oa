@@ -8,7 +8,7 @@
     <!-- CEO 视图 -->
     <template v-if="isCeo">
       <!-- Section 1: 数据保留策略 -->
-      <a-card title="数据保留策略" style="margin-bottom: 16px;">
+      <a-card title="数据保留策略" style="margin-bottom: 16px">
         <a-table
           :columns="policyColumns"
           :data-source="policies"
@@ -32,20 +32,15 @@
       </a-card>
 
       <!-- Section 2: 到期提醒 -->
-      <a-card title="到期提醒" style="margin-bottom: 16px;">
+      <a-card title="到期提醒" style="margin-bottom: 16px">
         <a-empty v-if="reminders.length === 0 && !loadingReminders" description="暂无到期提醒" />
-        <a-list
-          v-else
-          :data-source="reminders"
-          :loading="loadingReminders"
-          size="small"
-        >
+        <a-list v-else :data-source="reminders" :loading="loadingReminders" size="small">
           <template #renderItem="{ item }">
             <a-list-item>
               <a-list-item-meta>
                 <template #title>
                   <span>{{ getDataTypeLabel(item.dataType) }}</span>
-                  <a-tag color="orange" style="margin-left: 8px;">
+                  <a-tag color="orange" style="margin-left: 8px">
                     预计删除: {{ formatDate(item.expectedDeleteDate) }}
                   </a-tag>
                 </template>
@@ -69,9 +64,7 @@
                   cancel-text="取消"
                   @confirm="() => handleDismiss(item.id)"
                 >
-                  <a-button size="small" :loading="dismissingId === item.id">
-                    忽略
-                  </a-button>
+                  <a-button size="small" :loading="dismissingId === item.id">忽略</a-button>
                 </a-popconfirm>
               </template>
             </a-list-item>
@@ -81,7 +74,7 @@
 
       <!-- Section 3: 导出任务 -->
       <a-card title="导出任务">
-        <div style="margin-bottom: 12px;">
+        <div style="margin-bottom: 12px">
           <a-button size="small" :loading="loadingTasks" @click="loadExportTasks">刷新</a-button>
         </div>
         <a-table
@@ -116,7 +109,7 @@
               >
                 下载
               </a-button>
-              <span v-else-if="record.status === 'FAILED'" style="color: #ff4d4f; font-size: 12px;">
+              <span v-else-if="record.status === 'FAILED'" style="color: #ff4d4f; font-size: 12px">
                 {{ record.errorMsg || '导出失败' }}
               </span>
               <span v-else>-</span>
@@ -241,7 +234,7 @@ function formatDataTypes(dataTypes: string): string {
   if (!dataTypes) return '-'
   return dataTypes
     .split(',')
-    .map(t => getDataTypeLabel(t.trim()))
+    .map((t) => getDataTypeLabel(t.trim()))
     .join(', ')
 }
 
@@ -340,7 +333,7 @@ function startPolling() {
   // 每 5 秒轮询一次，当有 PENDING 或 RUNNING 状态的任务时刷新
   pollTimer = setInterval(() => {
     const hasRunningTask = exportTasks.value.some(
-      t => t.status === 'PENDING' || t.status === 'RUNNING'
+      (t) => t.status === 'PENDING' || t.status === 'RUNNING'
     )
     if (hasRunningTask) {
       loadExportTasks()
@@ -397,7 +390,7 @@ function handleDownload(token: string) {
   // 构建下载 URL 并触发下载
   const baseUrl = (import.meta.env.VITE_API_BASE_URL as string) || '/api'
   const downloadUrl = `${baseUrl}/retention/export/${token}/download`
-  
+
   // 创建临时链接并点击
   const link = document.createElement('a')
   link.href = downloadUrl

@@ -4,7 +4,11 @@
       ref="canvasRef"
       :width="props.width"
       :height="props.height"
-      :style="{ width: props.width + 'px', height: props.height + 'px', backgroundColor: props.bgColor }"
+      :style="{
+        width: props.width + 'px',
+        height: props.height + 'px',
+        backgroundColor: props.bgColor,
+      }"
       class="signature-canvas__canvas"
       @pointerdown="onPointerDown"
       @pointermove="onPointerMove"
@@ -16,7 +20,11 @@
       <a-button class="signature-canvas__btn signature-canvas__btn--clear" @click="clear">
         清空
       </a-button>
-      <a-button type="primary" class="signature-canvas__btn signature-canvas__btn--confirm" @click="onConfirm">
+      <a-button
+        type="primary"
+        class="signature-canvas__btn signature-canvas__btn--confirm"
+        @click="onConfirm"
+      >
         确认
       </a-button>
     </div>

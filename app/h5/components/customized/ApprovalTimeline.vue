@@ -9,15 +9,13 @@
     <div class="timeline-header">审批历史</div>
     <a-divider style="margin: 8px 0" />
     <a-timeline v-if="steps.length > 0">
-      <a-timeline-item
-        v-for="(step, index) in steps"
-        :key="index"
-        :color="getColor(step.action)"
-      >
+      <a-timeline-item v-for="(step, index) in steps" :key="index" :color="getColor(step.action)">
         <div class="step-content">
           <span class="step-time">{{ formatTime(step.time) }}</span>
           <span class="step-operator">{{ step.approver ?? step.operator ?? '—' }}</span>
-          <a-tag :color="getTagColor(step.action)" class="step-action">{{ actionLabel(step.action) }}</a-tag>
+          <a-tag :color="getTagColor(step.action)" class="step-action">
+            {{ actionLabel(step.action) }}
+          </a-tag>
           <span v-if="step.comment" class="step-comment">{{ step.comment }}</span>
         </div>
       </a-timeline-item>
@@ -44,10 +42,17 @@ defineProps<{
 /** 操作类型代码 → 中文标签 */
 function actionLabel(action: string): string {
   const map: Record<string, string> = {
-    APPROVE: '通过', REJECT: '驳回', SKIP: '跳过', RECALL: '撤回',
-    SUBMIT: '提交', PENDING: '待审批',
+    APPROVE: '通过',
+    REJECT: '驳回',
+    SKIP: '跳过',
+    RECALL: '撤回',
+    SUBMIT: '提交',
+    PENDING: '待审批',
     // 兼容旧中文值
-    通过: '通过', 驳回: '驳回', 提交: '提交', 修改: '修改'
+    通过: '通过',
+    驳回: '驳回',
+    提交: '提交',
+    修改: '修改',
   }
   return map[action] ?? action
 }

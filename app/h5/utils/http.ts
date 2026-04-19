@@ -21,7 +21,7 @@ export async function request<T>(options: RequestOptions): Promise<T> {
     return await $fetch<T>(API_BASE + options.url, {
       method: options.method ?? 'GET',
       body: options.body as Record<string, unknown> | undefined,
-      headers
+      headers,
     })
   } catch (err: unknown) {
     const status = (err as { statusCode?: number }).statusCode

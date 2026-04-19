@@ -10,7 +10,7 @@
         :pagination="false"
         row-key="id"
         size="small"
-        :customRow="() => ({ 'data-catch': 'team-member-row' } as any)"
+        :customRow="() => ({ 'data-catch': 'team-member-row' }) as any"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'roleCode'">
@@ -66,7 +66,7 @@ const columns = [
   { title: '本月请假', key: 'thisMonthLeaveDays' },
   { title: '本月加班', key: 'thisMonthOvertimeHours' },
   { title: '状态', key: 'accountStatus', width: 90 },
-  { title: '操作', key: 'action', width: 80 }
+  { title: '操作', key: 'action', width: 80 },
 ]
 
 function roleLabel(code: string): string {
@@ -77,7 +77,7 @@ function roleLabel(code: string): string {
     project_manager: '项目经理',
     finance: '财务',
     hr: '人力资源',
-    ceo: '首席经营者'
+    ceo: '首席经营者',
   }
   return map[code] ?? code
 }

@@ -21,7 +21,9 @@
           <a-tag :color="statusColor(record.status)">{{ statusLabel(record.status) }}</a-tag>
         </template>
         <template v-if="column.key === 'action'">
-          <a-button type="link" size="small" @click="viewRecord(record as FormRecord)">查看</a-button>
+          <a-button type="link" size="small" @click="viewRecord(record as FormRecord)">
+            查看
+          </a-button>
         </template>
       </template>
     </a-table>
@@ -37,22 +39,39 @@
         <a-descriptions :column="2" size="small" bordered>
           <a-descriptions-item label="类型">{{ selected_record.formTypeName }}</a-descriptions-item>
           <a-descriptions-item label="状态">
-            <a-tag :color="statusColor(selected_record.status)">{{ statusLabel(selected_record.status) }}</a-tag>
+            <a-tag :color="statusColor(selected_record.status)">
+              {{ statusLabel(selected_record.status) }}
+            </a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="提交时间" :span="2">{{ formatDate(selected_record.submitTime) }}</a-descriptions-item>
+          <a-descriptions-item label="提交时间" :span="2">
+            {{ formatDate(selected_record.submitTime) }}
+          </a-descriptions-item>
           <template v-for="(val, key) in selected_record.formData" :key="key">
             <a-descriptions-item :label="getFieldLabel(String(key))" :span="2">
               {{ formatFormValue(key as string, val) }}
             </a-descriptions-item>
           </template>
-          <a-descriptions-item v-if="selected_record.remark" label="备注" :span="2">{{ selected_record.remark }}</a-descriptions-item>
-          <a-descriptions-item v-if="selected_record.status === 'REJECTED'" label="驳回原因" :span="2">
+          <a-descriptions-item v-if="selected_record.remark" label="备注" :span="2">
+            {{ selected_record.remark }}
+          </a-descriptions-item>
+          <a-descriptions-item
+            v-if="selected_record.status === 'REJECTED'"
+            label="驳回原因"
+            :span="2"
+          >
             <span style="color: #ff4d4f">{{ getRejectReason(selected_record) }}</span>
           </a-descriptions-item>
         </a-descriptions>
 
-        <div v-if="selected_record.status === 'REJECTED' && canResubmit(selected_record)" class="resubmit-row">
-          <a-button type="primary" data-catch="attendance-record-resubmit-btn" @click="handleResubmit(selected_record)">
+        <div
+          v-if="selected_record.status === 'REJECTED' && canResubmit(selected_record)"
+          class="resubmit-row"
+        >
+          <a-button
+            type="primary"
+            data-catch="attendance-record-resubmit-btn"
+            @click="handleResubmit(selected_record)"
+          >
             重新发起
           </a-button>
         </div>
@@ -81,7 +100,7 @@ import {
   getFieldLabel,
   getLeaveTypeLabel,
   getOvertimeTypeLabel,
-  formatFormSummary
+  formatFormSummary,
 } from '../../../../shared/utils/formLabels'
 
 dayjs.extend(customParseFormat)
@@ -137,7 +156,7 @@ const record_columns = [
   { title: '类型', dataIndex: 'formTypeName', key: 'formTypeName', width: 90 },
   { title: '摘要', key: 'summary' },
   { title: '状态', key: 'status', width: 90 },
-  { title: '操作', key: 'action', width: 80 }
+  { title: '操作', key: 'action', width: 80 },
 ]
 
 /** Fetch attendance records from API and update local state */
@@ -160,7 +179,11 @@ async function viewRecord(record: FormRecord) {
   try {
     const detail = await request<FormRecord>({ url: `/forms/${record.id}` })
     if (detail) {
-      selected_record.value = { ...record, history: detail.history, formData: detail.formData ?? record.formData }
+      selected_record.value = {
+        ...record,
+        history: detail.history,
+        formData: detail.formData ?? record.formData,
+      }
     }
   } catch {
     // Non-fatal: basic record info is already displayed
@@ -175,7 +198,7 @@ function handleResubmit(record: FormRecord) {
       leaveType: (data.leaveType as string) ?? undefined,
       startDate: data.startDate ? String(data.startDate) : undefined,
       endDate: data.endDate ? String(data.endDate) : undefined,
-      reason: record.remark ?? ''
+      reason: record.remark ?? '',
     })
   } else if (record.formType === 'OVERTIME') {
     emit('resubmit-overtime', {
@@ -183,7 +206,7 @@ function handleResubmit(record: FormRecord) {
       startTime: data.startTime ? String(data.startTime) : undefined,
       endTime: data.endTime ? String(data.endTime) : undefined,
       overtimeType: (data.overtimeType as string) ?? undefined,
-      reason: record.remark ?? ''
+      reason: record.remark ?? '',
     })
   }
   is_detail_visible.value = false
@@ -191,7 +214,7 @@ function handleResubmit(record: FormRecord) {
 
 function getRejectReason(record: FormRecord): string {
   const history = record.history ?? []
-  const reject_step = [...history].reverse().find(h => h.action === 'REJECT')
+  const reject_step = [...history].reverse().find((h) => h.action === 'REJECT')
   return reject_step?.comment || '—'
 }
 
@@ -226,9 +249,12 @@ function statusColor(status: string) {
 
 function statusLabel(status: string) {
   const map: Record<string, string> = {
-    PENDING: '审批中', APPROVING: '审批中',
-    APPROVED: '已通过', REJECTED: '已驳回',
-    ARCHIVED: '已归档', RECALLED: '已撤回'
+    PENDING: '审批中',
+    APPROVING: '审批中',
+    APPROVED: '已通过',
+    REJECTED: '已驳回',
+    ARCHIVED: '已归档',
+    RECALLED: '已撤回',
   }
   return map[status] ?? status
 }

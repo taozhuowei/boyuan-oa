@@ -11,7 +11,9 @@
           value-format="YYYY-MM-DD"
           :placeholder="['开始日期', '结束日期']"
         />
-        <a-button type="primary" data-catch="operation-logs-list-search-btn" @click="onSearch">搜索</a-button>
+        <a-button type="primary" data-catch="operation-logs-list-search-btn" @click="onSearch">
+          搜索
+        </a-button>
         <a-button @click="onReset">重置</a-button>
       </div>
 
@@ -25,7 +27,7 @@
           pageSize: pageSize,
           total: total,
           showTotal: (t: number) => `共 ${t} 条`,
-          onChange: onPageChange
+          onChange: onPageChange,
         }"
         row-key="id"
         size="small"
@@ -63,14 +65,14 @@ const ACTION_LABELS: Record<string, string> = {
   UPDATE_EMPLOYEE: '更新员工',
   BIND_SIGNATURE: '绑定签名',
   APPROVAL_ACTION: '审批操作',
-  PAYROLL_SETTLE: '薪资结算'
+  PAYROLL_SETTLE: '薪资结算',
 }
 
 const TARGET_TYPE_LABELS: Record<string, string> = {
   EMPLOYEE: '员工',
   SIGNATURE: '签名',
   FORM_RECORD: '表单',
-  PAYROLL_CYCLE: '薪资周期'
+  PAYROLL_CYCLE: '薪资周期',
 }
 
 interface OperationLog {
@@ -97,7 +99,7 @@ const columns = [
   { title: '操作类型', dataIndex: 'action', key: 'action' },
   { title: '目标类型', dataIndex: 'targetType', key: 'targetType' },
   { title: '详情', dataIndex: 'detail', key: 'detail', ellipsis: true },
-  { title: '时间', dataIndex: 'actedAt', key: 'actedAt', width: 180 }
+  { title: '时间', dataIndex: 'actedAt', key: 'actedAt', width: 180 },
 ]
 
 function truncate(text: string, maxLength: number): string {
@@ -115,14 +117,14 @@ async function loadLogs() {
   try {
     const params = new URLSearchParams({
       page: String(page.value),
-      size: String(pageSize.value)
+      size: String(pageSize.value),
     })
     if (dateRange.value) {
       params.set('from', dateRange.value[0])
       params.set('to', dateRange.value[1])
     }
     const data = await request<{ total: number; records: OperationLog[] }>({
-      url: `/operation-logs?${params}`
+      url: `/operation-logs?${params}`,
     })
     records.value = data.records ?? []
     total.value = data.total ?? 0

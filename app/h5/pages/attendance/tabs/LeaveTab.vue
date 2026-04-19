@@ -1,32 +1,49 @@
 <template>
   <!-- LeaveTab — 请假申请 tab: leave application form -->
-  <a-form
-    :model="leave_form"
-    layout="vertical"
-    style="max-width: 480px"
-    @finish="submitLeave"
-  >
+  <a-form :model="leave_form" layout="vertical" style="max-width: 480px" @finish="submitLeave">
     <a-form-item label="假种" name="leaveType" :rules="[{ required: true, message: '请选择假种' }]">
-      <div data-catch="form-leave-type" style="display:block;">
-        <a-select v-model:value="leave_form.leaveType" placeholder="请选择" style="width:100%;">
-          <a-select-option v-for="lt in leave_types" :key="lt.code" :value="lt.name">{{ lt.name }}</a-select-option>
+      <div data-catch="form-leave-type" style="display: block">
+        <a-select v-model:value="leave_form.leaveType" placeholder="请选择" style="width: 100%">
+          <a-select-option v-for="lt in leave_types" :key="lt.code" :value="lt.name">
+            {{ lt.name }}
+          </a-select-option>
         </a-select>
       </div>
     </a-form-item>
-    <a-form-item label="开始日期" name="startDate" :rules="[{ required: true, message: '请选择开始日期' }]">
-      <div data-catch="form-leave-start-date" style="display:block;">
-        <a-date-picker v-model:value="leave_form.startDate" style="width: 100%" placeholder="请选择日期" />
+    <a-form-item
+      label="开始日期"
+      name="startDate"
+      :rules="[{ required: true, message: '请选择开始日期' }]"
+    >
+      <div data-catch="form-leave-start-date" style="display: block">
+        <a-date-picker
+          v-model:value="leave_form.startDate"
+          style="width: 100%"
+          placeholder="请选择日期"
+        />
       </div>
     </a-form-item>
-    <a-form-item label="结束日期" name="endDate" :rules="[{ required: true, message: '请选择结束日期' }]">
-      <div data-catch="form-leave-end-date" style="display:block;">
-        <a-date-picker v-model:value="leave_form.endDate" style="width: 100%" placeholder="请选择日期" />
+    <a-form-item
+      label="结束日期"
+      name="endDate"
+      :rules="[{ required: true, message: '请选择结束日期' }]"
+    >
+      <div data-catch="form-leave-end-date" style="display: block">
+        <a-date-picker
+          v-model:value="leave_form.endDate"
+          style="width: 100%"
+          placeholder="请选择日期"
+        />
       </div>
     </a-form-item>
     <a-form-item label="请假时长">
-      <span style="color: #555;">{{ leave_duration ?? '请先选择开始和结束日期' }}</span>
+      <span style="color: #555">{{ leave_duration ?? '请先选择开始和结束日期' }}</span>
     </a-form-item>
-    <a-form-item label="请假原因" name="reason" :rules="[{ required: true, message: '请填写原因' }]">
+    <a-form-item
+      label="请假原因"
+      name="reason"
+      :rules="[{ required: true, message: '请填写原因' }]"
+    >
       <a-textarea v-model:value="leave_form.reason" :rows="3" data-catch="form-leave-reason" />
     </a-form-item>
     <a-form-item>
@@ -44,7 +61,12 @@
     </a-form-item>
 
     <a-form-item>
-      <a-button type="primary" html-type="submit" :loading="is_submitting" data-catch="leave-form-submit">
+      <a-button
+        type="primary"
+        html-type="submit"
+        :loading="is_submitting"
+        data-catch="leave-form-submit"
+      >
         提交申请
       </a-button>
     </a-form-item>
@@ -94,7 +116,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   /** Emitted after successful submission so parent can switch tab and reload records */
-  'submitted': []
+  submitted: []
 }>()
 
 const is_submitting = ref(false)
@@ -102,7 +124,7 @@ const leave_types = ref<Array<{ code: string; name: string }>>([])
 const leave_file_ref = ref<{ clear: () => void } | null>(null)
 
 function handleLeaveFilesChange(files: Array<{ attachmentId: number }>) {
-  leave_form.value.attachmentIds = files.map(f => f.attachmentId)
+  leave_form.value.attachmentIds = files.map((f) => f.attachmentId)
 }
 
 function makeEmptyForm(): LeaveFormState {
@@ -112,7 +134,7 @@ function makeEmptyForm(): LeaveFormState {
     endDate: undefined,
     reason: '',
     retroactive: false,
-    attachmentIds: []
+    attachmentIds: [],
   }
 }
 
@@ -138,14 +160,16 @@ watch(
       leaveType: data.leaveType,
       startDate: data.startDate ? dayjs(data.startDate) : undefined,
       endDate: data.endDate ? dayjs(data.endDate) : undefined,
-      reason: data.reason
+      reason: data.reason,
     }
   }
 )
 
 async function loadLeaveTypes() {
   try {
-    const data = await request<Array<{ code: string; name: string }>>({ url: '/config/leave-types' })
+    const data = await request<Array<{ code: string; name: string }>>({
+      url: '/config/leave-types',
+    })
     leave_types.value = data ?? []
   } catch {
     leave_types.value = []
@@ -171,10 +195,10 @@ async function submitLeave() {
             return 1
           })(),
           retroactive: leave_form.value.retroactive,
-          attachmentIds: leave_form.value.attachmentIds
+          attachmentIds: leave_form.value.attachmentIds,
         },
-        remark: leave_form.value.reason
-      }
+        remark: leave_form.value.reason,
+      },
     })
     leave_file_ref.value?.clear()
     leave_form.value = makeEmptyForm()

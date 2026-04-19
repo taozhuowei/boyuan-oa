@@ -18,9 +18,9 @@
         上传附件
       </a-button>
       <template #itemRender="{ file, actions }">
-        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 0;">
+        <div style="display: flex; align-items: center; gap: 8px; padding: 4px 0">
           <paper-clip-outlined />
-          <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">
             {{ file.name }}
           </span>
           <a-tag v-if="file.status === 'done'" color="green">已上传</a-tag>
@@ -30,7 +30,7 @@
         </div>
       </template>
     </a-upload>
-    <div v-if="hint" style="color: #999; font-size: 12px; margin-top: 4px;">{{ hint }}</div>
+    <div v-if="hint" style="color: #999; font-size: 12px; margin-top: 4px">{{ hint }}</div>
   </div>
 </template>
 
@@ -62,19 +62,22 @@ interface AntUploadFile {
   url?: string
 }
 
-const props = withDefaults(defineProps<{
-  maxCount?: number
-  accept?: string
-  businessType?: string
-  businessId?: number | null
-  hint?: string
-}>(), {
-  maxCount: 5,
-  accept: 'image/*,.pdf',
-  businessType: 'GENERAL',
-  businessId: null,
-  hint: ''
-})
+const props = withDefaults(
+  defineProps<{
+    maxCount?: number
+    accept?: string
+    businessType?: string
+    businessId?: number | null
+    hint?: string
+  }>(),
+  {
+    maxCount: 5,
+    accept: 'image/*,.pdf',
+    businessType: 'GENERAL',
+    businessId: null,
+    hint: '',
+  }
+)
 
 const emit = defineEmits<{
   (e: 'change', files: UploadedFile[]): void
@@ -109,7 +112,7 @@ async function handleUpload(options: UploadRequestOption) {
       {
         method: 'POST',
         headers: { Authorization: `Bearer ${tokenCookie.value ?? ''}` },
-        body: formData
+        body: formData,
       }
     )
     onProgress?.({ percent: 100 } as unknown as ProgressEvent)
@@ -119,7 +122,7 @@ async function handleUpload(options: UploadRequestOption) {
       attachmentId: res.attachmentId,
       fileName: res.fileName,
       storagePath: res.storagePath,
-      uid: (rawFile as unknown as AntUploadFile).uid ?? String(Date.now())
+      uid: (rawFile as unknown as AntUploadFile).uid ?? String(Date.now()),
     }
     uploaded.value.push(entry)
     emit('change', [...uploaded.value])
@@ -131,7 +134,7 @@ async function handleUpload(options: UploadRequestOption) {
 }
 
 function handleRemove(file: UploadFile) {
-  uploaded.value = uploaded.value.filter(u => u.uid !== file.uid)
+  uploaded.value = uploaded.value.filter((u) => u.uid !== file.uid)
   emit('change', [...uploaded.value])
 }
 

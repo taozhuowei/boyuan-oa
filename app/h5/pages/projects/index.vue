@@ -4,17 +4,25 @@
        PM: 只看自己负责的项目（后端自动过滤）
        其他角色: 只读查看 -->
   <div class="projects-page">
-    <div class="page-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-      <h2 class="page-title" style="margin: 0;">项目管理</h2>
+    <div
+      class="page-header"
+      style="
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      "
+    >
+      <h2 class="page-title" style="margin: 0">项目管理</h2>
       <a-button v-if="isCeo" type="primary" @click="showCreateModal = true">+ 新建项目</a-button>
     </div>
 
     <!-- 筛选栏 -->
-    <a-card style="margin-bottom: 12px;">
+    <a-card style="margin-bottom: 12px">
       <a-space>
         <a-select
           v-model:value="statusFilter"
-          style="width: 140px;"
+          style="width: 140px"
           placeholder="全部状态"
           allow-clear
           @change="loadProjects"
@@ -49,20 +57,29 @@
           <template v-if="column.key === 'startDate'">
             {{ record.startDate ?? '—' }}
           </template>
-          <template v-if="column.key === 'memberCount'">
-            {{ record.memberCount }} 人
-          </template>
+          <template v-if="column.key === 'memberCount'">{{ record.memberCount }} 人</template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button type="link" size="small" @click="navigateTo(`/projects/${record.id}`)">详情</a-button>
+              <a-button type="link" size="small" @click="navigateTo(`/projects/${record.id}`)">
+                详情
+              </a-button>
               <template v-if="isCeo">
-                <a-button type="link" size="small" @click="openEditModal(record as ProjectItem)">编辑</a-button>
+                <a-button type="link" size="small" @click="openEditModal(record as ProjectItem)">
+                  编辑
+                </a-button>
                 <a-popconfirm
                   v-if="record.status === 'ACTIVE'"
                   title="确认关闭该项目？"
                   @confirm="doCloseProject(record.id as number)"
                 >
-                  <a-button type="link" size="small" danger :data-catch="'project-row-close-btn-' + record.id">关闭</a-button>
+                  <a-button
+                    type="link"
+                    size="small"
+                    danger
+                    :data-catch="'project-row-close-btn-' + record.id"
+                  >
+                    关闭
+                  </a-button>
                 </a-popconfirm>
                 <a-button
                   v-if="record.status === 'CLOSED'"
@@ -70,8 +87,13 @@
                   size="small"
                   :data-catch="'project-row-reopen-btn-' + record.id"
                   @click="doReopenProject(record.id as number)"
-                >重开</a-button>
-                <a-popconfirm title="确认删除该项目？" @confirm="doDeleteProject(record.id as number)">
+                >
+                  重开
+                </a-button>
+                <a-popconfirm
+                  title="确认删除该项目？"
+                  @confirm="doDeleteProject(record.id as number)"
+                >
                   <a-button type="link" size="small" danger>删除</a-button>
                 </a-popconfirm>
               </template>
@@ -88,17 +110,27 @@
       @ok="doCreateProject"
       :confirm-loading="createLoading"
       @cancel="resetCreateForm"
-      :okButtonProps="({ 'data-catch': 'project-create-modal-ok' } as any)"
+      :okButtonProps="{ 'data-catch': 'project-create-modal-ok' } as any"
     >
       <a-form :model="createForm" layout="vertical">
         <a-form-item label="项目名称" required>
           <a-input v-model:value="createForm.name" placeholder="请输入项目名称" />
         </a-form-item>
         <a-form-item label="开始日期">
-          <a-date-picker v-model:value="createForm.startDateStr" style="width: 100%;" value-format="YYYY-MM-DD" placeholder="请选择日期" />
+          <a-date-picker
+            v-model:value="createForm.startDateStr"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择日期"
+          />
         </a-form-item>
         <a-form-item label="日志申报周期（天）">
-          <a-input-number v-model:value="createForm.logCycleDays" :min="1" :max="30" style="width: 100%;" />
+          <a-input-number
+            v-model:value="createForm.logCycleDays"
+            :min="1"
+            :max="30"
+            style="width: 100%"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -115,7 +147,12 @@
           <a-input v-model:value="editForm.name" />
         </a-form-item>
         <a-form-item label="开始日期">
-          <a-date-picker v-model:value="editForm.startDateStr" style="width: 100%;" value-format="YYYY-MM-DD" placeholder="请选择日期" />
+          <a-date-picker
+            v-model:value="editForm.startDateStr"
+            style="width: 100%"
+            value-format="YYYY-MM-DD"
+            placeholder="请选择日期"
+          />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -174,7 +211,7 @@ const columns = [
   { title: '状态', dataIndex: 'status', key: 'status', width: 100 },
   { title: '开始日期', dataIndex: 'startDate', key: 'startDate', width: 120 },
   { title: '成员数', dataIndex: 'memberCount', key: 'memberCount', width: 80 },
-  { title: '操作', key: 'action', width: 180 }
+  { title: '操作', key: 'action', width: 180 },
 ]
 
 async function loadProjects() {
@@ -219,7 +256,11 @@ async function doCreateProject() {
 }
 
 function openEditModal(project: ProjectItem) {
-  editForm.value = { id: project.id, name: project.name, startDateStr: project.startDate ?? undefined }
+  editForm.value = {
+    id: project.id,
+    name: project.name,
+    startDateStr: project.startDate ?? undefined,
+  }
   showEditModal.value = true
 }
 

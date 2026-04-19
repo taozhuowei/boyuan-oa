@@ -10,7 +10,7 @@
       type="success"
       show-icon
       closable
-      style="margin-bottom: 12px;"
+      style="margin-bottom: 12px"
       @close="disableSuccess = false"
     />
 
@@ -24,7 +24,15 @@
           @press-enter="onSearch"
         />
         <a-button type="primary" @click="onSearch">搜索</a-button>
-        <a-button v-if="canEdit" style="margin-left: auto" type="primary" data-catch="employee-create-btn" @click="openCreate">+ 新增员工</a-button>
+        <a-button
+          v-if="canEdit"
+          style="margin-left: auto"
+          type="primary"
+          data-catch="employee-create-btn"
+          @click="openCreate"
+        >
+          + 新增员工
+        </a-button>
       </div>
 
       <a-table
@@ -36,11 +44,13 @@
           pageSize: pageSize,
           total: totalElements,
           showTotal: (t: number) => `共 ${t} 人`,
-          onChange: onPageChange
+          onChange: onPageChange,
         }"
         row-key="id"
         size="small"
-        :customRow="(record: Employee) => ({ 'data-catch': 'employee-row' } as Record<string, string>)"
+        :customRow="
+          (record: Employee) => ({ 'data-catch': 'employee-row' }) as Record<string, string>
+        "
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'name'">
@@ -56,8 +66,23 @@
           </template>
           <template v-if="column.key === 'action'">
             <a-space>
-              <a-button type="link" size="small" :data-catch="'employees-row-detail-btn-' + record.id" @click="openDetail(record as Employee)">详情</a-button>
-              <a-button v-if="canEdit" type="link" size="small" data-catch="employee-edit-btn" @click="openEdit(record as Employee)">编辑</a-button>
+              <a-button
+                type="link"
+                size="small"
+                :data-catch="'employees-row-detail-btn-' + record.id"
+                @click="openDetail(record as Employee)"
+              >
+                详情
+              </a-button>
+              <a-button
+                v-if="canEdit"
+                type="link"
+                size="small"
+                data-catch="employee-edit-btn"
+                @click="openEdit(record as Employee)"
+              >
+                编辑
+              </a-button>
               <a-button
                 v-if="userStore.userInfo?.role === 'ceo' && record.accountStatus === 'ACTIVE'"
                 type="link"
@@ -65,7 +90,9 @@
                 danger
                 data-catch="employee-disable-btn"
                 @click="openDisable(record as Employee)"
-              >停用</a-button>
+              >
+                停用
+              </a-button>
             </a-space>
           </template>
         </template>
@@ -73,21 +100,44 @@
     </a-card>
 
     <!-- 详情弹窗：列表数据 + 紧急联系人懒加载 -->
-    <a-modal v-model:open="showDetail" :title="`员工详情 — ${detailRecord?.name ?? ''}`" :footer="null" width="560px">
+    <a-modal
+      v-model:open="showDetail"
+      :title="`员工详情 — ${detailRecord?.name ?? ''}`"
+      :footer="null"
+      width="560px"
+    >
       <a-descriptions v-if="detailRecord" bordered size="small" :column="2">
         <a-descriptions-item label="姓名">{{ detailRecord.name }}</a-descriptions-item>
         <a-descriptions-item label="工号">{{ detailRecord.employeeNo ?? '—' }}</a-descriptions-item>
-        <a-descriptions-item label="部门">{{ detailRecord.departmentName ?? '—' }}</a-descriptions-item>
+        <a-descriptions-item label="部门">
+          {{ detailRecord.departmentName ?? '—' }}
+        </a-descriptions-item>
         <a-descriptions-item label="角色">{{ detailRecord.roleName ?? '—' }}</a-descriptions-item>
-        <a-descriptions-item label="员工类型">{{ detailRecord.employeeType === 'LABOR' ? '劳工' : '正式员工' }}</a-descriptions-item>
-        <a-descriptions-item label="入职日期">{{ detailRecord.entryDate ?? '—' }}</a-descriptions-item>
-        <a-descriptions-item label="社会工龄">{{ detailRecord.socialSeniority ?? '—' }} 年</a-descriptions-item>
-        <a-descriptions-item label="合同类型">{{ contractLabel(detailRecord.contractType) }}</a-descriptions-item>
-        <a-descriptions-item label="出差日补贴">{{ detailRecord.dailySubsidy ?? '—' }}</a-descriptions-item>
-        <a-descriptions-item label="差旅报销额度">{{ detailRecord.expenseLimit ?? '—' }}</a-descriptions-item>
-        <a-descriptions-item label="绩效比例">{{ detailRecord.performanceRatio != null ? detailRecord.performanceRatio + '%' : '—' }}</a-descriptions-item>
+        <a-descriptions-item label="员工类型">
+          {{ detailRecord.employeeType === 'LABOR' ? '劳工' : '正式员工' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="入职日期">
+          {{ detailRecord.entryDate ?? '—' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="社会工龄">
+          {{ detailRecord.socialSeniority ?? '—' }} 年
+        </a-descriptions-item>
+        <a-descriptions-item label="合同类型">
+          {{ contractLabel(detailRecord.contractType) }}
+        </a-descriptions-item>
+        <a-descriptions-item label="出差日补贴">
+          {{ detailRecord.dailySubsidy ?? '—' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="差旅报销额度">
+          {{ detailRecord.expenseLimit ?? '—' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="绩效比例">
+          {{ detailRecord.performanceRatio != null ? detailRecord.performanceRatio + '%' : '—' }}
+        </a-descriptions-item>
         <a-descriptions-item label="状态">
-          <a-tag :color="detailRecord.accountStatus === 'ACTIVE' ? 'success' : 'default'">{{ detailRecord.accountStatus === 'ACTIVE' ? '在职' : '停用' }}</a-tag>
+          <a-tag :color="detailRecord.accountStatus === 'ACTIVE' ? 'success' : 'default'">
+            {{ detailRecord.accountStatus === 'ACTIVE' ? '在职' : '停用' }}
+          </a-tag>
         </a-descriptions-item>
       </a-descriptions>
 
@@ -107,7 +157,7 @@
       :title="formMode === 'create' ? '新增员工' : '编辑员工'"
       :confirm-loading="submitting"
       width="700px"
-      :okButtonProps="({ 'data-catch': 'employee-save-btn' } as unknown as ButtonProps)"
+      :okButtonProps="{ 'data-catch': 'employee-save-btn' } as unknown as ButtonProps"
       @ok="submitForm"
       @cancel="showForm = false"
     >
@@ -163,7 +213,15 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="部门" required>
-              <a-select v-model:value="form.departmentId" :options="departments" placeholder="选择部门" show-search option-filter-prop="label" data-catch="employee-dept-select" style="width: 100%" />
+              <a-select
+                v-model:value="form.departmentId"
+                :options="departments"
+                placeholder="选择部门"
+                show-search
+                option-filter-prop="label"
+                data-catch="employee-dept-select"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -171,7 +229,7 @@
               <!-- 岗位列表按部门过滤（部门变更时自动重新加载） -->
               <a-select
                 v-model:value="form.positionId"
-                :options="positions.map(p => ({ value: p.id, label: p.positionName }))"
+                :options="positions.map((p) => ({ value: p.id, label: p.positionName }))"
                 :loading="loadingPositions"
                 :disabled="!form.departmentId"
                 placeholder="请先选择部门"
@@ -187,19 +245,40 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="岗位等级">
-              <a-select v-model:value="form.levelId" :options="levels" placeholder="先选岗位" :disabled="levels.length === 0" allow-clear style="width: 100%" />
+              <a-select
+                v-model:value="form.levelId"
+                :options="levels"
+                placeholder="先选岗位"
+                :disabled="levels.length === 0"
+                allow-clear
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
             <a-form-item label="直系领导">
-              <a-select v-model:value="form.directSupervisorId" :options="supervisorOptions" placeholder="输入姓名搜索" show-search :filter-option="false" :loading="searchingSupervisor" allow-clear style="width: 100%" @search="searchSupervisor" />
+              <a-select
+                v-model:value="form.directSupervisorId"
+                :options="supervisorOptions"
+                placeholder="输入姓名搜索"
+                show-search
+                :filter-option="false"
+                :loading="searchingSupervisor"
+                allow-clear
+                style="width: 100%"
+                @search="searchSupervisor"
+              />
             </a-form-item>
           </a-col>
         </a-row>
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="性别" required>
-              <a-select v-model:value="form.gender" style="width: 100%" data-catch="employee-gender-select">
+              <a-select
+                v-model:value="form.gender"
+                style="width: 100%"
+                data-catch="employee-gender-select"
+              >
                 <a-select-option value="MALE">男</a-select-option>
                 <a-select-option value="FEMALE">女</a-select-option>
               </a-select>
@@ -208,9 +287,15 @@
           <a-col :span="12">
             <a-form-item
               label="身份证号"
-              :rules="[{ pattern: /^\d{17}[\dX]$/i, message: '请输入有效的18位身份证号', trigger: 'blur' }]"
+              :rules="[
+                { pattern: /^\d{17}[\dX]$/i, message: '请输入有效的18位身份证号', trigger: 'blur' },
+              ]"
             >
-              <a-input v-model:value="form.idCardNo" placeholder="18位身份证号" data-catch="employee-idcard-input" />
+              <a-input
+                v-model:value="form.idCardNo"
+                placeholder="18位身份证号"
+                data-catch="employee-idcard-input"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -230,7 +315,12 @@
         <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="社会工龄（年）">
-              <a-input-number v-model:value="form.socialSeniority" :precision="0" :min="0" style="width: 100%" />
+              <a-input-number
+                v-model:value="form.socialSeniority"
+                :precision="0"
+                :min="0"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="12">
@@ -246,22 +336,38 @@
         <a-row :gutter="16">
           <a-col :span="8">
             <a-form-item label="出差日补贴（元/天）">
-              <a-input-number v-model:value="form.dailySubsidy" :precision="2" :min="0" style="width: 100%" />
+              <a-input-number
+                v-model:value="form.dailySubsidy"
+                :precision="2"
+                :min="0"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="差旅报销额度（元/次）">
-              <a-input-number v-model:value="form.expenseLimit" :precision="2" :min="0" style="width: 100%" />
+              <a-input-number
+                v-model:value="form.expenseLimit"
+                :precision="2"
+                :min="0"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
           <a-col :span="8">
             <a-form-item label="绩效比例（%）">
-              <a-input-number v-model:value="form.performanceRatio" :precision="2" :min="0" :max="100" style="width: 100%" />
+              <a-input-number
+                v-model:value="form.performanceRatio"
+                :precision="2"
+                :min="0"
+                :max="100"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
 
-        <a-divider style="margin: 8px 0;">紧急联系人</a-divider>
+        <a-divider style="margin: 8px 0">紧急联系人</a-divider>
         <div v-for="(c, idx) in form.emergencyContacts" :key="idx" class="emergency-row">
           <a-input v-model:value="c.name" placeholder="姓名" style="width: 130px" />
           <a-input v-model:value="c.phone" placeholder="手机号" style="width: 160px" />
@@ -283,9 +389,21 @@
     >
       <template #footer>
         <a-button @click="showDisableModal = false">取消</a-button>
-        <a-button type="primary" danger data-catch="disable-confirm-ok" :loading="!!disablingId" @click="doDisable">确认停用</a-button>
+        <a-button
+          type="primary"
+          danger
+          data-catch="disable-confirm-ok"
+          :loading="!!disablingId"
+          @click="doDisable"
+        >
+          确认停用
+        </a-button>
       </template>
-      <p>停用后该员工将无法登录系统。确认停用 <strong>{{ disableTarget?.name }}</strong> 的账号？</p>
+      <p>
+        停用后该员工将无法登录系统。确认停用
+        <strong>{{ disableTarget?.name }}</strong>
+        的账号？
+      </p>
     </a-modal>
   </div>
 </template>
@@ -300,7 +418,12 @@ import type { Dayjs } from 'dayjs'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 
-interface EmergencyContact { id?: number; name: string; phone: string; address?: string }
+interface EmergencyContact {
+  id?: number
+  name: string
+  phone: string
+  address?: string
+}
 interface Employee {
   id: number
   employeeNo?: string
@@ -328,9 +451,22 @@ interface Employee {
   levelId?: number | null
 }
 
-interface Department { id: number; name: string; children?: Department[] }
-interface Position { id: number; positionCode: string; positionName: string; levels: { id: number; levelName: string }[] }
-interface Role { id: number; roleCode: string; roleName: string }
+interface Department {
+  id: number
+  name: string
+  children?: Department[]
+}
+interface Position {
+  id: number
+  positionCode: string
+  positionName: string
+  levels: { id: number; levelName: string }[]
+}
+interface Role {
+  id: number
+  roleCode: string
+  roleName: string
+}
 
 const userStore = useUserStore()
 const canEdit = computed(() => ['ceo', 'hr'].includes(userStore.userInfo?.role ?? ''))
@@ -387,11 +523,25 @@ const form = ref<{
   directSupervisorId: number | undefined
   levelId: number | undefined
 }>({
-  name: '', phone: '', email: '', roleCode: 'employee', employeeType: 'OFFICE',
-  departmentId: undefined, positionId: undefined, entryDate: '',
-  socialSeniority: undefined, contractType: undefined, dailySubsidy: undefined, expenseLimit: undefined,
-  performanceRatio: undefined, emergencyContacts: [],
-  gender: '', idCardNo: '', birthDate: null, directSupervisorId: undefined, levelId: undefined
+  name: '',
+  phone: '',
+  email: '',
+  roleCode: 'employee',
+  employeeType: 'OFFICE',
+  departmentId: undefined,
+  positionId: undefined,
+  entryDate: '',
+  socialSeniority: undefined,
+  contractType: undefined,
+  dailySubsidy: undefined,
+  expenseLimit: undefined,
+  performanceRatio: undefined,
+  emergencyContacts: [],
+  gender: '',
+  idCardNo: '',
+  birthDate: null,
+  directSupervisorId: undefined,
+  levelId: undefined,
 })
 
 const columns = [
@@ -400,7 +550,7 @@ const columns = [
   { title: '角色', dataIndex: 'roleName', key: 'roleName' },
   { title: '入职日期', key: 'entryDate' },
   { title: '状态', key: 'accountStatus', width: 80 },
-  { title: '操作', key: 'action', width: 130 }
+  { title: '操作', key: 'action', width: 130 },
 ]
 
 function contractLabel(c?: string | null): string {
@@ -417,11 +567,25 @@ function openDetail(record: Employee) {
 
 function resetForm() {
   form.value = {
-    name: '', phone: '', email: '', roleCode: 'employee', employeeType: 'OFFICE',
-    departmentId: undefined, positionId: undefined, entryDate: new Date().toISOString().slice(0, 10),
-    socialSeniority: undefined, contractType: undefined, dailySubsidy: undefined, expenseLimit: undefined,
-    performanceRatio: undefined, emergencyContacts: [],
-    gender: '', idCardNo: '', birthDate: null, directSupervisorId: undefined, levelId: undefined
+    name: '',
+    phone: '',
+    email: '',
+    roleCode: 'employee',
+    employeeType: 'OFFICE',
+    departmentId: undefined,
+    positionId: undefined,
+    entryDate: new Date().toISOString().slice(0, 10),
+    socialSeniority: undefined,
+    contractType: undefined,
+    dailySubsidy: undefined,
+    expenseLimit: undefined,
+    performanceRatio: undefined,
+    emergencyContacts: [],
+    gender: '',
+    idCardNo: '',
+    birthDate: null,
+    directSupervisorId: undefined,
+    levelId: undefined,
   }
   levels.value = []
   supervisorOptions.value = []
@@ -454,12 +618,12 @@ async function openEdit(record: Employee) {
     dailySubsidy: record.dailySubsidy ?? undefined,
     expenseLimit: record.expenseLimit ?? undefined,
     performanceRatio: record.performanceRatio ?? undefined,
-    emergencyContacts: (record.emergencyContacts ?? []).map(c => ({ ...c })),
+    emergencyContacts: (record.emergencyContacts ?? []).map((c) => ({ ...c })),
     directSupervisorId: record.directSupervisorId ?? undefined,
     levelId: record.levelId ?? undefined,
     gender: record.gender ?? '',
     idCardNo: record.idCardNo ?? '',
-    birthDate: record.birthDate ? dayjs(record.birthDate) : null
+    birthDate: record.birthDate ? dayjs(record.birthDate) : null,
   }
   // 岗位全量已在 onMounted 加载，直接回填等级选项（skipDeptWatch 保证 watch 不清空此赋值）
   skipDeptWatch = false
@@ -468,16 +632,28 @@ async function openEdit(record: Employee) {
   }
   // 直系领导：先从当前列表查找，找不到则发请求获取姓名
   if (record.directSupervisorId) {
-    const found = employees.value.find(e => e.id === record.directSupervisorId)
+    const found = employees.value.find((e) => e.id === record.directSupervisorId)
     if (found) {
-      supervisorOptions.value = [{ value: found.id, label: found.name + (found.departmentName ? ` (${found.departmentName})` : '') }]
+      supervisorOptions.value = [
+        {
+          value: found.id,
+          label: found.name + (found.departmentName ? ` (${found.departmentName})` : ''),
+        },
+      ]
     } else {
       try {
         const emp = await request<Employee>({ url: `/employees/${record.directSupervisorId}` })
         if (emp) {
-          supervisorOptions.value = [{ value: emp.id, label: emp.name + (emp.departmentName ? ` (${emp.departmentName})` : '') }]
+          supervisorOptions.value = [
+            {
+              value: emp.id,
+              label: emp.name + (emp.departmentName ? ` (${emp.departmentName})` : ''),
+            },
+          ]
         }
-      } catch { /* ignore — 直系领导可能已离职 */ }
+      } catch {
+        /* ignore — 直系领导可能已离职 */
+      }
     }
   }
   showForm.value = true
@@ -492,7 +668,11 @@ async function doDisable() {
   if (!disableTarget.value) return
   disablingId.value = disableTarget.value.id
   try {
-    await request({ url: `/employees/${disableTarget.value.id}/status`, method: 'PATCH', body: { accountStatus: 'DISABLED' } })
+    await request({
+      url: `/employees/${disableTarget.value.id}/status`,
+      method: 'PATCH',
+      body: { accountStatus: 'DISABLED' },
+    })
     showDisableModal.value = false
     disableSuccess.value = true
     await loadEmployees()
@@ -512,18 +692,36 @@ function removeContact(idx: number) {
 }
 
 async function submitForm() {
-  if (!form.value.name.trim()) { message.warning('请填写姓名'); return }
-  if (!form.value.roleCode) { message.warning('请选择主角色'); return }
-  if (!form.value.employeeType) { message.warning('请选择员工类型'); return }
-  if (!form.value.departmentId) { message.warning('请填写部门 ID'); return }
-  if (!form.value.gender) { message.warning('请选择性别'); return }
-  if (formMode.value === 'create' && !form.value.entryDate) { message.warning('请填写入职日期'); return }
+  if (!form.value.name.trim()) {
+    message.warning('请填写姓名')
+    return
+  }
+  if (!form.value.roleCode) {
+    message.warning('请选择主角色')
+    return
+  }
+  if (!form.value.employeeType) {
+    message.warning('请选择员工类型')
+    return
+  }
+  if (!form.value.departmentId) {
+    message.warning('请填写部门 ID')
+    return
+  }
+  if (!form.value.gender) {
+    message.warning('请选择性别')
+    return
+  }
+  if (formMode.value === 'create' && !form.value.entryDate) {
+    message.warning('请填写入职日期')
+    return
+  }
   submitting.value = true
   try {
     const body = {
       ...form.value,
       entryDate: form.value.entryDate || null,
-      birthDate: form.value.birthDate ? form.value.birthDate.format('YYYY-MM-DD') : null
+      birthDate: form.value.birthDate ? form.value.birthDate.format('YYYY-MM-DD') : null,
     }
     if (formMode.value === 'create') {
       await request({ url: '/employees', method: 'POST', body })
@@ -545,7 +743,10 @@ async function loadDepartments() {
   const tree = await request<Department[]>({ url: '/departments' })
   const flat: { value: number; label: string }[] = []
   function walk(nodes: Department[]) {
-    for (const n of nodes) { flat.push({ value: n.id, label: n.name }); if (n.children) walk(n.children) }
+    for (const n of nodes) {
+      flat.push({ value: n.id, label: n.name })
+      if (n.children) walk(n.children)
+    }
   }
   walk(tree ?? [])
   departments.value = flat
@@ -571,15 +772,15 @@ function onPositionChange(posId: SelectValue) {
   form.value.levelId = undefined
   levels.value = []
   if (!posId) return
-  const pos = positions.value.find(p => p.id === Number(posId))
-  levels.value = (pos?.levels ?? []).map(l => ({ value: l.id, label: l.levelName }))
+  const pos = positions.value.find((p) => p.id === Number(posId))
+  levels.value = (pos?.levels ?? []).map((l) => ({ value: l.id, label: l.levelName }))
 }
 
 async function loadRoles() {
   loadingRoles.value = true
   try {
     const data = await request<Role[]>({ url: '/roles' })
-    roles.value = (data ?? []).map(r => ({ value: r.roleCode, label: r.roleName }))
+    roles.value = (data ?? []).map((r) => ({ value: r.roleCode, label: r.roleName }))
   } catch {
     roles.value = []
   } finally {
@@ -593,17 +794,28 @@ let supervisorTimer: ReturnType<typeof setTimeout> | null = null
  * 按姓名搜索，限定角色为部门经理或项目经理（role=department_manager,project_manager）
  */
 async function searchSupervisor(kw: string) {
-  if (!kw) { supervisorOptions.value = []; return }
+  if (!kw) {
+    supervisorOptions.value = []
+    return
+  }
   if (supervisorTimer) clearTimeout(supervisorTimer)
   supervisorTimer = setTimeout(async () => {
     searchingSupervisor.value = true
     try {
       const data = await request<{ content: Employee[] }>({
-        url: '/employees?search=' + encodeURIComponent(kw) + '&role=department_manager,project_manager&size=20'
+        url:
+          '/employees?search=' +
+          encodeURIComponent(kw) +
+          '&role=department_manager,project_manager&size=20',
       })
-      supervisorOptions.value = (data?.content ?? []).map(e => ({ value: e.id, label: e.name + (e.departmentName ? ' (' + e.departmentName + ')' : '') }))
-    } catch {}
-    finally { searchingSupervisor.value = false }
+      supervisorOptions.value = (data?.content ?? []).map((e) => ({
+        value: e.id,
+        label: e.name + (e.departmentName ? ' (' + e.departmentName + ')' : ''),
+      }))
+    } catch {
+    } finally {
+      searchingSupervisor.value = false
+    }
   }, 300)
 }
 
@@ -612,11 +824,11 @@ async function loadEmployees() {
   try {
     const params = new URLSearchParams({
       page: String(page.value),
-      size: String(pageSize.value)
+      size: String(pageSize.value),
     })
     if (keyword.value.trim()) params.set('keyword', keyword.value.trim())
     const data = await request<{ content: Employee[]; totalElements: number }>({
-      url: `/employees?${params}`
+      url: `/employees?${params}`,
     })
     employees.value = data.content ?? []
     totalElements.value = data.totalElements ?? 0
@@ -628,8 +840,14 @@ async function loadEmployees() {
   }
 }
 
-function onSearch() { page.value = 0; loadEmployees() }
-function onPageChange(p: number) { page.value = p - 1; loadEmployees() }
+function onSearch() {
+  page.value = 0
+  loadEmployees()
+}
+function onPageChange(p: number) {
+  page.value = p - 1
+  loadEmployees()
+}
 
 // 三级联动：部门变更时清空已选岗位和等级（岗位列表全量，不按部门重载）
 // skipDeptWatch 为 true 时（openEdit 回填期间）跳过清空，避免覆盖回填值
@@ -652,7 +870,9 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.employees-page { /* flow */ }
+.employees-page {
+  /* flow */
+}
 .page-title {
   font-size: 20px;
   font-weight: 600;
@@ -665,12 +885,23 @@ onMounted(() => {
   margin-bottom: 16px;
   align-items: center;
 }
-.contact-list { margin-top: 12px; }
-.contact-title { color: #666; margin-bottom: 4px; }
+.contact-list {
+  margin-top: 12px;
+}
+.contact-title {
+  color: #666;
+  margin-bottom: 4px;
+}
 .contact-row {
-  display: flex; gap: 16px; padding: 6px 0; border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  gap: 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid #f0f0f0;
 }
 .emergency-row {
-  display: flex; gap: 8px; align-items: center; padding: 4px 0;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
 }
 </style>

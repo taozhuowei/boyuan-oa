@@ -11,9 +11,7 @@
       show-icon
     >
       <template #description>
-        <a-button type="link" size="small" @click="navigateTo('/me/password')">
-          去修改密码
-        </a-button>
+        <a-button type="link" size="small" @click="navigateTo('/me/password')">去修改密码</a-button>
       </template>
     </a-alert>
 
@@ -27,11 +25,7 @@
         />
       </a-card>
       <a-card class="stat-card">
-        <a-statistic
-          title="通知"
-          :value="summary?.unreadNotificationCount ?? 0"
-          suffix="条未读"
-        />
+        <a-statistic title="通知" :value="summary?.unreadNotificationCount ?? 0" suffix="条未读" />
       </a-card>
 
       <a-card
@@ -39,11 +33,7 @@
         class="stat-card"
         data-catch="workbench-card-total-employees"
       >
-        <a-statistic
-          title="员工总数"
-          :value="totalEmployees"
-          suffix="人"
-        />
+        <a-statistic title="员工总数" :value="totalEmployees" suffix="人" />
       </a-card>
 
       <!-- Payroll cycle status card -->
@@ -65,11 +55,7 @@
         data-catch="workbench-card-active-projects"
         @click="navigateTo('/projects')"
       >
-        <a-statistic
-          title="进行中项目"
-          :value="summary.activeProjectCount"
-          suffix="个"
-        />
+        <a-statistic title="进行中项目" :value="summary.activeProjectCount" suffix="个" />
       </a-card>
 
       <!-- Retention alerts warning card -->
@@ -104,9 +90,7 @@
           </template>
         </template>
       </a-table>
-      <div v-if="!loading && todoList.length === 0" class="empty-tip">
-        暂无待办事项
-      </div>
+      <div v-if="!loading && todoList.length === 0" class="empty-tip">暂无待办事项</div>
     </a-card>
   </div>
 </template>
@@ -143,7 +127,7 @@ const todoColumns = [
   { title: '类型', dataIndex: 'formTypeName', key: 'formTypeName' },
   { title: '申请人', dataIndex: 'submitter', key: 'submitter' },
   { title: '提交时间', key: 'submitTime' },
-  { title: '操作', key: 'action', width: 80 }
+  { title: '操作', key: 'action', width: 80 },
 ]
 
 /**
@@ -163,7 +147,7 @@ function payrollStatusLabel(status: string): string {
     WINDOW_OPEN: '申报中',
     WINDOW_CLOSED: '窗口已关闭',
     SETTLED: '已结算',
-    LOCKED: '已锁定'
+    LOCKED: '已锁定',
   }
   return labels[status] ?? status
 }
@@ -177,7 +161,7 @@ function payrollStatusColor(status: string): string {
     WINDOW_OPEN: 'blue',
     WINDOW_CLOSED: 'orange',
     SETTLED: 'green',
-    LOCKED: 'purple'
+    LOCKED: 'purple',
   }
   return colors[status] ?? 'default'
 }
@@ -193,7 +177,7 @@ onMounted(async () => {
         ? request<FormRecord[]>({ url: '/attendance/todo' }).catch(() => [])
         : Promise.resolve([]),
       request<WorkbenchSummary>({ url: '/workbench/summary' }).catch(() => null),
-      request<{ totalElements: number }>({ url: '/employees?size=1' }).catch(() => null)
+      request<{ totalElements: number }>({ url: '/employees?size=1' }).catch(() => null),
     ])
     todoList.value = list ?? []
     summary.value = summaryData
@@ -202,7 +186,9 @@ onMounted(async () => {
     // Check default password status after summary is loaded and userInfo is available
     const userStore = useUserStore()
     if (userStore.userInfo) {
-      const authData = await request<{ isDefaultPassword?: boolean }>({ url: '/auth/me' }).catch(() => null)
+      const authData = await request<{ isDefaultPassword?: boolean }>({ url: '/auth/me' }).catch(
+        () => null
+      )
       isDefaultPwd.value = authData?.isDefaultPassword ?? false
     }
   } catch {

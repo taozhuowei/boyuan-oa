@@ -68,7 +68,7 @@ async function handleSave() {
     await request({
       url: '/config/company-name',
       method: 'PUT',
-      body: { companyName: company_name.value }
+      body: { companyName: company_name.value },
     })
     message.success('企业名称已保存')
     // Sync sidebar logo — Nuxt shared state key mirrors layout default.vue usage

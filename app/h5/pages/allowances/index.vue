@@ -6,7 +6,15 @@
     <!-- Allowance Definition List -->
     <a-card title="补贴项" class="section-card">
       <template #extra>
-        <a-button v-if="canEdit" type="primary" size="small" data-catch="allowances-create-btn" @click="openAddDef">新建补贴项</a-button>
+        <a-button
+          v-if="canEdit"
+          type="primary"
+          size="small"
+          data-catch="allowances-create-btn"
+          @click="openAddDef"
+        >
+          新建补贴项
+        </a-button>
       </template>
       <a-table
         :columns="defColumns"
@@ -16,16 +24,29 @@
         row-key="id"
         size="small"
         :row-selection="rowSelection"
-        :custom-row="record => ({ onClick: () => selectDef(record) })"
+        :custom-row="(record) => ({ onClick: () => selectDef(record) })"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'isEnabled'">
-            <a-tag :color="record.isEnabled ? 'green' : 'default'">{{ record.isEnabled ? '启用' : '停用' }}</a-tag>
+            <a-tag :color="record.isEnabled ? 'green' : 'default'">
+              {{ record.isEnabled ? '启用' : '停用' }}
+            </a-tag>
           </template>
           <template v-if="column.key === 'action'">
             <a-space @click.stop>
-              <a-button v-if="canEdit" type="link" size="small" @click="openEditDef(record as AllowanceDef)">编辑</a-button>
-              <a-popconfirm v-if="canEdit && !record.isSystem" title="确定删除该补贴项吗？" @confirm="deleteDef(record.id)">
+              <a-button
+                v-if="canEdit"
+                type="link"
+                size="small"
+                @click="openEditDef(record as AllowanceDef)"
+              >
+                编辑
+              </a-button>
+              <a-popconfirm
+                v-if="canEdit && !record.isSystem"
+                title="确定删除该补贴项吗？"
+                @confirm="deleteDef(record.id)"
+              >
                 <a-button type="link" danger size="small">删除</a-button>
               </a-popconfirm>
             </a-space>
@@ -40,7 +61,13 @@
         <a-tab-pane key="GLOBAL" tab="全局">
           <div class="scope-row">
             <span class="scope-label">所有员工默认金额：</span>
-            <a-input-number v-model:value="globalAmount" :min="0" :precision="2" style="width: 200px" placeholder="不填视为无全局默认" />
+            <a-input-number
+              v-model:value="globalAmount"
+              :min="0"
+              :precision="2"
+              style="width: 200px"
+              placeholder="不填视为无全局默认"
+            />
           </div>
           <div class="scope-hint">每月所有员工默认发放此金额；可被"按岗位"或"按员工"设置覆盖。</div>
         </a-tab-pane>
@@ -79,7 +106,13 @@
               show-search
               option-filter-prop="label"
             />
-            <a-input-number v-model:value="newEmployeeAmount" :min="0" :precision="2" placeholder="金额" style="width: 160px" />
+            <a-input-number
+              v-model:value="newEmployeeAmount"
+              :min="0"
+              :precision="2"
+              placeholder="金额"
+              style="width: 160px"
+            />
             <a-button type="primary" size="small" @click="addEmployeeOverride">添加</a-button>
           </div>
           <a-table
@@ -95,10 +128,22 @@
                 {{ employeeLabel(record.employeeId) }}
               </template>
               <template v-if="column.key === 'amount'">
-                <a-input-number v-model:value="record.amount" :min="0" :precision="2" style="width: 160px" />
+                <a-input-number
+                  v-model:value="record.amount"
+                  :min="0"
+                  :precision="2"
+                  style="width: 160px"
+                />
               </template>
               <template v-if="column.key === 'action'">
-                <a-button type="link" danger size="small" @click="removeEmployeeOverride(record.employeeId)">移除</a-button>
+                <a-button
+                  type="link"
+                  danger
+                  size="small"
+                  @click="removeEmployeeOverride(record.employeeId)"
+                >
+                  移除
+                </a-button>
               </template>
             </template>
           </a-table>
@@ -112,10 +157,19 @@
     </a-card>
 
     <!-- Definition Modal -->
-    <a-modal v-model:open="defModalOpen" :title="defModalTitle" @ok="submitDef" @cancel="closeDefModal">
+    <a-modal
+      v-model:open="defModalOpen"
+      :title="defModalTitle"
+      @ok="submitDef"
+      @cancel="closeDefModal"
+    >
       <a-form :model="defForm" layout="vertical">
         <a-form-item label="代码" required>
-          <a-input v-model:value="defForm.code" placeholder="如 MEAL / TRANSPORT" :disabled="!!defForm.id" />
+          <a-input
+            v-model:value="defForm.code"
+            placeholder="如 MEAL / TRANSPORT"
+            :disabled="!!defForm.id"
+          />
         </a-form-item>
         <a-form-item label="名称" required>
           <a-input v-model:value="defForm.name" placeholder="如 餐补 / 交通补贴" />
@@ -124,7 +178,12 @@
           <a-input v-model:value="defForm.description" placeholder="可选" />
         </a-form-item>
         <a-form-item label="显示顺序">
-          <a-input-number v-model:value="defForm.displayOrder" :min="0" :precision="0" style="width: 100%" />
+          <a-input-number
+            v-model:value="defForm.displayOrder"
+            :min="0"
+            :precision="0"
+            style="width: 100%"
+          />
         </a-form-item>
         <a-form-item label="是否启用">
           <a-switch v-model:checked="defForm.isEnabled" />
@@ -187,7 +246,7 @@ const defColumns = [
   { title: '说明', dataIndex: 'description', key: 'description' },
   { title: '顺序', dataIndex: 'displayOrder', key: 'displayOrder', width: 80 },
   { title: '状态', key: 'isEnabled', width: 90 },
-  { title: '操作', key: 'action', width: 140 }
+  { title: '操作', key: 'action', width: 140 },
 ]
 
 const rowSelection = computed(() => ({
@@ -195,7 +254,7 @@ const rowSelection = computed(() => ({
   selectedRowKeys: selectedDef.value ? [selectedDef.value.id] : [],
   onChange: (_keys: (string | number)[], rows: AllowanceDef[]) => {
     if (rows[0]) selectDef(rows[0])
-  }
+  },
 }))
 
 async function loadDefs() {
@@ -212,22 +271,43 @@ async function loadDefs() {
 
 // Def Modal
 const defModalOpen = ref(false)
-const defModalTitle = computed(() => defForm.value.id ? '编辑补贴项' : '新建补贴项')
-const defForm = ref<{ id: number | null; code: string; name: string; description: string; displayOrder: number; isEnabled: boolean }>({
-  id: null, code: '', name: '', description: '', displayOrder: 0, isEnabled: true
+const defModalTitle = computed(() => (defForm.value.id ? '编辑补贴项' : '新建补贴项'))
+const defForm = ref<{
+  id: number | null
+  code: string
+  name: string
+  description: string
+  displayOrder: number
+  isEnabled: boolean
+}>({
+  id: null,
+  code: '',
+  name: '',
+  description: '',
+  displayOrder: 0,
+  isEnabled: true,
 })
 
 function openAddDef() {
-  defForm.value = { id: null, code: '', name: '', description: '', displayOrder: 0, isEnabled: true }
+  defForm.value = {
+    id: null,
+    code: '',
+    name: '',
+    description: '',
+    displayOrder: 0,
+    isEnabled: true,
+  }
   defModalOpen.value = true
 }
 
 function openEditDef(def: AllowanceDef) {
   defForm.value = {
-    id: def.id, code: def.code, name: def.name,
+    id: def.id,
+    code: def.code,
+    name: def.name,
     description: def.description ?? '',
     displayOrder: def.displayOrder ?? 0,
-    isEnabled: def.isEnabled
+    isEnabled: def.isEnabled,
   }
   defModalOpen.value = true
 }
@@ -237,8 +317,14 @@ function closeDefModal() {
 }
 
 async function submitDef() {
-  if (!defForm.value.name.trim()) { message.error('请输入名称'); return }
-  if (!defForm.value.id && !defForm.value.code.trim()) { message.error('请输入代码'); return }
+  if (!defForm.value.name.trim()) {
+    message.error('请输入名称')
+    return
+  }
+  if (!defForm.value.id && !defForm.value.code.trim()) {
+    message.error('请输入代码')
+    return
+  }
   try {
     if (defForm.value.id) {
       await request({
@@ -248,14 +334,14 @@ async function submitDef() {
           name: defForm.value.name,
           description: defForm.value.description,
           displayOrder: defForm.value.displayOrder,
-          isEnabled: defForm.value.isEnabled
-        }
+          isEnabled: defForm.value.isEnabled,
+        },
       })
     } else {
       await request({
         url: '/allowances',
         method: 'POST',
-        body: defForm.value
+        body: defForm.value,
       })
     }
     message.success('保存成功')
@@ -291,21 +377,24 @@ const saving = ref(false)
 
 const positionScopeColumns = [
   { title: '岗位', dataIndex: 'positionName', key: 'positionName' },
-  { title: '金额', key: 'amount', width: 180 }
+  { title: '金额', key: 'amount', width: 180 },
 ]
 
 const employeeScopeColumns = [
   { title: '员工', key: 'employeeName' },
   { title: '金额', key: 'amount', width: 180 },
-  { title: '操作', key: 'action', width: 80 }
+  { title: '操作', key: 'action', width: 80 },
 ]
 
-const employeeOptions = computed(() => employees.value.map(e => ({
-  value: e.id, label: `${e.name} (${e.employeeNo})`
-})))
+const employeeOptions = computed(() =>
+  employees.value.map((e) => ({
+    value: e.id,
+    label: `${e.name} (${e.employeeNo})`,
+  }))
+)
 
 function employeeLabel(id: number): string {
-  const e = employees.value.find(x => x.id === id)
+  const e = employees.value.find((x) => x.id === id)
   return e ? `${e.name} (${e.employeeNo})` : `#${id}`
 }
 
@@ -318,11 +407,14 @@ async function loadConfigs(defId: number) {
   try {
     const list = await request<AllowanceConfig[]>({ url: `/allowances/${defId}/configs` })
     globalAmount.value = undefined
-    Object.keys(positionAmounts).forEach(k => { positionAmounts[Number(k)] = undefined })
+    Object.keys(positionAmounts).forEach((k) => {
+      positionAmounts[Number(k)] = undefined
+    })
     employeeOverrides.value = []
     for (const c of list ?? []) {
       if (c.scope === 'GLOBAL') globalAmount.value = c.amount
-      else if (c.scope === 'POSITION' && c.scopeTargetId != null) positionAmounts[c.scopeTargetId] = c.amount
+      else if (c.scope === 'POSITION' && c.scopeTargetId != null)
+        positionAmounts[c.scopeTargetId] = c.amount
       else if (c.scope === 'EMPLOYEE' && c.scopeTargetId != null) {
         employeeOverrides.value.push({ employeeId: c.scopeTargetId, amount: c.amount })
       }
@@ -360,7 +452,7 @@ function addEmployeeOverride() {
     message.warning('请选择员工并填写金额')
     return
   }
-  if (employeeOverrides.value.some(o => o.employeeId === newEmployeeId.value)) {
+  if (employeeOverrides.value.some((o) => o.employeeId === newEmployeeId.value)) {
     message.warning('该员工已在列表中')
     return
   }
@@ -370,7 +462,7 @@ function addEmployeeOverride() {
 }
 
 function removeEmployeeOverride(id: number) {
-  employeeOverrides.value = employeeOverrides.value.filter(o => o.employeeId !== id)
+  employeeOverrides.value = employeeOverrides.value.filter((o) => o.employeeId !== id)
 }
 
 async function saveConfigs() {
@@ -393,7 +485,7 @@ async function saveConfigs() {
     await request({
       url: `/allowances/${selectedDef.value.id}/configs`,
       method: 'PUT',
-      body: payload
+      body: payload,
     })
     message.success('保存成功')
   } catch {
@@ -403,9 +495,12 @@ async function saveConfigs() {
   }
 }
 
-watch(() => selectedDef.value?.id, () => {
-  scopeTab.value = 'GLOBAL'
-})
+watch(
+  () => selectedDef.value?.id,
+  () => {
+    scopeTab.value = 'GLOBAL'
+  }
+)
 
 onMounted(loadDefs)
 </script>

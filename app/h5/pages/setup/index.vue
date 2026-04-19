@@ -18,20 +18,14 @@
       <div v-if="currentStep === 0" class="step-content">
         <h3>创建CEO账号</h3>
         <a-form :model="formState" layout="vertical">
-          <a-form-item
-            label="企业名称"
-            extra="用于系统标题显示，如「博渊建筑OA管理系统」"
-          >
+          <a-form-item label="企业名称" extra="用于系统标题显示，如「博渊建筑OA管理系统」">
             <a-input
               v-model:value="formState.companyName"
               placeholder="请输入企业名称（可选）"
               data-catch="setup-company-name"
             />
           </a-form-item>
-          <a-form-item
-            label="姓名"
-            :rules="[{ required: true, message: '请输入CEO姓名' }]"
-          >
+          <a-form-item label="姓名" :rules="[{ required: true, message: '请输入CEO姓名' }]">
             <a-input
               v-model:value="formState.ceoName"
               placeholder="请输入CEO姓名"
@@ -42,7 +36,7 @@
             label="手机号"
             :rules="[
               { required: true, message: '请输入CEO手机号' },
-              { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号码', trigger: 'blur' }
+              { pattern: /^1[3-9]\d{9}$/, message: '请输入有效的手机号码', trigger: 'blur' },
             ]"
           >
             <a-input
@@ -51,20 +45,14 @@
               data-catch="setup-ceo-phone"
             />
           </a-form-item>
-          <a-form-item
-            label="密码"
-            :rules="[{ required: true, message: '请输入密码' }]"
-          >
+          <a-form-item label="密码" :rules="[{ required: true, message: '请输入密码' }]">
             <a-input-password
               v-model:value="formState.ceoPassword"
               placeholder="请输入密码（至少8位）"
               data-catch="setup-ceo-password"
             />
           </a-form-item>
-          <a-form-item
-            label="确认密码"
-            :rules="[{ required: true, message: '请确认密码' }]"
-          >
+          <a-form-item label="确认密码" :rules="[{ required: true, message: '请确认密码' }]">
             <a-input-password
               v-model:value="formState.ceoPasswordConfirm"
               placeholder="请再次输入密码"
@@ -72,7 +60,9 @@
           </a-form-item>
         </a-form>
         <div class="step-actions">
-          <a-button type="primary" data-catch="setup-step1-next" @click="goToStep(1)">下一步</a-button>
+          <a-button type="primary" data-catch="setup-step1-next" @click="goToStep(1)">
+            下一步
+          </a-button>
         </div>
       </div>
 
@@ -80,30 +70,14 @@
       <div v-if="currentStep === 1" class="step-content">
         <h3>创建HR账号</h3>
         <a-form :model="formState" layout="vertical">
-          <a-form-item
-            label="姓名"
-            :rules="[{ required: true, message: '请输入HR姓名' }]"
-          >
-            <a-input
-              v-model:value="formState.hrName"
-              placeholder="请输入HR姓名"
-            />
+          <a-form-item label="姓名" :rules="[{ required: true, message: '请输入HR姓名' }]">
+            <a-input v-model:value="formState.hrName" placeholder="请输入HR姓名" />
           </a-form-item>
-          <a-form-item
-            label="手机号"
-            :rules="[{ required: true, message: '请输入HR手机号' }]"
-          >
-            <a-input
-              v-model:value="formState.hrPhone"
-              placeholder="请输入HR手机号"
-            />
+          <a-form-item label="手机号" :rules="[{ required: true, message: '请输入HR手机号' }]">
+            <a-input v-model:value="formState.hrPhone" placeholder="请输入HR手机号" />
           </a-form-item>
         </a-form>
-        <a-alert
-          type="info"
-          message="初始密码为 123456，首次登录后请修改"
-          class="info-alert"
-        />
+        <a-alert type="info" message="初始密码为 123456，首次登录后请修改" class="info-alert" />
         <div class="step-actions">
           <a-button @click="goToStep(0)">上一步</a-button>
           <a-button type="primary" @click="goToStep(2)">下一步</a-button>
@@ -116,10 +90,7 @@
         <a-form :model="formState" layout="vertical">
           <a-divider orientation="left">运营人员</a-divider>
           <a-form-item label="姓名">
-            <a-input
-              v-model:value="formState.opsName"
-              placeholder="请输入运营人员姓名（可选）"
-            />
+            <a-input v-model:value="formState.opsName" placeholder="请输入运营人员姓名（可选）" />
           </a-form-item>
           <a-form-item label="手机号">
             <a-input
@@ -129,16 +100,10 @@
           </a-form-item>
           <a-divider orientation="left">总经理</a-divider>
           <a-form-item label="姓名">
-            <a-input
-              v-model:value="formState.gmName"
-              placeholder="请输入总经理姓名（可选）"
-            />
+            <a-input v-model:value="formState.gmName" placeholder="请输入总经理姓名（可选）" />
           </a-form-item>
           <a-form-item label="手机号">
-            <a-input
-              v-model:value="formState.gmPhone"
-              placeholder="请输入总经理手机号（可选）"
-            />
+            <a-input v-model:value="formState.gmPhone" placeholder="请输入总经理手机号（可选）" />
           </a-form-item>
         </a-form>
         <div class="step-actions">
@@ -171,15 +136,15 @@
             {{ formState.gmName || '-' }} {{ formState.gmPhone ? `(${formState.gmPhone})` : '' }}
           </a-descriptions-item>
         </a-descriptions>
-        <a-alert
-          v-if="submitError"
-          type="error"
-          :message="submitError"
-          class="error-alert"
-        />
+        <a-alert v-if="submitError" type="error" :message="submitError" class="error-alert" />
         <div class="step-actions">
           <a-button @click="goToStep(2)">上一步</a-button>
-          <a-button type="primary" data-catch="setup-submit-btn" :loading="submitting" @click="submitSetup">
+          <a-button
+            type="primary"
+            data-catch="setup-submit-btn"
+            :loading="submitting"
+            @click="submitSetup"
+          >
             提交
           </a-button>
         </div>
@@ -195,24 +160,19 @@
           message="此恢复码仅显示一次，请务必妥善保管！"
           class="warning-alert"
         />
-        <a-checkbox v-model:checked="recoverySaved">
-          我已安全保存恢复码
-        </a-checkbox>
+        <a-checkbox v-model:checked="recoverySaved">我已安全保存恢复码</a-checkbox>
         <div class="step-actions">
-          <a-button
-            type="primary"
-            :disabled="!recoverySaved"
-            @click="goToStep(5)"
-          >
-            下一步
-          </a-button>
+          <a-button type="primary" :disabled="!recoverySaved" @click="goToStep(5)">下一步</a-button>
         </div>
       </div>
 
       <!-- Step 6: 自定义角色（设计 §2.2 步骤 5） -->
       <div v-if="currentStep === 5" class="step-content">
         <h3>自定义角色</h3>
-        <p style="color: #666;">如有非内置岗位（如总监、组长等），可在角色管理中创建自定义角色并分配权限矩阵（4 级 × 6 模块）。</p>
+        <p style="color: #666">
+          如有非内置岗位（如总监、组长等），可在角色管理中创建自定义角色并分配权限矩阵（4 级 × 6
+          模块）。
+        </p>
         <a-button @click="navigateTo('/role')" type="primary">前往角色管理</a-button>
         <div class="step-actions">
           <a-button @click="goToStep(4)">上一步</a-button>
@@ -224,7 +184,7 @@
       <!-- Step 7: 员工导入（设计 §2.2 步骤 6） -->
       <div v-if="currentStep === 6" class="step-content">
         <h3>员工批量导入</h3>
-        <p style="color: #666;">通过 CSV 粘贴批量录入员工档案；财务可在通讯录导入页完成。</p>
+        <p style="color: #666">通过 CSV 粘贴批量录入员工档案；财务可在通讯录导入页完成。</p>
         <a-button @click="navigateTo('/directory')" type="primary">前往通讯录导入</a-button>
         <div class="step-actions">
           <a-button @click="goToStep(5)">上一步</a-button>
@@ -236,7 +196,9 @@
       <!-- Step 8: 组织架构（设计 §2.2 步骤 7 + §3.5） -->
       <div v-if="currentStep === 7" class="step-content">
         <h3>组织架构</h3>
-        <p style="color: #666;">在组织架构页配置部门树并通过拖拽确定汇报关系（系统自动校验循环汇报）。</p>
+        <p style="color: #666">
+          在组织架构页配置部门树并通过拖拽确定汇报关系（系统自动校验循环汇报）。
+        </p>
         <a-button @click="navigateTo('/org')" type="primary">前往组织架构</a-button>
         <div class="step-actions">
           <a-button @click="goToStep(6)">上一步</a-button>
@@ -248,7 +210,10 @@
       <!-- Step 9: 全局配置 + 审批流（设计 §2.2 步骤 8-9） -->
       <div v-if="currentStep === 8" class="step-content">
         <h3>全局配置 / 审批流</h3>
-        <p style="color: #666;">在系统配置页设置考勤计量单位、临时薪资调整审批开关，并按业务类型编辑审批流末端节点（总经理/CEO 等）。</p>
+        <p style="color: #666">
+          在系统配置页设置考勤计量单位、临时薪资调整审批开关，并按业务类型编辑审批流末端节点（总经理/CEO
+          等）。
+        </p>
         <a-button @click="navigateTo('/config')" type="primary">前往系统配置</a-button>
         <div class="step-actions">
           <a-button @click="goToStep(7)">上一步</a-button>
@@ -260,7 +225,9 @@
       <!-- Step 10: 数据保留期（设计 §2.2 步骤 10 + §10） -->
       <div v-if="currentStep === 9" class="step-content">
         <h3>数据保留期</h3>
-        <p style="color: #666;">设置薪资条 / 表单 / 操作日志等各类数据的留存年限；到期前 30 天会通知 CEO 与运维。</p>
+        <p style="color: #666">
+          设置薪资条 / 表单 / 操作日志等各类数据的留存年限；到期前 30 天会通知 CEO 与运维。
+        </p>
         <a-button @click="navigateTo('/retention')" type="primary">前往数据保留</a-button>
         <div class="step-actions">
           <a-button @click="goToStep(8)">上一步</a-button>
@@ -276,7 +243,7 @@ import { reactive, ref } from 'vue'
 import { message } from 'ant-design-vue'
 
 definePageMeta({
-  layout: false
+  layout: false,
 })
 
 interface FormState {
@@ -310,7 +277,7 @@ const formState = reactive<FormState>({
   opsName: '',
   opsPhone: '',
   gmName: '',
-  gmPhone: ''
+  gmPhone: '',
 })
 
 function validateStep(step: number): boolean {
@@ -378,7 +345,7 @@ async function submitSetup() {
     ceoPhone: formState.ceoPhone,
     ceoPassword: formState.ceoPassword,
     hrName: formState.hrName,
-    hrPhone: formState.hrPhone
+    hrPhone: formState.hrPhone,
   }
   if (formState.companyName) body.companyName = formState.companyName
 
@@ -390,14 +357,18 @@ async function submitSetup() {
   try {
     const data = await $fetch<SetupResponse>('/api/setup/init', {
       method: 'POST',
-      body
+      body,
     })
     recoveryCode.value = data.recoveryCode
     currentStep.value = 4
   } catch (error) {
     // error is an ofetch FetchError from Nuxt's $fetch; response.status and data.message are ofetch-specific fields
     const fetchError = error as { response?: { status?: number }; data?: { message?: string } }
-    if (fetchError?.response?.status === 400 || fetchError?.response?.status === 403 || fetchError?.response?.status === 409) {
+    if (
+      fetchError?.response?.status === 400 ||
+      fetchError?.response?.status === 403 ||
+      fetchError?.response?.status === 409
+    ) {
       submitError.value = fetchError?.data?.message || '提交失败，请检查输入'
     } else {
       submitError.value = '网络错误，请重试'

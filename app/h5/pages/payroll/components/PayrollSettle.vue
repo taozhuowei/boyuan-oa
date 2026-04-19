@@ -6,7 +6,7 @@
               预检 / 结算 API 由本组件自行调用
     事件输出：settled — 结算成功后通知父层刷新周期列表并跳回 cycles Tab
   -->
-  <div style="max-width: 480px; margin-top: 8px;">
+  <div style="max-width: 480px; margin-top: 8px">
     <a-form layout="vertical">
       <a-form-item label="选择周期">
         <a-select
@@ -14,7 +14,12 @@
           placeholder="请选择工资周期"
           :options="settleableCycles"
           :loading="loadingCycles"
-          @change="(v) => { selectedCycleId = v as number; precheckResult = null }"
+          @change="
+            (v) => {
+              selectedCycleId = v as number
+              precheckResult = null
+            }
+          "
         />
       </a-form-item>
     </a-form>
@@ -25,14 +30,18 @@
         :disabled="!selectedCycleId"
         :loading="precheckLoading"
         @click="doPrecheck"
-      >预结算检查</a-button>
+      >
+        预结算检查
+      </a-button>
       <a-button
         data-catch="payroll-settle-run-btn"
         type="primary"
         :disabled="!selectedCycleId || !precheckPassed"
         :loading="settleLoading"
         @click="doSettle"
-      >正式结算</a-button>
+      >
+        正式结算
+      </a-button>
     </a-space>
 
     <template v-if="precheckResult !== null">
@@ -41,7 +50,7 @@
         :type="precheckPassed ? 'success' : 'warning'"
         :message="precheckPassed ? '所有检查项通过，可执行结算' : '存在未通过检查项'"
         show-icon
-        style="margin-bottom: 12px;"
+        style="margin-bottom: 12px"
       />
       <a-list size="small" :data-source="precheckResult">
         <template #renderItem="{ item }">
@@ -51,7 +60,9 @@
                 {{ item.pass ? '✓' : '✗' }}
               </span>
               <span>{{ item.label }}</span>
-              <span v-if="!item.pass" style="color: #ff4d4f; font-size: 12px;">{{ item.message }}</span>
+              <span v-if="!item.pass" style="color: #ff4d4f; font-size: 12px">
+                {{ item.message }}
+              </span>
             </a-space>
           </a-list-item>
         </template>
@@ -109,17 +120,20 @@ const precheckLoading = ref(false)
 const settleLoading = ref(false)
 const precheckResult = ref<PrecheckItem[] | null>(null)
 
-const precheckPassed = computed(() =>
-  precheckResult.value !== null && precheckResult.value.every(i => i.pass)
+const precheckPassed = computed(
+  () => precheckResult.value !== null && precheckResult.value.every((i) => i.pass)
 )
 
 // 父层通过 preselectedCycleId 传入预填值时同步到本地状态
-watch(() => props.preselectedCycleId, (id) => {
-  if (id !== undefined) {
-    selectedCycleId.value = id
-    precheckResult.value = null
+watch(
+  () => props.preselectedCycleId,
+  (id) => {
+    if (id !== undefined) {
+      selectedCycleId.value = id
+      precheckResult.value = null
+    }
   }
-})
+)
 
 // ── 方法 ──────────────────────────────────────────────────────
 

@@ -27,7 +27,7 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
       url: '/auth/login',
       method: 'POST',
       body: { username: identifier, password },
-      skipAuthRedirect: true
+      skipAuthRedirect: true,
     })
 
     return {
@@ -42,8 +42,8 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
         status: '在线值守',
         userId: response.userId ?? null,
         positionId: null,
-        secondRoles: response.secondRoles ?? []
-      }
+        secondRoles: response.secondRoles ?? [],
+      },
     }
   } catch {
     const matched = defaultTestAccounts.find(
@@ -61,8 +61,8 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
         employeeType: matched.employeeType,
         status: '在线值守',
         userId: null,
-        positionId: null
-      }
+        positionId: null,
+      },
     }
   }
 }
@@ -81,7 +81,7 @@ export async function saveRole(payload: RolePayload): Promise<RoleItem> {
     roleCode: payload.roleCode.trim().toLowerCase(),
     roleName: payload.roleName.trim(),
     description: payload.description.trim(),
-    permissions: payload.permissions.map((p) => p.trim()).filter(Boolean)
+    permissions: payload.permissions.map((p) => p.trim()).filter(Boolean),
   }
   if (normalized.id) {
     return request<RoleItem>({ url: '/roles/' + normalized.id, method: 'PUT', body: normalized })

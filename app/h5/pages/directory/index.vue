@@ -18,7 +18,12 @@
           placeholder="在此粘贴 CSV 数据，每行一条，格式：姓名,手机号,部门&#10;示例：&#10;张三,13800138000,工程部&#10;李四,13900139000,财务部"
         />
         <div class="step-actions">
-          <a-button type="primary" data-catch="directory-btn-next" :loading="previewLoading" @click="handlePreview">
+          <a-button
+            type="primary"
+            data-catch="directory-btn-next"
+            :loading="previewLoading"
+            @click="handlePreview"
+          >
             下一步
           </a-button>
         </div>
@@ -28,16 +33,33 @@
       <div v-if="currentStep === 1" class="step-content">
         <div class="statistics">
           <a-card class="stat-card">
-            <a-statistic title="共计" data-catch="directory-stat-total" :value="previewData?.totalCount ?? 0" />
+            <a-statistic
+              title="共计"
+              data-catch="directory-stat-total"
+              :value="previewData?.totalCount ?? 0"
+            />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="有效" :value="previewData?.validCount ?? 0" :value-style="{ color: '#52c41a' }" />
+            <a-statistic
+              title="有效"
+              :value="previewData?.validCount ?? 0"
+              :value-style="{ color: '#52c41a' }"
+            />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="无效" :value="previewData?.invalidCount ?? 0" :value-style="{ color: '#ff4d4f' }" />
+            <a-statistic
+              title="无效"
+              :value="previewData?.invalidCount ?? 0"
+              :value-style="{ color: '#ff4d4f' }"
+            />
           </a-card>
           <a-card class="stat-card">
-            <a-statistic title="重复" data-catch="directory-stat-duplicate" :value="previewData?.duplicateCount ?? 0" :value-style="{ color: '#fa8c16' }" />
+            <a-statistic
+              title="重复"
+              data-catch="directory-stat-duplicate"
+              :value="previewData?.duplicateCount ?? 0"
+              :value-style="{ color: '#fa8c16' }"
+            />
           </a-card>
         </div>
 
@@ -61,7 +83,12 @@
 
         <div class="step-actions">
           <a-button @click="handleBack">上一步</a-button>
-          <a-button type="primary" data-catch="directory-btn-import" :loading="importLoading" @click="handleImport">
+          <a-button
+            type="primary"
+            data-catch="directory-btn-import"
+            :loading="importLoading"
+            @click="handleImport"
+          >
             确认导入
           </a-button>
         </div>
@@ -71,9 +98,7 @@
       <div v-if="currentStep === 2" class="step-content">
         <a-result status="success" title="导入成功" :sub-title="importMessage">
           <template #extra>
-            <a-button type="primary" @click="handleReset">
-              再次导入
-            </a-button>
+            <a-button type="primary" @click="handleReset">再次导入</a-button>
           </template>
         </a-result>
       </div>
@@ -122,7 +147,7 @@ const columns = [
   { title: '手机号', dataIndex: 'phone', key: 'phone' },
   { title: '部门', dataIndex: 'department', key: 'department' },
   { title: '状态', key: 'status', width: 80 },
-  { title: '说明', dataIndex: 'message', key: 'message', ellipsis: true }
+  { title: '说明', dataIndex: 'message', key: 'message', ellipsis: true },
 ]
 
 const rowSelection = computed(() => ({
@@ -131,14 +156,14 @@ const rowSelection = computed(() => ({
     selectedRowKeys.value = keys as number[]
   },
   getCheckboxProps: (record: PreviewItem) => ({
-    disabled: record.status === 'INVALID'
-  })
+    disabled: record.status === 'INVALID',
+  }),
 }))
 
 const STATUS_LABELS: Record<string, string> = {
   VALID: '有效',
   INVALID: '无效',
-  DUPLICATE: '重复'
+  DUPLICATE: '重复',
 }
 
 function getStatusLabel(status: string): string {
@@ -171,7 +196,7 @@ function parseCsvInput(input: string): DirectoryRecord[] {
       records.push({
         name: parts[0].trim(),
         phone: parts[1].trim(),
-        department: parts[2].trim()
+        department: parts[2].trim(),
       })
     }
   }
@@ -196,14 +221,14 @@ async function handlePreview() {
     const data = await request<PreviewResponse>({
       url: '/directory/import-preview',
       method: 'POST',
-      body: { records }
+      body: { records },
     })
     previewData.value = data
 
     // Pre-select all VALID rows by default
     selectedRowKeys.value = data.items
-      .filter(item => item.status === 'VALID')
-      .map(item => item.rowIndex)
+      .filter((item) => item.status === 'VALID')
+      .map((item) => item.rowIndex)
 
     currentStep.value = 1
   } catch {
@@ -224,7 +249,7 @@ async function handleImport() {
     const result = await request<string>({
       url: '/directory/import-apply',
       method: 'POST',
-      body: { selectedIndices: selectedRowKeys.value }
+      body: { selectedIndices: selectedRowKeys.value },
     })
     importMessage.value = result
     currentStep.value = 2

@@ -70,7 +70,7 @@ const props = defineProps<{
 const UNIT_OPTIONS = [
   { value: 'HOUR', label: '小时' },
   { value: 'HALF_DAY', label: '半天' },
-  { value: 'DAY', label: '天' }
+  { value: 'DAY', label: '天' },
 ]
 
 const loading = ref(false)
@@ -79,7 +79,7 @@ const leave_unit = ref<string>('')
 const overtime_unit = ref<string>('')
 
 function getUnitLabel(value: string): string {
-  const option = UNIT_OPTIONS.find(opt => opt.value === value)
+  const option = UNIT_OPTIONS.find((opt) => opt.value === value)
   return option?.label ?? value ?? '—'
 }
 
@@ -103,7 +103,7 @@ async function handleSave() {
     await request({
       url: '/config/attendance-unit',
       method: 'POST',
-      body: { leaveUnit: leave_unit.value, overtimeUnit: overtime_unit.value }
+      body: { leaveUnit: leave_unit.value, overtimeUnit: overtime_unit.value },
     })
     message.success('保存成功')
   } catch {

@@ -2,9 +2,24 @@
   <!-- 组织架构页 — 部门树展示（所有登录用户可看；CEO 可新建/编辑/删除）
        数据来源：GET /api/departments（返回树形结构） -->
   <div class="org-page">
-    <div class="page-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
-      <h2 class="page-title" style="margin: 0;">组织架构</h2>
-      <a-button v-if="isCeo" type="primary" data-catch="dept-create-btn" @click="openCreateModal(null)">+ 新建部门</a-button>
+    <div
+      class="page-header"
+      style="
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      "
+    >
+      <h2 class="page-title" style="margin: 0">组织架构</h2>
+      <a-button
+        v-if="isCeo"
+        type="primary"
+        data-catch="dept-create-btn"
+        @click="openCreateModal(null)"
+      >
+        + 新建部门
+      </a-button>
     </div>
 
     <a-spin :spinning="loading">
@@ -20,19 +35,33 @@
           data-catch="org-tree"
         >
           <template #title="node">
-            <div style="display: flex; align-items: center; gap: 8px; padding: 2px 0;">
-              <span style="font-weight: 500;">{{ node.deptName }}</span>
-              <a-tag color="blue" style="margin: 0;">{{ node.employeeCount }} 人</a-tag>
+            <div style="display: flex; align-items: center; gap: 8px; padding: 2px 0">
+              <span style="font-weight: 500">{{ node.deptName }}</span>
+              <a-tag color="blue" style="margin: 0">{{ node.employeeCount }} 人</a-tag>
               <template v-if="isCeo">
-                <a-button type="link" size="small" style="padding: 0 4px;" @click.stop="openCreateModal(node.deptId)">
+                <a-button
+                  type="link"
+                  size="small"
+                  style="padding: 0 4px"
+                  @click.stop="openCreateModal(node.deptId)"
+                >
                   + 子部门
                 </a-button>
                 <a-button
                   type="link"
                   size="small"
-                  style="padding: 0 4px;"
+                  style="padding: 0 4px"
                   :data-catch="'org-dept-edit-btn-' + node.deptName"
-                  @click.stop="openEditModal({ id: node.deptId, name: node.deptName, parentId: node.deptParentId, sort: node.deptSort, employeeCount: node.employeeCount, children: [] })"
+                  @click.stop="
+                    openEditModal({
+                      id: node.deptId,
+                      name: node.deptName,
+                      parentId: node.deptParentId,
+                      sort: node.deptSort,
+                      employeeCount: node.employeeCount,
+                      children: [],
+                    })
+                  "
                 >
                   编辑
                 </a-button>
@@ -41,7 +70,15 @@
                   @confirm="doDeleteDept(node.deptId)"
                   @click.stop
                 >
-                  <a-button type="link" size="small" danger style="padding: 0 4px;" :data-catch="'org-dept-delete-btn-' + node.deptName">删除</a-button>
+                  <a-button
+                    type="link"
+                    size="small"
+                    danger
+                    style="padding: 0 4px"
+                    :data-catch="'org-dept-delete-btn-' + node.deptName"
+                  >
+                    删除
+                  </a-button>
                 </a-popconfirm>
               </template>
             </div>
@@ -53,17 +90,21 @@
     <!-- 新建/编辑部门弹窗 -->
     <a-modal
       v-model:open="showDeptModal"
-      :title="editingDept ? '编辑部门' : (parentId ? '新建子部门' : '新建部门')"
+      :title="editingDept ? '编辑部门' : parentId ? '新建子部门' : '新建部门'"
       @ok="doSaveDept"
       :confirm-loading="deptLoading"
       @cancel="resetDeptForm"
     >
       <a-form :model="deptForm" layout="vertical">
         <a-form-item label="部门名称" required>
-          <a-input v-model:value="deptForm.name" data-catch="dept-name-input" placeholder="请输入部门名称" />
+          <a-input
+            v-model:value="deptForm.name"
+            data-catch="dept-name-input"
+            placeholder="请输入部门名称"
+          />
         </a-form-item>
         <a-form-item label="排序">
-          <a-input-number v-model:value="deptForm.sort" :min="0" style="width: 100%;" />
+          <a-input-number v-model:value="deptForm.sort" :min="0" style="width: 100%" />
         </a-form-item>
         <a-form-item v-if="parentId" label="上级部门">
           <a-input :value="getParentName(parentId)" disabled />
@@ -71,40 +112,79 @@
       </a-form>
       <template #footer>
         <a-button @click="resetDeptForm">取消</a-button>
-        <a-button type="primary" :loading="deptLoading" data-catch="org-dept-modal-ok" @click="doSaveDept">确定</a-button>
+        <a-button
+          type="primary"
+          :loading="deptLoading"
+          data-catch="org-dept-modal-ok"
+          @click="doSaveDept"
+        >
+          确定
+        </a-button>
       </template>
     </a-modal>
 
     <!-- 汇报关系（直系领导可视化 + 拖拽重组） -->
-    <a-card title="汇报关系" style="margin-top: 16px;">
+    <a-card title="汇报关系" style="margin-top: 16px">
       <template #extra>
         <a-space>
-          <span style="color: #999; font-size: 12px;">拖拽左侧节点到右侧树指定上级下方</span>
+          <span style="color: #999; font-size: 12px">拖拽左侧节点到右侧树指定上级下方</span>
           <a-button :loading="loadingTree" size="small" @click="loadSupervisorTree">刷新</a-button>
         </a-space>
       </template>
       <a-spin :spinning="loadingTree">
-        <div style="display: flex; gap: 16px; min-height: 300px;">
+        <div style="display: flex; gap: 16px; min-height: 300px">
           <!-- Left panel: unassigned employees -->
-          <div style="width: 220px; border: 1px dashed #d9d9d9; border-radius: 6px; padding: 12px; flex-shrink: 0;">
-            <div style="font-weight: 500; margin-bottom: 8px; color: #555;">备选节点（未纳入汇报关系）</div>
-            <div v-if="unassignedEmployees.length === 0" style="color: #bbb; font-size: 12px;">暂无未分配人员</div>
+          <div
+            style="
+              width: 220px;
+              border: 1px dashed #d9d9d9;
+              border-radius: 6px;
+              padding: 12px;
+              flex-shrink: 0;
+            "
+          >
+            <div style="font-weight: 500; margin-bottom: 8px; color: #555">
+              备选节点（未纳入汇报关系）
+            </div>
+            <div v-if="unassignedEmployees.length === 0" style="color: #bbb; font-size: 12px">
+              暂无未分配人员
+            </div>
             <div
               v-for="emp in unassignedEmployees"
               :key="emp.id"
               draggable="true"
-              style="padding: 6px 10px; margin-bottom: 6px; background: #f5f5f5; border-radius: 4px; cursor: grab; user-select: none; border: 1px solid #e8e8e8;"
+              style="
+                padding: 6px 10px;
+                margin-bottom: 6px;
+                background: #f5f5f5;
+                border-radius: 4px;
+                cursor: grab;
+                user-select: none;
+                border: 1px solid #e8e8e8;
+              "
               data-catch="org-unassigned-node"
               @dragstart="onLeftItemDragStart($event, emp.id)"
             >
-              <span style="font-weight: 500;">{{ emp.name }}</span>
-              <span v-if="emp.roleName" style="color: #999; font-size: 11px; margin-left: 6px;">{{ emp.roleName }}</span>
+              <span style="font-weight: 500">{{ emp.name }}</span>
+              <span v-if="emp.roleName" style="color: #999; font-size: 11px; margin-left: 6px">
+                {{ emp.roleName }}
+              </span>
             </div>
           </div>
 
           <!-- Right panel: CEO subtree -->
-          <div style="flex: 1; border: 1px solid #e8e8e8; border-radius: 6px; padding: 12px; position: relative;">
-            <div style="font-weight: 500; margin-bottom: 8px; color: #555;">汇报关系树（CEO 固定在顶端）</div>
+          <div
+            style="
+              flex: 1;
+              border: 1px solid #e8e8e8;
+              border-radius: 6px;
+              padding: 12px;
+              position: relative;
+            "
+          >
+            <div style="font-weight: 500; margin-bottom: 8px; color: #555">
+              汇报关系树（CEO 固定在顶端）
+            </div>
             <a-tree
               v-if="ceoTree.length"
               :tree-data="ceoTree"
@@ -116,15 +196,30 @@
             >
               <template #title="node">
                 <span
-                  style="display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 3px; transition: background 0.2s;"
+                  style="
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 2px 4px;
+                    border-radius: 3px;
+                    transition: background 0.2s;
+                  "
                   :style="dragOverNodeId === node.employeeId ? 'background: #e6f4ff;' : ''"
                   @dragover="onRightNodeDragOver($event, node.employeeId)"
                   @drop="onRightNodeDrop($event, node.employeeId)"
                   @dragleave="dragOverNodeId = null"
                 >
-                  <span style="font-weight: 500;">{{ node.title }}</span>
-                  <a-tag v-if="node.employeeId === ceoEmployee?.id" color="gold" style="margin: 0; font-size: 11px;">固定</a-tag>
-                  <span v-else-if="node.subtitle" style="color: #999; font-size: 12px;">{{ node.subtitle }}</span>
+                  <span style="font-weight: 500">{{ node.title }}</span>
+                  <a-tag
+                    v-if="node.employeeId === ceoEmployee?.id"
+                    color="gold"
+                    style="margin: 0; font-size: 11px"
+                  >
+                    固定
+                  </a-tag>
+                  <span v-else-if="node.subtitle" style="color: #999; font-size: 12px">
+                    {{ node.subtitle }}
+                  </span>
                 </span>
               </template>
             </a-tree>
@@ -175,7 +270,7 @@ const loading = ref(false)
 const departments = ref<DeptNode[]>([])
 
 function toTreeNodes(nodes: DeptNode[]): TreeNode[] {
-  return nodes.map(n => ({
+  return nodes.map((n) => ({
     key: n.id,
     title: n.name,
     deptId: n.id,
@@ -183,7 +278,7 @@ function toTreeNodes(nodes: DeptNode[]): TreeNode[] {
     deptParentId: n.parentId,
     deptSort: n.sort,
     employeeCount: n.employeeCount,
-    children: toTreeNodes(n.children ?? [])
+    children: toTreeNodes(n.children ?? []),
   }))
 }
 
@@ -202,7 +297,7 @@ async function loadDepartments() {
 }
 
 function flattenDepts(nodes: DeptNode[]): DeptNode[] {
-  return nodes.flatMap(n => [n, ...flattenDepts(n.children ?? [])])
+  return nodes.flatMap((n) => [n, ...flattenDepts(n.children ?? [])])
 }
 
 function getParentName(id: number | null): string {
@@ -246,7 +341,7 @@ async function doSaveDept() {
   try {
     const body: Record<string, unknown> = {
       name: deptForm.value.name,
-      sort: deptForm.value.sort
+      sort: deptForm.value.sort,
     }
     if (parentId.value) body.parentId = parentId.value
 
@@ -279,24 +374,43 @@ async function doDeleteDept(id: number) {
 
 // ── 汇报关系（直系领导）可视化 + 拖拽重组 ──────────────────────
 
-interface EmployeeBrief { id: number; name: string; employeeNo?: string; roleName?: string; roleCode?: string; directSupervisorId?: number | null }
-interface SupervisorTreeNode { key: string; title: string; subtitle?: string; employeeId: number; children: SupervisorTreeNode[] }
+interface EmployeeBrief {
+  id: number
+  name: string
+  employeeNo?: string
+  roleName?: string
+  roleCode?: string
+  directSupervisorId?: number | null
+}
+interface SupervisorTreeNode {
+  key: string
+  title: string
+  subtitle?: string
+  employeeId: number
+  children: SupervisorTreeNode[]
+}
 
 const isCeoOrHr = computed(() => ['ceo', 'hr'].includes(userStore.userInfo?.role ?? ''))
 const allEmployees = ref<EmployeeBrief[]>([])
 const loadingTree = ref(false)
 
-const ceoEmployee = computed(() => allEmployees.value.find(e => e.roleCode === 'ceo' || e.roleName?.includes('CEO') || e.roleName?.includes('总裁')))
+const ceoEmployee = computed(() =>
+  allEmployees.value.find(
+    (e) => e.roleCode === 'ceo' || e.roleName?.includes('CEO') || e.roleName?.includes('总裁')
+  )
+)
 
 function getSubtreeIds(rootId: number): Set<number> {
   const ids = new Set<number>([rootId])
   const queue = [rootId]
   while (queue.length) {
     const curr = queue.shift()!
-    allEmployees.value.filter(e => e.directSupervisorId === curr).forEach(e => {
-      ids.add(e.id)
-      queue.push(e.id)
-    })
+    allEmployees.value
+      .filter((e) => e.directSupervisorId === curr)
+      .forEach((e) => {
+        ids.add(e.id)
+        queue.push(e.id)
+      })
   }
   return ids
 }
@@ -308,11 +422,11 @@ const ceoSubtreeIds = computed(() => {
 })
 
 const unassignedEmployees = computed(() =>
-  allEmployees.value.filter(e => !ceoSubtreeIds.value.has(e.id))
+  allEmployees.value.filter((e) => !ceoSubtreeIds.value.has(e.id))
 )
 
 function buildSubtree(rootId: number): SupervisorTreeNode[] {
-  const emp = allEmployees.value.find(e => e.id === rootId)
+  const emp = allEmployees.value.find((e) => e.id === rootId)
   if (!emp) return []
   const node: SupervisorTreeNode = {
     key: 'emp-' + emp.id,
@@ -320,8 +434,8 @@ function buildSubtree(rootId: number): SupervisorTreeNode[] {
     subtitle: emp.roleName ?? '',
     employeeId: emp.id,
     children: allEmployees.value
-      .filter(e => e.directSupervisorId === emp.id)
-      .flatMap(e => buildSubtree(e.id))
+      .filter((e) => e.directSupervisorId === emp.id)
+      .flatMap((e) => buildSubtree(e.id)),
   }
   return [node]
 }
@@ -357,7 +471,11 @@ async function onRightNodeDrop(e: DragEvent, targetEmpId: number) {
     return
   }
   try {
-    await request({ url: `/employees/${dragId}`, method: 'PUT', body: { directSupervisorId: targetEmpId } })
+    await request({
+      url: `/employees/${dragId}`,
+      method: 'PUT',
+      body: { directSupervisorId: targetEmpId },
+    })
     message.success('已加入汇报关系')
     await loadSupervisorTree()
   } catch {
@@ -372,7 +490,9 @@ async function loadSupervisorTree() {
     allEmployees.value = data?.content ?? []
   } catch {
     allEmployees.value = []
-  } finally { loadingTree.value = false }
+  } finally {
+    loadingTree.value = false
+  }
 }
 
 interface AntdTreeDropInfo {
@@ -399,7 +519,11 @@ async function onSupervisorDrop(info: AntdTreeDropInfo) {
     return
   }
   try {
-    await request({ url: `/employees/${dragId}`, method: 'PUT', body: { directSupervisorId: newSupervisorId } })
+    await request({
+      url: `/employees/${dragId}`,
+      method: 'PUT',
+      body: { directSupervisorId: newSupervisorId },
+    })
     message.success('汇报关系已更新')
     await loadSupervisorTree()
   } catch {
@@ -412,7 +536,7 @@ function isAncestor(employeeId: number, candidateAncestorId: number): boolean {
   const queue: number[] = [employeeId]
   while (queue.length) {
     const curr = queue.shift()!
-    const children = allEmployees.value.filter(e => e.directSupervisorId === curr)
+    const children = allEmployees.value.filter((e) => e.directSupervisorId === curr)
     for (const c of children) {
       if (c.id === candidateAncestorId) return true
       queue.push(c.id)

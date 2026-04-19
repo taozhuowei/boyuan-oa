@@ -17,7 +17,8 @@
         </template>
       </div>
       <div class="form-hint">
-        开启后，财务录入的临时补贴/扣款需 CEO 审批通过后方可计入结算；关闭时直接生效，仅发送通知给 CEO。
+        开启后，财务录入的临时补贴/扣款需 CEO 审批通过后方可计入结算；关闭时直接生效，仅发送通知给
+        CEO。
       </div>
       <div v-if="isCEO" class="form-actions">
         <a-button
@@ -55,7 +56,7 @@ async function loadConfig() {
   loading.value = true
   try {
     const data = await request<{ approvalRequired: boolean }>({
-      url: '/payroll/bonus-approval-config'
+      url: '/payroll/bonus-approval-config',
     })
     approval_required.value = !!data.approvalRequired
   } catch {
@@ -72,7 +73,7 @@ async function handleSave() {
     await request({
       url: '/payroll/bonus-approval-config',
       method: 'PUT',
-      body: { approvalRequired: approval_required.value }
+      body: { approvalRequired: approval_required.value },
     })
     message.success('保存成功')
   } catch {

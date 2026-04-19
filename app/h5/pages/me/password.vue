@@ -2,12 +2,7 @@
   <div class="password-page">
     <h2 class="page-title">修改密码</h2>
     <a-card class="password-card">
-      <a-form
-        :model="formState"
-        :rules="(rules as any)"
-        layout="vertical"
-        @finish="handleSubmit"
-      >
+      <a-form :model="formState" :rules="rules as any" layout="vertical" @finish="handleSubmit">
         <a-form-item label="当前密码" name="currentPassword">
           <a-input-password
             v-model:value="formState.currentPassword"
@@ -16,10 +11,7 @@
         </a-form-item>
 
         <a-form-item label="新密码" name="newPassword">
-          <a-input-password
-            v-model:value="formState.newPassword"
-            placeholder="请输入新密码"
-          />
+          <a-input-password v-model:value="formState.newPassword" placeholder="请输入新密码" />
         </a-form-item>
 
         <a-form-item label="确认新密码" name="confirmPassword">
@@ -31,7 +23,12 @@
 
         <a-form-item>
           <a-space>
-            <a-button type="primary" html-type="submit" :loading="loading" data-catch="me-password-submit">
+            <a-button
+              type="primary"
+              html-type="submit"
+              :loading="loading"
+              data-catch="me-password-submit"
+            >
               保存
             </a-button>
             <a-button @click="handleCancel">取消</a-button>
@@ -48,7 +45,7 @@ import { message } from 'ant-design-vue'
 import { request } from '~/utils/http'
 
 definePageMeta({
-  layout: 'default'
+  layout: 'default',
 })
 
 interface FormState {
@@ -60,7 +57,7 @@ interface FormState {
 const formState = reactive<FormState>({
   currentPassword: '',
   newPassword: '',
-  confirmPassword: ''
+  confirmPassword: '',
 })
 
 const loading = ref(false)
@@ -76,16 +73,12 @@ const validateConfirmPassword = (_rule: unknown, value: string) => {
 }
 
 const rules = {
-  currentPassword: [
-    { required: true, message: '请输入当前密码', trigger: 'blur' }
-  ],
+  currentPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
   newPassword: [
     { required: true, message: '请输入新密码', trigger: 'blur' },
-    { min: 8, message: '请输入至少8位密码', trigger: 'blur' }
+    { min: 8, message: '请输入至少8位密码', trigger: 'blur' },
   ],
-  confirmPassword: [
-    { required: true, validator: validateConfirmPassword, trigger: 'blur' }
-  ]
+  confirmPassword: [{ required: true, validator: validateConfirmPassword, trigger: 'blur' }],
 }
 
 const handleSubmit = async () => {
@@ -96,8 +89,8 @@ const handleSubmit = async () => {
       method: 'POST',
       body: {
         currentPassword: formState.currentPassword,
-        newPassword: formState.newPassword
-      }
+        newPassword: formState.newPassword,
+      },
     })
     message.success('密码修改成功')
     setTimeout(() => {

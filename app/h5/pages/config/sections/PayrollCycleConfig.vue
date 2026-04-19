@@ -12,14 +12,14 @@
             style="width: 120px"
             data-catch="config-payday-input"
           />
-          <span style="margin-left: 8px; color: #888;">日（每月，建议 15 日）</span>
+          <span style="margin-left: 8px; color: #888">日（每月，建议 15 日）</span>
         </template>
         <template v-else>
           <span class="readonly-value">每月 {{ payday }} 日</span>
         </template>
       </div>
 
-      <div class="form-row" style="margin-top: 12px;">
+      <div class="form-row" style="margin-top: 12px">
         <span class="form-label">结算截止日：</span>
         <template v-if="isCEO">
           <a-input-number
@@ -28,7 +28,7 @@
             :max="15"
             style="width: 120px"
           />
-          <span style="margin-left: 8px; color: #888;">天前（发薪日前 N 天）</span>
+          <span style="margin-left: 8px; color: #888">天前（发薪日前 N 天）</span>
         </template>
         <template v-else>
           <span class="readonly-value">发薪日前 {{ settlement_cutoff }} 天</span>
@@ -72,7 +72,7 @@ async function loadConfig() {
   loading.value = true
   try {
     const data = await request<{ payday: number; settlementCutoff: number }>({
-      url: '/config/payroll-cycle'
+      url: '/config/payroll-cycle',
     })
     payday.value = data.payday ?? 15
     settlement_cutoff.value = data.settlementCutoff ?? 5
@@ -90,7 +90,7 @@ async function handleSave() {
     await request({
       url: '/config/payroll-cycle',
       method: 'PUT',
-      body: { payday: payday.value, settlementCutoff: settlement_cutoff.value }
+      body: { payday: payday.value, settlementCutoff: settlement_cutoff.value },
     })
     message.success('薪资周期已保存')
   } catch {

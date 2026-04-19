@@ -4,7 +4,13 @@
     <div class="page-header">
       <h2 class="page-title">通知中心</h2>
       <div class="header-actions">
-        <a-button type="link" size="small" data-catch="notification-mark-all-read" :loading="markingAllRead" @click="markAllAsRead">
+        <a-button
+          type="link"
+          size="small"
+          data-catch="notification-mark-all-read"
+          :loading="markingAllRead"
+          @click="markAllAsRead"
+        >
           全部已读
         </a-button>
         <a-button type="link" size="small" danger :loading="clearingRead" @click="clearRead">
@@ -28,7 +34,12 @@
           <a-list-item-meta>
             <template #title>
               <div class="notification-title">
-                <a-badge v-if="!item.read" status="error" class="unread-badge" data-catch="notification-badge-unread" />
+                <a-badge
+                  v-if="!item.read"
+                  status="error"
+                  class="unread-badge"
+                  data-catch="notification-badge-unread"
+                />
                 <span>{{ item.title }}</span>
               </div>
             </template>
@@ -57,9 +68,7 @@
     </div>
 
     <!-- No more data indicator -->
-    <div v-if="!hasMore && notifications.length > 0" class="no-more">
-      没有更多了
-    </div>
+    <div v-if="!hasMore && notifications.length > 0" class="no-more">没有更多了</div>
 
     <!-- Detail modal -->
     <a-modal
@@ -152,7 +161,7 @@ function formatRelativeTime(timestamp: string | undefined): string {
   return date.toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
-    day: '2-digit'
+    day: '2-digit',
   })
 }
 
@@ -172,7 +181,7 @@ async function loadNotifications(isLoadMore = false): Promise<void> {
 
   try {
     const response = await request<PageResponse<Notification>>({
-      url: `/notifications?page=${currentPage.value}&size=20`
+      url: `/notifications?page=${currentPage.value}&size=20`,
     })
 
     const newNotifications = response.content ?? []
@@ -218,7 +227,7 @@ async function markAsRead(id: number): Promise<boolean> {
   try {
     await request({
       url: `/notifications/${id}/read`,
-      method: 'PATCH'
+      method: 'PATCH',
     })
     return true
   } catch (e: unknown) {
@@ -254,10 +263,10 @@ async function markAllAsRead(): Promise<void> {
   try {
     await request({
       url: '/notifications/read-all',
-      method: 'POST'
+      method: 'POST',
     })
     // Update all local notifications to read
-    notifications.value.forEach(item => {
+    notifications.value.forEach((item) => {
       item.read = true
     })
     message.success('已全部标记为已读')
@@ -279,10 +288,10 @@ async function clearRead(): Promise<void> {
   try {
     await request({
       url: '/notifications/read',
-      method: 'DELETE'
+      method: 'DELETE',
     })
     // Remove read notifications from list
-    notifications.value = notifications.value.filter(item => !item.read)
+    notifications.value = notifications.value.filter((item) => !item.read)
     message.success('已清除已读通知')
   } catch (e: unknown) {
     const err = e as { data?: { message?: string } }

@@ -17,7 +17,7 @@
       @update:open="(v: boolean) => emit('update:open', v)"
     >
       <template v-if="slipDetail">
-        <a-descriptions bordered size="small" :column="1" style="margin-bottom: 12px;">
+        <a-descriptions bordered size="small" :column="1" style="margin-bottom: 12px">
           <a-descriptions-item label="周期">{{ slipDetail.slip.cycleId }}</a-descriptions-item>
           <a-descriptions-item label="状态">
             <a-tag :color="slipStatusColor(slipDetail.slip.status)">
@@ -30,10 +30,12 @@
         </a-descriptions>
 
         <!-- 明细列表（设计 §6.5：分两段展示，应发 / 扣减 / 实发） -->
-        <a-divider style="margin: 8px 0;">应发收入</a-divider>
+        <a-divider style="margin: 8px 0">应发收入</a-divider>
         <div v-for="item in earningItems" :key="'e-' + item.id" class="slip-item-row">
           <span class="slip-item-name">{{ item.name }}</span>
-          <span class="slip-item-amount" style="color: #333">+¥{{ formatAmount(item.amount) }}</span>
+          <span class="slip-item-amount" style="color: #333">
+            +¥{{ formatAmount(item.amount) }}
+          </span>
         </div>
         <div v-if="earningItems.length === 0" class="slip-empty-tip">无</div>
         <div class="slip-item-row slip-subtotal">
@@ -41,10 +43,12 @@
           <strong>¥{{ formatAmount(earningTotal) }}</strong>
         </div>
 
-        <a-divider style="margin: 12px 0;">扣减项</a-divider>
+        <a-divider style="margin: 12px 0">扣减项</a-divider>
         <div v-for="item in deductionItems" :key="'d-' + item.id" class="slip-item-row">
           <span class="slip-item-name">{{ item.name }}</span>
-          <span class="slip-item-amount" style="color: #ff4d4f">-¥{{ formatAmount(Math.abs(Number(item.amount))) }}</span>
+          <span class="slip-item-amount" style="color: #ff4d4f">
+            -¥{{ formatAmount(Math.abs(Number(item.amount))) }}
+          </span>
         </div>
         <div v-if="deductionItems.length === 0" class="slip-empty-tip">无</div>
         <div class="slip-item-row slip-subtotal">
@@ -52,7 +56,7 @@
           <strong style="color: #ff4d4f">¥{{ formatAmount(deductionTotal) }}</strong>
         </div>
 
-        <a-divider style="margin: 12px 0;" />
+        <a-divider style="margin: 12px 0" />
         <div class="slip-item-row slip-total">
           <span>实发合计</span>
           <strong>¥{{ formatAmount(slipDetail.slip.netPay) }}</strong>
@@ -60,35 +64,47 @@
 
         <!-- 员工操作按钮（仅 PUBLISHED 状态，且为自己的工资条） -->
         <template v-if="!isFinanceOrCeo && slipDetail.slip.status === 'PUBLISHED'">
-          <a-divider style="margin: 12px 0;" />
-          <a-space style="width: 100%; justify-content: center;">
-            <a-button type="primary" :loading="confirmingSlip" @click="doConfirm">确认收到</a-button>
-            <a-button danger :loading="disputingSlip" @click="showDisputeInput = !showDisputeInput">提出异议</a-button>
+          <a-divider style="margin: 12px 0" />
+          <a-space style="width: 100%; justify-content: center">
+            <a-button type="primary" :loading="confirmingSlip" @click="doConfirm">
+              确认收到
+            </a-button>
+            <a-button danger :loading="disputingSlip" @click="showDisputeInput = !showDisputeInput">
+              提出异议
+            </a-button>
           </a-space>
           <template v-if="showDisputeInput">
             <a-textarea
               v-model:value="disputeReason"
               placeholder="请说明异议原因"
               :rows="3"
-              style="margin-top: 8px;"
+              style="margin-top: 8px"
             />
             <a-button
               type="primary"
               danger
               block
-              style="margin-top: 8px;"
+              style="margin-top: 8px"
               :disabled="!disputeReason.trim()"
               :loading="disputingSlip"
               @click="doDispute"
-            >提交异议</a-button>
+            >
+              提交异议
+            </a-button>
           </template>
         </template>
 
         <!-- 财务操作按钮：发起更正（PUBLISHED/CONFIRMED/DISPUTED 状态可发起；SUPERSEDED 不可） -->
-        <template v-if="isFinance && ['PUBLISHED','CONFIRMED','DISPUTED'].includes(slipDetail.slip.status)">
-          <a-divider style="margin: 12px 0;" />
-          <a-space style="width: 100%; justify-content: center;">
-            <a-button data-catch="payroll-correction-open-btn" @click="openCorrectionModal">发起更正</a-button>
+        <template
+          v-if="
+            isFinance && ['PUBLISHED', 'CONFIRMED', 'DISPUTED'].includes(slipDetail.slip.status)
+          "
+        >
+          <a-divider style="margin: 12px 0" />
+          <a-space style="width: 100%; justify-content: center">
+            <a-button data-catch="payroll-correction-open-btn" @click="openCorrectionModal">
+              发起更正
+            </a-button>
           </a-space>
         </template>
       </template>
@@ -102,14 +118,10 @@
       :confirm-loading="confirmingSlip"
       @ok="submitPinConfirm"
       @cancel="closePinModal"
-      :okButtonProps="({ 'data-catch': 'payroll-sign-confirm-btn' } as unknown as ButtonProps)"
+      :okButtonProps="{ 'data-catch': 'payroll-sign-confirm-btn' } as unknown as ButtonProps"
     >
       <a-form layout="vertical">
-        <a-form-item
-          label="PIN 码"
-          :validate-status="pinError ? 'error' : ''"
-          :help="pinError"
-        >
+        <a-form-item label="PIN 码" :validate-status="pinError ? 'error' : ''" :help="pinError">
           <a-input
             v-model:value="pinInput"
             type="password"
@@ -126,11 +138,7 @@
     </a-modal>
 
     <!-- 签名绑定提示 Modal -->
-    <a-modal
-      v-model:open="showBindPromptModal"
-      title="需要绑定签名"
-      :footer="null"
-    >
+    <a-modal v-model:open="showBindPromptModal" title="需要绑定签名" :footer="null">
       <a-result status="warning" title="您尚未绑定签名">
         <template #subTitle>
           <p>确认工资条需要先绑定手写签名并设置 PIN 码</p>
@@ -148,12 +156,13 @@
       title="发起薪资更正"
       :confirm-loading="submittingCorrection"
       width="640px"
-      :okButtonProps="({ 'data-catch': 'correction-submit-btn' } as unknown as ButtonProps)"
+      :okButtonProps="{ 'data-catch': 'correction-submit-btn' } as unknown as ButtonProps"
       @ok="submitCorrection"
       @cancel="showCorrectionModal = false"
     >
-      <p style="color: #999; margin-bottom: 12px;">
-        修改下方任意工资项的金额（保持空白则不变），并填写更正原因。提交后由 CEO 审批通过后生效，原工资条将被标记 SUPERSEDED，新版本号 +1。
+      <p style="color: #999; margin-bottom: 12px">
+        修改下方任意工资项的金额（保持空白则不变），并填写更正原因。提交后由 CEO
+        审批通过后生效，原工资条将被标记 SUPERSEDED，新版本号 +1。
       </p>
       <div v-for="row in correctionRows" :key="row.itemDefId" class="correction-row">
         <span class="correction-name">{{ row.name }}</span>
@@ -163,10 +172,19 @@
           :placeholder="`原 ${row.originalAmount}`"
           style="width: 160px"
         />
-        <a-input v-model:value="row.remark" placeholder="备注（可选）" style="flex: 1; margin-left: 8px;" />
+        <a-input
+          v-model:value="row.remark"
+          placeholder="备注（可选）"
+          style="flex: 1; margin-left: 8px"
+        />
       </div>
-      <a-form-item label="更正原因" required style="margin-top: 16px;">
-        <a-textarea data-catch="correction-reason-input" v-model:value="correctionReason" :rows="3" placeholder="必填" />
+      <a-form-item label="更正原因" required style="margin-top: 16px">
+        <a-textarea
+          data-catch="correction-reason-input"
+          v-model:value="correctionReason"
+          :rows="3"
+          placeholder="必填"
+        />
       </a-form-item>
     </a-modal>
   </div>
@@ -244,14 +262,12 @@ const slipDetail = ref<SlipDetail | null>(null)
 const loadingSlipDetail = ref(false)
 
 const earningItems = computed<SlipItem[]>(() =>
-  (slipDetail.value?.items ?? []).filter(it => it.type === 'EARNING' && Number(it.amount) > 0)
+  (slipDetail.value?.items ?? []).filter((it) => it.type === 'EARNING' && Number(it.amount) > 0)
 )
 const deductionItems = computed<SlipItem[]>(() =>
-  (slipDetail.value?.items ?? []).filter(it => it.type === 'DEDUCTION' || Number(it.amount) < 0)
+  (slipDetail.value?.items ?? []).filter((it) => it.type === 'DEDUCTION' || Number(it.amount) < 0)
 )
-const earningTotal = computed(() =>
-  earningItems.value.reduce((s, it) => s + Number(it.amount), 0)
-)
+const earningTotal = computed(() => earningItems.value.reduce((s, it) => s + Number(it.amount), 0))
 const deductionTotal = computed(() =>
   deductionItems.value.reduce((s, it) => s + Math.abs(Number(it.amount)), 0)
 )
@@ -275,22 +291,25 @@ const correctionTargetSlipId = ref<number | undefined>(undefined)
 
 // ── 监听 slip 变化触发加载 ─────────────────────────────────────
 
-watch(() => props.slip, async (slip) => {
-  if (!slip) return
-  slipDetail.value = null
-  showDisputeInput.value = false
-  disputeReason.value = ''
-  loadingSlipDetail.value = true
-  try {
-    const detail = await request<SlipDetail>({ url: `/payroll/slips/${slip.id}` })
-    slipDetail.value = detail
-  } catch {
-    message.error('加载工资条详情失败')
-    emit('update:open', false)
-  } finally {
-    loadingSlipDetail.value = false
+watch(
+  () => props.slip,
+  async (slip) => {
+    if (!slip) return
+    slipDetail.value = null
+    showDisputeInput.value = false
+    disputeReason.value = ''
+    loadingSlipDetail.value = true
+    try {
+      const detail = await request<SlipDetail>({ url: `/payroll/slips/${slip.id}` })
+      slipDetail.value = detail
+    } catch {
+      message.error('加载工资条详情失败')
+      emit('update:open', false)
+    } finally {
+      loadingSlipDetail.value = false
+    }
   }
-})
+)
 
 // ── 确认工资条流程 ──────────────────────────────────────────────
 
@@ -397,12 +416,12 @@ function openCorrectionModal() {
   if (!slipDetail.value) return
   correctionTargetSlipId.value = slipDetail.value.slip.id
   correctionReason.value = ''
-  correctionRows.value = slipDetail.value.items.map(it => ({
+  correctionRows.value = slipDetail.value.items.map((it) => ({
     itemDefId: it.itemDefId,
     name: it.name,
     originalAmount: formatAmount(it.amount),
     newAmount: undefined,
-    remark: ''
+    remark: '',
   }))
   showCorrectionModal.value = true
 }
@@ -413,7 +432,9 @@ async function submitCorrection() {
     message.warning('请填写更正原因')
     return
   }
-  const dirty = correctionRows.value.filter(r => r.newAmount != null || (r.remark && r.remark.trim() !== ''))
+  const dirty = correctionRows.value.filter(
+    (r) => r.newAmount != null || (r.remark && r.remark.trim() !== '')
+  )
   if (dirty.length === 0) {
     message.warning('请至少修改一项金额或备注')
     return
@@ -425,12 +446,12 @@ async function submitCorrection() {
       method: 'POST',
       body: {
         reason: correctionReason.value,
-        corrections: dirty.map(r => ({
+        corrections: dirty.map((r) => ({
           itemDefId: r.itemDefId,
           amount: r.newAmount,
-          remark: r.remark
-        }))
-      }
+          remark: r.remark,
+        })),
+      },
     })
     message.success('已发起更正，待 CEO 审批')
     showCorrectionModal.value = false
@@ -450,35 +471,82 @@ function formatAmount(val: number | string | undefined): string {
 }
 
 function slipStatusLabel(status: string): string {
-  return ({
-    DRAFT: '草稿',
-    PUBLISHED: '待确认',
-    CONFIRMED: '已确认',
-    DISPUTED: '异议中',
-    SUPERSEDED: '已更正',
-  } as Record<string, string>)[status] ?? status
+  return (
+    (
+      {
+        DRAFT: '草稿',
+        PUBLISHED: '待确认',
+        CONFIRMED: '已确认',
+        DISPUTED: '异议中',
+        SUPERSEDED: '已更正',
+      } as Record<string, string>
+    )[status] ?? status
+  )
 }
 
 function slipStatusColor(status: string): string {
-  return ({
-    DRAFT: 'default',
-    PUBLISHED: 'blue',
-    CONFIRMED: 'green',
-    DISPUTED: 'red',
-    SUPERSEDED: 'default',
-  } as Record<string, string>)[status] ?? 'default'
+  return (
+    (
+      {
+        DRAFT: 'default',
+        PUBLISHED: 'blue',
+        CONFIRMED: 'green',
+        DISPUTED: 'red',
+        SUPERSEDED: 'default',
+      } as Record<string, string>
+    )[status] ?? 'default'
+  )
 }
 </script>
 
 <style scoped>
-.slip-item-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; }
-.slip-item-name { color: #555; }
-.slip-item-amount { font-variant-numeric: tabular-nums; }
-.slip-total { font-weight: 600; font-size: 15px; }
-.slip-subtotal { font-weight: 500; font-size: 14px; border-top: 1px dashed #eee; margin-top: 4px; padding-top: 6px; }
-.slip-empty-tip { color: #aaa; font-size: 12px; padding: 4px 0; }
-.pin-hint { margin-top: 8px; font-size: 13px; color: #666; text-align: center; }
-.pin-hint a { color: #1890ff; cursor: pointer; }
-.correction-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid #f0f0f0; }
-.correction-name { width: 110px; color: #333; }
+.slip-item-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 14px;
+}
+.slip-item-name {
+  color: #555;
+}
+.slip-item-amount {
+  font-variant-numeric: tabular-nums;
+}
+.slip-total {
+  font-weight: 600;
+  font-size: 15px;
+}
+.slip-subtotal {
+  font-weight: 500;
+  font-size: 14px;
+  border-top: 1px dashed #eee;
+  margin-top: 4px;
+  padding-top: 6px;
+}
+.slip-empty-tip {
+  color: #aaa;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.pin-hint {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #666;
+  text-align: center;
+}
+.pin-hint a {
+  color: #1890ff;
+  cursor: pointer;
+}
+.correction-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+.correction-name {
+  width: 110px;
+  color: #333;
+}
 </style>
