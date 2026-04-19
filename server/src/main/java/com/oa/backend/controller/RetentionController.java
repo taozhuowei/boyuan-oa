@@ -15,6 +15,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -34,6 +35,9 @@ import org.springframework.web.bind.annotation.*;
 public class RetentionController {
 
   private final RetentionService retentionService;
+
+  @Value("${oa.upload-dir:./uploads}")
+  private String uploadDir;
 
   /**
    * 获取数据保留策略列表。
@@ -127,7 +131,12 @@ public class RetentionController {
       return;
     }
 
-    Path path = Paths.get(filePath);
+    // filePath is retrieved from the database (by validated token), not directly from user input.
+    // getFileName() extracts only the leaf name, eliminating any traversal sequences.
+    // nosemgrep: java.spring.security.injection.tainted-file-path.tainted-file-path
+    String safeFileName = Paths.get(filePath).getFileName().toString(); // nosemgrep
+    Path path =
+        Paths.get(uploadDir).toAbsolutePath().normalize().resolve("export").resolve(safeFileName);
     if (!Files.exists(path)) {
       response.setStatus(HttpServletResponse.SC_NOT_FOUND);
       return;
@@ -141,7 +150,7 @@ public class RetentionController {
     response.setHeader("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
 
     // 写入文件流
-    try (InputStream is = new FileInputStream(path.toFile())) {
+    try (InputStream is = new FileInputStream(path.toFile())) { // nosemgrep
       byte[] buffer = new byte[8192];
       int bytesRead;
       while ((bytesRead = is.read(buffer)) != -1) {
