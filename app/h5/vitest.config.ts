@@ -5,8 +5,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, '.'),
-      '@shared': resolve(__dirname, '../shared')
-    }
+      '@shared': resolve(__dirname, '../shared'),
+    },
   },
   test: {
     environment: 'jsdom',
@@ -17,7 +17,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['utils/**'],
-      reportsDirectory: resolve(__dirname, '../../test/reports/h5-coverage')
-    }
-  }
+      reportsDirectory: resolve(__dirname, '../../test/reports/h5-coverage'),
+    },
+  },
 })

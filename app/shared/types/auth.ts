@@ -184,5 +184,14 @@ export const defaultTestAccounts: TestAccount[] = [
     roleName: '首席经营者',
     department: '运营管理部',
     employeeType: 'OFFICE'
+  },
+  {
+    username: 'ops.demo',
+    password: '123456',
+    displayName: '运维专员',
+    role: 'ops',
+    roleName: '运维',
+    department: '运营管理部',
+    employeeType: 'OFFICE'
   }
 ]
