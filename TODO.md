@@ -1159,7 +1159,7 @@
 > **目标**：在任何代码改动开始前，建立本地 git 钩子与远程 CI 流水线，保证后续每次 commit/push 都自动触发质量检测。
 > C+-INFRA 完成后，C+-DESIGN 各工具配置完成时自动激活对应门禁；C+-FIX 开始时所有门禁已就位。
 
-- `[ ]` **C+-I-01 VSCode 工作区配置**
+- `[?]` **C+-I-01 VSCode 工作区配置**
   - `.vscode/settings.json`：保存时自动 Prettier 格式化、ESLint 自动修复、Java 格式化绑定 google-java-format、TypeScript strict 提示启用、文件关联配置
   - `.vscode/extensions.json`：推荐插件列表（ESLint、Prettier、Vue Language Features、Extension Pack for Java、SonarLint、GitLens）
   - 验收：项目目录下打开 VSCode 弹出"安装推荐插件"提示；保存 `.ts` 文件自动触发格式化

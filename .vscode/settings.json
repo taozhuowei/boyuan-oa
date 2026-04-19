@@ -1,0 +1,68 @@
+{
+  // Format on save for all files
+  "editor.formatOnSave": true,
+
+  // Default formatter per language
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[vue]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  // IDE approximation of google-java-format style; authoritative enforcement via
+  // Spotless Maven plugin (configured in C+-D-14, activated by pre-push hook in C+-I-02)
+  "[java]": {
+    "editor.defaultFormatter": "redhat.java"
+  },
+
+  // ESLint: auto-fix on save (activated once ESLint is installed in C+-D-09/C+-D-13)
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact", "vue"],
+
+  // Java: built-in GoogleStyle profile — closest IDE approximation to google-java-format
+  "java.format.settings.profile": "GoogleStyle",
+
+  // TypeScript: strict inlay hints for improved type visibility
+  "typescript.inlayHints.parameterNames.enabled": "all",
+  "typescript.inlayHints.variableTypes.enabled": true,
+  "typescript.inlayHints.returnTypes.enabled": true,
+  "typescript.inlayHints.functionLikeReturnTypes.enabled": true,
+
+  // File associations
+  "files.associations": {
+    "*.vue": "vue"
+  },
+
+  // Exclude noise from file explorer and search
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.nuxt": true,
+    "**/target": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.nuxt": true,
+    "**/target": true,
+    "**/dist": true
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "recommendations": [
+    // TypeScript / Vue / JS tooling
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "Vue.volar",
+
+    // Java tooling (includes Language Support, Debugger, Test Runner, Maven, Project Manager)
+    "vscjava.vscode-java-pack",
+
+    // Security & code quality
+    "SonarSource.sonarlint-vscode",
+
+    // Git productivity
+    "eamodio.gitlens"
+  ]
+}
