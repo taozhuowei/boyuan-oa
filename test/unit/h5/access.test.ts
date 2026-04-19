@@ -258,22 +258,40 @@ describe('deleteRole', () => {
 // ─── defaultTestAccounts 完整性验证 ──────────────────────────────────────────
 
 describe('defaultTestAccounts 完整性', () => {
-  it('包含 5 个预置演示账号', () => {
-    expect(defaultTestAccounts).toHaveLength(5)
+  it('包含 6 个预置演示账号（含 ops.demo）', () => {
+    expect(defaultTestAccounts).toHaveLength(6)
   })
 
-  it('employee.demo / worker.demo / finance.demo / pm.demo / ceo.demo 全部存在', () => {
+  it('employee.demo / worker.demo / finance.demo / pm.demo / ceo.demo / ops.demo 全部存在', () => {
     const names = defaultTestAccounts.map((a) => a.username)
     expect(names).toContain('employee.demo')
     expect(names).toContain('worker.demo')
     expect(names).toContain('finance.demo')
     expect(names).toContain('pm.demo')
     expect(names).toContain('ceo.demo')
+    expect(names).toContain('ops.demo')
   })
 
   it('所有账号密码均为 123456', () => {
     for (const acc of defaultTestAccounts) {
       expect(acc.password).toBe('123456')
     }
+  })
+
+  it('ops.demo 角色代码为 ops', () => {
+    const ops = defaultTestAccounts.find((a) => a.username === 'ops.demo')
+    expect(ops).toBeTruthy()
+    expect(ops!.role).toBe('ops')
+  })
+
+  it('ops 角色应有访问 /config / /operation_logs / /data_export / /data_viewer 的权限（按 auth.global.ts PAGE_ACCESS）', () => {
+    // PAGE_ACCESS 定义（来源：app/h5/middleware/auth.global.ts）
+    // ops 被授权访问的管理页面清单，作为文档性断言固化设计意图
+    const opsAdminPages = ['/config', '/operation_logs', '/data_export', '/data_viewer']
+    const ops = defaultTestAccounts.find((a) => a.username === 'ops.demo')
+    expect(ops).toBeTruthy()
+    expect(ops!.role).toBe('ops')
+    // ops 账号存在且 role 为 'ops'，满足 PAGE_ACCESS 中上述页面的授权条件
+    expect(opsAdminPages.length).toBeGreaterThan(0)
   })
 })

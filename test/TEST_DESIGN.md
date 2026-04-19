@@ -278,3 +278,147 @@ M0 健康检查、M1 认证、M1 员工、M2 组织/项目/操作日志、V5 补
 | 前端单元测试 | 约 5%（仅 access.ts）| ≥ 60%（核心工具函数）|
 | API 集成测试 | 约 30%（M0-M2+V5 覆盖，Expense/Injury/Config/LeaveType 未覆盖）| ≥ 80% |
 | E2E 主链路 | 约 15%（无完整跨角色流）| ≥ 70%（7 角色主线均通过）|
+
+---
+
+## 9 集成测试幂等性规则
+
+> 每条集成测试必须满足以下幂等性约束，保证 CI 中连续三次运行全部通过。
+
+### 9.1 强制规则
+
+- **独立性**：每条 test case 禁止依赖其他 test case 的执行顺序或产生的副作用。
+- **自清理**：test case 创建的数据（员工、表单、项目等）必须在 `afterEach` 或 `afterAll` 中删除，或通过 `POST /api/dev/reset` 重置。
+- **避免硬编码 ID**：禁止使用写死的数据库主键（如 `employeeId: 1`），必须在 `beforeEach` 动态创建并获取 ID。
+- **时间戳隔离**：若测试中需要唯一标识（如工号、用户名），使用 `Date.now()` 或 UUID 后缀生成，防止重复运行时冲突。
+- **状态重置**：依赖系统状态的测试（如薪资周期是否已关闭）必须在 `beforeEach` 中将状态重置到已知初始值。
+- **顺序无关**：Vitest 可能并行执行测试文件，每个文件内的测试必须能在任意顺序下通过。
+
+### 9.2 禁止模式
+
+- 禁止在 test A 中创建数据、在 test B 中读取该数据（依赖残留数据）
+- 禁止依赖 H2 内置的初始种子数据 ID（`data.sql` 中的 ID 不稳定）
+- 禁止在 `afterAll` 中遗漏清理（会导致第二次运行时唯一性约束冲突）
+
+---
+
+## 10 k6 负载测试通过标准
+
+> 执行文件：`tools/k6/`，CI 在 `nightly.yml` 中运行，本地使用 `k6 run tools/k6/<script>.js`
+
+### 10.1 各场景通过阈值
+
+- **normal**（正常负载，10 VU × 2 min）
+  - p(95) 响应时长 < 500ms
+  - 错误率 < 1%
+
+- **peak**（峰值负载，50 VU × 1 min）
+  - p(95) 响应时长 < 1000ms
+  - 错误率 < 5%
+
+- **stress**（压力，爬坡到 100 VU）
+  - p(95) 响应时长 < 2000ms
+  - 错误率 < 10%
+
+- **soak**（浸泡，20 VU × 30 min）
+  - p(95) 响应时长 < 500ms
+  - 错误率 < 1%（验证无内存泄漏/连接池耗尽）
+
+- **race**（并发竞争，20 VU × 100 次迭代）
+  - p(95) 响应时长 < 1000ms
+  - 无 500 错误（验证并发写入无数据损坏）
+
+### 10.2 失败处置
+
+- k6 阈值未达标时，CI 以 `continue-on-error: true` 记录，不阻塞 nightly 构建
+- 报告上传为 GitHub Actions artifact，保留 30 天
+- 阈值连续两个 nightly 未达标，需在下一个 sprint 立即修复
+
+---
+
+## 11 OWASP ZAP 安全扫描规则
+
+> 执行配置：`tools/zap/`，CI 在 `full-test.yml`（baseline）和 `nightly.yml`（full scan）运行
+
+### 11.1 扫描范围
+
+- 目标：`http://localhost:8080/api`（所有 `/api/*` 路由）
+- 模式：baseline 扫描（~2 min，每次 push）+ full scan（~15 min，每日 nightly）
+- 排除范围：`/api/dev/*`（开发专用重置端点，仅 dev profile 存在）
+
+### 11.2 风险分级与处置
+
+- **HIGH**：阻塞发布，本 sprint 内必须修复；通知项目负责人
+- **MEDIUM**：不阻塞发布，1 个 sprint 内修复；记录到 TODO.md 安全任务
+- **LOW**：记录追踪，在下一个 review 周期评估是否修复
+- **INFORMATIONAL**：记录即可，不要求修复
+
+### 11.3 说明
+
+- 所有扫描使用 `-I` 参数，ZAP 发现永远不会导致 CI pipeline 失败
+- 报告以 HTML artifact 保存（baseline 保留 14 天，full scan 保留 30 天）
+- ZAP 扫描不覆盖认证后接口（未配置 session/token），高权限接口须通过集成测试独立验证
+
+---
+
+## 12 schemathesis 属性测试目标接口
+
+> 依赖：D-02（springdoc-openapi）必须先完成，schemathesis 从 `/v3/api-docs` 自动读取 OpenAPI spec。
+> 执行：`schemathesis run --config tools/schemathesis/config.yml`
+
+### 12.1 优先覆盖接口（核心业务）
+
+- `POST /api/attendance/submit` — 考勤/请假提交（date 范围、leaveType 枚举）
+- `POST /api/expense/apply` — 报销申请（金额正数、附件必填）
+- `POST /api/injury/claim` — 工伤申报（日期字段、金额字段）
+- `POST /api/employees` — 员工创建（手机号格式、身份证格式）
+- `POST /api/forms/submit` — 通用表单提交
+
+### 12.2 属性测试检查项
+
+- **not_a_server_error**：任何输入不得触发 500（schema 合法与非法输入均测试）
+- **status_code_conformance**：返回状态码必须在 OpenAPI spec 声明的范围内
+- **content_type_conformance**：Content-Type 响应头与 spec 声明一致
+- **response_schema_conformance**：响应 body 结构与 spec schema 匹配
+- **max-response-time**：5000ms 超时（属性测试会生成极端值，允许稍慢）
+
+---
+
+## 13 异常字段测试清单
+
+> 每个新增 API 端点在集成测试中必须覆盖以下异常输入场景，禁止仅测试正常路径。
+
+### 13.1 字符串字段
+
+- 空字符串 `""` → 应返回 400（若字段必填）
+- 仅空格 `"   "` → 应返回 400（后端必须 trim 校验）
+- 超长字符串（1000 字符）→ 应返回 400 或截断，不得 500
+- SQL 注入片段 `'; DROP TABLE employees;--` → 应返回 400 或安全处理，不得 500
+- XSS 片段 `<script>alert(1)</script>` → 应转义或拒绝，不得原样返回
+
+### 13.2 数字字段
+
+- 负数（如金额 `-100`）→ 应返回 400
+- 零（如金额 `0`）→ 应返回 400（若字段要求正数）
+- 超大数（如 `9999999999`）→ 应返回 400 或正常处理，不得溢出
+- 浮点精度（如 `0.001`）→ 确认精度处理符合业务规则（薪资保留 2 位小数）
+
+### 13.3 日期字段
+
+- 无效格式（如 `"2026-13-01"`）→ 应返回 400
+- 结束日期早于开始日期 → 应返回 400
+- 跨年日期范围 → 正常处理，不得 500
+- 遥远未来（如 `"2099-01-01"`）→ 应返回 400 或正常处理，不得 500
+
+### 13.4 枚举字段
+
+- 非法枚举值（如 leaveType = `"INVALID"`）→ 应返回 400
+- 空枚举值 `null` → 若必填应返回 400
+- 大小写变体（如 `"annual"` vs `"ANNUAL"`）→ 明确文档化处理方式
+
+### 13.5 权限边界
+
+- 无 token 调用所有需认证接口 → 401
+- 错误角色 token 调用受限接口 → 403
+- 过期 token → 401
+- 篡改 token（修改 payload 但保留原签名）→ 401
