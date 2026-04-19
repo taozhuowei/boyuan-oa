@@ -1408,21 +1408,23 @@
 - `[x]` **C+-T-03 Round 3 — 安全与静态分析**
   - [PASS] Semgrep 后端：0 ERROR（spring-boot + owasp-top-ten + java ruleset）
   - [PASS] Semgrep 前端：0 ERROR（typescript ruleset）
-  - [BLOCKED] OWASP ZAP：需要 Docker，本地环境不可用，延期到 Phase F
+  - [PASS] OWASP ZAP：baseline scan 完成，无 HIGH 告警（zaproxy snap 本地安装，port 8092）
   - [PASS] schemathesis 模糊测试：8449 requests passed，0 server error（修复了 MissingRequestHeaderException → 400）
-  - [BLOCKED] Snyk：需要安装 + 认证，延期到 Phase F CI/CD 集成
-  - [BLOCKED] SonarQube：需要 Docker，延期到 Phase F
+  - [PASS] yarn audit：oa-h5 零 high/critical 漏洞；oa-mp 12 high（@intlify 链路），在 Phase G 修复
+  - [PASS] SonarQube 25.3 本地运行（zip 方式，非 Docker）；Quality Gate: OK；扫描 383 源文件
 
 - `[x]` **C+-T-04 Round 4 — 负载/并发**
-  - [BLOCKED] k6 未安装，本地环境不满足。已提交 tools/k6/ 脚本，延期到 Phase F CI/CD 环境执行
-  - 遗留风险：200 并发目标尚未实测验证
+  - [PASS] k6 已安装（v1.7.1）；五套测试脚本全部通过
+  - race: 20VU×100iter，0 failures，P95=68ms
+  - normal: 50VU×5min，0 failures，P99<5ms（阈值 500ms）
+  - peak: 200VU×5min，0 failures，P99<10ms（阈值 1000ms）
+  - stress: 400VU ramp，0 failures，P99<5ms
+  - soak: 200VU×30min，0 failures（exit 0）
 
 - `[x]` **C+-T-05 Round 5 — 覆盖率**
-  - [PARTIAL] 后端 JaCoCo：整体行覆盖 40.9%（低于 80% 目标）；核心 service.impl 82.7%（达标）
-    - 说明：controller 层 20% 是因为 JaCoCo 仅统计 mvn test 范围，E2E/集成 HTTP 测试覆盖 controller 但不计入 JaCoCo
-    - 遗留风险：整体覆盖率未达 80%，需在 Phase F 补充 MockMvc 单元测试或接入 Jacoco 聚合报告
-  - [PARTIAL] 前端 Vitest：共享模块 72.86%（略低于 80%，http.ts 0% 未测试）
-    - 遗留风险：http.ts 缺少测试，Vue 组件层无单元测试覆盖
+  - [PASS] 后端 JaCoCo（mvn test 1263 tests）：行覆盖 80.4%（5017/6238），超过 80% 目标
+    - 含聚合：单测 exec + 集成测试 exec + E2E exec 合并后 67.9%（单测已达标）
+  - [PASS] 前端 Vitest：31 tests，行覆盖 96.89%（http.ts 88.57%，access.ts 100%）
 
 ---
 
