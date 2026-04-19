@@ -2,6 +2,11 @@ import { defineConfig } from 'vitest/config'
 import { resolve } from 'path'
 
 export default defineConfig({
+  define: {
+    // treat tests as client-side context (same as browser build)
+    'import.meta.client': true,
+    'import.meta.server': false,
+  },
   resolve: {
     alias: {
       '@': resolve(__dirname, '.'),
