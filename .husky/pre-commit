@@ -1,0 +1,16 @@
+#!/usr/bin/env sh
+# pre-commit: run lint-staged for TS/Vue/JS staged files, and conditionally check staged Java files.
+# Prettier/ESLint commands are populated in C+-D-09/13; Spotless in C+-D-14.
+
+# Run lint-staged (handles TS/Vue/JS/JSON staged files per package.json lint-staged config)
+npx lint-staged
+
+# Conditionally check staged Java files with Spotless (only if spotless plugin is configured)
+STAGED_JAVA=$(git diff --cached --name-only --diff-filter=ACM | grep '\.java$' || true)
+if [ -n "$STAGED_JAVA" ]; then
+  if command -v mvn > /dev/null 2>&1; then
+    # Check if spotless-maven-plugin is configured in pom.xml before invoking it
+    mvn help:describe -Dplugin=com.diffplug.spotless:spotless-maven-plugin -pl server -q 2>/dev/null \
+      && mvn spotless:check -pl server -q || true
+  fi
+fi

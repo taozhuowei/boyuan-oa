@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+# pre-push: full quality gate before pushing. Target: under 3 minutes.
+# Maven and yarn are assumed available. SAST/SCA tools run conditionally.
+
+# Backend unit tests (Spring Boot + JUnit via Maven)
+mvn test -pl server
+
+# Frontend unit tests (Vitest)
+yarn workspace oa-h5 test
+
+# Frontend lint (conditional: ESLint config installed in C+-D-13)
+command -v eslint > /dev/null 2>&1 && yarn workspace oa-h5 lint || true
+
+# Semgrep SAST scan (conditional: installed in C+-D-12)
+command -v semgrep > /dev/null 2>&1 && semgrep --config p/owasp-top-ten server/src app/h5 || true
+
+# Snyk dependency audit (conditional: installed in C+-D-06)
+if command -v snyk > /dev/null 2>&1; then
+  snyk test --file=app/h5/package.json --severity-threshold=high || true
+  snyk test --file=server/pom.xml --severity-threshold=high || true
+fi

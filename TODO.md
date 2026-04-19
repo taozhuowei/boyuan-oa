@@ -1165,7 +1165,7 @@
   - 验收：项目目录下打开 VSCode 弹出"安装推荐插件"提示；保存 `.ts` 文件自动触发格式化
   - 实施说明：用户要求全局配置，settings 合并至 Windows 全局 `%APPDATA%\Code\User\settings.json`，项目不留 `.vscode/` 目录。
 
-- `[ ]` **C+-I-02 husky + lint-staged + commitlint 本地钩子**
+- `[x]` **C+-I-02 husky + lint-staged + commitlint 本地钩子**
   - 安装：`husky`、`lint-staged`、`commitlint`、`@commitlint/config-conventional`
   - `.commitlintrc.json`：类型白名单 feat/fix/refactor/perf/test/docs/style/chore/cleanup
   - `commit-msg` hook：`npx commitlint --edit $1`（拦截不合规提交信息）

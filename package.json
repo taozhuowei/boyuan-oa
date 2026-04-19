@@ -23,10 +23,18 @@
     "test:e2e": "playwright test --config test/e2e/playwright.config.ts",
     "test:e2e:report": "playwright show-report test/e2e/playwright-report"
   },
+  "lint-staged": {
+    "*.{ts,vue,js,json}": [],
+    "*.java": []
+  },
   "devDependencies": {
+    "@commitlint/cli": "^20.5.0",
+    "@commitlint/config-conventional": "^20.5.0",
     "@playwright/test": "^1.59.1",
     "concurrently": "^8.2.2",
     "dotenv-cli": "^7.4.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0",
     "wait-on": "^7.2.0"
   }
 }
