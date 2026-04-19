@@ -33,3 +33,6 @@ CLAUDE.md
 local/
 local/seed-data.sql
 .claude/
+
+# SonarQube scanner working directory (generated during local analysis)
+.scannerwork/

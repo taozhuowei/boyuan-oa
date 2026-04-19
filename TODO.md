@@ -1238,13 +1238,13 @@
 - `[x]` **C+-D-01 ArchUnit 架构约束测试**
   - 新建 `server/src/test/java/com/oa/backend/architecture/ArchitectureTest.java`
   - 引入 `archunit-junit5` 依赖到 `server/pom.xml`
-  - 实现规则：Controller 不注入 Mapper（InjuryClaimController 待 C+-F-01 修复后自动生效）、Service 不依赖 Controller、@Service 在 service 包、@RestController 在 controller 包
+  - 实现规则：Controller 不注入 Mapper（C+-F-01 已修复 InjuryClaimController，规则现在 32/32 controller 全部通过）、Service 不依赖 Controller、@Service 在 service 包、@RestController 在 controller 包
   - 延期规则：Controller 不依赖 entity（18+ 个 Controller 直接引用 entity，需 Phase D 全量 DTO 迁移后再启用）、包级循环依赖检测（Phase D 统一处理）
   - 验收：`mvn test` 396 个测试全通过（含 4 条 ArchUnit 规则）；QA 审计 PASS
 
 #### OpenAPI 规范生成
 
-- `[~]` **C+-D-02 后端接入 springdoc-openapi**
+- `[x]` **C+-D-02 后端接入 springdoc-openapi**
   - `server/pom.xml` 添加 `springdoc-openapi-starter-webmvc-ui`
   - 启动后访问 `/api/v3/api-docs` 返回完整 OpenAPI JSON
   - 验收：所有 Controller 的 endpoint 均出现在规范中，供 schemathesis 使用
@@ -1296,7 +1296,7 @@
 
 #### 审计规则与验收门规范
 
-- `[~]` **C+-D-08 Code Reviewer 强制 Checklist 写入 CLAUDE.md（C-QUALITY-03）**
+- `[x]` **C+-D-08 Code Reviewer 强制 Checklist 写入 CLAUDE.md（C-QUALITY-03）**
   - CLAUDE.md QA Engineer 节新增强制 Checklist，每次 review 必须逐项输出结论：
     1. 架构红线：Controller 层无 Mapper 注入（`grep -rn "private final.*Mapper" controller/` 为空，ObjectMapper 除外）
     2. 架构红线：Controller 不直接引用 Entity（必须经 DTO/Service）
@@ -1306,13 +1306,13 @@
     6. 设计对齐：新增字段/接口可追溯到 DESIGN.md 对应章节，无额外实现
   - 验收：CLAUDE.md 中 Checklist 全文可见，条目可逐项核查
 
-- `[?]` **C+-D-09 前端 TypeScript strict 强化（C-QUALITY-04）**
+- `[x]` **C+-D-09 前端 TypeScript strict 强化（C-QUALITY-04）**
   - `app/h5/tsconfig.json` 确认 `strict: true`（含 `noImplicitAny`、`strictNullChecks`）
   - ESLint 规则加 `@typescript-eslint/no-explicit-any: warn`
   - 修复开启 strict 后的所有编译/lint 错误
   - 验收：`yarn workspace oa-h5 lint` 零 error
 
-- `[~]` **C+-D-10 Phase 验收门规则更新（C-QUALITY-05）**
+- `[x]` **C+-D-10 Phase 验收门规则更新（C-QUALITY-05）**
   - CLAUDE.md 各阶段验收门新增三条强制前置：
     - `mvn test`（含 ArchUnit）全部通过
     - `yarn test:integration` 连续三次全部通过
@@ -1337,25 +1337,25 @@
   - `tools/semgrep/README.md`：安装、运行、结果解读、误报豁免方式（`# nosemgrep` 注释）
   - 验收：两个命令可执行，无 ERROR 级别发现；与 ZAP（动态）形成静态+动态双层安全覆盖
 
-- `[?]` **C+-D-13 Prettier JS/TS/Vue 代码格式化**
+- `[x]` **C+-D-13 Prettier JS/TS/Vue 代码格式化**
   - 根目录添加 `.prettierrc`（Vue/TS/JS 统一格式规则：单引号、2空格缩进、行尾逗号等）
   - 根目录添加 `.prettierignore`（排除 node_modules、dist、.nuxt 等）
   - `package.json` scripts 新增：`"format:check": "prettier --check \"app/h5/**/*.{ts,vue,js}\""`
   - 修复现有格式不符合的文件（`prettier --write`）
   - 验收：`yarn format:check` 零错误；CI Tier 1 可直接接入
 
-- `[~]` **C+-D-14 Spotless Java 代码格式化**
+- `[x]` **C+-D-14 Spotless Java 代码格式化**
   - `server/pom.xml` 添加 `spotless-maven-plugin`，使用 google-java-format 后端
   - 格式化范围：`src/main/java/**/*.java` + `src/test/java/**/*.java`
   - 修复现有格式不符合的文件（`mvn spotless:apply`）
   - 验收：`mvn spotless:check` 零差异；CI Tier 1 可直接接入
 
-- `[?]` **C+-D-15 ESLint jsdoc 文档注释规则**
+- `[x]` **C+-D-15 ESLint jsdoc 文档注释规则**
   - `app/h5/.eslintrc` 新增 `plugin:jsdoc/recommended` 规则：要求所有导出函数/组件有 JSDoc 注释
   - 修复或补充现有导出函数的 JSDoc
   - 验收：`yarn workspace oa-h5 lint` 零 error（jsdoc 规则生效）
 
-- `[?]` **C+-D-16 Knip TypeScript 死代码检测**
+- `[x]` **C+-D-16 Knip TypeScript 死代码检测**
   - 根目录添加 `knip.json`：配置 monorepo 工作区（`app/h5`）、入口文件、忽略规则
   - 扫描命令：`yarn knip`
   - `tools/knip/README.md`：运行方式、结果解读、豁免方式
@@ -1367,25 +1367,25 @@
 
 > 全部修复完成后进入 C+-TEST。
 
-- `[ ]` **C+-F-01 A-AUDIT-REGRESSION-01：InjuryClaimController Mapper 注入迁移**
+- `[x]` **C+-F-01 A-AUDIT-REGRESSION-01：InjuryClaimController Mapper 注入迁移**
   - `InjuryClaimController.java:29` 的 `FormRecordMapper` 注入迁移至 `InjuryClaimService`
   - Controller 改为调用 Service 方法，移除 Controller 中的 Mapper 依赖
   - 验收：`grep -rn "FormRecordMapper" controller/` 为空；`mvn test` 全通过（含 ArchUnit）
 
-- `[ ]` **C+-F-02 ops.demo 加入 access.test.ts（合并 B-P3-REGRESSION-01 + C-REGRESSION-03）**
+- `[x]` **C+-F-02 ops.demo 加入 access.test.ts（合并 B-P3-REGRESSION-01 + C-REGRESSION-03）**
   - `test/unit/h5/access.test.ts` 的 `defaultTestAccounts` 补充 `ops.demo / 123456`
   - 补充 ops 角色可访问 `/config`、`/data_export`、`/data_viewer`、`/operation_logs` 的断言
   - 验收：`yarn workspace oa-h5 test` 全通过
 
-- `[ ]` **C+-F-03 C-REGRESSION-01：集成测试幂等化**
+- `[x]` **C+-F-03 C-REGRESSION-01：集成测试幂等化**
   - `test/integration/api.test.ts`：TC-B1-04（`period:"2026-05"`）和 PR-01（`period:"2026-07"`）改为动态 period（`2099-xxxx` 格式）
   - 验收：`yarn test:integration` 连续三次全部通过，无 400 冲突
 
-- `[ ]` **C+-F-04 C-REGRESSION-02：companyName null-safe 断言**
+- `[x]` **C+-F-04 C-REGRESSION-02：companyName null-safe 断言**
   - `test/integration/api.test.ts:632` 断言改为 `expect(body.companyName === null || typeof body.companyName === 'string').toBe(true)`
   - 验收：新账号环境（未配置公司名）下断言通过
 
-- `[ ]` **C+-F-05 DESIGN.md §6 工资模块设计补全**
+- `[x]` **C+-F-05 DESIGN.md §6 工资模块设计补全**
   - 补充确认的设计内容：AllowanceDef 条目定义、三级覆盖（GLOBAL→POSITION→EMPLOYEE）、单月临时覆盖层、批量多选（岗位/个人）、唯一性约束、扣款同结构、五险一金两种模式（公司代缴 / 公司补贴）
   - 验收：DESIGN.md §6 完整描述上述规则，Phase D D-PAY-BIZ 可直接对照执行
 
@@ -1395,7 +1395,7 @@
 
 > 任一轮失败，修复后从该轮重新执行，不跳轮次。
 
-- `[ ]` **C+-T-01 Round 1 — 功能回归**
+- `[x]` **C+-T-01 Round 1 — 功能回归**
   - `mvn test`（含 ArchUnit）全通过
   - `yarn workspace oa-h5 test` 全通过
   - `yarn test:integration` 连续三次全通过

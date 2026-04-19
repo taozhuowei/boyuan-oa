@@ -39,6 +39,14 @@ When: after EVERY implementation (code review) + Phase C test writing/fixing + p
 Input for review: changed file paths + diff summary + task context
 Output for review: PASS or NEEDS WORK with specific findings
 
+**Mandatory Code Review Checklist** — output verdict for every item on every review:
+1. Architecture: no Mapper injected in Controller layer — `grep -rn "private final.*Mapper" server/src/main/java/com/oa/backend/controller/` must be empty (InjuryClaimController excluded until C+-F-01 fixed; ObjectMapper in com.fasterxml excluded)
+2. Architecture: no direct Entity reference in Controller — Controllers must use DTOs/response types, not raw entity classes
+3. Test idempotency: any new integration test that creates data uses dynamic IDs (Date.now() / UUID) or has afterAll cleanup — no hardcoded primary keys
+4. Test assertion safety: no `typeof x === 'string'` / `typeof x === 'number'` null-unsafe assertions — use `expect(x).toBeTypeOf('string')` or explicit null checks
+5. Permission completeness: every new HTTP endpoint has `@PreAuthorize` annotation with correct role list
+6. Design alignment: every new field/endpoint/component is traceable to a DESIGN.md section — no features invented beyond the spec
+
 ### Infrastructure Agents (spawn via Agent tool)
 
 **DevOps Engineer** — `subagent_type: "DevOps Engineer"`
