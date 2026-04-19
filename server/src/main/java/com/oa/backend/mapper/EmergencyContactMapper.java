@@ -5,5 +5,4 @@ import com.oa.backend.entity.EmergencyContact;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface EmergencyContactMapper extends BaseMapper<EmergencyContact> {
-}
+public interface EmergencyContactMapper extends BaseMapper<EmergencyContact> {}

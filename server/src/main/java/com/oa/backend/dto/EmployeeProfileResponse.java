@@ -1,12 +1,8 @@
 package com.oa.backend.dto;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 
-/**
- * 员工档案响应 DTO
- */
+/** 员工档案响应 DTO */
 public record EmployeeProfileResponse(
     Long id,
     String employeeNo,
@@ -17,6 +13,4 @@ public record EmployeeProfileResponse(
     LocalDate hireDate,
     String status,
     String phone,
-    String email
-) {
-}
+    String email) {}

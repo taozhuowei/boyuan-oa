@@ -5,9 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 报销详情响应
- */
+/** 报销详情响应 */
 public record ExpenseClaimResponse(
     Long id,
     Long formId,
@@ -26,5 +24,4 @@ public record ExpenseClaimResponse(
     Boolean includedInPayroll,
     String remark,
     LocalDateTime createdAt,
-    List<ExpenseItemDto> items
-) {}
+    List<ExpenseItemDto> items) {}

@@ -5,5 +5,4 @@ import com.oa.backend.entity.SecondRoleAssignment;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface SecondRoleAssignmentMapper extends BaseMapper<SecondRoleAssignment> {
-}
+public interface SecondRoleAssignmentMapper extends BaseMapper<SecondRoleAssignment> {}

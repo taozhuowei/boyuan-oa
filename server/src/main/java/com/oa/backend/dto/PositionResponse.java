@@ -3,9 +3,7 @@ package com.oa.backend.dto;
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * 岗位响应 DTO
- */
+/** 岗位响应 DTO */
 public record PositionResponse(
     Long id,
     String positionCode,
@@ -24,5 +22,4 @@ public record PositionResponse(
     Boolean requiresConstructionLog,
     Boolean hasPerformanceBonus,
     List<PositionLevelResponse> levels,
-    List<SocialInsuranceItemResponse> socialInsuranceItems
-) {}
+    List<SocialInsuranceItemResponse> socialInsuranceItems) {}

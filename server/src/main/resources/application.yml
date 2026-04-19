@@ -88,6 +88,19 @@ logging:
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
 
+# springdoc OpenAPI — Swagger UI accessible at /api/swagger-ui.html
+# API docs JSON at /api/v3/api-docs (under context-path /api)
+# Nuxt proxy forwards /api/* to backend, so both paths are reachable via the proxy.
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+  packages-to-scan: com.oa.backend.controller
+  paths-to-match: /**
+
 # Actuator
 management:
   endpoints:

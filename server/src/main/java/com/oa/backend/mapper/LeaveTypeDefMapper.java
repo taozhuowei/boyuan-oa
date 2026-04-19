@@ -5,5 +5,4 @@ import com.oa.backend.entity.LeaveTypeDef;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface LeaveTypeDefMapper extends BaseMapper<LeaveTypeDef> {
-}
+public interface LeaveTypeDefMapper extends BaseMapper<LeaveTypeDef> {}

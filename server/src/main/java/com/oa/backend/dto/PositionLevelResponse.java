@@ -2,9 +2,7 @@ package com.oa.backend.dto;
 
 import java.math.BigDecimal;
 
-/**
- * 岗位等级响应 DTO
- */
+/** 岗位等级响应 DTO */
 public record PositionLevelResponse(
     Long id,
     Long positionId,
@@ -13,5 +11,4 @@ public record PositionLevelResponse(
     BigDecimal baseSalaryOverride,
     BigDecimal positionSalaryOverride,
     BigDecimal performanceBonusOverride,
-    Integer annualLeaveOverride
-) {}
+    Integer annualLeaveOverride) {}

@@ -3,9 +3,7 @@ package com.oa.backend.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 
-/**
- * 报销明细 DTO
- */
+/** 报销明细 DTO */
 public record ExpenseItemDto(
     Long id,
     String itemType,
@@ -13,5 +11,4 @@ public record ExpenseItemDto(
     BigDecimal amount,
     String invoiceNo,
     String description,
-    Long attachmentId
-) {}
+    Long attachmentId) {}

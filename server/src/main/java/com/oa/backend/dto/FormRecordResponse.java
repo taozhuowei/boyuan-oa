@@ -4,9 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
-/**
- * 表单记录响应 DTO
- */
+/** 表单记录响应 DTO */
 public record FormRecordResponse(
     Long id,
     String formNo,
@@ -19,14 +17,7 @@ public record FormRecordResponse(
     String currentNode,
     Map<String, Object> formData,
     List<ApprovalHistory> history,
-    String remark
-) {
-    public record ApprovalHistory(
-        String nodeName,
-        String approver,
-        String action,
-        String comment,
-        LocalDateTime time
-    ) {
-    }
+    String remark) {
+  public record ApprovalHistory(
+      String nodeName, String approver, String action, String comment, LocalDateTime time) {}
 }

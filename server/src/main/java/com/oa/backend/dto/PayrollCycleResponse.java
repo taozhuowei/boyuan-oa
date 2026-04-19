@@ -1,11 +1,8 @@
 package com.oa.backend.dto;
 
 import java.time.LocalDate;
-import java.util.List;
 
-/**
- * 工资周期响应 DTO
- */
+/** 工资周期响应 DTO */
 public record PayrollCycleResponse(
     Long id,
     String cycleNo,
@@ -18,6 +15,4 @@ public record PayrollCycleResponse(
     LocalDate precheckTime,
     LocalDate settleTime,
     Integer employeeCount,
-    Double totalAmount
-) {
-}
+    Double totalAmount) {}

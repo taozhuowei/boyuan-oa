@@ -5,9 +5,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/**
- * 员工响应 DTO
- */
+/** 员工响应 DTO */
 public record EmployeeResponse(
     Long id,
     String employeeNo,
@@ -39,7 +37,6 @@ public record EmployeeResponse(
     LocalDateTime updatedAt,
     String gender,
     String idCardNo,
-    java.time.LocalDate birthDate
-) {
-    public record EmergencyContact(Long id, String name, String phone, String address) {}
+    java.time.LocalDate birthDate) {
+  public record EmergencyContact(Long id, String name, String phone, String address) {}
 }

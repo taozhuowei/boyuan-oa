@@ -3,9 +3,7 @@ package com.oa.backend.dto;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
-/**
- * 到期提醒响应 DTO
- */
+/** 到期提醒响应 DTO */
 public record RetentionReminderResponse(
     Long id,
     String objectType,
@@ -17,6 +15,4 @@ public record RetentionReminderResponse(
     String suggestedAction,
     Boolean actionTaken,
     String actionType,
-    LocalDateTime reminderTime
-) {
-}
+    LocalDateTime reminderTime) {}

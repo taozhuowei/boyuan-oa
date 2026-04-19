@@ -2,9 +2,7 @@ package com.oa.backend.dto;
 
 import java.math.BigDecimal;
 
-/**
- * 社保项目响应 DTO
- */
+/** 社保项目响应 DTO */
 public record SocialInsuranceItemResponse(
     Long id,
     Long positionId,
@@ -12,5 +10,4 @@ public record SocialInsuranceItemResponse(
     BigDecimal employeeRate,
     BigDecimal companyRate,
     Boolean isEnabled,
-    Integer displayOrder
-) {}
+    Integer displayOrder) {}

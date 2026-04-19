@@ -2,9 +2,7 @@ package com.oa.backend.dto;
 
 import java.time.LocalDateTime;
 
-/**
- * 清理任务响应 DTO
- */
+/** 清理任务响应 DTO */
 public record CleanupTaskResponse(
     Long id,
     String taskNo,
@@ -17,6 +15,4 @@ public record CleanupTaskResponse(
     String errorMessage,
     LocalDateTime scheduledTime,
     LocalDateTime startedAt,
-    LocalDateTime completedAt
-) {
-}
+    LocalDateTime completedAt) {}

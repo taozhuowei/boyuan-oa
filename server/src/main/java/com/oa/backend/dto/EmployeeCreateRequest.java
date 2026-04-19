@@ -6,9 +6,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * 员工创建请求 DTO
- */
+/** 员工创建请求 DTO */
 public record EmployeeCreateRequest(
     @NotBlank String name,
     String phone,
@@ -28,7 +26,6 @@ public record EmployeeCreateRequest(
     List<EmergencyContactRequest> emergencyContacts,
     String gender,
     String idCardNo,
-    java.time.LocalDate birthDate
-) {
-    public record EmergencyContactRequest(String name, String phone, String address) {}
+    java.time.LocalDate birthDate) {
+  public record EmergencyContactRequest(String name, String phone, String address) {}
 }

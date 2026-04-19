@@ -2,9 +2,7 @@ package com.oa.backend.dto;
 
 import java.math.BigDecimal;
 
-/**
- * 岗位创建/更新请求 DTO
- */
+/** 岗位创建/更新请求 DTO */
 public record PositionUpsertRequest(
     String positionName,
     String employeeCategory,
@@ -21,5 +19,4 @@ public record PositionUpsertRequest(
     String leaveDeductBaseType,
     String socialInsuranceMode,
     Boolean requiresConstructionLog,
-    Boolean hasPerformanceBonus
-) {}
+    Boolean hasPerformanceBonus) {}

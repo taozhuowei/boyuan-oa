@@ -4,9 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/**
- * 员工更新请求 DTO
- */
+/** 员工更新请求 DTO */
 public record EmployeeUpdateRequest(
     String name,
     String phone,
@@ -27,7 +25,6 @@ public record EmployeeUpdateRequest(
     List<EmergencyContactRequest> emergencyContacts,
     String gender,
     String idCardNo,
-    java.time.LocalDate birthDate
-) {
-    public record EmergencyContactRequest(String name, String phone, String address) {}
+    java.time.LocalDate birthDate) {
+  public record EmergencyContactRequest(String name, String phone, String address) {}
 }

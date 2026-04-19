@@ -2,9 +2,7 @@ package com.oa.backend.dto;
 
 import java.math.BigDecimal;
 
-/**
- * 费用类型响应
- */
+/** 费用类型响应 */
 public record ExpenseTypeResponse(
     Long id,
     String code,
@@ -12,5 +10,4 @@ public record ExpenseTypeResponse(
     String description,
     Boolean requireInvoice,
     BigDecimal dailyLimit,
-    Integer displayOrder
-) {}
+    Integer displayOrder) {}

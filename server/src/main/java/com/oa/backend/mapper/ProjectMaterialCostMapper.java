@@ -5,5 +5,4 @@ import com.oa.backend.entity.ProjectMaterialCost;
 import org.apache.ibatis.annotations.Mapper;
 
 @Mapper
-public interface ProjectMaterialCostMapper extends BaseMapper<ProjectMaterialCost> {
-}
+public interface ProjectMaterialCostMapper extends BaseMapper<ProjectMaterialCost> {}
