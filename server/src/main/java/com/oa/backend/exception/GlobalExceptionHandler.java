@@ -16,6 +16,7 @@ import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
@@ -135,6 +136,13 @@ public class GlobalExceptionHandler {
     String message = "参数 " + name + " 类型不正确";
     log.debug("MethodArgumentTypeMismatchException: name={}", name, ex);
     return buildResponse(HttpStatus.BAD_REQUEST.value(), message);
+  }
+
+  /** 必须请求头缺失，如 Authorization 未携带时访问需要认证的 /auth/** 端点。 */
+  @ExceptionHandler(MissingRequestHeaderException.class)
+  public ResponseEntity<Map<String, Object>> handleMissingHeader(MissingRequestHeaderException ex) {
+    log.debug("MissingRequestHeaderException: header={}", ex.getHeaderName(), ex);
+    return buildResponse(HttpStatus.BAD_REQUEST.value(), "缺少必要请求头: " + ex.getHeaderName());
   }
 
   /** 请求体 JSON 解析失败（Jackson 反序列化异常）。 不回传 Jackson 原始 message，避免泄露字段内部结构。 */
