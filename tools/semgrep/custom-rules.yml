@@ -1,0 +1,39 @@
+rules:
+  - id: no-mapper-in-controller-autowired
+    patterns:
+      - pattern: |
+          @RestController
+          class $CLASS {
+            ...
+            @Autowired
+            $MAPPER $FIELD;
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $MAPPER
+          regex: '.*Mapper'
+    message: "Mapper '$FIELD' should not be injected directly into a controller via @Autowired. Use a service layer."
+    languages: [java]
+    severity: ERROR
+
+  - id: no-mapper-in-controller-constructor
+    patterns:
+      - pattern: |
+          @RestController
+          class $CLASS {
+            ...
+            private final $MAPPER $FIELD;
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $MAPPER
+          regex: '.*Mapper'
+    message: "Mapper '$FIELD' should not be injected directly into a controller via constructor injection. Use a service layer."
+    languages: [java]
+    severity: ERROR
+
+  - id: no-system-out-in-production
+    pattern: System.out.println(...)
+    message: "Use SLF4J logger instead of System.out.println"
+    languages: [java]
+    severity: WARNING
