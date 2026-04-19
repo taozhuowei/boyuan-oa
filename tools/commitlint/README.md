@@ -40,6 +40,11 @@ update leave service
 update: fix payroll calculation bug
 ```
 
+## Line Length Policy
+
+- Subject line: no enforced limit, but keep it concise (under 72 chars recommended).
+- Body and footer: **no enforced line length limit** (`body-max-line-length` and `footer-max-line-length` are disabled). Multi-line bodies and `Co-Authored-By` trailers are allowed.
+
 ## Enforcement
 
 The `commit-msg` git hook invokes `commitlint` automatically on every commit.

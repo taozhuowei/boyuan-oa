@@ -5,6 +5,8 @@
       2,
       "always",
       ["feat", "fix", "refactor", "perf", "test", "docs", "style", "chore", "cleanup"]
-    ]
+    ],
+    "body-max-line-length": [0],
+    "footer-max-line-length": [0]
   }
 }
