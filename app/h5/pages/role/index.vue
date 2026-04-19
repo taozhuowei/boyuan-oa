@@ -6,18 +6,10 @@
       <!-- Top actions bar -->
       <div class="search-bar">
         <div />
-        <a-button v-if="isCEO" type="primary" @click="openCreateModal">
-          新增角色
-        </a-button>
+        <a-button v-if="isCEO" type="primary" @click="openCreateModal">新增角色</a-button>
       </div>
 
-      <a-table
-        :columns="columns"
-        :data-source="roles"
-        :loading="loading"
-        row-key="id"
-        size="small"
-      >
+      <a-table :columns="columns" :data-source="roles" :loading="loading" row-key="id" size="small">
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'isSystem'">
             <a-tag :color="record.isSystem ? 'blue' : 'default'">
@@ -31,7 +23,12 @@
           </template>
           <template v-if="column.key === 'action'">
             <template v-if="isCEO && !record.isSystem">
-              <a-button type="link" size="small" :data-catch="'role-row-edit-btn-' + record.roleCode" @click="openEditModal(record as Role)">
+              <a-button
+                type="link"
+                size="small"
+                :data-catch="'role-row-edit-btn-' + record.roleCode"
+                @click="openEditModal(record as Role)"
+              >
                 编辑
               </a-button>
               <a-popconfirm
@@ -40,14 +37,17 @@
                 cancel-text="取消"
                 @confirm="handleDelete(record.id)"
               >
-                <a-button type="link" size="small" danger :data-catch="'role-row-delete-btn-' + record.roleCode">
+                <a-button
+                  type="link"
+                  size="small"
+                  danger
+                  :data-catch="'role-row-delete-btn-' + record.roleCode"
+                >
                   删除
                 </a-button>
               </a-popconfirm>
             </template>
-            <template v-else>
-              -
-            </template>
+            <template v-else>-</template>
           </template>
         </template>
       </a-table>
@@ -61,12 +61,7 @@
       @ok="handleModalOk"
       @cancel="closeModal"
     >
-      <a-form
-        :model="formState"
-        :rules="rules"
-        ref="formRef"
-        layout="vertical"
-      >
+      <a-form :model="formState" :rules="rules" ref="formRef" layout="vertical">
         <a-form-item label="角色编码" name="roleCode">
           <a-input
             v-model:value="formState.roleCode"
@@ -75,23 +70,16 @@
           />
         </a-form-item>
         <a-form-item label="角色名称" name="roleName">
-          <a-input
-            v-model:value="formState.roleName"
-            placeholder="请输入角色名称"
-          />
+          <a-input v-model:value="formState.roleName" placeholder="请输入角色名称" />
         </a-form-item>
         <a-form-item label="描述" name="description">
-          <a-textarea
-            v-model:value="formState.description"
-            placeholder="请输入描述"
-            :rows="3"
-          />
+          <a-textarea v-model:value="formState.description" placeholder="请输入描述" :rows="3" />
         </a-form-item>
         <a-form-item label="状态" name="status">
           <a-select v-model:value="formState.status" :options="statusOptions" />
         </a-form-item>
 
-        <a-divider style="margin: 8px 0;">权限矩阵（设计 §2.2 步骤 5）</a-divider>
+        <a-divider style="margin: 8px 0">权限矩阵（设计 §2.2 步骤 5）</a-divider>
         <table class="perm-matrix">
           <thead>
             <tr>
@@ -103,7 +91,13 @@
             <tr v-for="mod in PERMISSION_MODULES" :key="mod.code">
               <td>{{ mod.label }}</td>
               <td v-for="lvl in PERMISSION_LEVELS" :key="lvl.code">
-                <a-checkbox :checked="hasPermission(mod.code, lvl.code)" @change="(e: CheckboxChangeEvent) => togglePermission(mod.code, lvl.code, Boolean(e.target.checked))" />
+                <a-checkbox
+                  :checked="hasPermission(mod.code, lvl.code)"
+                  @change="
+                    (e: CheckboxChangeEvent) =>
+                      togglePermission(mod.code, lvl.code, Boolean(e.target.checked))
+                  "
+                />
               </td>
             </tr>
           </tbody>
@@ -111,7 +105,9 @@
       </a-form>
       <template #footer>
         <a-button @click="closeModal">取消</a-button>
-        <a-button type="primary" data-catch="role-modal-save-btn" @click="handleModalOk">保存</a-button>
+        <a-button type="primary" data-catch="role-modal-save-btn" @click="handleModalOk">
+          保存
+        </a-button>
       </template>
     </a-modal>
   </div>
@@ -149,20 +145,22 @@ const isCEO = computed(() => userStore.userInfo?.role === 'ceo')
 
 // 设计 §2.2 步骤 5：4 级权限 × 6 大模块 = 24 个权限码
 const PERMISSION_MODULES = [
-  { code: 'HR',         label: '人员' },
-  { code: 'PROJECT',    label: '项目' },
-  { code: 'PAYROLL',    label: '薪资' },
+  { code: 'HR', label: '人员' },
+  { code: 'PROJECT', label: '项目' },
+  { code: 'PAYROLL', label: '薪资' },
   { code: 'ATTENDANCE', label: '考勤' },
-  { code: 'EXPENSE',    label: '报销' },
-  { code: 'INJURY',     label: '工伤' }
+  { code: 'EXPENSE', label: '报销' },
+  { code: 'INJURY', label: '工伤' },
 ]
 const PERMISSION_LEVELS = [
-  { code: 'VIEW',    label: '查看' },
-  { code: 'EDIT',    label: '修改' },
-  { code: 'MANAGE',  label: '增删' },
-  { code: 'APPROVE', label: '审批' }
+  { code: 'VIEW', label: '查看' },
+  { code: 'EDIT', label: '修改' },
+  { code: 'MANAGE', label: '增删' },
+  { code: 'APPROVE', label: '审批' },
 ]
-function permCode(mod: string, lvl: string) { return `${mod}_${lvl}` }
+function permCode(mod: string, lvl: string) {
+  return `${mod}_${lvl}`
+}
 function hasPermission(mod: string, lvl: string): boolean {
   return formState.permissions.includes(permCode(mod, lvl))
 }
@@ -171,7 +169,7 @@ function togglePermission(mod: string, lvl: string, checked: boolean) {
   if (checked && !formState.permissions.includes(code)) {
     formState.permissions.push(code)
   } else if (!checked) {
-    formState.permissions = formState.permissions.filter(p => p !== code)
+    formState.permissions = formState.permissions.filter((p) => p !== code)
   }
 }
 
@@ -186,12 +184,12 @@ const formState = reactive<FormState>({
   roleName: '',
   description: '',
   status: 1,
-  permissions: []
+  permissions: [],
 })
 
 const statusOptions = [
   { value: 1, label: '启用' },
-  { value: 0, label: '禁用' }
+  { value: 0, label: '禁用' },
 ]
 
 const columns = [
@@ -200,12 +198,12 @@ const columns = [
   { title: '描述', dataIndex: 'description', key: 'description' },
   { title: '类型', key: 'isSystem', width: 100 },
   { title: '状态', key: 'status', width: 100 },
-  { title: '操作', key: 'action', width: 120 }
+  { title: '操作', key: 'action', width: 120 },
 ]
 
 const rules: Record<string, Rule[]> = {
   roleCode: [{ required: true, message: '角色编码不能为空', trigger: 'blur' }],
-  roleName: [{ required: true, message: '角色名称不能为空', trigger: 'blur' }]
+  roleName: [{ required: true, message: '角色名称不能为空', trigger: 'blur' }],
 }
 
 async function loadRoles() {
@@ -263,7 +261,7 @@ async function handleModalOk() {
     roleName: formState.roleName,
     description: formState.description,
     status: formState.status,
-    permissions: formState.permissions
+    permissions: formState.permissions,
   }
 
   try {
@@ -271,20 +269,20 @@ async function handleModalOk() {
       await request({
         url: `/roles/${formState.id}`,
         method: 'PUT',
-        body: payload
+        body: payload,
       })
       message.success('角色更新成功')
     } else {
       await request({
         url: '/roles',
         method: 'POST',
-        body: payload
+        body: payload,
       })
       message.success('角色创建成功')
     }
     closeModal()
     await loadRoles()
-  } catch (err: unknown) {
+  } catch {
     // Error handling is done by the request utility, but we can show additional message if needed
   }
 }
@@ -293,7 +291,7 @@ async function handleDelete(id: number) {
   try {
     await request({
       url: `/roles/${id}`,
-      method: 'DELETE'
+      method: 'DELETE',
     })
     message.success('角色删除成功')
     await loadRoles()

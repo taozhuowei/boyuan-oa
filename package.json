@@ -21,7 +21,10 @@
     "test:unit:mp": "yarn workspace oa-mp test",
     "test:integration": "cd app && npx vitest run --config mp/vitest.integration.config.ts",
     "test:e2e": "playwright test --config test/e2e/playwright.config.ts",
-    "test:e2e:report": "playwright show-report test/e2e/playwright-report"
+    "test:e2e:report": "playwright show-report test/e2e/playwright-report",
+    "format:check": "prettier --check \"app/h5/**/*.{ts,vue,js}\"",
+    "format:write": "prettier --write \"app/h5/**/*.{ts,vue,js}\"",
+    "knip": "knip --workspace app/h5"
   },
   "lint-staged": {
     "*.{ts,vue,js,json}": [],
@@ -34,7 +37,9 @@
     "concurrently": "^8.2.2",
     "dotenv-cli": "^7.4.4",
     "husky": "^9.1.7",
+    "knip": "^5.0.0",
     "lint-staged": "^16.4.0",
+    "prettier": "^3.0.0",
     "wait-on": "^7.2.0"
   }
 }

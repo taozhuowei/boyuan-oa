@@ -1,0 +1,41 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "entry": ["package.json"],
+      "project": ["package.json"]
+    },
+    "app/h5": {
+      "entry": [
+        "app.vue",
+        "nuxt.config.ts",
+        "pages/**/*.vue",
+        "layouts/**/*.vue",
+        "middleware/**/*.ts",
+        "composables/**/*.ts",
+        "stores/**/*.ts",
+        "utils/**/*.ts",
+        "types/**/*.ts",
+        "components/**/*.vue",
+        "vitest.config.ts",
+        "eslint.config.mjs"
+      ],
+      "project": [
+        "**/*.{ts,vue}"
+      ],
+      "ignore": [
+        ".nuxt/**",
+        ".output/**",
+        "node_modules/**",
+        "dist/**",
+        "components.d.ts"
+      ],
+      "ignoreDependencies": [
+        "vue-router",
+        "@vue/runtime-core",
+        "vue-tsc",
+        "terser"
+      ]
+    }
+  }
+}

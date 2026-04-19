@@ -6,21 +6,28 @@
     事件输出：open-slip-detail(slip) — 通知父层打开工资条详情 Modal
   -->
   <div>
-    <div style="margin-bottom: 12px;">
+    <div style="margin-bottom: 12px">
       <a-select
         data-catch="payroll-slips-cycle-select"
         :value="selectedCycleIdForSlips ?? undefined"
         placeholder="请选择工资周期"
         :options="cycleOptions"
         :loading="loadingCycles"
-        style="width: 200px; margin-right: 8px;"
-        @change="(v) => { selectedCycleIdForSlips = v as number; loadSlipsByCycle() }"
+        style="width: 200px; margin-right: 8px"
+        @change="
+          (v) => {
+            selectedCycleIdForSlips = v as number
+            loadSlipsByCycle()
+          }
+        "
       />
       <a-button
         :loading="loadingSlips"
         @click="loadSlipsByCycle"
         :disabled="!selectedCycleIdForSlips"
-      >查询</a-button>
+      >
+        查询
+      </a-button>
     </div>
 
     <a-table
@@ -33,18 +40,20 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'status'">
-          <a-tag :color="slipStatusColor(record.status)">{{ slipStatusLabel(record.status) }}</a-tag>
+          <a-tag :color="slipStatusColor(record.status)">
+            {{ slipStatusLabel(record.status) }}
+          </a-tag>
         </template>
-        <template v-if="column.key === 'netPay'">
-          ¥{{ formatAmount(record.netPay) }}
-        </template>
+        <template v-if="column.key === 'netPay'">¥{{ formatAmount(record.netPay) }}</template>
         <template v-if="column.key === 'action'">
           <a-button
             type="link"
             size="small"
             :data-catch="'payroll-slip-row-detail-btn-' + record.id"
             @click="emit('open-slip-detail', record as unknown as PayrollSlip)"
-          >详情</a-button>
+          >
+            详情
+          </a-button>
         </template>
       </template>
     </a-table>
@@ -81,7 +90,7 @@ interface CycleOption {
 // cycleOptions: 父层从 cycles 列表映射的 { label, value } 选项
 // loadingCycles: 父层加载周期时的 loading 状态
 
-const props = defineProps<{
+defineProps<{
   cycleOptions: CycleOption[]
   loadingCycles: boolean
 }>()
@@ -134,22 +143,30 @@ function formatAmount(val: number | string | undefined): string {
 }
 
 function slipStatusLabel(status: string): string {
-  return ({
-    DRAFT: '草稿',
-    PUBLISHED: '待确认',
-    CONFIRMED: '已确认',
-    DISPUTED: '异议中',
-    SUPERSEDED: '已更正',
-  } as Record<string, string>)[status] ?? status
+  return (
+    (
+      {
+        DRAFT: '草稿',
+        PUBLISHED: '待确认',
+        CONFIRMED: '已确认',
+        DISPUTED: '异议中',
+        SUPERSEDED: '已更正',
+      } as Record<string, string>
+    )[status] ?? status
+  )
 }
 
 function slipStatusColor(status: string): string {
-  return ({
-    DRAFT: 'default',
-    PUBLISHED: 'blue',
-    CONFIRMED: 'green',
-    DISPUTED: 'red',
-    SUPERSEDED: 'default',
-  } as Record<string, string>)[status] ?? 'default'
+  return (
+    (
+      {
+        DRAFT: 'default',
+        PUBLISHED: 'blue',
+        CONFIRMED: 'green',
+        DISPUTED: 'red',
+        SUPERSEDED: 'default',
+      } as Record<string, string>
+    )[status] ?? 'default'
+  )
 }
 </script>

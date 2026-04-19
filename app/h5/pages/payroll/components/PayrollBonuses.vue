@@ -5,16 +5,28 @@
     数据来源：周期选项由父层传入；补贴/奖金列表由本组件自行拉取
   -->
   <div>
-    <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center;">
+    <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: center">
       <a-select
         :value="selectedBonusCycleId ?? undefined"
         placeholder="请选择工资周期"
         :options="cycleOptions"
         :loading="loadingCycles"
         style="width: 220px"
-        @change="(v) => { selectedBonusCycleId = v as number; loadBonuses() }"
+        @change="
+          (v) => {
+            selectedBonusCycleId = v as number
+            loadBonuses()
+          }
+        "
       />
-      <a-button type="primary" size="small" :disabled="!selectedBonusCycleId || !isFinance" @click="openBonusModal">+ 录入</a-button>
+      <a-button
+        type="primary"
+        size="small"
+        :disabled="!selectedBonusCycleId || !isFinance"
+        @click="openBonusModal"
+      >
+        + 录入
+      </a-button>
       <a-tag v-if="bonusApprovalRequired" color="orange">需 CEO 审批</a-tag>
       <a-tag v-else color="green">直接生效（通知 CEO）</a-tag>
     </div>
@@ -28,17 +40,21 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'type'">
-          <a-tag :color="record.type === 'EARNING' ? 'green' : 'red'">{{ record.type === 'EARNING' ? '补贴/奖金' : '扣款' }}</a-tag>
+          <a-tag :color="record.type === 'EARNING' ? 'green' : 'red'">
+            {{ record.type === 'EARNING' ? '补贴/奖金' : '扣款' }}
+          </a-tag>
         </template>
-        <template v-if="column.key === 'amount'">
-          ¥{{ formatAmount(record.amount) }}
-        </template>
+        <template v-if="column.key === 'amount'">¥{{ formatAmount(record.amount) }}</template>
         <template v-if="column.key === 'status'">
-          <a-tag :color="bonusStatusColor(record.status)">{{ bonusStatusLabel(record.status) }}</a-tag>
+          <a-tag :color="bonusStatusColor(record.status)">
+            {{ bonusStatusLabel(record.status) }}
+          </a-tag>
         </template>
         <template v-if="column.key === 'action'">
           <a-popconfirm title="确定删除该条目？" @confirm="deleteBonus(record.id)">
-            <a-button v-if="isFinance || role === 'ceo'" type="link" danger size="small">删除</a-button>
+            <a-button v-if="isFinance || role === 'ceo'" type="link" danger size="small">
+              删除
+            </a-button>
           </a-popconfirm>
         </template>
       </template>
@@ -77,7 +93,12 @@
           </a-col>
           <a-col :span="12">
             <a-form-item label="金额" required>
-              <a-input-number v-model:value="bonusForm.amount" :min="0.01" :precision="2" style="width: 100%" />
+              <a-input-number
+                v-model:value="bonusForm.amount"
+                :min="0.01"
+                :precision="2"
+                style="width: 100%"
+              />
             </a-form-item>
           </a-col>
         </a-row>
@@ -90,12 +111,7 @@
           show-icon
           message="本条目需经 CEO 审批通过后方可计入结算"
         />
-        <a-alert
-          v-else
-          type="info"
-          show-icon
-          message="录入后立即生效；系统会通知 CEO 知晓"
-        />
+        <a-alert v-else type="info" show-icon message="录入后立即生效；系统会通知 CEO 知晓" />
       </a-form>
     </a-modal>
   </div>
@@ -127,7 +143,11 @@ interface PayrollBonus {
   createdAt?: string
 }
 
-interface EmployeeOption { id: number; name: string; employeeNo: string }
+interface EmployeeOption {
+  id: number
+  name: string
+  employeeNo: string
+}
 
 interface CycleOption {
   label: string
@@ -140,7 +160,7 @@ interface CycleOption {
 // isFinance: 当前用户是否为财务角色（控制录入按钮可用性和删除权限）
 // role: 当前用户角色（CEO 也可删除）
 
-const props = defineProps<{
+defineProps<{
   cycleOptions: CycleOption[]
   loadingCycles: boolean
   isFinance: boolean
@@ -154,9 +174,12 @@ const bonuses = ref<PayrollBonus[]>([])
 const loadingBonuses = ref(false)
 const bonusApprovalRequired = ref(false)
 const employeesForBonus = ref<EmployeeOption[]>([])
-const employeeOptions = computed(() => employeesForBonus.value.map(e => ({
-  value: e.id, label: `${e.name} (${e.employeeNo})`
-})))
+const employeeOptions = computed(() =>
+  employeesForBonus.value.map((e) => ({
+    value: e.id,
+    label: `${e.name} (${e.employeeNo})`,
+  }))
+)
 const showBonusModal = ref(false)
 const creatingBonus = ref(false)
 const bonusForm = ref<{
@@ -166,7 +189,11 @@ const bonusForm = ref<{
   type: 'EARNING' | 'DEDUCTION'
   remark: string
 }>({
-  employeeId: undefined, name: '', amount: undefined, type: 'EARNING', remark: ''
+  employeeId: undefined,
+  name: '',
+  amount: undefined,
+  type: 'EARNING',
+  remark: '',
 })
 
 // ── 表格列 ────────────────────────────────────────────────────
@@ -178,7 +205,7 @@ const bonusColumns = [
   { title: '金额', key: 'amount', width: 120 },
   { title: '状态', key: 'status', width: 100 },
   { title: '备注', dataIndex: 'remark', key: 'remark' },
-  { title: '操作', key: 'action', width: 90 }
+  { title: '操作', key: 'action', width: 90 },
 ]
 
 // ── 生命周期 ──────────────────────────────────────────────────
@@ -192,7 +219,9 @@ onMounted(() => {
 
 async function loadBonusApprovalConfig() {
   try {
-    const data = await request<{ approvalRequired: boolean }>({ url: '/payroll/bonus-approval-config' })
+    const data = await request<{ approvalRequired: boolean }>({
+      url: '/payroll/bonus-approval-config',
+    })
     bonusApprovalRequired.value = !!data.approvalRequired
   } catch {
     bonusApprovalRequired.value = false
@@ -209,10 +238,15 @@ async function loadEmployeesForBonus() {
 }
 
 async function loadBonuses() {
-  if (!selectedBonusCycleId.value) { bonuses.value = []; return }
+  if (!selectedBonusCycleId.value) {
+    bonuses.value = []
+    return
+  }
   loadingBonuses.value = true
   try {
-    const data = await request<PayrollBonus[]>({ url: `/payroll/cycles/${selectedBonusCycleId.value}/bonuses` })
+    const data = await request<PayrollBonus[]>({
+      url: `/payroll/cycles/${selectedBonusCycleId.value}/bonuses`,
+    })
     bonuses.value = data ?? []
   } catch {
     bonuses.value = []
@@ -222,21 +256,39 @@ async function loadBonuses() {
 }
 
 function openBonusModal() {
-  bonusForm.value = { employeeId: undefined, name: '', amount: undefined, type: 'EARNING', remark: '' }
+  bonusForm.value = {
+    employeeId: undefined,
+    name: '',
+    amount: undefined,
+    type: 'EARNING',
+    remark: '',
+  }
   showBonusModal.value = true
 }
 
 async function submitBonus() {
-  if (!selectedBonusCycleId.value) { message.warning('请先选择周期'); return }
-  if (!bonusForm.value.employeeId) { message.warning('请选择员工'); return }
-  if (!bonusForm.value.name.trim()) { message.warning('请填写名称'); return }
-  if (!bonusForm.value.amount || bonusForm.value.amount <= 0) { message.warning('金额必须为正数'); return }
+  if (!selectedBonusCycleId.value) {
+    message.warning('请先选择周期')
+    return
+  }
+  if (!bonusForm.value.employeeId) {
+    message.warning('请选择员工')
+    return
+  }
+  if (!bonusForm.value.name.trim()) {
+    message.warning('请填写名称')
+    return
+  }
+  if (!bonusForm.value.amount || bonusForm.value.amount <= 0) {
+    message.warning('金额必须为正数')
+    return
+  }
   creatingBonus.value = true
   try {
     await request({
       url: `/payroll/cycles/${selectedBonusCycleId.value}/bonuses`,
       method: 'POST',
-      body: bonusForm.value
+      body: bonusForm.value,
     })
     message.success(bonusApprovalRequired.value ? '已提交，等待 CEO 审批' : '已录入并通知 CEO')
     showBonusModal.value = false
@@ -266,10 +318,16 @@ function formatAmount(val: number | string | undefined): string {
 }
 
 function bonusStatusLabel(s: string) {
-  return ({ PENDING: '待审批', APPROVED: '已批准', REJECTED: '已驳回' } as Record<string, string>)[s] ?? s
+  return (
+    ({ PENDING: '待审批', APPROVED: '已批准', REJECTED: '已驳回' } as Record<string, string>)[s] ??
+    s
+  )
 }
 
 function bonusStatusColor(s: string) {
-  return ({ PENDING: 'orange', APPROVED: 'green', REJECTED: 'red' } as Record<string, string>)[s] ?? 'default'
+  return (
+    ({ PENDING: 'orange', APPROVED: 'green', REJECTED: 'red' } as Record<string, string>)[s] ??
+    'default'
+  )
 }
 </script>

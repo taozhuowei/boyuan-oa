@@ -4,13 +4,32 @@
                 GET  /api/logs/records（查看历史）
                 POST /api/injury-claims（财务录入理赔，仅 finance 角色可见） -->
   <div class="injury-page">
-    <div class="page-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <h2 class="page-title" style="margin:0;">工伤补偿</h2>
+    <div
+      class="page-header"
+      style="
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+      "
+    >
+      <h2 class="page-title" style="margin: 0">工伤补偿</h2>
       <a-space>
         <!-- 劳工/PM 均可发起（PM 代录使用下面的 proxyFor 字段） -->
-        <a-button type="primary" @click="openApply" data-catch="injury-apply-btn">+ 发起申报</a-button>
+        <a-button type="primary" @click="openApply" data-catch="injury-apply-btn">
+          + 发起申报
+        </a-button>
         <!-- 财务：录入理赔按钮 -->
-        <a-button v-if="isFinance" @click="showClaimModal = true; loadApprovedInjuries()" data-catch="injury-fill-amount-btn">录入理赔</a-button>
+        <a-button
+          v-if="isFinance"
+          @click="
+            showClaimModal = true
+            loadApprovedInjuries()
+          "
+          data-catch="injury-fill-amount-btn"
+        >
+          录入理赔
+        </a-button>
       </a-space>
     </div>
 
@@ -22,7 +41,7 @@
       type="success"
       show-icon
       closable
-      style="margin-bottom: 12px;"
+      style="margin-bottom: 12px"
       @close="applySuccess = false"
     />
     <a-alert
@@ -32,7 +51,7 @@
       type="success"
       show-icon
       closable
-      style="margin-bottom: 12px;"
+      style="margin-bottom: 12px"
       @close="claimSuccess = false"
     />
 
@@ -54,9 +73,14 @@
                 v-if="isFinance && item.status === 'APPROVED'"
                 size="small"
                 type="link"
-                @click="showClaimModal = true; loadApprovedInjuries()"
+                @click="
+                  showClaimModal = true
+                  loadApprovedInjuries()
+                "
                 data-catch="injury-fill-amount-btn"
-              >录入金额</a-button>
+              >
+                录入金额
+              </a-button>
             </a-space>
           </a-list-item>
         </template>
@@ -71,7 +95,7 @@
       :confirm-loading="applying"
       @cancel="resetApplyForm"
       ok-text="提交"
-      :ok-button-props="({ 'data-catch': 'injury-apply-modal-submit' } as any)"
+      :ok-button-props="{ 'data-catch': 'injury-apply-modal-submit' } as any"
     >
       <a-form :model="applyForm" layout="vertical">
         <!-- PM 代录：选择受伤员工 -->
@@ -88,14 +112,23 @@
         </a-form-item>
 
         <a-form-item label="受伤日期" required>
-          <div data-catch="injury-date" style="display:block;">
-            <a-date-picker v-model:value="applyForm.injuryDate" style="width:100%;" placeholder="请选择日期" />
+          <div data-catch="injury-date" style="display: block">
+            <a-date-picker
+              v-model:value="applyForm.injuryDate"
+              style="width: 100%"
+              placeholder="请选择日期"
+            />
           </div>
         </a-form-item>
 
         <a-form-item label="受伤时间" required>
-          <div data-catch="injury-time" style="display:block;">
-            <a-time-picker v-model:value="applyForm.injuryTime" format="HH:mm" style="width:100%;" placeholder="请选择受伤时间" />
+          <div data-catch="injury-time" style="display: block">
+            <a-time-picker
+              v-model:value="applyForm.injuryTime"
+              format="HH:mm"
+              style="width: 100%"
+              placeholder="请选择受伤时间"
+            />
           </div>
         </a-form-item>
 
@@ -109,7 +142,12 @@
         </a-form-item>
 
         <a-form-item label="医生诊断结果" required>
-          <a-textarea v-model:value="applyForm.medicalDiagnosis" :rows="3" placeholder="请填写医生诊断结论（如骨折、软组织挫伤等）" data-catch="injury-diagnosis" />
+          <a-textarea
+            v-model:value="applyForm.medicalDiagnosis"
+            :rows="3"
+            placeholder="请填写医生诊断结论（如骨折、软组织挫伤等）"
+            data-catch="injury-diagnosis"
+          />
         </a-form-item>
 
         <a-form-item label="附件（受伤照片/医疗证明）">
@@ -139,7 +177,7 @@
       :confirm-loading="claiming"
       @cancel="resetClaimForm"
       ok-text="提交理赔"
-      :ok-button-props="({ 'data-catch': 'injury-amount-submit' } as any)"
+      :ok-button-props="{ 'data-catch': 'injury-amount-submit' } as any"
     >
       <a-form :model="claimForm" layout="vertical">
         <a-form-item label="选择已通过的申报单" required>
@@ -148,19 +186,28 @@
             placeholder="选择工伤申报单"
             show-search
             option-filter-prop="label"
-            :options="approvedInjuryRecords.map(r => ({ label: r.formNo + (r.submitter ? ' — ' + r.submitter : ''), value: r.id }))"
+            :options="
+              approvedInjuryRecords.map((r) => ({
+                label: r.formNo + (r.submitter ? ' — ' + r.submitter : ''),
+                value: r.id,
+              }))
+            "
             @change="claimForm.formRecordId = $event as number"
           />
         </a-form-item>
         <a-form-item label="受伤日期" required>
-          <a-date-picker v-model:value="claimForm.injuryDate" style="width:100%;" placeholder="请选择日期" />
+          <a-date-picker
+            v-model:value="claimForm.injuryDate"
+            style="width: 100%"
+            placeholder="请选择日期"
+          />
         </a-form-item>
         <a-form-item label="理赔金额（元）" required>
           <a-input-number
             v-model:value="claimForm.compensationAmount"
             :min="0"
             :precision="2"
-            style="width:100%;"
+            style="width: 100%"
             placeholder="0.00"
             data-catch="injury-amount-input"
           />
@@ -213,7 +260,6 @@ const showClaimModal = ref(false)
 const injuryFileRef = ref<{ clear: () => void } | null>(null)
 
 const approvedInjuryRecords = ref<{ id: number; formNo: string; submitter?: string }[]>([])
-const selectedApprovedRecord = ref<{ id: number; formNo: string; employeeId?: number } | null>(null)
 
 const applyForm = ref({
   proxyEmployeeId: undefined as number | undefined,
@@ -222,7 +268,7 @@ const applyForm = ref({
   description: '',
   medicalDiagnosis: '',
   remark: '',
-  attachmentIds: [] as number[]
+  attachmentIds: [] as number[],
 })
 
 const claimForm = ref({
@@ -230,7 +276,7 @@ const claimForm = ref({
   employeeId: undefined as number | undefined,
   injuryDate: undefined as Dayjs | undefined,
   compensationAmount: undefined as number | undefined,
-  financeNote: ''
+  financeNote: '',
 })
 
 function openApply() {
@@ -240,26 +286,38 @@ function openApply() {
 
 async function loadWorkers() {
   try {
-    const res = await request<{ content: { id: number; name: string }[] }>(
-      { url: '/employees?page=0&size=200', method: 'GET' }
-    )
-    workerOptions.value = (res.content || []).map((e: { id: number; name: string }) => ({ label: e.name, value: e.id }))
-  } catch { /* 加载失败不阻断流程 */ }
+    const res = await request<{ content: { id: number; name: string }[] }>({
+      url: '/employees?page=0&size=200',
+      method: 'GET',
+    })
+    workerOptions.value = (res.content || []).map((e: { id: number; name: string }) => ({
+      label: e.name,
+      value: e.id,
+    }))
+  } catch {
+    /* 加载失败不阻断流程 */
+  }
 }
 
 async function loadApprovedInjuries() {
   try {
-    const res = await request<{ id: number; formNo: string; status: string; formData?: Record<string, unknown>; submitter?: string }[]>(
-      { url: '/logs/records', method: 'GET' }
-    )
+    const res = await request<
+      {
+        id: number
+        formNo: string
+        status: string
+        formData?: Record<string, unknown>
+        submitter?: string
+      }[]
+    >({ url: '/logs/records', method: 'GET' })
     approvedInjuryRecords.value = (res as typeof res)
-      .filter(r => r.formNo?.startsWith('INJ') && r.status === 'APPROVED')
-      .map(r => ({ id: r.id, formNo: r.formNo, submitter: r.submitter }))
+      .filter((r) => r.formNo?.startsWith('INJ') && r.status === 'APPROVED')
+      .map((r) => ({ id: r.id, formNo: r.formNo, submitter: r.submitter }))
     // Auto-select first approved injury and pre-fill injury date for convenience
     if (approvedInjuryRecords.value.length > 0 && !claimForm.value.formRecordId) {
       const first = approvedInjuryRecords.value[0]
       claimForm.value.formRecordId = first.id
-      const matched = (res as typeof res).find(r => r.id === first.id)
+      const matched = (res as typeof res).find((r) => r.id === first.id)
       const injDate = matched?.formData?.injuryDate as string | undefined
       if (injDate && !claimForm.value.injuryDate) {
         const { default: dayjs } = await import('dayjs')
@@ -275,7 +333,9 @@ async function loadRecords() {
   loading.value = true
   try {
     const res = await request<InjuryRecord[]>({ url: '/logs/records', method: 'GET' })
-    records.value = (res as InjuryRecord[]).filter((r: InjuryRecord) => r.formTypeName === '工伤补偿' || r.formNo?.startsWith('INJ'))
+    records.value = (res as InjuryRecord[]).filter(
+      (r: InjuryRecord) => r.formTypeName === '工伤补偿' || r.formNo?.startsWith('INJ')
+    )
   } catch {
     message.error('加载记录失败')
   } finally {
@@ -284,7 +344,7 @@ async function loadRecords() {
 }
 
 function onInjuryFilesChange(files: { attachmentId: number }[]) {
-  applyForm.value.attachmentIds = files.map(f => f.attachmentId)
+  applyForm.value.attachmentIds = files.map((f) => f.attachmentId)
 }
 
 async function doApply() {
@@ -311,7 +371,7 @@ async function doApply() {
       accidentDescription: applyForm.value.description,
       injuryTime: applyForm.value.injuryTime.format('HH:mm'),
       medicalDiagnosis: applyForm.value.medicalDiagnosis,
-      attachmentIds: applyForm.value.attachmentIds
+      attachmentIds: applyForm.value.attachmentIds,
     }
     if (applyForm.value.proxyEmployeeId) {
       formData.proxyEmployeeId = applyForm.value.proxyEmployeeId
@@ -319,7 +379,7 @@ async function doApply() {
     await request({
       url: '/logs/injury',
       method: 'POST',
-      body: { formData, remark: applyForm.value.remark }
+      body: { formData, remark: applyForm.value.remark },
     })
     showApplyModal.value = false
     applySuccess.value = true
@@ -333,13 +393,24 @@ async function doApply() {
 }
 
 function resetApplyForm() {
-  applyForm.value = { proxyEmployeeId: undefined, injuryDate: undefined, injuryTime: undefined, description: '', medicalDiagnosis: '', remark: '', attachmentIds: [] }
+  applyForm.value = {
+    proxyEmployeeId: undefined,
+    injuryDate: undefined,
+    injuryTime: undefined,
+    description: '',
+    medicalDiagnosis: '',
+    remark: '',
+    attachmentIds: [],
+  }
   injuryFileRef.value?.clear()
 }
 
 async function doCreateClaim() {
-  if (!claimForm.value.formRecordId ||
-      !claimForm.value.injuryDate || !claimForm.value.compensationAmount) {
+  if (
+    !claimForm.value.formRecordId ||
+    !claimForm.value.injuryDate ||
+    !claimForm.value.compensationAmount
+  ) {
     message.warning('请填写完整理赔信息')
     return
   }
@@ -353,8 +424,8 @@ async function doCreateClaim() {
         employeeId: claimForm.value.employeeId,
         injuryDate: claimForm.value.injuryDate.format('YYYY-MM-DD'),
         compensationAmount: claimForm.value.compensationAmount,
-        financeNote: claimForm.value.financeNote
-      }
+        financeNote: claimForm.value.financeNote,
+      },
     })
     showClaimModal.value = false
     claimSuccess.value = true
@@ -367,19 +438,31 @@ async function doCreateClaim() {
 }
 
 function resetClaimForm() {
-  claimForm.value = { formRecordId: undefined, employeeId: undefined, injuryDate: undefined, compensationAmount: undefined, financeNote: '' }
+  claimForm.value = {
+    formRecordId: undefined,
+    employeeId: undefined,
+    injuryDate: undefined,
+    compensationAmount: undefined,
+    financeNote: '',
+  }
 }
 
 function statusLabel(status: string) {
   const map: Record<string, string> = {
-    PENDING: '待审批', APPROVING: '审批中', APPROVED: '已通过', REJECTED: '已驳回'
+    PENDING: '待审批',
+    APPROVING: '审批中',
+    APPROVED: '已通过',
+    REJECTED: '已驳回',
   }
   return map[status] ?? status
 }
 
 function statusColor(status: string) {
   const map: Record<string, string> = {
-    PENDING: 'orange', APPROVING: 'blue', APPROVED: 'green', REJECTED: 'red'
+    PENDING: 'orange',
+    APPROVING: 'blue',
+    APPROVED: 'green',
+    REJECTED: 'red',
   }
   return map[status] ?? 'default'
 }

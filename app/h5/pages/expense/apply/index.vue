@@ -3,16 +3,15 @@
     <h2 class="page-title">费用报销申请</h2>
 
     <a-card>
-      <a-form
-        :model="formState"
-        layout="vertical"
-        style="max-width: 600px"
-        @finish="submitExpense"
-      >
+      <a-form :model="formState" layout="vertical" style="max-width: 600px" @finish="submitExpense">
         <!-- 基本信息 -->
         <a-divider orientation="left">基本信息</a-divider>
 
-        <a-form-item label="报销类型" name="expenseType" :rules="[{ required: true, message: '请选择报销类型' }]">
+        <a-form-item
+          label="报销类型"
+          name="expenseType"
+          :rules="[{ required: true, message: '请选择报销类型' }]"
+        >
           <a-select v-model:value="formState.expenseType" placeholder="请选择报销类型">
             <a-select-option v-for="t in expenseTypes" :key="t.code" :value="t.code">
               {{ t.name }}
@@ -22,11 +21,19 @@
 
         <!-- 出差信息（可选） -->
         <a-form-item label="出差开始日期" name="tripStartDate">
-          <a-date-picker v-model:value="formState.tripStartDate" style="width: 100%" placeholder="请选择出差开始日期" />
+          <a-date-picker
+            v-model:value="formState.tripStartDate"
+            style="width: 100%"
+            placeholder="请选择出差开始日期"
+          />
         </a-form-item>
 
         <a-form-item label="出差结束日期" name="tripEndDate">
-          <a-date-picker v-model:value="formState.tripEndDate" style="width: 100%" placeholder="请选择出差结束日期" />
+          <a-date-picker
+            v-model:value="formState.tripEndDate"
+            style="width: 100%"
+            placeholder="请选择出差结束日期"
+          />
         </a-form-item>
 
         <a-form-item label="出差目的地" name="tripDestination">
@@ -34,7 +41,11 @@
         </a-form-item>
 
         <a-form-item label="出差事由" name="tripPurpose">
-          <a-textarea v-model:value="formState.tripPurpose" :rows="2" placeholder="请输入出差事由" />
+          <a-textarea
+            v-model:value="formState.tripPurpose"
+            :rows="2"
+            placeholder="请输入出差事由"
+          />
         </a-form-item>
 
         <a-form-item label="关联项目（可选）" name="projectId">
@@ -42,7 +53,7 @@
             v-model:value="formState.projectId"
             placeholder="选择关联项目（报销核销后计入项目成本）"
             allow-clear
-            :options="projects.map(p => ({ label: p.name, value: p.id }))"
+            :options="projects.map((p) => ({ label: p.name, value: p.id }))"
             show-search
             option-filter-prop="label"
           />
@@ -54,7 +65,10 @@
         <div v-for="(item, index) in formState.items" :key="index" class="expense-item">
           <a-row :gutter="16">
             <a-col :span="6">
-              <a-form-item :name="['items', index, 'itemType']" :rules="[{ required: true, message: '请选择类型' }]">
+              <a-form-item
+                :name="['items', index, 'itemType']"
+                :rules="[{ required: true, message: '请选择类型' }]"
+              >
                 <a-select v-model:value="item.itemType" placeholder="费用类型">
                   <a-select-option value="MEAL">餐饮费</a-select-option>
                   <a-select-option value="TRANSPORT">交通费</a-select-option>
@@ -65,8 +79,15 @@
               </a-form-item>
             </a-col>
             <a-col :span="6">
-              <a-form-item :name="['items', index, 'expenseDate']" :rules="[{ required: true, message: '请选择日期' }]">
-                <a-date-picker v-model:value="item.expenseDate" style="width: 100%" placeholder="日期" />
+              <a-form-item
+                :name="['items', index, 'expenseDate']"
+                :rules="[{ required: true, message: '请选择日期' }]"
+              >
+                <a-date-picker
+                  v-model:value="item.expenseDate"
+                  style="width: 100%"
+                  placeholder="日期"
+                />
               </a-form-item>
             </a-col>
             <a-col :span="5">
@@ -74,10 +95,16 @@
                 :name="['items', index, 'amount']"
                 :rules="[
                   { required: true, message: '请输入金额' },
-                  { validator: validateItemAmount, trigger: 'blur' }
+                  { validator: validateItemAmount, trigger: 'blur' },
                 ]"
               >
-                <a-input-number v-model:value="item.amount" style="width: 100%" :min="0.01" :precision="2" placeholder="金额" />
+                <a-input-number
+                  v-model:value="item.amount"
+                  style="width: 100%"
+                  :min="0.01"
+                  :precision="2"
+                  placeholder="金额"
+                />
               </a-form-item>
             </a-col>
             <a-col :span="5">
@@ -98,7 +125,11 @@
               :max-count="1"
               accept="image/*,.pdf"
               hint="可上传该笔明细的票据，最多 1 个"
-              @change="(files: { attachmentId: number }[]) => { item.attachmentId = files[0]?.attachmentId }"
+              @change="
+                (files: { attachmentId: number }[]) => {
+                  item.attachmentId = files[0]?.attachmentId
+                }
+              "
             />
           </a-form-item>
         </div>
@@ -108,12 +139,27 @@
         </a-button>
 
         <!-- 合计金额 -->
-        <a-form-item label="报销总金额" name="totalAmount" :rules="[{ required: true, message: '请输入总金额' }]">
-          <a-input-number v-model:value="formState.totalAmount" style="width: 100%" :min="0" :precision="2" :disabled="true" placeholder="自动计算（明细金额之和）" />
+        <a-form-item
+          label="报销总金额"
+          name="totalAmount"
+          :rules="[{ required: true, message: '请输入总金额' }]"
+        >
+          <a-input-number
+            v-model:value="formState.totalAmount"
+            style="width: 100%"
+            :min="0"
+            :precision="2"
+            :disabled="true"
+            placeholder="自动计算（明细金额之和）"
+          />
         </a-form-item>
 
         <a-form-item label="备注说明" name="remark">
-          <a-textarea v-model:value="formState.remark" :rows="3" placeholder="请输入备注说明（可选）" />
+          <a-textarea
+            v-model:value="formState.remark"
+            :rows="3"
+            placeholder="请输入备注说明（可选）"
+          />
         </a-form-item>
 
         <a-form-item
@@ -127,15 +173,13 @@
             :max-count="5"
             accept="image/*,.pdf"
             hint="请上传发票图片或 PDF，最多 5 个（必填）"
-            @change="files => formState.invoiceAttachmentIds = files.map(f => f.attachmentId)"
+            @change="(files) => (formState.invoiceAttachmentIds = files.map((f) => f.attachmentId))"
           />
         </a-form-item>
 
         <a-form-item>
           <a-space>
-            <a-button type="primary" html-type="submit" :loading="submitting">
-              提交申请
-            </a-button>
+            <a-button type="primary" html-type="submit" :loading="submitting">提交申请</a-button>
             <a-button @click="resetForm">重置</a-button>
             <a-button type="link" @click="goToRecords">查看我的报销记录</a-button>
           </a-space>
@@ -149,7 +193,6 @@
 import { ref, reactive, watch, computed, onMounted } from 'vue'
 import { request } from '~/utils/http'
 import type { Dayjs } from 'dayjs'
-import dayjs from 'dayjs'
 
 interface ExpenseItem {
   itemType: string | undefined
@@ -179,7 +222,7 @@ const formState = reactive({
   totalAmount: undefined as number | undefined,
   remark: '',
   invoiceAttachmentIds: [] as number[],
-  items: [] as ExpenseItem[]
+  items: [] as ExpenseItem[],
 })
 
 const expenseTypes = ref<ExpenseType[]>([])
@@ -212,7 +255,7 @@ function addItem() {
     amount: undefined,
     invoiceNo: '',
     description: '',
-    attachmentId: undefined
+    attachmentId: undefined,
   })
 }
 
@@ -256,20 +299,20 @@ async function submitExpense() {
       totalAmount: formState.totalAmount,
       remark: formState.remark || null,
       invoiceAttachmentIds: formState.invoiceAttachmentIds,
-      items: formState.items.map(item => ({
+      items: formState.items.map((item) => ({
         itemType: item.itemType,
         expenseDate: item.expenseDate?.format('YYYY-MM-DD'),
         amount: item.amount,
         invoiceNo: item.invoiceNo || null,
         description: item.description || null,
-        attachmentId: item.attachmentId
-      }))
+        attachmentId: item.attachmentId,
+      })),
     }
 
     await request({
       url: '/expense',
       method: 'POST',
-      body
+      body,
     })
 
     alert('报销申请提交成功')
@@ -290,7 +333,9 @@ function validateInvoiceAttachments(): Promise<void> {
 
 async function loadProjects() {
   try {
-    const res = await request<{ records: { id: number; name: string }[] }>({ url: '/projects?page=1&size=100' })
+    const res = await request<{ records: { id: number; name: string }[] }>({
+      url: '/projects?page=1&size=100',
+    })
     projects.value = res?.records ?? []
   } catch {
     projects.value = []
@@ -304,12 +349,40 @@ async function loadExpenseTypes() {
   } catch {
     // 默认类型
     expenseTypes.value = [
-      { id: 1, code: 'TRAVEL', name: '差旅费', description: '', requireInvoice: true, dailyLimit: 0 },
+      {
+        id: 1,
+        code: 'TRAVEL',
+        name: '差旅费',
+        description: '',
+        requireInvoice: true,
+        dailyLimit: 0,
+      },
       { id: 2, code: 'MEAL', name: '餐饮费', description: '', requireInvoice: true, dailyLimit: 0 },
-      { id: 3, code: 'ACCOMMODATION', name: '住宿费', description: '', requireInvoice: true, dailyLimit: 0 },
-      { id: 4, code: 'TRANSPORT', name: '交通费', description: '', requireInvoice: true, dailyLimit: 0 },
-      { id: 5, code: 'OFFICE', name: '办公用品', description: '', requireInvoice: true, dailyLimit: 0 },
-      { id: 6, code: 'OTHER', name: '其他', description: '', requireInvoice: false, dailyLimit: 0 }
+      {
+        id: 3,
+        code: 'ACCOMMODATION',
+        name: '住宿费',
+        description: '',
+        requireInvoice: true,
+        dailyLimit: 0,
+      },
+      {
+        id: 4,
+        code: 'TRANSPORT',
+        name: '交通费',
+        description: '',
+        requireInvoice: true,
+        dailyLimit: 0,
+      },
+      {
+        id: 5,
+        code: 'OFFICE',
+        name: '办公用品',
+        description: '',
+        requireInvoice: true,
+        dailyLimit: 0,
+      },
+      { id: 6, code: 'OTHER', name: '其他', description: '', requireInvoice: false, dailyLimit: 0 },
     ]
   }
 }

@@ -12,13 +12,21 @@
          DELETE /api/second-roles/{id} — 撤销第二角色 -->
   <div>
     <!-- 项目基本信息 -->
-    <a-descriptions bordered size="small" :column="2" style="margin-bottom: 16px;">
+    <a-descriptions bordered size="small" :column="2" style="margin-bottom: 16px">
       <a-descriptions-item label="项目名称">{{ project.name }}</a-descriptions-item>
-      <a-descriptions-item label="状态">{{ project.status === 'ACTIVE' ? '进行中' : '已关闭' }}</a-descriptions-item>
+      <a-descriptions-item label="状态">
+        {{ project.status === 'ACTIVE' ? '进行中' : '已关闭' }}
+      </a-descriptions-item>
       <a-descriptions-item label="开始日期">{{ project.startDate ?? '—' }}</a-descriptions-item>
-      <a-descriptions-item label="实际完工日期">{{ project.actualEndDate ?? '—' }}</a-descriptions-item>
-      <a-descriptions-item label="日志申报周期">{{ project.logCycleDays ?? 1 }} 天</a-descriptions-item>
-      <a-descriptions-item label="汇报周期">{{ project.logReportCycleDays ?? 1 }} 天</a-descriptions-item>
+      <a-descriptions-item label="实际完工日期">
+        {{ project.actualEndDate ?? '—' }}
+      </a-descriptions-item>
+      <a-descriptions-item label="日志申报周期">
+        {{ project.logCycleDays ?? 1 }} 天
+      </a-descriptions-item>
+      <a-descriptions-item label="汇报周期">
+        {{ project.logReportCycleDays ?? 1 }} 天
+      </a-descriptions-item>
       <a-descriptions-item label="客户名称">{{ project.clientName ?? '—' }}</a-descriptions-item>
       <a-descriptions-item label="合同编号">{{ project.contractNo ?? '—' }}</a-descriptions-item>
       <a-descriptions-item label="合同附件">
@@ -27,16 +35,20 @@
           :href="`/api/attachments/${project.contractAttachmentId}`"
           target="_blank"
           rel="noopener noreferrer"
-        >下载合同附件</a>
+        >
+          下载合同附件
+        </a>
         <span v-else>—</span>
       </a-descriptions-item>
-      <a-descriptions-item label="项目说明" :span="2">{{ project.projectDescription ?? '—' }}</a-descriptions-item>
+      <a-descriptions-item label="项目说明" :span="2">
+        {{ project.projectDescription ?? '—' }}
+      </a-descriptions-item>
     </a-descriptions>
 
     <!-- CEO：修改配置 -->
     <template v-if="isCeo">
       <a-divider>项目配置</a-divider>
-      <a-form layout="inline" style="margin-bottom: 16px;">
+      <a-form layout="inline" style="margin-bottom: 16px">
         <a-form-item label="日志申报周期（天）">
           <a-input-number v-model:value="configForm.logCycleDays" :min="1" :max="30" />
         </a-form-item>
@@ -44,10 +56,18 @@
           <a-input-number v-model:value="configForm.logReportCycleDays" :min="1" :max="90" />
         </a-form-item>
         <a-form-item label="客户名称">
-          <a-input v-model:value="configForm.clientName" placeholder="客户/甲方名称" style="width: 200px" />
+          <a-input
+            v-model:value="configForm.clientName"
+            placeholder="客户/甲方名称"
+            style="width: 200px"
+          />
         </a-form-item>
         <a-form-item label="合同编号">
-          <a-input v-model:value="configForm.contractNo" placeholder="合同编号" style="width: 200px" />
+          <a-input
+            v-model:value="configForm.contractNo"
+            placeholder="合同编号"
+            style="width: 200px"
+          />
         </a-form-item>
         <a-form-item label="合同附件">
           <customized-file-upload
@@ -56,14 +76,25 @@
             :max-count="1"
             accept="image/*,.pdf,.doc,.docx"
             hint="可上传合同扫描件，最多 1 个"
-            @change="(files: { attachmentId: number }[]) => { configForm.contractAttachmentId = files[0]?.attachmentId ?? null }"
+            @change="
+              (files: { attachmentId: number }[]) => {
+                configForm.contractAttachmentId = files[0]?.attachmentId ?? null
+              }
+            "
           />
         </a-form-item>
         <a-form-item label="项目说明">
-          <a-textarea v-model:value="configForm.projectDescription" :rows="2" style="width: 400px" placeholder="项目背景与说明" />
+          <a-textarea
+            v-model:value="configForm.projectDescription"
+            :rows="2"
+            style="width: 400px"
+            placeholder="项目背景与说明"
+          />
         </a-form-item>
         <a-form-item>
-          <a-button type="primary" :loading="configLoading" @click="doUpdateConfig">保存配置</a-button>
+          <a-button type="primary" :loading="configLoading" @click="doUpdateConfig">
+            保存配置
+          </a-button>
         </a-form-item>
       </a-form>
     </template>
@@ -71,7 +102,7 @@
     <!-- 成员列表 -->
     <a-divider>项目成员</a-divider>
     <template v-if="isCeo">
-      <div style="margin-bottom: 12px;">
+      <div style="margin-bottom: 12px">
         <a-space>
           <a-select
             v-model:value="addMemberForm.employeeId"
@@ -84,11 +115,18 @@
             @search="debouncedSearchEmployees"
             data-catch="project-members-user-select"
           />
-          <a-select v-model:value="addMemberForm.role" style="width: 120px;">
+          <a-select v-model:value="addMemberForm.role" style="width: 120px">
             <a-select-option value="PM">PM</a-select-option>
             <a-select-option value="MEMBER">成员</a-select-option>
           </a-select>
-          <a-button data-catch="project-members-add-btn" type="primary" :loading="addMemberLoading" @click="doAddMember">添加成员</a-button>
+          <a-button
+            data-catch="project-members-add-btn"
+            type="primary"
+            :loading="addMemberLoading"
+            @click="doAddMember"
+          >
+            添加成员
+          </a-button>
         </a-space>
       </div>
     </template>
@@ -104,7 +142,9 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'role'">
-          <a-tag :color="record.role === 'PM' ? 'blue' : 'default'">{{ record.role === 'PM' ? '项目经理' : '成员' }}</a-tag>
+          <a-tag :color="record.role === 'PM' ? 'blue' : 'default'">
+            {{ record.role === 'PM' ? '项目经理' : '成员' }}
+          </a-tag>
         </template>
         <template v-if="column.key === 'action' && isCeo">
           <a-popconfirm title="确认移除该成员？" @confirm="doRemoveMember(record.employeeId)">
@@ -117,29 +157,45 @@
     <!-- 第二角色（PM/CEO） -->
     <template v-if="isPmOrCeo">
       <a-divider>第二角色</a-divider>
-      <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: end;">
-        <a-form-item label="员工ID" style="margin: 0;">
+      <div style="margin-bottom: 12px; display: flex; gap: 8px; align-items: end">
+        <a-form-item label="员工ID" style="margin: 0">
           <input
             type="number"
             :value="srForm.employeeId"
-            @input="(e: Event) => { srForm.employeeId = Number((e.target as HTMLInputElement).value) || undefined }"
+            @input="
+              (e: Event) => {
+                srForm.employeeId = Number((e.target as HTMLInputElement).value) || undefined
+              }
+            "
             min="1"
             placeholder="输入员工ID"
             class="ant-input"
-            style="width: 200px; padding: 4px 11px;"
+            style="width: 200px; padding: 4px 11px"
           />
         </a-form-item>
-        <a-form-item label="第二角色" style="margin: 0;">
-          <a-radio-group v-model:value="srForm.roleCode" style="display: flex; flex-wrap: wrap; gap: 8px;">
+        <a-form-item label="第二角色" style="margin: 0">
+          <a-radio-group
+            v-model:value="srForm.roleCode"
+            style="display: flex; flex-wrap: wrap; gap: 8px"
+          >
             <a-radio-button
               v-for="d in srDefs"
               :key="d.code"
               :value="d.code"
               :data-catch="d.code === 'FOREMAN' ? 'second-role-option-FOREMAN' : undefined"
-            >{{ d.name }}</a-radio-button>
+            >
+              {{ d.name }}
+            </a-radio-button>
           </a-radio-group>
         </a-form-item>
-        <a-button data-catch="assign-second-role-btn" type="primary" :loading="srLoading" @click="assignSecondRole">分配</a-button>
+        <a-button
+          data-catch="assign-second-role-btn"
+          type="primary"
+          :loading="srLoading"
+          @click="assignSecondRole"
+        >
+          分配
+        </a-button>
         <a-button @click="loadSecondRoles">刷新</a-button>
       </div>
       <a-table
@@ -148,7 +204,10 @@
         :loading="srLoading"
         row-key="id"
         size="small"
-        :customRow="(record: SecondRoleAssignment) => ({ 'data-catch': 'member-row-' + record.employeeId } as Record<string, string>)"
+        :customRow="
+          (record: SecondRoleAssignment) =>
+            ({ 'data-catch': 'member-row-' + record.employeeId }) as Record<string, string>
+        "
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'roleName'">{{ srRoleName(record.roleCode) }}</template>
@@ -182,27 +241,32 @@ interface Props {
   projectId: number
 }
 const props = defineProps<Props>()
-const emit  = defineEmits<{ (e: 'refresh'): void }>()
+const emit = defineEmits<{ (e: 'refresh'): void }>()
 
 // ── 权限 ──────────────────────────────────────────────
 const userStore = useUserStore()
-const role      = computed(() => userStore.userInfo?.role ?? '')
-const isCeo     = computed(() => role.value === 'ceo')
+const role = computed(() => userStore.userInfo?.role ?? '')
+const isCeo = computed(() => role.value === 'ceo')
 const isPmOrCeo = computed(() => ['project_manager', 'ceo'].includes(role.value))
 
 // ── 成员列表（从 project.members 初始化，refresh 后更新） ─
-const members       = ref<MemberInfo[]>(props.project.members ?? [])
+const members = ref<MemberInfo[]>(props.project.members ?? [])
 const membersLoading = ref(false)
 
 // 当父页面 project 更新（refresh 后），同步成员列表
-watch(() => props.project.members, (val) => { members.value = val ?? [] })
+watch(
+  () => props.project.members,
+  (val) => {
+    members.value = val ?? []
+  }
+)
 
 const memberColumns = [
   { title: '员工ID', dataIndex: 'employeeId', key: 'employeeId', width: 80 },
   { title: '工号', dataIndex: 'employeeNo', key: 'employeeNo', width: 100 },
   { title: '姓名', dataIndex: 'name', key: 'name' },
   { title: '角色', dataIndex: 'role', key: 'role', width: 80 },
-  ...(isCeo.value ? [{ title: '操作', key: 'action', width: 80 }] : [])
+  ...(isCeo.value ? [{ title: '操作', key: 'action', width: 80 }] : []),
 ]
 
 // ── CEO 配置表单（从 project prop 初始化） ───────────────
@@ -212,22 +276,25 @@ const configForm = ref({
   clientName: props.project.clientName ?? '',
   contractNo: props.project.contractNo ?? '',
   contractAttachmentId: null as number | null,
-  projectDescription: props.project.projectDescription ?? ''
+  projectDescription: props.project.projectDescription ?? '',
 })
 const configLoading = ref(false)
 const contractFileRef = ref<{ clear: () => void } | undefined>(undefined)
 
 // 父页面 project 刷新后同步配置表单默认值（用户未修改时）
-watch(() => props.project, (p) => {
-  configForm.value.logCycleDays = p.logCycleDays ?? 1
-  configForm.value.logReportCycleDays = p.logReportCycleDays ?? 1
-  configForm.value.clientName = p.clientName ?? ''
-  configForm.value.contractNo = p.contractNo ?? ''
-  configForm.value.projectDescription = p.projectDescription ?? ''
-  // 刷新后清空上传槽（已保存的附件通过展示区的下载链接体现）
-  configForm.value.contractAttachmentId = null
-  contractFileRef.value?.clear()
-})
+watch(
+  () => props.project,
+  (p) => {
+    configForm.value.logCycleDays = p.logCycleDays ?? 1
+    configForm.value.logReportCycleDays = p.logReportCycleDays ?? 1
+    configForm.value.clientName = p.clientName ?? ''
+    configForm.value.contractNo = p.contractNo ?? ''
+    configForm.value.projectDescription = p.projectDescription ?? ''
+    // 刷新后清空上传槽（已保存的附件通过展示区的下载链接体现）
+    configForm.value.contractAttachmentId = null
+    contractFileRef.value?.clear()
+  }
+)
 
 async function doUpdateConfig() {
   configLoading.value = true
@@ -244,9 +311,10 @@ async function doUpdateConfig() {
         logReportCycleDays: configForm.value.logReportCycleDays,
         clientName: configForm.value.clientName || null,
         contractNo: configForm.value.contractNo || null,
-        contractAttachmentId: configForm.value.contractAttachmentId ?? props.project.contractAttachmentId ?? null,
-        projectDescription: configForm.value.projectDescription || null
-      }
+        contractAttachmentId:
+          configForm.value.contractAttachmentId ?? props.project.contractAttachmentId ?? null,
+        projectDescription: configForm.value.projectDescription || null,
+      },
     })
     message.success('配置已更新')
     emit('refresh')
@@ -258,17 +326,23 @@ async function doUpdateConfig() {
 }
 
 // ── 添加/移除成员 ──────────────────────────────────────
-const addMemberForm   = ref({ employeeId: undefined as number | undefined, role: 'MEMBER' })
+const addMemberForm = ref({ employeeId: undefined as number | undefined, role: 'MEMBER' })
 const addMemberLoading = ref(false)
-const employeeOptions  = ref<{ label: string; value: number }[]>([])
+const employeeOptions = ref<{ label: string; value: number }[]>([])
 
 async function searchEmployees(keyword: string) {
-  if (!keyword || keyword.length < 1) { employeeOptions.value = []; return }
+  if (!keyword || keyword.length < 1) {
+    employeeOptions.value = []
+    return
+  }
   try {
-    const res = await request<{ content: { id: number; name: string; employeeNo: string }[] }>(
-      { url: '/employees?page=0&size=20&keyword=' + encodeURIComponent(keyword) }
-    )
-    employeeOptions.value = (res.content ?? []).map(e => ({ label: e.name + ' (' + e.employeeNo + ')', value: e.id }))
+    const res = await request<{ content: { id: number; name: string; employeeNo: string }[] }>({
+      url: '/employees?page=0&size=20&keyword=' + encodeURIComponent(keyword),
+    })
+    employeeOptions.value = (res.content ?? []).map((e) => ({
+      label: e.name + ' (' + e.employeeNo + ')',
+      value: e.id,
+    }))
   } catch {
     employeeOptions.value = []
   }
@@ -291,7 +365,7 @@ async function doAddMember() {
     await request({
       url: `/projects/${props.projectId}/members`,
       method: 'POST',
-      body: { employeeId: addMemberForm.value.employeeId, role: addMemberForm.value.role }
+      body: { employeeId: addMemberForm.value.employeeId, role: addMemberForm.value.role },
     })
     message.success('成员已添加')
     addMemberForm.value = { employeeId: undefined, role: 'MEMBER' }
@@ -313,69 +387,87 @@ async function doRemoveMember(employeeId: number) {
   }
 }
 
-// ── 第二角色员工搜索（独立 options，不与成员添加下拉共用） ─────────
-const srEmployeeOptions = ref<{ label: string; value: number }[]>([])
-let srSearchTimer: ReturnType<typeof setTimeout> | null = null
-
-function debouncedSearchSrEmployees(keyword: string) {
-  if (srSearchTimer) clearTimeout(srSearchTimer)
-  srSearchTimer = setTimeout(async () => {
-    if (!keyword || keyword.length < 1) { srEmployeeOptions.value = []; return }
-    try {
-      const res = await request<{ content: { id: number; name: string; employeeNo: string }[] }>(
-        { url: '/employees?page=0&size=20&keyword=' + encodeURIComponent(keyword) }
-      )
-      srEmployeeOptions.value = (res.content ?? []).map(e => ({ label: e.name + ' (' + e.employeeNo + ')', value: e.id }))
-    } catch {
-      srEmployeeOptions.value = []
-    }
-  }, 300)
+// ── 第二角色 ───────────────────────────────────────────
+interface SecondRoleDef {
+  code: string
+  name: string
+  appliesTo: 'OFFICE' | 'LABOR'
+  projectBound: boolean
+}
+interface SecondRoleAssignment {
+  id: number
+  employeeId: number
+  roleCode: string
+  projectId: number | null
 }
 
-// ── 第二角色 ───────────────────────────────────────────
-interface SecondRoleDef { code: string; name: string; appliesTo: 'OFFICE' | 'LABOR'; projectBound: boolean }
-interface SecondRoleAssignment { id: number; employeeId: number; roleCode: string; projectId: number | null }
-
-const srDefs        = ref<SecondRoleDef[]>([])
+const srDefs = ref<SecondRoleDef[]>([])
 const srAssignments = ref<SecondRoleAssignment[]>([])
-const srLoading     = ref(false)
-const srForm        = ref<{ employeeId: number | undefined; roleCode: string | undefined }>({ employeeId: undefined, roleCode: undefined })
+const srLoading = ref(false)
+const srForm = ref<{ employeeId: number | undefined; roleCode: string | undefined }>({
+  employeeId: undefined,
+  roleCode: undefined,
+})
 
 const srColumns = [
   { title: '员工 ID', dataIndex: 'employeeId', key: 'employeeId', width: 100 },
   { title: '角色', key: 'roleName' },
-  { title: '操作', key: 'action', width: 100 }
+  { title: '操作', key: 'action', width: 100 },
 ]
 
 async function loadSecondRoleDefs() {
   if (srDefs.value.length) return
-  try { srDefs.value = await request<SecondRoleDef[]>({ url: '/second-roles/defs' }) ?? [] } catch { srDefs.value = [] }
+  try {
+    srDefs.value = (await request<SecondRoleDef[]>({ url: '/second-roles/defs' })) ?? []
+  } catch {
+    srDefs.value = []
+  }
 }
 
 async function loadSecondRoles() {
   srLoading.value = true
   try {
-    srAssignments.value = await request<SecondRoleAssignment[]>({ url: `/second-roles?projectId=${props.projectId}` }) ?? []
-  } catch { srAssignments.value = [] } finally { srLoading.value = false }
+    srAssignments.value =
+      (await request<SecondRoleAssignment[]>({
+        url: `/second-roles?projectId=${props.projectId}`,
+      })) ?? []
+  } catch {
+    srAssignments.value = []
+  } finally {
+    srLoading.value = false
+  }
 }
 
-function srRoleName(code: string) { return srDefs.value.find(d => d.code === code)?.name ?? code }
+function srRoleName(code: string) {
+  return srDefs.value.find((d) => d.code === code)?.name ?? code
+}
 
 async function assignSecondRole() {
-  if (!srForm.value.employeeId || !srForm.value.roleCode) { message.warning('请选择员工与第二角色'); return }
+  if (!srForm.value.employeeId || !srForm.value.roleCode) {
+    message.warning('请选择员工与第二角色')
+    return
+  }
   try {
-    await request({ url: '/second-roles', method: 'POST', body: {
-      employeeId: srForm.value.employeeId, roleCode: srForm.value.roleCode, projectId: props.projectId
-    }})
+    await request({
+      url: '/second-roles',
+      method: 'POST',
+      body: {
+        employeeId: srForm.value.employeeId,
+        roleCode: srForm.value.roleCode,
+        projectId: props.projectId,
+      },
+    })
     message.success('已分配')
     srForm.value = { employeeId: undefined, roleCode: undefined }
-    srEmployeeOptions.value = []
     await loadSecondRoles()
   } catch {}
 }
 
 async function revokeSecondRole(id: number) {
-  try { await request({ url: `/second-roles/${id}`, method: 'DELETE' }); await loadSecondRoles() } catch {}
+  try {
+    await request({ url: `/second-roles/${id}`, method: 'DELETE' })
+    await loadSecondRoles()
+  } catch {}
 }
 
 // ── 初始化 ─────────────────────────────────────────────

@@ -1,0 +1,17 @@
+node_modules
+dist
+.nuxt
+.output
+.cache
+coverage
+*.min.js
+*.min.css
+server/target
+server/.mvn
+app/mp/dist
+app/mp/node_modules
+app/h5/.nuxt
+app/h5/.output
+app/h5/node_modules
+test-results
+playwright-report

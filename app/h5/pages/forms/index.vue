@@ -14,7 +14,7 @@
             :pagination="pagination"
             row-key="id"
             size="small"
-            :customRow="(record: FormRecord) => ({'data-catch': 'form-list-item'} as any)"
+            :customRow="(record: FormRecord) => ({ 'data-catch': 'form-list-item' }) as any"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'submitTime'">
@@ -26,7 +26,12 @@
                 </a-tag>
               </template>
               <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" :data-catch="'forms-row-view-btn-' + record.id" @click="openDetail(record as FormRecord)">
+                <a-button
+                  type="link"
+                  size="small"
+                  :data-catch="'forms-row-view-btn-' + record.id"
+                  @click="openDetail(record as FormRecord)"
+                >
                   查看
                 </a-button>
               </template>
@@ -43,7 +48,7 @@
             :pagination="pagination"
             row-key="id"
             size="small"
-            :customRow="(record: FormRecord) => ({'data-catch': 'form-list-item'} as any)"
+            :customRow="(record: FormRecord) => ({ 'data-catch': 'form-list-item' }) as any"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'submitTime'">
@@ -55,7 +60,12 @@
                 </a-tag>
               </template>
               <template v-if="column.key === 'action'">
-                <a-button type="link" size="small" :data-catch="'forms-row-view-btn-' + record.id" @click="openDetail(record as FormRecord)">
+                <a-button
+                  type="link"
+                  size="small"
+                  :data-catch="'forms-row-view-btn-' + record.id"
+                  @click="openDetail(record as FormRecord)"
+                >
                   查看
                 </a-button>
               </template>
@@ -66,12 +76,7 @@
     </a-card>
 
     <!-- Detail Drawer -->
-    <a-drawer
-      v-model:open="drawerOpen"
-      title="表单详情"
-      placement="right"
-      width="520"
-    >
+    <a-drawer v-model:open="drawerOpen" title="表单详情" placement="right" width="520">
       <template v-if="selectedForm">
         <div class="detail-section">
           <div class="detail-row">
@@ -107,9 +112,16 @@
         </div>
 
         <!-- Form Data -->
-        <div v-if="selectedForm.formData && Object.keys(selectedForm.formData).length > 0" class="detail-section">
+        <div
+          v-if="selectedForm.formData && Object.keys(selectedForm.formData).length > 0"
+          class="detail-section"
+        >
           <h4 class="section-title">表单数据</h4>
-          <div class="detail-row" v-for="[key, value] in Object.entries(selectedForm.formData)" :key="key">
+          <div
+            class="detail-row"
+            v-for="[key, value] in Object.entries(selectedForm.formData)"
+            :key="key"
+          >
             <span class="detail-label">{{ formatKey(key) }}:</span>
             <span class="detail-value">{{ formatValue(value, key) }}</span>
           </div>
@@ -139,7 +151,12 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { request } from '~/utils/http'
-import { getFieldLabel, getLeaveTypeLabel, getOvertimeTypeLabel, getExpenseTypeLabel, formatFormSummary } from '../../../shared/utils/formLabels'
+import {
+  getFieldLabel,
+  getLeaveTypeLabel,
+  getOvertimeTypeLabel,
+  getExpenseTypeLabel,
+} from '../../../shared/utils/formLabels'
 
 // Types
 interface HistoryItem {
@@ -176,7 +193,7 @@ const selectedForm = ref<FormRecord | null>(null)
 const pagination = {
   showSizeChanger: false,
   showTotal: (total: number) => `共 ${total} 条`,
-  pageSize: 20
+  pageSize: 20,
 }
 
 const columns = [
@@ -185,7 +202,7 @@ const columns = [
   { title: '提交人', dataIndex: 'submitter', key: 'submitter' },
   { title: '提交时间', key: 'submitTime' },
   { title: '状态', key: 'status', width: 100 },
-  { title: '操作', key: 'action', width: 100 }
+  { title: '操作', key: 'action', width: 100 },
 ]
 
 // Methods
@@ -193,7 +210,7 @@ const STATUS_LABELS: Record<string, string> = {
   PENDING: '待审批',
   APPROVED: '已通过',
   REJECTED: '已驳回',
-  CANCELLED: '已取消'
+  CANCELLED: '已取消',
 }
 
 function getStatusLabel(status: string): string {
@@ -207,7 +224,7 @@ const HISTORY_ACTION_LABELS: Record<string, string> = {
   REJECTED: '驳回',
   SKIP: '跳过',
   SUBMIT: '提交',
-  RECALL: '撤回'
+  RECALL: '撤回',
 }
 
 function getHistoryActionLabel(action: string): string {
@@ -219,7 +236,7 @@ function getStatusColor(status: string): string {
     PENDING: 'blue',
     APPROVED: 'green',
     REJECTED: 'red',
-    CANCELLED: 'gray'
+    CANCELLED: 'gray',
   }
   return colorMap[status] || 'default'
 }
@@ -265,7 +282,7 @@ async function loadForms() {
   loading.value = true
   try {
     const data = await request<FormRecord[]>({
-      url: '/forms/history?formTypes=LEAVE,OVERTIME,EXPENSE'
+      url: '/forms/history?formTypes=LEAVE,OVERTIME,EXPENSE',
     })
     // For now, backend filters by role; we assign to both tabs
     submissions.value = data ?? []
