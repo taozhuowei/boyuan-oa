@@ -148,6 +148,33 @@ describe('loginWithAccount', () => {
     await expect(loginWithAccount({ identifier: 'employee.demo', password: 'wrong-password' }))
       .rejects.toThrow('账号或密码错误')
   })
+
+  it('API 成功但后端未返回 roleName 且 role 不在 roleNameMap 中时 fallback 到 role code 本身', async () => {
+    mockRequest.mockResolvedValueOnce({
+      token: 't',
+      username: 'x',
+      role: 'unknown_role',
+      displayName: 'X',
+      userId: 1,
+      // 故意不提供 roleName，且 unknown_role 不在 roleNameMap 中
+    })
+
+    const result = await loginWithAccount({ identifier: 'x', password: 'p' })
+    expect(result.user.roleName).toBe('unknown_role')
+  })
+
+  it('API 成功时 secondRoles 从响应中返回', async () => {
+    mockRequest.mockResolvedValueOnce({
+      token: 't',
+      username: 'x',
+      role: 'employee',
+      displayName: 'X',
+      secondRoles: ['hr', 'finance'],
+    })
+
+    const result = await loginWithAccount({ identifier: 'x', password: 'p' })
+    expect(result.user.secondRoles).toEqual(['hr', 'finance'])
+  })
 })
 
 // ─── fetchRoles ──────────────────────────────────────────────────────────────

@@ -17,9 +17,8 @@ vi.stubGlobal('$fetch', mockFetch)
 vi.stubGlobal('navigateTo', mockNavigateTo)
 vi.stubGlobal('useUserStore', () => ({ logout: mockLogout }))
 
-// Note: import.meta.client is falsy in jsdom (not a Vite browser build),
-// so the 401 redirect branch inside request() does NOT execute in unit tests.
-// The redirect behavior is covered by E2E tests instead.
+// Note: import.meta.client is falsy in jsdom (not a Vite browser build).
+// The 401 redirect branch is covered by passing _isClient=true as the second argument.
 
 import { request } from '@/utils/http'
 
@@ -102,6 +101,26 @@ describe('request', () => {
     mockFetch.mockRejectedValue(error)
 
     await expect(request({ url: '/test' })).rejects.toThrow('Server Error')
+    expect(mockLogout).not.toHaveBeenCalled()
+    expect(mockNavigateTo).not.toHaveBeenCalled()
+  })
+
+  it('401 错误且 _isClient=true 时触发 logout 和 navigateTo("/login")', async () => {
+    const error = Object.assign(new Error('Unauthorized'), { statusCode: 401 })
+    mockFetch.mockRejectedValue(error)
+
+    await expect(request({ url: '/secure' }, true)).rejects.toThrow('Unauthorized')
+    expect(mockLogout).toHaveBeenCalledTimes(1)
+    expect(mockNavigateTo).toHaveBeenCalledWith('/login')
+  })
+
+  it('401 错误且 skipAuthRedirect=true 时即使 _isClient=true 也不触发退出', async () => {
+    const error = Object.assign(new Error('Unauthorized'), { statusCode: 401 })
+    mockFetch.mockRejectedValue(error)
+
+    await expect(request({ url: '/secure', skipAuthRedirect: true }, true)).rejects.toThrow(
+      'Unauthorized',
+    )
     expect(mockLogout).not.toHaveBeenCalled()
     expect(mockNavigateTo).not.toHaveBeenCalled()
   })

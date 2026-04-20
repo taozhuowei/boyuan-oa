@@ -10,7 +10,7 @@ export interface RequestOptions {
   skipAuthRedirect?: boolean
 }
 
-export async function request<T>(options: RequestOptions): Promise<T> {
+export async function request<T>(options: RequestOptions, _isClient = import.meta.client): Promise<T> {
   const tokenCookie = useCookie<string | null>('oa-token')
   const headers: Record<string, string> = { 'X-Client-Type': 'web' }
   if (tokenCookie.value) {
@@ -25,7 +25,7 @@ export async function request<T>(options: RequestOptions): Promise<T> {
     })
   } catch (err: unknown) {
     const status = (err as { statusCode?: number }).statusCode
-    if (status === 401 && !options.skipAuthRedirect && import.meta.client) {
+    if (status === 401 && !options.skipAuthRedirect && _isClient) {
       const store = useUserStore()
       store.logout()
       await navigateTo('/login')
