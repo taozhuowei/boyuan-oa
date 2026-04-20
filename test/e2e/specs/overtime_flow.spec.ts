@@ -16,8 +16,8 @@
  *   - OvertimeTab 的时长显示元素没有 data-catch，用文本内容或 CSS 定位。
  */
 import { test, expect, request } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { API_URL } from '../playwright.config'
 
 /** 跨 test 共享：加班补申报的表单记录 ID */

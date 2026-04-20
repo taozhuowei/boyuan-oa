@@ -15,8 +15,8 @@
  *     dept_manager；finance 只能在第二节点后审批。test 3 仅验证审批流推进。
  */
 import { test, expect, request } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { API_URL } from '../playwright.config'
 
 /** 跨 test 共享的报销单 ID（test 2 写入，test 3 读取） */

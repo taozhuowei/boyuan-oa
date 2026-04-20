@@ -4,8 +4,8 @@
  * 对应 test/e2e/TEST_DESIGN.md §E2E-09
  */
 import { test, expect, request } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { API_URL } from '../playwright.config'
 
 // Shared state across tests within this describe block

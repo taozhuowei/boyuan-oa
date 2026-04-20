@@ -7,7 +7,7 @@ server:
 
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/oa_test
+    url: jdbc:postgresql://localhost:5433/oa_test
     driver-class-name: org.postgresql.Driver
     username: oa_dev
     password: oa_dev_password

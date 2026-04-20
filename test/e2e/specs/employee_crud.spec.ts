@@ -14,8 +14,8 @@
  *   - employee_id 和 employee_no 通过模块级变量在各 test 间共享。
  */
 import { test, expect, request } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { API_URL } from '../playwright.config'
 
 /** 跨 test 共享：新创建员工的 DB id */

@@ -73,11 +73,12 @@
             <artifactId>flyway-core</artifactId>
         </dependency>
 
-        <!-- H2 保留供 ArchUnit 等不需要数据库的纯单元测试使用（test scope） -->
+        <!-- H2: runtime for default profile (local dev); test for unit tests.
+             Production profile overrides to PostgreSQL, H2 on classpath is harmless there. -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
 
         <!-- MyBatis Spring - 覆盖版本以兼容 Spring 6 -->

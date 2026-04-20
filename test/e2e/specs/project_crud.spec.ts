@@ -10,7 +10,7 @@
  * API 文档：DESIGN.md §项目管理。
  */
 import { test, expect, request } from '@playwright/test'
-import { loginViaApi } from '../fixtures/auth'
+import { loginViaApi } from '../../tools/fixtures/auth'
 import { API_URL } from '../playwright.config'
 
 // Shared state across tests in this describe block

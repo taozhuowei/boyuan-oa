@@ -5,7 +5,7 @@
  * 对应 test/e2e/TEST_DESIGN.md §E2E-13
  */
 import { test, expect, request } from '@playwright/test'
-import { loginViaApi } from '../fixtures/auth'
+import { loginViaApi } from '../../tools/fixtures/auth'
 import { API_URL } from '../playwright.config'
 
 test.describe('C-E2E-13 数字计算与零值校验', () => {

@@ -15,8 +15,8 @@
  *   - UI test 3 仅验证页面加载和关键 DOM 存在，不依赖项目种子数据。
  */
 import { test, expect, request } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { API_URL } from '../playwright.config'
 
 /** 跨 test 共享：施工日志表单记录 ID */

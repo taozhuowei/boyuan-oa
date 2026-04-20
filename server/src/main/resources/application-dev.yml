@@ -2,7 +2,7 @@
 # Activate with: mvn spring-boot:run -Dspring-boot.run.profiles=dev
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/oa_dev
+    url: jdbc:postgresql://localhost:5433/oa_dev
     driver-class-name: org.postgresql.Driver
     username: oa_dev
     password: oa_dev_password

@@ -6,8 +6,8 @@
  * 注意：步骤 6（重新结算）依赖 E2E-06 步骤 8（CEO 审批解锁），需跨 spec 协调。
  */
 import { test, expect, request as pwRequest } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { API_URL } from '../playwright.config'
 
 test.beforeAll(async () => {

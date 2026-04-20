@@ -5,7 +5,7 @@
  * 对应 test/e2e/TEST_DESIGN.md §E2E-14
  */
 import { test, expect, request } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
 import { API_URL } from '../playwright.config'
 
 test.describe('C-E2E-14 密码修改错误提示回归', () => {

@@ -5,8 +5,8 @@
  * 前置：dev profile 已启动，业务数据已重置。
  */
 import { test, expect } from '@playwright/test'
-import { loginAs } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 
 test.beforeAll(async () => {
   await resetData()

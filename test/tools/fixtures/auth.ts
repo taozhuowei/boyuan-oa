@@ -9,7 +9,8 @@
  * 数据来源：local/seed-data.sql（dev profile 本地手动执行一次）。
  */
 import { request as playwrightRequest, BrowserContext } from '@playwright/test'
-import { API_URL } from '../playwright.config'
+
+const API_URL = process.env.E2E_API_URL ?? 'http://localhost:8080/api'
 
 export type RoleKey = 'ceo' | 'hr' | 'finance' | 'pm' | 'employee' | 'worker' | 'dept_manager'
 
@@ -64,8 +65,6 @@ export async function loginViaApi(role: RoleKey): Promise<{ token: string; user:
 export async function loginAs(context: BrowserContext, role: RoleKey): Promise<void> {
   const { token, user } = await loginViaApi(role)
 
-  // Nuxt useCookie reads from document.cookie (client) or request header (SSR)
-  // Playwright context.addCookies sets cookies visible to the browser
   await context.addCookies([
     {
       name: 'oa-token',

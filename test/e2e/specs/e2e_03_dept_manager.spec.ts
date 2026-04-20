@@ -6,8 +6,8 @@
  * 本套件在 E2E-01 之后运行以复用已提交的请假单。
  */
 import { test, expect, request as pwRequest } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { ApprovalPage } from '../pages/ApprovalPage'
 import { API_URL } from '../playwright.config'
 

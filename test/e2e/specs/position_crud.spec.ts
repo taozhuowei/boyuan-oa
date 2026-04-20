@@ -17,7 +17,7 @@
  * 参考：test/e2e/TEST_DESIGN.md §C-E2E-08
  */
 import { test, expect, request } from '@playwright/test'
-import { loginViaApi } from '../fixtures/auth'
+import { loginViaApi } from '../../tools/fixtures/auth'
 import { API_URL } from '../playwright.config'
 
 // Shared state across tests — initialised to sentinel -1 (means "not yet created")

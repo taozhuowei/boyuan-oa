@@ -3,8 +3,8 @@
  * employee 提交请假 → dept_manager 驳回（填驳回原因）→ employee 查看驳回原因 → 重新提交
  */
 import { test, expect, request } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { API_URL } from '../playwright.config'
 
 // Shared state: id of the rejected form

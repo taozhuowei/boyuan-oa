@@ -5,8 +5,8 @@
  * 前置：各角色已提交待审批单据；薪资更正申请来自 E2E-05 步骤 5。
  */
 import { test, expect, request as pwRequest } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { API_URL } from '../playwright.config'
 
 test.beforeAll(async () => {

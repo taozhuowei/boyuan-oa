@@ -10,7 +10,7 @@
  * 测试设计参见 test/e2e/TEST_DESIGN.md §E2E-09
  */
 import { test, expect, request } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
 import { API_URL } from '../playwright.config'
 
 // Shared across tests — populated in 09-1, guarded in 09-2 and 09-3

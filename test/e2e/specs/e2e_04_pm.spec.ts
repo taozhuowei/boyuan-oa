@@ -5,8 +5,8 @@
  * 前置：劳工已提交工伤申报和施工日志（PENDING）。
  */
 import { test, expect, request as pwRequest } from '@playwright/test'
-import { loginAs } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { ApprovalPage } from '../pages/ApprovalPage'
 import { API_URL } from '../playwright.config'
 

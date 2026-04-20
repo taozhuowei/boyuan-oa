@@ -13,8 +13,8 @@
  *   - 跨 test 共享 cycleId 和 slipId 通过模块级变量传递。
  */
 import { test, expect, request } from '@playwright/test'
-import { loginAs, loginViaApi } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs, loginViaApi } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { API_URL } from '../playwright.config'
 
 /** 跨 test 共享：finance 创建的薪资周期 ID */

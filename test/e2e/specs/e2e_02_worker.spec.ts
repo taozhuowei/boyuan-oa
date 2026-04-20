@@ -7,8 +7,8 @@
  * 或在 beforeAll 中由 pm 账号预先完成分配。
  */
 import { test, expect, request as pwRequest } from '@playwright/test'
-import { loginAs } from '../fixtures/auth'
-import { resetData } from '../fixtures/reset'
+import { loginAs } from '../../tools/fixtures/auth'
+import { resetData } from '../../tools/fixtures/reset'
 import { WorkbenchPage } from '../pages/WorkbenchPage'
 import { FormsPage } from '../pages/FormsPage'
 import { API_URL } from '../playwright.config'
