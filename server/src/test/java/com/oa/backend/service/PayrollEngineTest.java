@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oa.backend.entity.*;
+import com.oa.backend.exception.BusinessException;
 import com.oa.backend.mapper.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -60,6 +61,9 @@ class PayrollEngineTest {
     when(payrollBonusService.listApprovedByCycleEmployee(anyLong(), anyLong()))
         .thenReturn(List.of());
     when(payrollBonusService.syncFromApprovalForms(anyLong())).thenReturn(0);
+    // C+-F-12: selectForUpdate 在单元测试中委托给 selectById（同等语义，无 FOR UPDATE SQL 语法）
+    when(cycleMapper.selectForUpdate(anyLong()))
+        .thenAnswer(inv -> cycleMapper.selectById((Long) inv.getArgument(0)));
   }
 
   // ─── createCycle ─────────────────────────────────────────────
@@ -169,12 +173,16 @@ class PayrollEngineTest {
   // ─── settle：既有覆盖 ────────────────────────────────────────
 
   @Test
-  @DisplayName("settle：非允许状态抛异常")
+  @DisplayName("settle：已结算状态抛 BusinessException 409（C+-F-12 幂等检查）")
   void settle_requiresAllowedState() {
     PayrollCycle cycle = createCycleWithStatus("SETTLED");
     when(cycleMapper.selectById(TEST_CYCLE_ID)).thenReturn(cycle);
 
-    assertThrows(IllegalStateException.class, () -> engine.settle(TEST_CYCLE_ID));
+    // C+-F-12: SETTLED 状态现在抛出 BusinessException(409) 而非 IllegalStateException
+    BusinessException ex =
+        assertThrows(BusinessException.class, () -> engine.settle(TEST_CYCLE_ID));
+    assertEquals(409, ex.getCode());
+    assertTrue(ex.getMessage().contains("已结算"));
   }
 
   @Test

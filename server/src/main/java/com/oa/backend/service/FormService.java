@@ -10,8 +10,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 /** 表单服务类 负责处理表单的提交、查询和历史记录管理 */
 @Slf4j
@@ -36,11 +39,12 @@ public class FormService {
    * @param formType 表单类型
    * @param formDataJson 表单数据 JSON 字符串
    * @param remark 备注
+   * @param idemKey 幂等键（可为 null），来自 X-Idempotency-Key 请求头；重复提交时抛 409
    * @return 表单记录响应
    */
   @Transactional
   public FormRecordResponse submitForm(
-      Long submitterId, String formType, String formDataJson, String remark) {
+      Long submitterId, String formType, String formDataJson, String remark, String idemKey) {
     // 验证表单类型是否有对应的审批流定义
     ApprovalFlowDef flowDef = approvalFlowDefMapper.findActiveByBusinessType(formType);
     if (flowDef == null) {
@@ -55,11 +59,20 @@ public class FormService {
     formRecord.setStatus("PENDING"); // initFlow will update to APPROVING once nodes are assigned
     formRecord.setCurrentNodeOrder(0);
     formRecord.setRemark(remark);
+    formRecord.setIdemKey(idemKey);
     formRecord.setCreatedAt(LocalDateTime.now());
     formRecord.setUpdatedAt(LocalDateTime.now());
     formRecord.setDeleted(0);
 
-    formRecordMapper.insert(formRecord);
+    try {
+      formRecordMapper.insert(formRecord);
+    } catch (DataIntegrityViolationException ex) {
+      String cause = ex.getMostSpecificCause().getMessage();
+      if (cause != null && cause.contains("uq_form_record_submitter_idem")) {
+        throw new ResponseStatusException(HttpStatus.CONFLICT, "重复提交，请勿重复操作");
+      }
+      throw ex;
+    }
 
     // 初始化审批流
     approvalFlowService.initFlow(formRecord.getId(), formType, submitterId);

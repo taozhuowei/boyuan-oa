@@ -128,6 +128,7 @@
  * Exposes loadNotifications / loadInitiatedNotifs for parent ?tab= deep-link support.
  */
 import { ref, watch, onMounted } from 'vue'
+import { message } from 'ant-design-vue'
 import { request } from '~/utils/http'
 
 type NotifyMode = 'notifications' | 'notify-initiated'
@@ -257,7 +258,7 @@ async function respondNotif(id: number, accepted: boolean, reason: string) {
     })
     await loadNotifications()
   } catch (e: unknown) {
-    alert((e as Error).message ?? '操作失败')
+    message.error((e as Error).message ?? '操作失败')
   }
 }
 
@@ -269,7 +270,7 @@ function openRejectModal(id: number) {
 
 async function confirmReject() {
   if (!pending_reject_id.value || !reject_reason.value.trim()) {
-    alert('请填写拒绝原因')
+    message.warning('请填写拒绝原因')
     return
   }
   await respondNotif(pending_reject_id.value, false, reject_reason.value)

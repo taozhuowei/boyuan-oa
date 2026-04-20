@@ -9,5 +9,5 @@ import jakarta.validation.constraints.NotBlank;
  * @param password 密码
  */
 public record AuthPasswordLoginRequest(
-    @NotBlank(message = "username must not be blank") String username,
-    @NotBlank(message = "password must not be blank") String password) {}
+    @NotBlank(message = "用户名不能为空") String username,
+    @NotBlank(message = "密码不能为空") String password) {}

@@ -1389,6 +1389,56 @@
   - 补充确认的设计内容：AllowanceDef 条目定义、三级覆盖（GLOBAL→POSITION→EMPLOYEE）、单月临时覆盖层、批量多选（岗位/个人）、唯一性约束、扣款同结构、五险一金两种模式（公司代缴 / 公司补贴）
   - 验收：DESIGN.md §6 完整描述上述规则，Phase D D-PAY-BIZ 可直接对照执行
 
+- `[x]` **C+-F-06 校验错误消息改为纯中文**
+  - `GlobalExceptionHandler` 对 `MethodArgumentNotValidException` 的处理，当前返回 `"{fieldName}: {defaultMessage}"` 格式，字段名为 camelCase 英文
+  - 改为只返回 `defaultMessage`（注解上的 message 属性），并确保所有 Bean Validation 注解的 message 均为中文
+  - 验收：POST /api/employees name="" 返回 400，响应体 message 为纯中文，不含 "name:"、"must not be blank" 等英文
+
+- `[x]` **C+-F-07 请假/加班/工伤 formData 改为独立 DTO + 字段级校验**
+  - `FormSubmitRequest.formData` 当前为 `Map<String,Object>`，无服务端字段校验
+  - 新增 `LeaveFormData`、`OvertimeFormData`、`InjuryFormData` 三个 DTO，各含字段注解（@NotBlank/@NotNull/@Valid 等）
+  - 请假：leaveType(@NotBlank)、startDate(@NotNull)、endDate(@NotNull，且 >= startDate)、reason(@NotBlank)
+  - 加班：date(@NotNull)、startTime(@NotNull)、endTime(@NotNull，且 > startTime)、type(@NotBlank)
+  - 工伤：injuryDate(@NotNull)、injuryTime(@NotNull)、description(@NotBlank)、diagnosis(@NotBlank)
+  - 验收：各 formData 缺少必填字段时返回 400，中文错误提示；日期/时间顺序错误返回 400
+
+- `[x]` **C+-F-08 员工手机号加 @Pattern 校验**
+  - `EmployeeCreateRequest.phone` 和 `EmployeeUpdateRequest.phone` 加 `@Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确")` （允许 null，非必填）
+  - 验收：POST /api/employees phone="abc123" 返回 400，message 含"手机号格式不正确"
+
+- `[x]` **C+-F-09 报销明细金额加 @Positive 校验**
+  - `ExpenseItemDto.amount` 加 `@Positive(message = "明细金额必须大于0")`
+  - 验收：提交报销明细 amount=-50 返回 400，message 含"明细金额必须大于0"
+
+- `[x]` **C+-F-10 登录加 Bucket4j 限速**
+  - 引入 `bucket4j-core`，在 `AuthController.login` 或 Security Filter 层对每个 IP 限速：15 分钟内失败超 20 次返回 429
+  - 响应体 message 为"登录尝试过于频繁，请 15 分钟后重试"
+  - 验收：连续发送 21 次错误密码请求，第 21 次返回 429，响应体 message 为中文
+
+- `[x]` **C+-F-11 JWT Filter 校验账号激活状态**
+  - `JwtAuthenticationFilter` 在验签通过后额外查询 `employee.account_status`，若非 ACTIVE 返回 401
+  - 可加简单本地缓存（5 分钟 TTL）减少 DB 查询
+  - 验收：HR 禁用 employee.demo 后，用该账号已有 token 调 GET /api/employees，返回 401
+
+- `[x]` **C+-F-12 薪资结算加行级锁与幂等前置检查**
+  - `PayrollCycleService.settle()` 加 `SELECT ... FOR UPDATE`，结算前检查周期状态是否已结算，若是返回 409
+  - 验收：两个并发 settle 请求，一个 200，另一个 409，数据库不产生重复工资条
+
+- `[x]` **C+-F-13 表单提交加幂等键**
+  - 前端提交请假/加班/报销/工伤时在 header 带 `X-Idempotency-Key`（UUID，每次打开表单生成一次）
+  - 后端在 form_record 表加唯一约束 `(submitter_id, idem_key)`，重复请求返回 409
+  - 验收：100ms 内发送 2 次相同请假请求，一个 201，另一个 409，数据库只有 1 条记录
+
+- `[x]` **C+-F-14 前端 alert() 统一改 AntD message**
+  - 请假(`LeaveTab.vue`)、加班(`OvertimeTab.vue`)、报销(`expense/apply/index.vue`)、工伤(`injury/index.vue`) 的提交成功/失败均使用 `alert()`
+  - 全部改为 `message.success(...)` / `message.error(...)`（AntD 的 `useMessage` 或全局 `message`）
+  - 验收：提交成功/失败后页面内出现 AntD toast，浏览器无原生弹窗
+
+- `[x]` **C+-F-15 假期扣款比例前后端范围校验**
+  - 后端 `LeaveTypeDef.deductionRate` 加 `@DecimalMin("0.0") @DecimalMax("1.0")` 注解（或在 Service 层校验）
+  - 前端假期类型表单扣款比例字段加 rules 校验 0~1
+  - 验收：deductionRate=2.0 返回 400，提示中文；deductionRate=-0.1 返回 400
+
 ---
 
 ### C+-TEST — 全维度测试执行（五轮，全通过才能继续）

@@ -1,5 +1,7 @@
 package com.oa.backend.controller;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import com.oa.backend.dto.AuthLoginRequest;
 import com.oa.backend.dto.AuthLoginResponse;
 import com.oa.backend.dto.AuthPasswordLoginRequest;
@@ -8,8 +10,13 @@ import com.oa.backend.security.JwtTokenService;
 import com.oa.backend.service.AccessManagementService;
 import com.oa.backend.service.AuthDataService;
 import com.oa.backend.service.EmployeeService;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.time.Duration;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +36,8 @@ import org.springframework.web.server.ResponseStatusException;
 /**
  * 核心认证控制器 负责处理用户登录、登出、当前用户信息查询以及密码修改。 密码重置流程（忘记密码）由 PasswordResetController 负责。 手机号变更流程由
  * PhoneChangeController 负责。 辅助数据查询（角色名/部门名/第二角色）委托 {@link AuthDataService}。
+ *
+ * <p>C+-F-10: 登录接口加 Bucket4j 限速（15 分钟内 20 次失败）。
  */
 @Slf4j
 @RestController
@@ -36,23 +45,53 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class AuthController {
 
+  /** C+-F-10: 以请求 IP 为 key 的令牌桶缓存；15 分钟后自动过期，防止内存泄漏。 */
+  private final Cache<String, Bucket> loginFailBuckets =
+      Caffeine.newBuilder().expireAfterWrite(Duration.ofMinutes(15)).build();
+
   private final JwtTokenService jwtTokenService;
   private final AccessManagementService accessManagementService;
   private final EmployeeService employeeService;
   private final AuthDataService authDataService;
   private final PasswordEncoder passwordEncoder;
 
+  /** C+-F-10: 为指定 IP 获取或创建令牌桶（15 分钟填充 20 个令牌，即允许 20 次失败）。 */
+  private Bucket getLoginBucket(String ip) {
+    return loginFailBuckets.get(
+        ip,
+        k ->
+            Bucket.builder()
+                .addLimit(
+                    Bandwidth.builder()
+                        .capacity(20)
+                        .refillIntervally(20, Duration.ofMinutes(15))
+                        .build())
+                .build());
+  }
+
   /**
    * 职责：处理用户密码登录请求，验证用户身份并返回JWT令牌 请求含义：提交用户名和密码进行身份验证 响应含义：返回包含JWT令牌的用户认证信息，包括用户名、显示名称、角色、部门等
    * 权限期望：无需认证，任何用户均可访问
+   *
+   * <p>C+-F-10: 登录失败时消耗令牌；超限返回 429。
    */
   @PostMapping("/login")
-  public ResponseEntity<AuthLoginResponse> login(
-      @Valid @RequestBody AuthPasswordLoginRequest request) {
+  public ResponseEntity<?> login(
+      @Valid @RequestBody AuthPasswordLoginRequest request, HttpServletRequest httpRequest) {
+    String clientIp = httpRequest.getRemoteAddr();
+    Bucket bucket = getLoginBucket(clientIp);
+
     Optional<Employee> employeeOpt =
         employeeService.authenticate(request.username(), request.password());
 
     if (employeeOpt.isEmpty()) {
+      // 失败时消耗一个令牌；令牌耗尽则返回 429
+      if (!bucket.tryConsume(1)) {
+        Map<String, Object> tooManyBody = new LinkedHashMap<>();
+        tooManyBody.put("code", 429);
+        tooManyBody.put("message", "登录尝试过于频繁，请 15 分钟后重试");
+        return ResponseEntity.status(429).body(tooManyBody);
+      }
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "账号或密码错误");
     }
 
@@ -152,7 +191,7 @@ public class AuthController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
 
     if (!passwordEncoder.matches(currentPassword, employee.getPasswordHash())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "current password is incorrect");
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "当前密码不正确");
     }
 
     String newPasswordHash = passwordEncoder.encode(newPassword);

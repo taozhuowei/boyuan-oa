@@ -91,7 +91,8 @@ class FormServiceTest {
     when(approvalRecordMapper.findByFormId(any())).thenReturn(Collections.emptyList());
 
     // When
-    FormRecordResponse result = formService.submitForm(submitterId, formType, formDataJson, remark);
+    FormRecordResponse result =
+        formService.submitForm(submitterId, formType, formDataJson, remark, null);
 
     // Then
     assertThat(result).isNotNull();
@@ -114,7 +115,8 @@ class FormServiceTest {
     when(approvalFlowDefMapper.findActiveByBusinessType(formType)).thenReturn(null);
 
     // When & Then
-    assertThatThrownBy(() -> formService.submitForm(submitterId, formType, formDataJson, remark))
+    assertThatThrownBy(
+            () -> formService.submitForm(submitterId, formType, formDataJson, remark, null))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("未找到业务类型");
 
@@ -705,6 +707,62 @@ class FormServiceTest {
 
     // Then
     assertThat(result.department()).isEqualTo("");
+  }
+
+  @Test
+  @DisplayName("提交表单 - 重复幂等键应抛出 409 ResponseStatusException")
+  void submitForm_duplicateIdemKey_shouldThrow409() {
+    // Given
+    Long submitterId = 1L;
+    String formType = "LEAVE";
+    String formDataJson = "{\"reason\":\"test\"}";
+    String remark = "";
+    String idemKey = "unique-key-abc";
+
+    ApprovalFlowDef flowDef = new ApprovalFlowDef();
+    flowDef.setId(1L);
+    flowDef.setBusinessType(formType);
+
+    when(approvalFlowDefMapper.findActiveByBusinessType(formType)).thenReturn(flowDef);
+    // Simulate DB unique constraint violation with the exact index name in the error message
+    when(formRecordMapper.insert(any(FormRecord.class)))
+        .thenThrow(
+            new org.springframework.dao.DataIntegrityViolationException(
+                "ERROR: duplicate key value violates unique constraint"
+                    + " \"uq_form_record_submitter_idem\""));
+
+    // When & Then
+    assertThatThrownBy(
+            () -> formService.submitForm(submitterId, formType, formDataJson, remark, idemKey))
+        .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+        .satisfies(
+            ex -> {
+              var rse = (org.springframework.web.server.ResponseStatusException) ex;
+              assertThat(rse.getStatusCode().value()).isEqualTo(409);
+              assertThat(rse.getReason()).contains("重复提交");
+            });
+  }
+
+  @Test
+  @DisplayName("提交表单 - 非幂等键约束违反时 DataIntegrityViolationException 原样抛出")
+  void submitForm_otherConstraintViolation_rethrows() {
+    // Given - a DataIntegrityViolationException from some OTHER constraint (e.g. FK violation)
+    Long submitterId = 1L;
+    String formType = "LEAVE";
+
+    ApprovalFlowDef flowDef = new ApprovalFlowDef();
+    flowDef.setId(1L);
+    flowDef.setBusinessType(formType);
+
+    when(approvalFlowDefMapper.findActiveByBusinessType(formType)).thenReturn(flowDef);
+    var fkViolation =
+        new org.springframework.dao.DataIntegrityViolationException(
+            "ERROR: insert or update on table violates foreign key constraint \"fk_submitter\"");
+    when(formRecordMapper.insert(any(FormRecord.class))).thenThrow(fkViolation);
+
+    // When & Then — original DataIntegrityViolationException is re-thrown (not wrapped in 409)
+    assertThatThrownBy(() -> formService.submitForm(submitterId, formType, "{}", "", null))
+        .isInstanceOf(org.springframework.dao.DataIntegrityViolationException.class);
   }
 
   private FormRecord createFormRecord(Long id, String formType, Long submitterId) {

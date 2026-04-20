@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -59,18 +58,18 @@ public class GlobalExceptionHandler {
     return buildResponse(HttpStatus.UNAUTHORIZED.value(), "身份认证失败");
   }
 
+  // C+-F-06: 去掉字段名前缀，仅返回 defaultMessage，多字段错误用"；"拼接
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
-    FieldError first = ex.getBindingResult().getFieldErrors().stream().findFirst().orElse(null);
-    String message;
-    if (first != null) {
-      message =
-          first.getField()
-              + ": "
-              + (first.getDefaultMessage() != null ? first.getDefaultMessage() : "参数无效");
-    } else {
-      message = "请求参数校验失败";
-    }
+    String message =
+        ex.getBindingResult().getFieldErrors().stream()
+            .map(
+                fe ->
+                    fe.getDefaultMessage() != null && !fe.getDefaultMessage().isBlank()
+                        ? fe.getDefaultMessage()
+                        : "参数无效")
+            .reduce((a, b) -> a + "；" + b)
+            .orElse("请求参数校验失败");
     log.debug("MethodArgumentNotValidException: {}", message);
     return buildResponse(HttpStatus.BAD_REQUEST.value(), message);
   }

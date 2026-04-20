@@ -37,6 +37,8 @@ class EmployeeServiceImplTest {
 
   @Mock private PasswordEncoder passwordEncoder;
 
+  @Mock private EmployeeStatusCache employeeStatusCache;
+
   // ─── authenticate ────────────────────────────────────────
 
   @Test

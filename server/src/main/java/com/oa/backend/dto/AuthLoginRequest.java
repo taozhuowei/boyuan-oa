@@ -10,6 +10,4 @@ import jakarta.validation.constraints.NotBlank;
  * @param role 角色标识
  */
 public record AuthLoginRequest(
-    @NotBlank(message = "username must not be blank") String username,
-    String displayName,
-    String role) {}
+    @NotBlank(message = "用户名不能为空") String username, String displayName, String role) {}

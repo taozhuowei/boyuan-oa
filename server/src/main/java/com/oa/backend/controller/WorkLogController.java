@@ -10,6 +10,7 @@ import com.oa.backend.entity.FormRecord;
 import com.oa.backend.entity.Project;
 import com.oa.backend.service.ApprovalFlowService;
 import com.oa.backend.service.ConstructionAttendanceService;
+import com.oa.backend.service.FormDataValidator;
 import com.oa.backend.service.FormService;
 import com.oa.backend.service.NotificationService;
 import com.oa.backend.service.WorkLogService;
@@ -39,6 +40,8 @@ public class WorkLogController {
   private final ObjectMapper objectMapper;
   private final ConstructionAttendanceService attendanceService;
   private final NotificationService notificationService;
+  // C+-F-07: 表单数据字段校验
+  private final FormDataValidator formDataValidator;
 
   // FormService provides getDetail() to build a full response after status change
 
@@ -46,7 +49,9 @@ public class WorkLogController {
   @PostMapping
   @PreAuthorize("hasAnyRole('WORKER','PROJECT_MANAGER','CEO')")
   public ResponseEntity<FormRecordResponse> submitLog(
-      @Valid @RequestBody FormSubmitRequest request, Authentication authentication) {
+      @Valid @RequestBody FormSubmitRequest request,
+      @RequestHeader(value = "X-Idempotency-Key", required = false) String idemKey,
+      Authentication authentication) {
     Long submitterId = getCurrentEmployeeId(authentication);
     if (submitterId == null) {
       return ResponseEntity.badRequest().build();
@@ -80,6 +85,7 @@ public class WorkLogController {
       fr.setStatus("APPROVED");
       fr.setCurrentNodeOrder(0);
       fr.setRemark(request.remark());
+      fr.setIdemKey(idemKey);
       fr.setCreatedAt(java.time.LocalDateTime.now());
       fr.setUpdatedAt(java.time.LocalDateTime.now());
       fr.setDeleted(0);
@@ -88,7 +94,7 @@ public class WorkLogController {
       notifyCeoOfPmSelfLog(projectId, fr.getId(), submitterId);
       resp = formService.getDetail(fr.getId(), submitterId);
     } else {
-      resp = formService.submitForm(submitterId, "LOG", formDataJson, request.remark());
+      resp = formService.submitForm(submitterId, "LOG", formDataJson, request.remark(), idemKey);
       // 标准流程：先按 PENDING/APPROVING 写入出勤；驳回后通过 softDeleteByForm 撤回
       if (projectId != null && resp != null) {
         FormRecord persisted = workLogService.findFormRecordById(resp.id());
@@ -132,11 +138,17 @@ public class WorkLogController {
   @PostMapping("/injury")
   @PreAuthorize("hasAnyRole('WORKER','PROJECT_MANAGER','CEO')")
   public ResponseEntity<FormRecordResponse> submitInjury(
-      @Valid @RequestBody FormSubmitRequest request, Authentication authentication) {
+      @Valid @RequestBody FormSubmitRequest request,
+      @RequestHeader(value = "X-Idempotency-Key", required = false) String idemKey,
+      Authentication authentication) {
     Long submitterId = getCurrentEmployeeId(authentication);
     if (submitterId == null) {
       return ResponseEntity.badRequest().build();
     }
+
+    // C+-F-07: 校验工伤表单数据字段（抛 IllegalArgumentException → 400）
+    formDataValidator.validateInjury(request.formData());
+
     String formDataJson;
     try {
       formDataJson = objectMapper.writeValueAsString(request.formData());
@@ -145,7 +157,7 @@ public class WorkLogController {
       return ResponseEntity.badRequest().build();
     }
     return ResponseEntity.ok(
-        formService.submitForm(submitterId, "INJURY", formDataJson, request.remark()));
+        formService.submitForm(submitterId, "INJURY", formDataJson, request.remark(), idemKey));
   }
 
   /** 获取记录列表 WORKER: 查看本人提交的施工日志/工伤申报 PROJECT_MANAGER: 查看所有相关记录（CEO 也可查看） */
@@ -208,7 +220,9 @@ public class WorkLogController {
   @PostMapping("/construction-logs")
   @PreAuthorize("hasRole('WORKER')")
   public ResponseEntity<FormRecordResponse> submitConstructionLog(
-      @Valid @RequestBody FormSubmitRequest request, Authentication authentication) {
+      @Valid @RequestBody FormSubmitRequest request,
+      @RequestHeader(value = "X-Idempotency-Key", required = false) String idemKey,
+      Authentication authentication) {
     Long submitterId = getCurrentEmployeeId(authentication);
     if (submitterId == null) {
       return ResponseEntity.badRequest().build();
@@ -221,7 +235,7 @@ public class WorkLogController {
       return ResponseEntity.badRequest().build();
     }
     return ResponseEntity.ok(
-        formService.submitForm(submitterId, "LOG", formDataJson, request.remark()));
+        formService.submitForm(submitterId, "LOG", formDataJson, request.remark(), idemKey));
   }
 
   /** PM 批注施工日志（不影响审批状态，仅写入 pmNote 字段） 权限：PROJECT_MANAGER / CEO */

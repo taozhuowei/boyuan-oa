@@ -45,6 +45,9 @@ class AuthControllerTest {
 
   @MockBean private com.oa.backend.service.PhoneChangeService phoneChangeService;
 
+  // C+-F-11: JwtAuthenticationFilter 现在依赖 EmployeeStatusCache，必须 mock 以防 WebMvcTest 上下文加载失败
+  @MockBean private com.oa.backend.service.EmployeeStatusCache employeeStatusCache;
+
   /**
    * 测试开发环境登录接口
    *

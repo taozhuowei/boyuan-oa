@@ -89,7 +89,7 @@ public class PayrollBonusService {
       // 走审批：提交 PAYROLL_BONUS 表单，绑定 form_id
       String formData = buildFormData(bonus, emp, cycle);
       FormRecordResponse form =
-          formService.submitForm(creatorId, FORM_TYPE, formData, "临时薪资调整: " + name);
+          formService.submitForm(creatorId, FORM_TYPE, formData, "临时薪资调整: " + name, null);
       bonus.setFormId(form.id());
       bonusMapper.updateById(bonus);
       log.info("临时补贴已创建(待审批): bonusId={}, formId={}", bonus.getId(), form.id());

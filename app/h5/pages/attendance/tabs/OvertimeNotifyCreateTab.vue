@@ -53,6 +53,7 @@
  * Only rendered when isPmOrCeo is true (enforced by parent tab bar).
  */
 import { ref } from 'vue'
+import { message } from 'ant-design-vue'
 import { request } from '~/utils/http'
 import type { Dayjs } from 'dayjs'
 
@@ -89,7 +90,7 @@ async function submitNotification() {
     notify_form.value = { overtimeDate: undefined, overtimeType: undefined, content: '' }
     emit('submitted')
   } catch (e: unknown) {
-    alert((e as Error).message ?? '发送失败')
+    message.error((e as Error).message ?? '发送失败')
   } finally {
     is_submitting.value = false
   }

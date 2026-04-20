@@ -87,6 +87,7 @@
  *   - Accepts optional 'prefill' prop for resubmit flow from MyRecordsTab
  */
 import { ref, computed, watch, onMounted } from 'vue'
+import { message } from 'ant-design-vue'
 import { request } from '~/utils/http'
 import dayjs, { type Dayjs } from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
@@ -204,7 +205,7 @@ async function submitLeave() {
     leave_form.value = makeEmptyForm()
     emit('submitted')
   } catch (e: unknown) {
-    alert((e as Error).message ?? '提交失败')
+    message.error((e as Error).message ?? '提交失败')
   } finally {
     is_submitting.value = false
   }

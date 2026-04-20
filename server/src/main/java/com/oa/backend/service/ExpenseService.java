@@ -32,7 +32,7 @@ public class ExpenseService {
     // 1. 通过 FormService 创建表单记录，触发审批流
     String formDataJson = buildFormDataJson(request);
     FormRecordResponse formResponse =
-        formService.submitForm(submitterId, "EXPENSE", formDataJson, request.remark());
+        formService.submitForm(submitterId, "EXPENSE", formDataJson, request.remark(), null);
 
     // 2. 创建报销主记录
     ExpenseClaim claim = new ExpenseClaim();

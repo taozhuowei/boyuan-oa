@@ -191,6 +191,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, watch, computed, onMounted } from 'vue'
+import { message } from 'ant-design-vue'
 import { request } from '~/utils/http'
 import type { Dayjs } from 'dayjs'
 
@@ -283,7 +284,7 @@ function goToRecords() {
 
 async function submitExpense() {
   if (formState.items.length === 0) {
-    alert('请至少添加一条报销明细')
+    message.warning('请至少添加一条报销明细')
     return
   }
 
@@ -315,12 +316,12 @@ async function submitExpense() {
       body,
     })
 
-    alert('报销申请提交成功')
+    message.success('报销申请提交成功')
     resetForm()
     goToRecords()
   } catch (e: unknown) {
     const msg = (e as Error).message ?? '提交失败'
-    alert(msg)
+    message.error(msg)
   } finally {
     submitting.value = false
   }

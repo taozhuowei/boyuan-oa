@@ -17,6 +17,7 @@ import com.oa.backend.mapper.EmergencyContactMapper;
 import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.RoleMapper;
 import com.oa.backend.service.EmployeeService;
+import com.oa.backend.service.EmployeeStatusCache;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -40,6 +41,7 @@ public class EmployeeServiceImpl implements EmployeeService {
   private final DepartmentMapper departmentMapper;
   private final RoleMapper roleMapper;
   private final PasswordEncoder passwordEncoder;
+  private final EmployeeStatusCache employeeStatusCache;
 
   @Override
   public Optional<Employee> authenticate(String employeeNo, String rawPassword) {
@@ -298,6 +300,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     employee.setAccountStatus(status);
     employee.setUpdatedAt(LocalDateTime.now());
     employeeMapper.updateById(employee);
+    employeeStatusCache.invalidate(id);
     return employee;
   }
 

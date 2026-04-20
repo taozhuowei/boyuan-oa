@@ -51,6 +51,10 @@ public class FormRecord {
   @TableField("updated_at")
   private LocalDateTime updatedAt;
 
+  /** 幂等键，用于防止重复提交；客户端通过 X-Idempotency-Key 头传入，可为空 */
+  @TableField("idem_key")
+  private String idemKey;
+
   /** 逻辑删除标志 */
   @TableLogic private Integer deleted;
 }

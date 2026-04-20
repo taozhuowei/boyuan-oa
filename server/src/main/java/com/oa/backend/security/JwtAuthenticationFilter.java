@@ -1,6 +1,7 @@
 package com.oa.backend.security;
 
 import com.oa.backend.service.AccessManagementService;
+import com.oa.backend.service.EmployeeStatusCache;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +22,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
  *
  * <p>该过滤器拦截所有HTTP请求，从请求头中提取JWT令牌并验证其有效性。 如果令牌有效，则在Spring Security上下文中设置认证信息，使后续处理器能够识别当前用户身份和权限。
  * 继承自OncePerRequestFilter，确保每个请求只被过滤一次。
+ *
+ * <p>C+-F-11: JWT 验签通过后，检查账号激活状态；非 ACTIVE 账号返回 401。
  */
 @Slf4j
 @Component
@@ -32,6 +35,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
   /** 角色 → 权限点映射来源（设计 §2.2 步骤 5 — 自定义角色权限矩阵动态生效） */
   private final AccessManagementService accessManagementService;
+
+  /** C+-F-11: 账号状态本地缓存（TTL 5 分钟），避免每次请求都查 DB。 */
+  private final EmployeeStatusCache employeeStatusCache;
 
   /**
    * 执行内部过滤逻辑
@@ -58,46 +64,54 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       String token = authorization.substring(7);
 
       // 验证令牌，如果有效则处理认证信息
-      jwtTokenService
-          .verify(token)
-          .ifPresent(
-              decodedJWT -> {
-                // 仅在当前上下文未设置认证时才进行设置（避免重复认证）
-                if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                  // 从JWT中提取用户名（subject）
-                  String username = decodedJWT.getSubject();
-                  // 从JWT中提取角色声明
-                  String role = decodedJWT.getClaim("role").asString();
-                  // 构建Spring Security权限字符串，默认为EMPLOYEE角色
-                  String resolvedRole =
-                      role == null || role.isBlank() ? "EMPLOYEE" : role.toLowerCase();
-                  String roleAuthority = "ROLE_" + resolvedRole.toUpperCase();
+      var decoded = jwtTokenService.verify(token);
+      if (decoded.isPresent()) {
+        var decodedJWT = decoded.get();
+        // 仅在当前上下文未设置认证时才进行设置（避免重复认证）
+        if (SecurityContextHolder.getContext().getAuthentication() == null) {
+          // C+-F-11: 检查账号激活状态（本地缓存 TTL 5 分钟）
+          Long userId = decodedJWT.getClaim("userId").asLong();
+          if (userId != null && userId > 0) {
+            String accountStatus = employeeStatusCache.getAccountStatus(userId);
+            if (accountStatus != null && !"ACTIVE".equals(accountStatus)) {
+              response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+              response.setContentType("application/json;charset=UTF-8");
+              response.getWriter().write("{\"code\":401,\"message\":\"账号已被停用\"}");
+              return;
+            }
+          }
 
-                  // 权限点（PERM_*）：来自角色权限矩阵，用于细粒度 @PreAuthorize
-                  List<org.springframework.security.core.GrantedAuthority> authorities =
-                      new ArrayList<>();
-                  authorities.add(new SimpleGrantedAuthority(roleAuthority));
-                  try {
-                    for (String p :
-                        accessManagementService.getPermissionsByRoleCode(resolvedRole)) {
-                      if (p != null && !p.isBlank()) {
-                        authorities.add(new SimpleGrantedAuthority("PERM_" + p.toUpperCase()));
-                      }
-                    }
-                  } catch (Exception e) {
-                    // 保留原因：角色不存在或权限未配置时，仅使用 ROLE_* 权限，不中断请求
-                    log.warn(
-                        "JwtAuthFilter: failed to load permissions for role={}, falling back to role-only authority",
-                        resolvedRole,
-                        e);
-                  }
+          // 从JWT中提取用户名（subject）
+          String username = decodedJWT.getSubject();
+          // 从JWT中提取角色声明
+          String role = decodedJWT.getClaim("role").asString();
+          // 构建Spring Security权限字符串，默认为EMPLOYEE角色
+          String resolvedRole = role == null || role.isBlank() ? "EMPLOYEE" : role.toLowerCase();
+          String roleAuthority = "ROLE_" + resolvedRole.toUpperCase();
 
-                  UsernamePasswordAuthenticationToken authentication =
-                      new UsernamePasswordAuthenticationToken(username, token, authorities);
+          // 权限点（PERM_*）：来自角色权限矩阵，用于细粒度 @PreAuthorize
+          List<org.springframework.security.core.GrantedAuthority> authorities = new ArrayList<>();
+          authorities.add(new SimpleGrantedAuthority(roleAuthority));
+          try {
+            for (String p : accessManagementService.getPermissionsByRoleCode(resolvedRole)) {
+              if (p != null && !p.isBlank()) {
+                authorities.add(new SimpleGrantedAuthority("PERM_" + p.toUpperCase()));
+              }
+            }
+          } catch (Exception e) {
+            // 保留原因：角色不存在或权限未配置时，仅使用 ROLE_* 权限，不中断请求
+            log.warn(
+                "JwtAuthFilter: failed to load permissions for role={}, falling back to role-only authority",
+                resolvedRole,
+                e);
+          }
 
-                  SecurityContextHolder.getContext().setAuthentication(authentication);
-                }
-              });
+          UsernamePasswordAuthenticationToken authentication =
+              new UsernamePasswordAuthenticationToken(username, token, authorities);
+
+          SecurityContextHolder.getContext().setAuthentication(authentication);
+        }
+      }
     }
 
     // 继续执行过滤器链，无论认证是否成功都要放行请求

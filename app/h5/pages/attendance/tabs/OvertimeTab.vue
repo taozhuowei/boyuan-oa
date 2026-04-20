@@ -191,6 +191,7 @@
  *   - Accepts optional 'prefill' prop for resubmit flow from MyRecordsTab
  */
 import { ref, computed, watch } from 'vue'
+import { message } from 'ant-design-vue'
 import { request } from '~/utils/http'
 import dayjs, { type Dayjs } from 'dayjs'
 import customParseFormat from 'dayjs/plugin/customParseFormat'
@@ -332,7 +333,7 @@ async function submitOvertime() {
     overtime_form.value = makeEmptyOvertimeForm()
     emit('submitted')
   } catch (e: unknown) {
-    alert((e as Error).message ?? '提交失败')
+    message.error((e as Error).message ?? '提交失败')
   } finally {
     is_submitting_overtime.value = false
   }
@@ -360,7 +361,7 @@ async function submitSelfReport() {
     self_report_form.value = makeEmptySelfReportForm()
     emit('submitted')
   } catch (e: unknown) {
-    alert((e as Error).message ?? '提交失败')
+    message.error((e as Error).message ?? '提交失败')
   } finally {
     is_submitting_self_report.value = false
   }

@@ -157,7 +157,7 @@ class CoverageBoostTest {
     @DisplayName("POST /attendance/overtime - employee submits overtime returns 200")
     void submitOvertime_validBody_returns200() throws Exception {
       Map<String, Object> formData = new HashMap<>();
-      formData.put("overtimeDate", "2026-05-10");
+      formData.put("date", "2026-05-10");
       formData.put("startTime", "18:00");
       formData.put("endTime", "21:00");
       formData.put("hours", 3);
@@ -249,7 +249,7 @@ class CoverageBoostTest {
     @DisplayName("POST /attendance/overtime-self-report - worker submits self-report returns 200")
     void overtimeSelfReport_worker_returns200() throws Exception {
       Map<String, Object> formData = new HashMap<>();
-      formData.put("overtimeDate", "2026-04-15");
+      formData.put("date", "2026-04-15");
       formData.put("startTime", "20:00");
       formData.put("endTime", "23:00");
       formData.put("hours", 3);
@@ -273,7 +273,7 @@ class CoverageBoostTest {
         "POST /attendance/overtime-self-report - CEO returns 403 (CEO not in allowed roles)")
     void overtimeSelfReport_ceo_returns403() throws Exception {
       Map<String, Object> formData = new HashMap<>();
-      formData.put("overtimeDate", "2026-04-15");
+      formData.put("date", "2026-04-15");
       formData.put("hours", 2);
       formData.put("reason", "test");
 
@@ -1054,9 +1054,10 @@ class CoverageBoostTest {
     void submitInjury_worker_returns200() throws Exception {
       Map<String, Object> formData = new HashMap<>();
       formData.put("injuryDate", LocalDate.now().toString());
-      formData.put("injuryType", "FALL");
+      // C+-F-07: injuryTime 和 diagnosis 为必填字段
+      formData.put("injuryTime", "09:30");
       formData.put("description", "高处坠落");
-      formData.put("severity", "MINOR");
+      formData.put("diagnosis", "右腕骨折");
 
       Map<String, Object> req = new HashMap<>();
       req.put("formData", formData);

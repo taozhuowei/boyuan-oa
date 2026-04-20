@@ -90,7 +90,7 @@
           <a-form-item label="扣款比例">
             <a-input-number
               v-model:value="form.deductionRate"
-              :min="0.01"
+              :min="0"
               :max="1"
               :step="0.1"
               :precision="2"
@@ -222,6 +222,10 @@ async function handleSave() {
   }
   if (!isEdit.value && !form.code.trim()) {
     message.error('请输入代码')
+    return
+  }
+  if (form.isDeductible && (form.deductionRate < 0 || form.deductionRate > 1)) {
+    message.error('扣款比例必须在 0 到 1 之间')
     return
   }
   saving.value = true

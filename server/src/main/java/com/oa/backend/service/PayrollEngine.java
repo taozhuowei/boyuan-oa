@@ -145,11 +145,20 @@ public class PayrollEngine {
             check2Pass ? null : "存在其他周期正在结算中，请等待完成"));
   }
 
-  /** 正式结算。 */
+  /** 正式结算。 C+-F-12: 行级锁 + 幂等检查，防止并发双重结算。 */
   @OperationLogRecord(action = "PAYROLL_SETTLE", targetType = "PAYROLL_CYCLE")
   @Transactional
   public PayrollCycle settle(Long cycleId) {
-    PayrollCycle cycle = requireCycle(cycleId);
+    // C+-F-12: 行级锁，确保同一周期不被并发结算
+    PayrollCycle cycle = cycleMapper.selectForUpdate(cycleId);
+    if (cycle == null) {
+      throw new IllegalStateException("工资周期 [" + cycleId + "] 不存在");
+    }
+
+    // C+-F-12: 幂等检查，已结算直接抛出 409 语义异常
+    if ("SETTLED".equals(cycle.getStatus()) || "LOCKED".equals(cycle.getStatus())) {
+      throw new com.oa.backend.exception.BusinessException(409, "该薪资周期已结算");
+    }
 
     if (!"WINDOW_CLOSED".equals(cycle.getStatus())
         && !"OPEN".equals(cycle.getStatus())

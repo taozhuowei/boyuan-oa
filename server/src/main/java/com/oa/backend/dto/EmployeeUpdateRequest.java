@@ -1,13 +1,14 @@
 package com.oa.backend.dto;
 
+import jakarta.validation.constraints.Pattern;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/** 员工更新请求 DTO */
+/** 员工更新请求 DTO — C+-F-08 phone 加手机号格式校验 */
 public record EmployeeUpdateRequest(
     String name,
-    String phone,
+    @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确") String phone,
     String email,
     String roleCode,
     String employeeType,

@@ -18,4 +18,12 @@ public interface PayrollCycleMapper extends BaseMapper<PayrollCycle> {
   /** 按 period 查找周期 */
   @Select("SELECT * FROM payroll_cycle WHERE period = #{period} AND deleted = 0 LIMIT 1")
   PayrollCycle findByPeriod(String period);
+
+  /**
+   * 行级锁查询（FOR UPDATE）— C+-F-12 幂等结算防并发。
+   *
+   * <p>必须在 @Transactional 事务内调用，否则锁立即释放无效。
+   */
+  @Select("SELECT * FROM payroll_cycle WHERE id = #{id} AND deleted = 0 FOR UPDATE")
+  PayrollCycle selectForUpdate(Long id);
 }

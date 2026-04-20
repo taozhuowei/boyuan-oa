@@ -13,8 +13,8 @@ import java.util.List;
  * @param permissions 权限列表
  */
 public record RoleUpsertRequest(
-    @NotBlank(message = "roleCode must not be blank") String roleCode,
-    @NotBlank(message = "roleName must not be blank") String roleName,
+    @NotBlank(message = "角色代码不能为空") String roleCode,
+    @NotBlank(message = "角色名称不能为空") String roleName,
     String description,
     Integer status,
     List<String> permissions) {}

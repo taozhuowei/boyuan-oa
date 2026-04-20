@@ -102,6 +102,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { message } from 'ant-design-vue'
 import { request } from '~/utils/http'
 import type { ApprovalStep } from '~/types/approval'
 import { formatFormSummary } from '../../../shared/utils/formLabels'
@@ -187,7 +188,7 @@ async function handleApprove() {
     await loadTodo()
   } catch (e: unknown) {
     const msg = (e as Error).message ?? '操作失败'
-    alert(msg)
+    message.error(msg)
   }
 }
 
@@ -204,7 +205,7 @@ async function handleReject() {
     await loadTodo()
   } catch (e: unknown) {
     const msg = (e as Error).message ?? '操作失败'
-    alert(msg)
+    message.error(msg)
   }
 }
 

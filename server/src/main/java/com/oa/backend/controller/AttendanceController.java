@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oa.backend.dto.*;
 import com.oa.backend.service.ApprovalFlowService;
 import com.oa.backend.service.AttendanceService;
+import com.oa.backend.service.FormDataValidator;
 import com.oa.backend.service.FormService;
 import jakarta.validation.Valid;
 import java.util.Arrays;
@@ -25,6 +26,8 @@ public class AttendanceController {
   private final ApprovalFlowService approvalFlowService;
   private final AttendanceService attendanceService;
   private final ObjectMapper objectMapper;
+  // C+-F-07: 表单数据字段校验
+  private final FormDataValidator formDataValidator;
 
   /** 获取请假表单配置 */
   @GetMapping("/leave/config")
@@ -39,11 +42,16 @@ public class AttendanceController {
   @PreAuthorize(
       "hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER','HR')")
   public ResponseEntity<FormRecordResponse> submitLeave(
-      @Valid @RequestBody FormSubmitRequest request, Authentication authentication) {
+      @Valid @RequestBody FormSubmitRequest request,
+      @RequestHeader(value = "X-Idempotency-Key", required = false) String idemKey,
+      Authentication authentication) {
     Long submitterId = getCurrentEmployeeId(authentication);
     if (submitterId == null) {
       return ResponseEntity.badRequest().build();
     }
+
+    // C+-F-07: 校验请假表单数据字段（抛 IllegalArgumentException → 400）
+    formDataValidator.validateLeave(request.formData());
 
     String formDataJson;
     try {
@@ -53,7 +61,7 @@ public class AttendanceController {
     }
 
     return ResponseEntity.ok(
-        formService.submitForm(submitterId, "LEAVE", formDataJson, request.remark()));
+        formService.submitForm(submitterId, "LEAVE", formDataJson, request.remark(), idemKey));
   }
 
   /** 获取加班表单配置 */
@@ -69,11 +77,16 @@ public class AttendanceController {
   @PreAuthorize(
       "hasAnyRole('EMPLOYEE','WORKER','FINANCE','PROJECT_MANAGER','CEO','DEPARTMENT_MANAGER','HR')")
   public ResponseEntity<FormRecordResponse> submitOvertime(
-      @Valid @RequestBody FormSubmitRequest request, Authentication authentication) {
+      @Valid @RequestBody FormSubmitRequest request,
+      @RequestHeader(value = "X-Idempotency-Key", required = false) String idemKey,
+      Authentication authentication) {
     Long submitterId = getCurrentEmployeeId(authentication);
     if (submitterId == null) {
       return ResponseEntity.badRequest().build();
     }
+
+    // C+-F-07: 校验加班表单数据字段（抛 IllegalArgumentException → 400）
+    formDataValidator.validateOvertime(request.formData());
 
     String formDataJson;
     try {
@@ -83,7 +96,7 @@ public class AttendanceController {
     }
 
     return ResponseEntity.ok(
-        formService.submitForm(submitterId, "OVERTIME", formDataJson, request.remark()));
+        formService.submitForm(submitterId, "OVERTIME", formDataJson, request.remark(), idemKey));
   }
 
   /** 获取考勤记录列表 */
@@ -160,11 +173,14 @@ public class AttendanceController {
   @PostMapping("/overtime-self-report")
   @PreAuthorize("hasAnyRole('EMPLOYEE','WORKER')")
   public ResponseEntity<FormRecordResponse> submitOvertimeSelfReport(
-      @Valid @RequestBody FormSubmitRequest request, Authentication authentication) {
+      @Valid @RequestBody FormSubmitRequest request,
+      @RequestHeader(value = "X-Idempotency-Key", required = false) String idemKey,
+      Authentication authentication) {
     Long submitterId = getCurrentEmployeeId(authentication);
     if (submitterId == null) {
       return ResponseEntity.badRequest().build();
     }
+    formDataValidator.validateOvertime(request.formData());
     String formDataJson;
     try {
       formDataJson = objectMapper.writeValueAsString(request.formData());
@@ -172,7 +188,7 @@ public class AttendanceController {
       return ResponseEntity.badRequest().build();
     }
     return ResponseEntity.ok(
-        formService.submitForm(submitterId, "OVERTIME", formDataJson, request.remark()));
+        formService.submitForm(submitterId, "OVERTIME", formDataJson, request.remark(), idemKey));
   }
 
   /** 获取当前登录员工的 ID */
@@ -231,7 +247,7 @@ public class AttendanceController {
         "加班申请",
         Arrays.asList(
             new FormConfigResponse.FormField(
-                "overtimeDate", "加班日期", "DATE", true, null, null, "请选择加班日期", 1),
+                "date", "加班日期", "DATE", true, null, null, "请选择加班日期", 1),
             new FormConfigResponse.FormField(
                 "startTime", "开始时间", "TIME", true, null, null, "请选择开始时间", 2),
             new FormConfigResponse.FormField(
