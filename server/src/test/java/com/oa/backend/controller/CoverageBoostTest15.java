@@ -440,9 +440,15 @@ class CoverageBoostTest15 {
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
-                // 200 = approved; 400 = not CEO's turn; 403 = not authorized; 500 = advance throws
-                assert status == 200 || status == 400 || status == 403 || status == 500
-                    : "Expected 200/400/403/500, got " + status;
+                // 200 = approved; 400 = not CEO's turn; 403 = not authorized;
+                // 409 = IllegalStateException (business state conflict, e.g. wrong approver turn);
+                // 500 = unexpected server error
+                assert status == 200
+                        || status == 400
+                        || status == 403
+                        || status == 409
+                        || status == 500
+                    : "Expected 200/400/403/409/500, got " + status;
               });
     }
 
@@ -485,9 +491,15 @@ class CoverageBoostTest15 {
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
-                // 200 = rejected; 400 = not CEO's turn; 403 = not authorized; 500 = advance throws
-                assert status == 200 || status == 400 || status == 403 || status == 500
-                    : "Expected 200/400/403/500, got " + status;
+                // 200 = rejected; 400 = not CEO's turn; 403 = not authorized;
+                // 409 = IllegalStateException (business state conflict, e.g. wrong approver turn);
+                // 500 = unexpected server error
+                assert status == 200
+                        || status == 400
+                        || status == 403
+                        || status == 409
+                        || status == 500
+                    : "Expected 200/400/403/409/500, got " + status;
               });
     }
   }

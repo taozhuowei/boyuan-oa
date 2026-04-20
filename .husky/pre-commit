@@ -8,9 +8,8 @@ npx lint-staged
 # Conditionally check staged Java files with Spotless (only if spotless plugin is configured)
 STAGED_JAVA=$(git diff --cached --name-only --diff-filter=ACM | grep '\.java$' || true)
 if [ -n "$STAGED_JAVA" ]; then
-  if command -v mvn > /dev/null 2>&1; then
-    # Check if spotless-maven-plugin is configured in pom.xml before invoking it
-    mvn help:describe -Dplugin=com.diffplug.spotless:spotless-maven-plugin -pl server -q 2>/dev/null \
-      && mvn spotless:check -pl server -q || true
+  if command -v mvn > /dev/null 2>&1 && [ -f server/pom.xml ]; then
+    # Run Spotless from server/ directory to avoid root reactor resolution error
+    (cd server && mvn spotless:check -q) || true
   fi
 fi

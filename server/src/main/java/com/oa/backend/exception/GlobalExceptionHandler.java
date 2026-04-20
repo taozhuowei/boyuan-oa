@@ -187,6 +187,17 @@ public class GlobalExceptionHandler {
         HttpStatus.BAD_REQUEST.value(), ex.getMessage() != null ? ex.getMessage() : "请求参数不合法");
   }
 
+  /**
+   * 业务状态异常（如：重复提交、状态流转非法、无权操作等）。 Service 层抛出 IllegalStateException 时，消息为用户可读的中文描述， 直接透传给前端；返回 409
+   * Conflict 以区别于参数错误（400）和服务器错误（500）。
+   */
+  @ExceptionHandler(IllegalStateException.class)
+  public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
+    log.warn("IllegalStateException: {}", ex.getMessage());
+    return buildResponse(
+        HttpStatus.CONFLICT.value(), ex.getMessage() != null ? ex.getMessage() : "操作与当前业务状态冲突");
+  }
+
   @ExceptionHandler(Exception.class)
   public ResponseEntity<Map<String, Object>> handleFallback(Exception ex) {
     log.error("Unhandled exception", ex);
