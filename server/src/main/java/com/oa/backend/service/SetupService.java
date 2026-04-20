@@ -287,24 +287,24 @@ public class SetupService {
   }
 
   private Long createOpsAccount(SetupRequest request) {
-    ensureRoleExists("ops", "运维", "系统运维，仅访问运维工具与操作日志，不参与业务流程");
+    ensureRoleExists("sys_admin", "系统管理员", "系统运维，仅访问运维工具与操作日志，不参与业务流程");
 
-    Employee ops = new Employee();
-    ops.setEmployeeNo("OPS001");
-    ops.setPasswordHash(passwordEncoder.encode(DEFAULT_PASSWORD));
-    ops.setIsDefaultPassword(true);
-    ops.setName(request.opsName());
-    ops.setPhone(request.opsPhone());
-    ops.setRoleCode("ops");
-    ops.setEmployeeType("OFFICE");
-    ops.setAccountStatus("ACTIVE");
-    ops.setEntryDate(LocalDate.now());
-    ops.setCreatedAt(LocalDateTime.now());
-    ops.setUpdatedAt(LocalDateTime.now());
-    ops.setDeleted(0);
+    Employee sysAdmin = new Employee();
+    sysAdmin.setEmployeeNo("SYS_ADMIN001");
+    sysAdmin.setPasswordHash(passwordEncoder.encode(DEFAULT_PASSWORD));
+    sysAdmin.setIsDefaultPassword(true);
+    sysAdmin.setName(request.opsName());
+    sysAdmin.setPhone(request.opsPhone());
+    sysAdmin.setRoleCode("sys_admin");
+    sysAdmin.setEmployeeType("OFFICE");
+    sysAdmin.setAccountStatus("ACTIVE");
+    sysAdmin.setEntryDate(LocalDate.now());
+    sysAdmin.setCreatedAt(LocalDateTime.now());
+    sysAdmin.setUpdatedAt(LocalDateTime.now());
+    sysAdmin.setDeleted(0);
 
-    employeeMapper.insert(ops);
-    return ops.getId();
+    employeeMapper.insert(sysAdmin);
+    return sysAdmin.getId();
   }
 
   private Long createGmAccount(SetupRequest request) {

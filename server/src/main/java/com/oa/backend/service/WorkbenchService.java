@@ -360,7 +360,7 @@ public class WorkbenchService {
                   "expense-apply", "费用报销", "wallet", "/expense/apply", true, null),
               new WorkbenchConfigResponse.MenuItem(
                   "expense-records", "报销记录", "solution", "/expense/records", true, null));
-      case "ops" ->
+      case "sys_admin" ->
           Arrays.asList(
               new WorkbenchConfigResponse.MenuItem(
                   "workbench", "工作台", "dashboard", "/", true, null),

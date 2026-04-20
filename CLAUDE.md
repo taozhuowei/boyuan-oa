@@ -250,7 +250,7 @@ For every feature, before advancing past `[>]`, verify all five. Check the exact
 - DB migration: `server/src/main/resources/db/migration/` (V1__init_schema.sql, V2__init_data.sql)
 - Dev seed data: `server/src/main/resources/db/data.sql` (H2 only); `local/seed-data.sql` (gitignored)
 - company_name: stored in `system_config` table; key = `"company_name"`
-- Test users: `ceo.demo/123456`, `hr.demo/123456`, `finance.demo/123456`, `pm.demo/123456`, `employee.demo/123456`, `worker.demo/123456`, `dept_manager.demo/123456`, `ops.demo/123456`
+- Test users: `ceo.demo/123456`, `hr.demo/123456`, `finance.demo/123456`, `pm.demo/123456`, `employee.demo/123456`, `worker.demo/123456`, `dept_manager.demo/123456`, `sys_admin.demo/123456`
 
 ---
 

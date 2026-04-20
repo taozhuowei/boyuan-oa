@@ -7,11 +7,11 @@
 /**
  * Page access whitelist — maps each restricted route to the roles that MAY access it.
  * Routes not listed here are accessible to all authenticated users (e.g. /workbench, /me, /notifications, /todo, /forms, /expense/apply, /expense/records).
- * Role codes returned by the backend: 'ceo', 'hr', 'finance', 'project_manager', 'department_manager', 'employee', 'worker', 'general_manager', 'ops'.
+ * Role codes returned by the backend: 'ceo', 'hr', 'finance', 'project_manager', 'department_manager', 'employee', 'worker', 'general_manager', 'sys_admin'.
  * Source of truth: DESIGN.md §5.
  */
 const PAGE_ACCESS: Record<string, string[]> = {
-  '/config': ['ceo', 'ops'],
+  '/config': ['ceo', 'sys_admin'],
   '/org': ['ceo', 'hr'],
   '/role': ['ceo'],
   '/employees': ['ceo', 'hr', 'finance', 'project_manager', 'department_manager'],
@@ -21,9 +21,9 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/leave_types': ['ceo', 'hr'],
   '/directory': ['ceo', 'hr', 'finance'],
   '/team': ['ceo', 'hr', 'project_manager', 'department_manager'],
-  '/operation_logs': ['ceo', 'ops'],
-  '/data_export': ['ceo', 'ops'],
-  '/data_viewer': ['ceo', 'ops'],
+  '/operation_logs': ['ceo', 'sys_admin'],
+  '/data_export': ['ceo', 'sys_admin'],
+  '/data_viewer': ['ceo', 'sys_admin'],
   '/attendance': [
     'ceo',
     'hr',

@@ -25,7 +25,7 @@ KEY (id) VALUES
 (5, 'worker.demo',       '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '赵铁柱', '13800000005', 'zhaotz@oa.demo',    'worker',             'LABOR',  5, 'ACTIVE', '2024-01-01'),
 (6, 'hr.demo',           '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '李思文', '13800000006', 'lsw@oa.demo',       'hr',                 'OFFICE', 1, 'ACTIVE', '2024-01-01'),
 (7, 'dept_manager.demo', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '周伟',   '13800000007', 'zhouw@oa.demo',     'department_manager', 'OFFICE', 1, 'ACTIVE', '2024-01-01'),
-(8, 'ops.demo',          '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '刘运维', '13800000008', 'lyw@oa.demo',       'ops',                'OFFICE', 1, 'ACTIVE', '2024-01-01');
+(8, 'sys_admin.demo',     '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', TRUE, '刘运维', '13800000008', 'lyw@oa.demo',       'sys_admin',          'OFFICE', 1, 'ACTIVE', '2024-01-01');
 
 -- 直系领导关系
 UPDATE employee SET direct_supervisor_id = 7 WHERE id = 1;
@@ -43,7 +43,7 @@ KEY (id) VALUES
 (6, 'hr', '人力资源', '维护人员与薪资配置，执行结算、复核异议、导出数据。', 1, 1),
 (7, 'general_manager', '总经理', '介于 CEO 与各部门负责人之间；可加入审批流末端链；可见全项目但不可见考勤/薪资/HR 档案。', 1, 1),
 (8, 'department_manager', '部门经理', '员工考勤审批、部门管理，可查看本部门员工基本信息与考勤记录。', 1, 1),
-(9, 'ops', '运维', '系统运维，仅访问运维工具与操作日志，不参与业务流程', 1, 1);
+(9, 'sys_admin', '系统管理员', '系统运维，仅访问运维工具与操作日志，不参与业务流程', 1, 1);
 
 -- ============================================
 -- Phase 3: 项目种子数据

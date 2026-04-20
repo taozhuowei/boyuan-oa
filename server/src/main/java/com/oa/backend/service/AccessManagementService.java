@@ -104,7 +104,12 @@ public class AccessManagementService {
         true,
         List.of("项目总览", "审批流末端", "报销审批"));
     seedRole(
-        9L, "ops", "运维", "系统运维，仅访问运维工具与操作日志，不参与业务流程。", true, List.of("操作日志查看", "数据导出", "数据查看器"));
+        9L,
+        "sys_admin",
+        "系统管理员",
+        "系统运维，仅访问运维工具与操作日志，不参与业务流程。",
+        true,
+        List.of("操作日志查看", "数据导出", "数据查看器"));
 
     seedAccount("employee.demo", "123456", "张晓宁", "employee", "综合管理部", "OFFICE");
     seedAccount("finance.demo", "123456", "李静", "finance", "财务管理部", "OFFICE");

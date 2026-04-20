@@ -65,7 +65,7 @@ class CoverageBoostTest11 {
     @Test
     @DisplayName("GET /team/members - dept_manager with dept members returns 200 with list")
     void getTeamMembers_deptManager_returns200() throws Exception {
-      // dept_manager.demo is in department 1, which also has employee.demo, hr.demo, ops.demo
+      // dept_manager.demo is in department 1, which also has employee.demo, hr.demo, sys_admin.demo
       // This triggers the stream map lambda
       mockMvc
           .perform(get("/team/members").header("Authorization", "Bearer " + deptManagerToken))
@@ -213,8 +213,8 @@ class CoverageBoostTest11 {
     @Test
     @DisplayName("sendCurrentPhoneCode - user with no phone triggers 400 path")
     void sendCurrentCode_userWithNoPhone_triggers400Path() throws Exception {
-      // ops.demo (id=8) should have a phone in seed data, but let's verify the happy path
-      String opsToken = login(mockMvc, "ops.demo", "123456");
+      // sys_admin.demo (id=8) should have a phone in seed data, but let's verify the happy path
+      String opsToken = login(mockMvc, "sys_admin.demo", "123456");
       mockMvc
           .perform(
               post("/auth/phone-change/send-current-code")

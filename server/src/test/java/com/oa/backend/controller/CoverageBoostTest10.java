@@ -69,7 +69,7 @@ class CoverageBoostTest10 {
       deptManagerToken = login(mockMvc, "dept_manager.demo", "123456");
       workerToken = login(mockMvc, "worker.demo", "123456");
       employeeToken = login(mockMvc, "employee.demo", "123456");
-      opsToken = login(mockMvc, "ops.demo", "123456");
+      opsToken = login(mockMvc, "sys_admin.demo", "123456");
     }
 
     @Test
