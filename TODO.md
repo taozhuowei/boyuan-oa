@@ -1422,9 +1422,12 @@
   - soak: 200VU×30min，0 failures（exit 0）
 
 - `[x]` **C+-T-05 Round 5 — 覆盖率**
-  - [PASS] 后端 JaCoCo（mvn test 1263 tests）：行覆盖 80.4%（5017/6238），超过 80% 目标
+  - [PASS] 后端 JaCoCo（mvn test 1272 tests）：行覆盖 80.4%（5017/6238），超过 80% 目标
     - 含聚合：单测 exec + 集成测试 exec + E2E exec 合并后 67.9%（单测已达标）
-  - [PASS] 前端 Vitest：31 tests，行覆盖 96.89%（http.ts 88.57%，access.ts 100%）
+    - Phase 3+4 新增 9 tests (CoverageBoostTest17)，GlobalExceptionHandler ISE→409
+  - [PASS] 前端 Vitest：35 tests，行覆盖 100%（http.ts 100%，access.ts 100%）
+    - http.ts 401 redirect branch 通过 _isClient 参数注入实现全覆盖
+    - access.ts unknown_role fallback 和 secondRoles passthrough 补全
 
 ---
 
