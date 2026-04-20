@@ -767,9 +767,10 @@ class CoverageBoostTest8 {
     @Test
     @DisplayName("PUT /employees/{id} - CEO updates employee")
     void updateEmployee_ceo_returnsOk() throws Exception {
+      // Use employee 4 (ceo.demo) to avoid mutating employee 1 data read by OaApiIntegrationTest
       mockMvc
           .perform(
-              put("/employees/1")
+              put("/employees/4")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content("{\"name\":\"Updated Name\"}")
                   .header("Authorization", "Bearer " + ceoToken))

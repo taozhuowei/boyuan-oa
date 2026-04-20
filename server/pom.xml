@@ -57,11 +57,27 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
-        <!-- Database - H2 内存数据库（开发模式） -->
+        <!-- Database - PostgreSQL（dev/test/prod 统一使用 PostgreSQL） -->
+        <!-- Pin to 42.6.2 which is already in local Maven cache -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.6.2</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Flyway — schema migration; version managed by spring-boot-starter-parent BOM -->
+        <!-- flyway-core 9.x has built-in PostgreSQL support; no extra module needed -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <!-- H2 保留供 ArchUnit 等不需要数据库的纯单元测试使用（test scope） -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>runtime</scope>
+            <scope>test</scope>
         </dependency>
 
         <!-- MyBatis Spring - 覆盖版本以兼容 Spring 6 -->

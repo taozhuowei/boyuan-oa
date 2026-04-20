@@ -149,7 +149,7 @@ class CoverageBoostTest9 {
     @Test
     @DisplayName("CreatePayrollCycle with valid period succeeds or gives 400 (duplicate)")
     void createCycle_validPeriod_returnsOkOrConflict() throws Exception {
-      String period = "2099-01"; // Far future to avoid conflicts
+      String period = "2088-01"; // Far future; 2099-xx reserved for OaApiIntegrationTest
       mockMvc
           .perform(
               post("/payroll/cycles")

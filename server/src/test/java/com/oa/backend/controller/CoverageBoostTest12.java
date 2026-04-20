@@ -439,7 +439,8 @@ class CoverageBoostTest12 {
     @DisplayName(
         "Create cycle, open window, then unlock - covers PayrollCycleService.unlock Ok/BadState paths")
     void createCycleOpenWindowUnlock() throws Exception {
-      String period = "2099-0" + (System.currentTimeMillis() % 9 + 1);
+      // 2088-xx reserved for coverage tests; 2099-xx reserved for OaApiIntegrationTest
+      String period = "2088-" + String.format("%02d", (System.currentTimeMillis() % 9 + 1));
       // Create cycle
       MvcResult createResult =
           mockMvc

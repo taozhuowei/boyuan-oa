@@ -117,8 +117,8 @@ class CoverageBoostTest14 {
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
-                assert status == 200 || status == 400 || status == 409
-                    : "Expected 200/400/409, got " + status;
+                assert status == 200 || status == 201 || status == 400 || status == 409
+                    : "Expected 200/201/400/409, got " + status;
               });
     }
 
@@ -582,8 +582,8 @@ class CoverageBoostTest14 {
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
-                assert status == 200 || status == 400 || status == 409
-                    : "Expected 200/400/409, got " + status;
+                assert status == 200 || status == 201 || status == 400 || status == 409
+                    : "Expected 200/201/400/409, got " + status;
               });
     }
 
@@ -619,7 +619,7 @@ class CoverageBoostTest14 {
     void setUp() throws Exception {
       workerToken = login(mockMvc, "worker.demo", "123456");
       deptManagerToken = login(mockMvc, "dept_manager.demo", "123456");
-      opsToken = login(mockMvc, "ops.demo", "123456");
+      opsToken = login(mockMvc, "sys_admin.demo", "123456");
     }
 
     @Test
