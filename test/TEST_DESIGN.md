@@ -384,6 +384,33 @@ M0 健康检查、M1 认证、M1 员工、M2 组织/项目/操作日志、V5 补
 
 > 每个新增 API 端点在集成测试中必须覆盖以下异常输入场景，禁止仅测试正常路径。
 
+---
+
+## 13.0 跨模块安全输入测试强制规则
+
+> 此规则适用于 **E2E 测试每一个模块**，不可跳过。
+
+每个模块中凡出现以下类型的前端输入控件，**必须**包含对应安全测试用例：
+
+**适用控件范围**
+- 文本搜索框（姓名/关键字/手机号等）
+- 下拉筛选框（若支持用户自由输入）
+- 表单文本输入字段（创建/编辑表单中的每个 text/textarea/number 字段）
+- 备注/说明类字段
+- 文件名/路径类输入
+
+**每个适用控件必须包含的三类安全用例**
+
+- XSS 注入：在字段中输入 `<script>alert('xss')</script>`，提交或触发搜索，验证页面无弹窗，DOM 中不执行脚本，结果以纯文本展示
+- SQL 注入：在字段中输入 `' OR '1'='1` 或 `'; DROP TABLE x;--`，提交，验证系统正常响应（400 或安全入库），功能不受影响
+- 超长字符串：在字段中粘贴 1000 个字符，验证前端拦截或后端返回 400，系统不崩溃
+
+**执行方式**：全部从前端表单字段手动输入并提交，禁止通过直接调接口构造请求。
+
+**例外**：只读展示字段、日期选择器、单选/多选按钮不需要安全输入测试。
+
+---
+
 ### 13.1 字符串字段
 
 - 空字符串 `""` → 应返回 400（若字段必填）
@@ -418,3 +445,95 @@ M0 健康检查、M1 认证、M1 员工、M2 组织/项目/操作日志、V5 补
 - 错误角色 token 调用受限接口 → 403
 - 过期 token → 401
 - 篡改 token（修改 payload 但保留原签名）→ 401
+
+---
+
+## 14 前端性能测试规范
+
+> 执行框架：Playwright（Chromium headless）+ Chrome DevTools Protocol (CDP)
+> 触发时机：每日构建（nightly.yml）+ 发版前全量
+> 文件位置：`test/e2e/specs/perf/`
+
+### 14.1 适用页面与种子数据要求
+
+每个适用页面在执行性能测试前，通过 `POST /api/dev/seed-perf` 预置以下数量的业务数据（专用性能种子接口，不影响功能测试数据）：
+
+- 员工管理 `/employees` — 200 条员工记录
+- 请假历史 `/attendance?tab=history` — 100 条请假记录
+- 加班历史 `/attendance?tab=overtime` — 100 条加班记录
+- 报销历史 `/expense` — 100 条报销单（含附件 URL，不预置实际文件）
+- 工伤申报 `/injury` — 50 条工伤记录
+- 审批待办 `/todo` — 50 条待审批单据
+- 薪资列表 `/payroll` — 12 个月薪资周期 × 每周期 50 条工资条
+- 工资条详情 `/payroll/slip/:id` — 单条工资条含 30 个明细行
+- 项目列表 `/projects` — 50 个项目
+- 施工日志列表 `/projects/:id?tab=log` — 100 条施工日志
+- 通知中心 `/notifications` — 200 条通知（50 条未读）
+
+### 14.2 度量指标与通过标准
+
+#### 首屏加载时间（TTI）
+- 定义：`page.goto(url)` 发起 → 列表第一行内容渲染完毕（`[data-testid="table-row"]` first visible）
+- 标准：< 2000ms（种子数据已加载，后端响应计入）
+- 测量方式：`performance.now()` before goto → after first row visible
+
+#### 翻页响应时间
+- 定义：点击"下一页"按钮 → 新一页第一行内容可见
+- 标准：< 300ms
+- 测量方式：Playwright `page.waitForResponse` 拦截分页 API 响应 + 等待 DOM 更新
+
+#### 滚动帧率（FPS）
+- 定义：在列表页触发 500ms 连续滚动，期间平均帧率
+- 标准：> 55 fps（对应 < 18ms/frame）
+- 测量方式：CDP `Performance.getMetrics` — 采集 `LayoutDuration`、`RecalcStyleDuration`、`ScriptDuration`；公式：`fps = 1000 / (totalRenderTime / frameCount)`
+- 适用页面：员工列表、薪资列表、通知中心、施工日志列表
+
+#### 工资条内容浏览
+- 定义：打开工资条详情页（含 30 行明细）→ 滚动至底部
+- 标准：滚动到底耗时 < 500ms，期间 FPS > 55
+- 额外断言：`document.body.scrollHeight > window.innerHeight`（验证确实有滚动区域）
+
+#### 报销附件图片加载
+- 定义：打开含附件 URL 的报销详情 → `img` 元素 `load` 事件触发
+- 标准：< 3000ms（单张 < 5MB 的图片 URL 响应）
+- 测量方式：Playwright `page.waitForFunction(() => img.complete && img.naturalWidth > 0)`
+
+#### JS 堆内存泄漏检测
+- 定义：依次导航至全部 10 个主要模块页面，返回首页，重复导航一轮，对比两轮堆大小
+- 标准：第二轮堆大小 / 第一轮堆大小 < 1.20（增长不超过 20%）
+- 测量方式：`page.evaluate(() => (performance as any).memory?.usedJSHeapSize ?? 0)`
+- 适用：整体跨模块导航（在 `perf/memory_leak.spec.ts` 中实现）
+
+### 14.3 工具配置
+
+```typescript
+// 开启 CDP Performance 采集
+const client = await page.context().newCDPSession(page)
+await client.send('Performance.enable')
+const metrics = await client.send('Performance.getMetrics')
+
+// 帧率计算辅助函数（perf/helpers/fps.ts）
+export async function measureScrollFps(page: Page, durationMs = 500): Promise<number> {
+  // 注入 PerformanceObserver 采集 longtask，滚动后计算平均帧间隔
+}
+```
+
+- 所有性能测试使用 `--headed=false`（headless 模式），关闭 GPU 加速（`--disable-gpu`）以确保 CI 和本地结果一致
+- 性能阈值定义在 `test/e2e/perf/thresholds.ts`，便于统一调整
+
+### 14.4 性能用例在各模块中的位置
+
+每个列表模块的 E2E spec 末尾追加一个 `describe('性能流程', ...)` 块，包含：
+- 首屏加载时间用例（必选）
+- 翻页响应时间用例（有分页的页面必选）
+- 滚动 FPS 用例（有可滚动长列表的页面必选）
+
+跨模块内存泄漏用例独立放在 `test/e2e/specs/perf/memory_leak.spec.ts`。
+
+### 14.5 失败处置
+
+- 性能用例失败时 CI 以 `continue-on-error: true` 记录，不阻塞功能测试
+- 性能报告上传为 artifact，保留 30 天
+- 连续两个 nightly 超出阈值，需在下一个迭代内修复
+
+---
