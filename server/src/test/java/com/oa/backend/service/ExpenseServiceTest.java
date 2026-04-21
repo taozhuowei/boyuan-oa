@@ -303,7 +303,7 @@ class ExpenseServiceTest {
             Map.of(),
             List.of(),
             null);
-    when(formService.submitForm(eq(1L), eq("EXPENSE"), anyString(), any()))
+    when(formService.submitForm(eq(1L), eq("EXPENSE"), anyString(), any(), any()))
         .thenReturn(formResponse);
     when(expenseClaimMapper.insert(any())).thenReturn(1);
     when(formService.getDetail(100L, 1L)).thenReturn(formResponse);
@@ -349,7 +349,7 @@ class ExpenseServiceTest {
             Map.of(),
             List.of(),
             null);
-    when(formService.submitForm(eq(2L), eq("EXPENSE"), anyString(), any()))
+    when(formService.submitForm(eq(2L), eq("EXPENSE"), anyString(), any(), any()))
         .thenReturn(formResponse);
     when(expenseClaimMapper.insert(any())).thenReturn(1);
     when(formService.getDetail(200L, 2L)).thenReturn(formResponse);
