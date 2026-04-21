@@ -36,3 +36,9 @@ local/seed-data.sql
 
 # SonarQube scanner working directory (generated during local analysis)
 .scannerwork/
+sonar-scanner.zip
+sonar-scanner*/
+
+# Runtime upload directory and test output artifacts
+server/uploads/
+test-results/
