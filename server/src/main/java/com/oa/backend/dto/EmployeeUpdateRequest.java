@@ -5,13 +5,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/** 员工更新请求 DTO — C+-F-08 phone 加手机号格式校验 */
+/** 员工更新请求 DTO — C+-F-08 phone 加手机号格式校验；C+-F-16 移除 employeeType 字段 */
 public record EmployeeUpdateRequest(
     String name,
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确") String phone,
     String email,
     String roleCode,
-    String employeeType,
     Long departmentId,
     Long positionId,
     Long levelId,

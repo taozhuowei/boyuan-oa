@@ -45,12 +45,30 @@
               data-catch="setup-ceo-phone"
             />
           </a-form-item>
-          <a-form-item label="密码" :rules="[{ required: true, message: '请输入密码' }]">
+          <a-form-item label="密码" :rules="ceoPasswordRules">
             <a-input-password
               v-model:value="formState.ceoPassword"
-              placeholder="请输入密码（至少8位）"
+              placeholder="请输入密码（8-64位，含字母和数字）"
               data-catch="setup-ceo-password"
             />
+            <!-- Real-time password strength hints (D-F-17) -->
+            <div class="strength-hints">
+              <span
+                :class="['hint-item', ceoPasswordChecks.length ? 'hint-ok' : 'hint-ng']"
+              >
+                长度 8-64 位
+              </span>
+              <span
+                :class="['hint-item', ceoPasswordChecks.hasLetter ? 'hint-ok' : 'hint-ng']"
+              >
+                包含字母
+              </span>
+              <span
+                :class="['hint-item', ceoPasswordChecks.hasDigit ? 'hint-ok' : 'hint-ng']"
+              >
+                包含数字
+              </span>
+            </div>
           </a-form-item>
           <a-form-item label="确认密码" :rules="[{ required: true, message: '请确认密码' }]">
             <a-input-password
@@ -239,7 +257,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { reactive, ref, computed } from 'vue'
 import { message } from 'ant-design-vue'
 
 definePageMeta({
@@ -262,6 +280,30 @@ interface FormState {
 
 const currentStep = ref(0)
 const submitting = ref(false)
+
+// CEO password real-time strength checks (D-F-17)
+const ceoPasswordChecks = computed(() => ({
+  length: formState.ceoPassword.length >= 8 && formState.ceoPassword.length <= 64,
+  hasLetter: /[a-zA-Z]/.test(formState.ceoPassword),
+  hasDigit: /[0-9]/.test(formState.ceoPassword),
+}))
+
+// CEO password validation rules matching D-F-17 spec: 8-64 chars + letter + digit + no space
+const ceoPasswordRules = [
+  { required: true, message: '请输入密码', trigger: 'blur' },
+  {
+    validator: (_rule: unknown, value: string) => {
+      if (!value) return Promise.resolve()
+      if (value.length < 8 || value.length > 64)
+        return Promise.reject(new Error('密码长度须为 8-64 位'))
+      if (!/[a-zA-Z]/.test(value)) return Promise.reject(new Error('密码须包含字母'))
+      if (!/[0-9]/.test(value)) return Promise.reject(new Error('密码须包含数字'))
+      if (/\s/.test(value)) return Promise.reject(new Error('密码不能包含空格'))
+      return Promise.resolve()
+    },
+    trigger: 'blur',
+  },
+]
 const submitError = ref('')
 const recoveryCode = ref('')
 const recoverySaved = ref(false)
@@ -294,8 +336,20 @@ function validateStep(step: number): boolean {
       message.error('请输入有效的手机号码')
       return false
     }
-    if (!formState.ceoPassword || formState.ceoPassword.length < 8) {
-      message.error('密码至少8位')
+    if (!formState.ceoPassword || formState.ceoPassword.length < 8 || formState.ceoPassword.length > 64) {
+      message.error('密码长度须为 8-64 位')
+      return false
+    }
+    if (!/[a-zA-Z]/.test(formState.ceoPassword)) {
+      message.error('密码须包含字母')
+      return false
+    }
+    if (!/[0-9]/.test(formState.ceoPassword)) {
+      message.error('密码须包含数字')
+      return false
+    }
+    if (/\s/.test(formState.ceoPassword)) {
+      message.error('密码不能包含空格')
       return false
     }
     if (formState.ceoPassword !== formState.ceoPasswordConfirm) {
@@ -447,5 +501,29 @@ function finishSetup() {
 
 .copy-btn {
   margin-top: 8px;
+}
+
+/* Password strength indicator — grey when not met, green when met (D-F-17) */
+.strength-hints {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.hint-item {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.hint-ng {
+  color: #999;
+  background: #f5f5f5;
+}
+
+.hint-ok {
+  color: #52c41a;
+  background: #f6ffed;
 }
 </style>

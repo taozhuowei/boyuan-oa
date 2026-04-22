@@ -36,9 +36,6 @@
           <a-descriptions-item label="部门">
             {{ userInfo?.departmentName ?? '-' }}
           </a-descriptions-item>
-          <a-descriptions-item label="员工类型">
-            {{ formatEmployeeType(userInfo?.employeeType) }}
-          </a-descriptions-item>
           <a-descriptions-item label="账号状态">正常</a-descriptions-item>
         </a-descriptions>
 
@@ -62,18 +59,11 @@ interface UserInfo {
   roleCode: string
   roleName: string
   departmentName: string | null
-  employeeType: string
   isDefaultPassword: boolean
 }
 
 const loading = ref(false)
 const userInfo = ref<UserInfo | null>(null)
-
-function formatEmployeeType(type: string | undefined): string {
-  if (type === 'OFFICE') return '正式员工'
-  if (type === 'LABOR') return '劳工'
-  return type ?? '-'
-}
 
 async function loadUserInfo() {
   loading.value = true

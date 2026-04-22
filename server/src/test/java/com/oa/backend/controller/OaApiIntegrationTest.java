@@ -5,14 +5,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oa.backend.dto.AuthPasswordLoginRequest;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -32,6 +35,8 @@ class OaApiIntegrationTest {
   @Autowired private MockMvc mockMvc;
 
   @Autowired private ObjectMapper objectMapper;
+
+  @Autowired private JdbcTemplate jdbcTemplate;
 
   private String employeeToken;
   private String financeToken;
@@ -337,7 +342,28 @@ class OaApiIntegrationTest {
 
   @Nested
   @DisplayName("M5 - 薪资模块")
+  @TestInstance(TestInstance.Lifecycle.PER_CLASS)
   class M5Payroll {
+
+    @BeforeAll
+    void cleanupPayrollPeriods() {
+      // 清理本 nested class 使用的固定 period，保证测试幂等
+      // 依赖链：evidence_chain → payroll_slip → payroll_cycle
+      // 依赖链：payroll_slip_item/confirmation/evidence_chain → payroll_slip
+      //        payroll_adjustment/payroll_bonus → payroll_cycle
+      String cycleIds = "SELECT id FROM payroll_cycle WHERE period IN (?,?,?,?,?,?)";
+      String slipIds = "SELECT id FROM payroll_slip WHERE cycle_id IN (" + cycleIds + ")";
+      Object[] args = {"2099-01", "2099-02", "2099-03", "2099-04", "2099-05", "2099-06"};
+      jdbcTemplate.update("DELETE FROM payroll_slip_item WHERE slip_id IN (" + slipIds + ")", args);
+      jdbcTemplate.update(
+          "DELETE FROM payroll_confirmation WHERE slip_id IN (" + slipIds + ")", args);
+      jdbcTemplate.update("DELETE FROM evidence_chain WHERE slip_id IN (" + slipIds + ")", args);
+      jdbcTemplate.update("DELETE FROM payroll_slip WHERE cycle_id IN (" + cycleIds + ")", args);
+      jdbcTemplate.update(
+          "DELETE FROM payroll_adjustment WHERE cycle_id IN (" + cycleIds + ")", args);
+      jdbcTemplate.update("DELETE FROM payroll_bonus WHERE cycle_id IN (" + cycleIds + ")", args);
+      jdbcTemplate.update("DELETE FROM payroll_cycle WHERE period IN (?,?,?,?,?,?)", args);
+    }
 
     @Test
     @DisplayName("TC1: Finance 创建工资周期 → 200，返回 period")

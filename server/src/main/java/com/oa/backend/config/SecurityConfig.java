@@ -10,6 +10,7 @@
  */
 package com.oa.backend.config;
 
+import com.oa.backend.filter.GlobalRateLimitFilter;
 import com.oa.backend.security.JwtAuthenticationFilter;
 import jakarta.servlet.DispatcherType;
 import java.util.ArrayList;
@@ -45,6 +46,10 @@ public class SecurityConfig {
    */
   @Value("${app.cors.origins:}")
   private String corsOriginsProp;
+
+  /** D-F-20: 全局限流阈值（每 IP 每分钟最大请求数），测试环境可通过 app.rate-limit.global-per-minute 调高。 */
+  @Value("${app.rate-limit.global-per-minute:300}")
+  private int globalRateLimitPerMinute;
 
   private final Environment environment;
 
@@ -153,6 +158,10 @@ public class SecurityConfig {
                     .authenticated())
         .exceptionHandling(
             ex -> ex.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
+        // D-F-20: 全局通用限流 Filter，注册在认证 Filter 之前；阈值可通过 app.rate-limit.global-per-minute 配置
+        .addFilterBefore(
+            new GlobalRateLimitFilter(globalRateLimitPerMinute),
+            UsernamePasswordAuthenticationFilter.class)
         .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
     return http.build();

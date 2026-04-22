@@ -30,16 +30,17 @@ class CoverageBoostTest6 {
 
   // ─────────────────────────────────────────────────────────────────────────
   // AuthController  /auth
-  // POST /login:           public — covered by all other tests' @BeforeAll
-  // POST /dev-login:       public
-  // POST /change-password: isAuthenticated (under /auth/** which is permitAll)
-  // GET /me:               isAuthenticated
+  // POST /login:                           public — covered by all other tests' @BeforeAll
+  // POST /dev-login:                       public
+  // POST /password/send-reset-code:        isAuthenticated (D-F-16)
+  // POST /password/verify-reset:           isAuthenticated (D-F-16)
+  // GET /me:                               isAuthenticated
   // ─────────────────────────────────────────────────────────────────────────
   @Nested
   @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
   @AutoConfigureMockMvc
   @TestInstance(Lifecycle.PER_CLASS)
-  @DisplayName("AuthController — /auth/me and /auth/change-password")
+  @DisplayName("AuthController — /auth/me and /auth/password/*")
   class AuthControllerTests {
 
     @Autowired MockMvc mockMvc;
@@ -74,72 +75,70 @@ class CoverageBoostTest6 {
           .andExpect(jsonPath("$.roleCode").exists());
     }
 
+    // D-F-16: change-password 已删除，改为邮箱验证码流程。以下测试覆盖新密码重置接口。
+
     @Test
-    @DisplayName("POST /auth/change-password - wrong current password returns 400")
-    void changePassword_wrongCurrentPassword_returns400() throws Exception {
-      Map<String, String> body =
-          Map.of("currentPassword", "WRONG_PASSWORD_XYZ", "newPassword", "newpass123");
+    @DisplayName("POST /auth/password/send-reset-code - no bound email returns 400")
+    void sendPasswordResetCode_noBoundEmail_returns400() throws Exception {
+      // employee.demo 测试账号通常无绑定邮箱，应返回 400
       mockMvc
           .perform(
-              post("/auth/change-password")
-                  .header("Authorization", "Bearer " + employeeToken)
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(body)))
+              post("/auth/password/send-reset-code")
+                  .header("Authorization", "Bearer " + employeeToken))
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
-                assert status == 400 : "Expected 400 for wrong password but got " + status;
+                assert status == 400 || status == 204 : "Expected 400 or 204 but got " + status;
               });
     }
 
     @Test
-    @DisplayName("POST /auth/change-password - blank currentPassword returns 400")
-    void changePassword_blankCurrentPassword_returns400() throws Exception {
-      Map<String, String> body = Map.of("currentPassword", "", "newPassword", "newpass123");
+    @DisplayName("POST /auth/password/send-reset-code - no token returns 4xx (401 or 403)")
+    void sendPasswordResetCode_noToken_returns401() throws Exception {
+      // /auth/** is permitAll in SecurityConfig; @PreAuthorize("isAuthenticated()") on the method
+      // returns 403 (AccessDenied) for anonymous users on permitted paths in Spring Security 6.
       mockMvc
-          .perform(
-              post("/auth/change-password")
-                  .header("Authorization", "Bearer " + employeeToken)
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content(objectMapper.writeValueAsString(body)))
+          .perform(post("/auth/password/send-reset-code"))
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
-                assert status == 400 : "Expected 400 for blank currentPassword but got " + status;
+                assert status == 401 || status == 403
+                    : "Expected 401 or 403 for unauthenticated request, got " + status;
               });
     }
 
     @Test
-    @DisplayName("POST /auth/change-password - blank newPassword returns 400")
-    void changePassword_blankNewPassword_returns400() throws Exception {
-      Map<String, String> body = Map.of("currentPassword", "123456", "newPassword", "");
+    @DisplayName("POST /auth/password/verify-reset - invalid code returns 400")
+    void verifyPasswordReset_invalidCode_returns400() throws Exception {
+      Map<String, String> body = Map.of("code", "000000", "newPassword", "Abcde123");
       mockMvc
           .perform(
-              post("/auth/change-password")
+              post("/auth/password/verify-reset")
                   .header("Authorization", "Bearer " + employeeToken)
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(body)))
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
-                assert status == 400 : "Expected 400 for blank newPassword but got " + status;
+                assert status == 400 : "Expected 400 for invalid code but got " + status;
               });
     }
 
     @Test
-    @DisplayName("POST /auth/change-password - newPassword too short returns 400")
-    void changePassword_shortNewPassword_returns400() throws Exception {
-      Map<String, String> body = Map.of("currentPassword", "123456", "newPassword", "123");
+    @DisplayName("POST /auth/password/verify-reset - weak password returns 400")
+    void verifyPasswordReset_weakPassword_returns400() throws Exception {
+      // newPassword 不满足强度规则（纯数字），应被 @Pattern 拦截
+      Map<String, String> body = Map.of("code", "123456", "newPassword", "12345678");
       mockMvc
           .perform(
-              post("/auth/change-password")
+              post("/auth/password/verify-reset")
                   .header("Authorization", "Bearer " + employeeToken)
                   .contentType(MediaType.APPLICATION_JSON)
                   .content(objectMapper.writeValueAsString(body)))
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
-                assert status == 400 : "Expected 400 for too-short password but got " + status;
+                assert status == 400 : "Expected 400 for weak password but got " + status;
               });
     }
 

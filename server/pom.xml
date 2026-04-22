@@ -133,11 +133,10 @@
             <version>2.5.0</version>
         </dependency>
 
-        <!-- Bucket4j core — in-memory token bucket rate limiting for login endpoint (C+-F-10) -->
+        <!-- Spring Mail — email sending for D-F-23 email verification and D-F-16 password reset -->
         <dependency>
-            <groupId>com.bucket4j</groupId>
-            <artifactId>bucket4j-core</artifactId>
-            <version>8.10.1</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
         <!-- Test -->

@@ -113,9 +113,6 @@
           {{ detailRecord.departmentName ?? '—' }}
         </a-descriptions-item>
         <a-descriptions-item label="角色">{{ detailRecord.roleName ?? '—' }}</a-descriptions-item>
-        <a-descriptions-item label="员工类型">
-          {{ detailRecord.employeeType === 'LABOR' ? '劳工' : '正式员工' }}
-        </a-descriptions-item>
         <a-descriptions-item label="入职日期">
           {{ detailRecord.entryDate ?? '—' }}
         </a-descriptions-item>
@@ -201,16 +198,6 @@
               />
             </a-form-item>
           </a-col>
-          <a-col :span="12">
-            <a-form-item label="员工类型" required>
-              <a-select v-model:value="form.employeeType">
-                <a-select-option value="OFFICE">办公室</a-select-option>
-                <a-select-option value="LABOR">劳工</a-select-option>
-              </a-select>
-            </a-form-item>
-          </a-col>
-        </a-row>
-        <a-row :gutter="16">
           <a-col :span="12">
             <a-form-item label="部门" required>
               <a-select
@@ -435,7 +422,6 @@ interface Employee {
   roleCode?: string
   roleName?: string
   positionId?: number | null
-  employeeType: string
   accountStatus: string
   entryDate: string | null
   socialSeniority?: number | null
@@ -507,7 +493,6 @@ const form = ref<{
   phone: string
   email: string
   roleCode: string
-  employeeType: 'OFFICE' | 'LABOR'
   departmentId: number | undefined
   positionId: number | undefined
   entryDate: string
@@ -527,7 +512,6 @@ const form = ref<{
   phone: '',
   email: '',
   roleCode: 'employee',
-  employeeType: 'OFFICE',
   departmentId: undefined,
   positionId: undefined,
   entryDate: '',
@@ -571,7 +555,6 @@ function resetForm() {
     phone: '',
     email: '',
     roleCode: 'employee',
-    employeeType: 'OFFICE',
     departmentId: undefined,
     positionId: undefined,
     entryDate: new Date().toISOString().slice(0, 10),
@@ -609,7 +592,6 @@ async function openEdit(record: Employee) {
     phone: record.phone ?? '',
     email: record.email ?? '',
     roleCode: record.roleCode ?? 'employee',
-    employeeType: (record.employeeType as 'OFFICE' | 'LABOR') ?? 'OFFICE',
     departmentId: record.departmentId ?? undefined,
     positionId: record.positionId ?? undefined,
     entryDate: record.entryDate ?? '',
@@ -698,10 +680,6 @@ async function submitForm() {
   }
   if (!form.value.roleCode) {
     message.warning('请选择主角色')
-    return
-  }
-  if (!form.value.employeeType) {
-    message.warning('请选择员工类型')
     return
   }
   if (!form.value.departmentId) {

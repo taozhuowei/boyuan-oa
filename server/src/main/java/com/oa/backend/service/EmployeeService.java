@@ -15,15 +15,9 @@ public interface EmployeeService {
   /** 认证：根据 employee_no 和密码验证，成功返回 Employee */
   Optional<Employee> authenticate(String employeeNo, String rawPassword);
 
-  /** 分页列表，支持过滤 */
+  /** 分页列表，支持过滤 — C+-F-16 移除 employeeType 参数 */
   IPage<Employee> listEmployees(
-      int page,
-      int size,
-      String keyword,
-      String roleCode,
-      String employeeType,
-      String accountStatus,
-      Long departmentId);
+      int page, int size, String keyword, String roleCode, String accountStatus, Long departmentId);
 
   /** 根据 ID 查询（排除已删除） */
   Optional<Employee> findById(Long id);

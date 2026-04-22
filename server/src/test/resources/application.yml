@@ -41,6 +41,11 @@ jwt:
 app:
   signature:
     aes-key: TestSignatureKey2024ForUnitTests32
+  # D-F-20: 测试环境禁用全局限流（设为极大值），避免集成测试因大量登录请求触发 429
+  # D-F-19: 测试环境将登录失败阶梯锁定阈值调高，避免错误密码测试用例锁定 127.0.0.1 影响后续测试
+  rate-limit:
+    global-per-minute: 100000
+    login-fail-threshold: 100000
 
 oa:
   upload-dir: /tmp/oa-test-uploads

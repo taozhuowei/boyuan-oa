@@ -21,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -53,12 +54,16 @@ class CoverageBoostTest17 {
   /** Direct mapper injection for inserting RetentionReminder rows in dismiss tests. */
   @Autowired private RetentionReminderMapper reminderMapper;
 
+  @Autowired private JdbcTemplate jdbcTemplate;
+
   private String ceoToken;
   private String financeToken;
   private String employeeToken;
 
   @BeforeEach
-  void acquireTokens() throws Exception {
+  void setupEach() throws Exception {
+    // 清理本 class 使用的固定 period，保证测试幂等
+    deletePayrollCyclesByPeriod("2018-01", "2018-02", "2018-03", "2018-04", "2018-05");
     ceoToken = login("ceo.demo");
     financeToken = login("finance.demo");
     employeeToken = login("employee.demo");
@@ -84,6 +89,38 @@ class CoverageBoostTest17 {
             .andReturn();
     JsonNode json = objectMapper.readTree(result.getResponse().getContentAsString());
     return json.get("token").asText();
+  }
+
+  // ── cleanup helpers ───────────────────────────────────────────────────────
+
+  /**
+   * Deletes all payroll data for the given periods in dependency order: payroll_slip_item /
+   * payroll_confirmation / evidence_chain → payroll_slip → payroll_adjustment / payroll_bonus →
+   * payroll_cycle.
+   */
+  private void deletePayrollCyclesByPeriod(String... periods) {
+    String cycleIds =
+        "SELECT id FROM payroll_cycle WHERE period IN ("
+            + "?,".repeat(periods.length).replaceAll(",$", "")
+            + ")";
+    String slipIds = "SELECT id FROM payroll_slip WHERE cycle_id IN (" + cycleIds + ")";
+    jdbcTemplate.update(
+        "DELETE FROM payroll_slip_item WHERE slip_id IN (" + slipIds + ")", (Object[]) periods);
+    jdbcTemplate.update(
+        "DELETE FROM payroll_confirmation WHERE slip_id IN (" + slipIds + ")", (Object[]) periods);
+    jdbcTemplate.update(
+        "DELETE FROM evidence_chain WHERE slip_id IN (" + slipIds + ")", (Object[]) periods);
+    jdbcTemplate.update(
+        "DELETE FROM payroll_slip WHERE cycle_id IN (" + cycleIds + ")", (Object[]) periods);
+    jdbcTemplate.update(
+        "DELETE FROM payroll_adjustment WHERE cycle_id IN (" + cycleIds + ")", (Object[]) periods);
+    jdbcTemplate.update(
+        "DELETE FROM payroll_bonus WHERE cycle_id IN (" + cycleIds + ")", (Object[]) periods);
+    jdbcTemplate.update(
+        "DELETE FROM payroll_cycle WHERE period IN ("
+            + "?,".repeat(periods.length).replaceAll(",$", "")
+            + ")",
+        (Object[]) periods);
   }
 
   // ── payroll helpers ───────────────────────────────────────────────────────

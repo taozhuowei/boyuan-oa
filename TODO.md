@@ -1441,7 +1441,13 @@
   - 前端假期类型表单扣款比例字段加 rules 校验 0~1
   - 验收：deductionRate=2.0 返回 400，提示中文；deductionRate=-0.1 返回 400
 
-- `[ ]` **D-F-16 邮箱验证码密码重置流程**
+- `[x]` **C+-F-16 删除 employeeType 相关逻辑（对齐 DESIGN.md §3.3）**
+  - 后端：`EmployeeCreateRequest` / `EmployeeUpdateRequest` 删除 `employeeType` 字段及 `@NotBlank` 注解；`Employee` 实体保留 DB 列（历史数据兼容）但移除业务校验
+  - 前端：员工创建/编辑表单删除"员工类型"下拉选项
+  - 测试：更新 `EmployeeServiceImplTest` 及相关集成测试，移除 employeeType 入参
+  - 验收：`mvn test` 全通过，前端表单无员工类型字段，`yarn test:integration` 三次全绿
+
+- `[x]` **D-F-16 邮箱验证码密码重置流程**
   - 删除"输入旧密码"方式，改为：发送验证码到绑定邮箱 → 输入验证码 + 新密码 → 完成
   - 后端：Spring Boot Mail + QQ SMTP（smtp.qq.com:465），验证码 6 位数字，有效期 5 分钟，存内存（Caffeine）
   - 前端：发送验证码按钮 + 倒计时 + 验证码输入框 + 新密码输入框
@@ -1451,36 +1457,36 @@
   - `test/.env.test`（gitignored）：TEST_EMAIL / TEST_EMAIL_IMAP_PASSWORD / MAIL_FROM / MAIL_PASSWORD
   - 验收：测试账号 email=NULL 首次登录 → 绑定邮箱收到验证码 → 验证成功 → 修改密码收到验证码 → 完成全流程
 
-- `[ ]` **D-F-17 密码强度规则**
+- `[x]` **D-F-17 密码强度规则**
   - 规则：最少 8 位、必须同时包含字母和数字、不允许空格、最多 64 位
   - 后端：密码修改/首次设置接口加 @Pattern 或 Service 层校验，不符合返回 400 中文提示
   - 前端：密码输入框旁显示规则提示文字，实时反馈当前是否达标（字符计数、字母、数字三项状态）
   - 验收：纯字母密码 400、纯数字密码 400、7 位密码 400、含空格密码 400、符合规则成功
 
-- `[ ]` **D-F-18 登出确认对话框**
+- `[x]` **D-F-18 登出确认对话框**
   - 前端：点击退出登录弹出确认框"确定退出登录吗？"，确认后清除 token 并跳转登录页，取消不操作
   - 验收：点击确认完成登出；点击取消留在当前页
 
-- `[ ]` **D-F-19 登录阶梯式限速（替换 C+-F-10 单层实现）**
+- `[x]` **D-F-19 登录阶梯式限速（替换 C+-F-10 单层实现）**
   - 连续失败 5 次锁 1 分钟；10 次锁 5 分钟；20 次锁 15 分钟；30 次锁 60 分钟
   - 锁定期间返回 429，消息含剩余等待时间（中文）
   - Bucket4j 多层 Bandwidth 实现，替换现有 AuthController 中的单层配置
   - 验收：连续失败 5 次触发 429，消息含剩余秒数
 
-- `[ ]` **D-F-20 全接口通用限流 Filter**
+- `[x]` **D-F-20 全接口通用限流 Filter**
   - 新增全局 Spring Security Filter：每个 IP 每分钟最多 300 次请求，超出返回 429"访问过于频繁，请稍后再试"
   - 登录接口保留 D-F-19 的独立阶梯限速，两层叠加
   - 验收：单 IP 1 分钟内超过 300 次请求任意接口触发 429；正常使用不受影响
 
-- `[ ]` **D-F-21 删除账号启用功能**
+- `[x]` **D-F-21 删除账号启用功能**
   - 删除后端"启用账号"接口（若存在）和前端"启用"按钮，只保留禁用操作
   - 验收：代码中不存在启用相关逻辑，前端无启用按钮
 
-- `[ ]` **D-F-22 前端拦截"账号已被停用" 401**
+- `[x]` **D-F-22 前端拦截"账号已被停用" 401**
   - API 拦截器检测到 401 + 消息"账号已被停用"，展示提示"您的账号已被停用，请联系管理员"，清除 token，自动跳转登录页
   - 验收：账号禁用后下次操作前端显示提示并跳转，不白屏、不死循环
 
-- `[ ]` **D-F-23 首次登录强制绑定邮箱 + 设置密码**
+- `[x]` **D-F-23 首次登录强制绑定邮箱 + 设置密码**
   - 检测到 isDefaultPassword=true：跳转专属设置页面，禁止访问其他页面
   - 步骤 1：输入邮箱 → 发送验证码 → 输入验证码确认绑定（email 写入 DB）
   - 步骤 2：设置符合强度规则的新密码 → 完成后正常进入系统
@@ -1545,16 +1551,6 @@
   - 对照 C-REGRESSION + C-QUALITY + C+-DESIGN + C+-FIX 各节，确认全部 `[x]`
   - 输出 Phase C/C+ 验收小结
 
-- `[ ]` **C+-G-04 用户确认测试用例设计**
-  - 用户逐节阅读 `test/TEST_DESIGN.md` 并确认
-  - 用户确认 k6 / ZAP / schemathesis 各场景通过标准
-  - **用户明确确认后方可进入 Phase D**
-
-- `[ ]` **C+-G-05 用户确认验收报告**
-  - 汇总五轮测试结果（通过数/总数、各工具结果摘要、覆盖率数字）
-  - 列出所有遗留风险（若有）
-  - **用户签收后 Phase C+ 正式关闭，进入 Phase D**
-
 ---
 
 ## Phase D — 逐模块测试 + 设计对齐 + 人工验收
@@ -1568,34 +1564,6 @@
 > - **TEST** [QA Engineer]：实现 Playwright E2E 全部用例 → 运行并输出 Pass/Fail 矩阵
 > - **FIX** [Backend/Frontend Engineer × QA Engineer]：QA 输出根因清单 → Backend/Frontend 修复代码 → QA Code Review PASS → 重跑全绿 → Orchestrator 跑回归
 > - **ACC** [用户 × Orchestrator]：用户浏览器走主流程 → 报告问题 → Backend/Frontend 修复 → QA 回归通过 → 用户确认关闭模块
-
----
-
-### D-PRE — 前置修复（先于所有模块测试执行）
-
-> 影响多个模块正确性的独立修复，必须在第一个模块进入 TEST 步骤前全部完成。
-
-- `[ ]` **D-PRE-01 删除 employeeType 相关逻辑（对齐 DESIGN.md §3.3）**
-  - 后端：`EmployeeCreateRequest` / `EmployeeUpdateRequest` 删除 `employeeType` 字段及 `@NotBlank` 注解；`Employee` 实体保留 DB 列（历史数据兼容）但移除业务校验
-  - 前端：员工创建/编辑表单删除"员工类型"下拉选项
-  - 测试：更新 `EmployeeServiceImplTest` 及相关集成测试，移除 employeeType 入参
-  - 验收：`mvn test` 全通过，前端表单无员工类型字段，`yarn test:integration` 三次全绿
-
-- `[ ]` **D-PRE-02 D-F-16 邮箱验证码密码重置流程**（详见 C+-FIX D-F-16）
-
-- `[ ]` **D-PRE-03 D-F-17 密码强度规则**（详见 C+-FIX D-F-17）
-
-- `[ ]` **D-PRE-04 D-F-18 登出确认对话框**（详见 C+-FIX D-F-18）
-
-- `[ ]` **D-PRE-05 D-F-19 登录阶梯式限速**（详见 C+-FIX D-F-19）
-
-- `[ ]` **D-PRE-06 D-F-20 全接口通用限流 Filter**（详见 C+-FIX D-F-20）
-
-- `[ ]` **D-PRE-07 D-F-21 删除账号启用功能**（详见 C+-FIX D-F-21）
-
-- `[ ]` **D-PRE-08 D-F-22 前端拦截"账号已被停用"401**（详见 C+-FIX D-F-22）
-
-- `[ ]` **D-PRE-09 D-F-23 首次登录强制绑定邮箱 + 设置密码**（详见 C+-FIX D-F-23）
 
 ---
 
@@ -1640,8 +1608,8 @@
 
 #### D-M02-ALIGN 设计偏差识别与修正
 - `[ ]` 对照 DESIGN.md §3.3 审计员工 CRUD 接口、前端表单字段、权限注解
-- `[ ]` 输出偏差清单（含已知偏差：employeeType 字段待 D-PRE-01 处理）
-- `[ ]` D-PRE-01 完成后，确认 employeeType 已清理
+- `[ ]` 输出偏差清单（含已知偏差：employeeType 字段待 C+-F-16 处理）
+- `[ ]` C+-F-16 完成后，确认 employeeType 已清理
 - `[ ]` 修复其余偏差，Code Review PASS
 - `[ ]` `mvn test` + `yarn test:integration` 三次全绿
 

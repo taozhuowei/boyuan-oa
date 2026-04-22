@@ -685,14 +685,11 @@ class CoverageBoostTest8 {
     }
 
     @Test
-    @DisplayName("PATCH /employees/{id}/status - CEO activates employee")
+    @DisplayName("PATCH /employees/{id}/status - CEO disables non-existent employee returns 404")
     void updateStatus_ceo_returnsOk() throws Exception {
+      // D-F-21: endpoint now only disables; use non-seed ID to avoid corrupting test accounts
       mockMvc
-          .perform(
-              patch("/employees/1/status")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"active\":true}")
-                  .header("Authorization", "Bearer " + ceoToken))
+          .perform(patch("/employees/999999/status").header("Authorization", "Bearer " + ceoToken))
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
@@ -704,12 +701,9 @@ class CoverageBoostTest8 {
     @Test
     @DisplayName("PATCH /employees/{id}/status - HR returns 403")
     void updateStatus_hr_returns403() throws Exception {
+      // Permission check precedes entity lookup; 403 regardless of whether employee exists
       mockMvc
-          .perform(
-              patch("/employees/1/status")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"active\":true}")
-                  .header("Authorization", "Bearer " + hrToken))
+          .perform(patch("/employees/999999/status").header("Authorization", "Bearer " + hrToken))
           .andExpect(status().isForbidden());
     }
 

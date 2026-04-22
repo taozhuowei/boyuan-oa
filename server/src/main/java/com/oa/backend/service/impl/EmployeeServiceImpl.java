@@ -68,7 +68,6 @@ public class EmployeeServiceImpl implements EmployeeService {
       int size,
       String keyword,
       String roleCode,
-      String employeeType,
       String accountStatus,
       Long departmentId) {
     Page<Employee> pageParam = new Page<>(page, size);
@@ -83,11 +82,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     // 角色筛选
     if (roleCode != null && !roleCode.isBlank()) {
       wrapper.eq("role_code", roleCode);
-    }
-
-    // 员工类型筛选
-    if (employeeType != null && !employeeType.isBlank()) {
-      wrapper.eq("employee_type", employeeType);
     }
 
     // 账号状态筛选
@@ -128,7 +122,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     employee.setPhone(request.phone());
     employee.setEmail(request.email());
     employee.setRoleCode(request.roleCode());
-    employee.setEmployeeType(request.employeeType() != null ? request.employeeType() : "OFFICE");
     employee.setDepartmentId(request.departmentId());
     employee.setPositionId(request.positionId());
     employee.setLevelId(request.levelId());
@@ -180,9 +173,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
     if (request.roleCode() != null) {
       employee.setRoleCode(request.roleCode());
-    }
-    if (request.employeeType() != null) {
-      employee.setEmployeeType(request.employeeType());
     }
     if (request.departmentId() != null) {
       employee.setDepartmentId(request.departmentId());

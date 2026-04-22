@@ -38,14 +38,12 @@ public class EmployeeController {
       @RequestParam(defaultValue = "20") int size,
       @RequestParam(required = false) String keyword,
       @RequestParam(required = false) String roleCode,
-      @RequestParam(required = false) String employeeType,
       @RequestParam(required = false) String accountStatus,
       @RequestParam(required = false) Long departmentId,
       Authentication authentication) {
 
     IPage<Employee> employeePage =
-        employeeService.listEmployees(
-            page, size, keyword, roleCode, employeeType, accountStatus, departmentId);
+        employeeService.listEmployees(page, size, keyword, roleCode, accountStatus, departmentId);
 
     // 转换为响应DTO（根据调用者身份脱敏）
     // Resolve currentEmployeeId once to avoid N+1 DB queries inside toResponse per element.
@@ -104,18 +102,14 @@ public class EmployeeController {
     return ResponseEntity.noContent().build();
   }
 
-  /** 职责：更新员工账号状态（禁用/启用） 请求含义：修改指定员工的账号状态为 ACTIVE 或 DISABLED 响应含义：返回更新后的员工信息 权限期望：仅 CEO 可操作 */
+  /**
+   * D-F-21: 仅保留账号禁用操作；启用（ACTIVE）功能已删除。 职责：禁用指定员工账号，状态固定设为 DISABLED 响应含义：返回更新后的员工信息 权限期望：仅 CEO 可操作
+   */
   @PatchMapping("/{id}/status")
   @PreAuthorize("hasRole('CEO')")
-  public ResponseEntity<EmployeeResponse> updateAccountStatus(
-      @PathVariable Long id,
-      @RequestBody Map<String, String> request,
-      Authentication authentication) {
-    String status = request.get("accountStatus");
-    if (!"ACTIVE".equals(status) && !"DISABLED".equals(status)) {
-      throw new IllegalArgumentException("账号状态必须是 ACTIVE 或 DISABLED");
-    }
-    Employee employee = employeeService.updateAccountStatus(id, status);
+  public ResponseEntity<EmployeeResponse> disableAccount(
+      @PathVariable Long id, Authentication authentication) {
+    Employee employee = employeeService.updateAccountStatus(id, "DISABLED");
     return ResponseEntity.ok(toResponse(employee, authentication));
   }
 

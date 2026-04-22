@@ -100,13 +100,13 @@ class EmployeeServiceImplTest {
     // generateEmployeeNo 内部调用 selectOne 判断工号是否重复
     when(employeeMapper.selectOne(any())).thenReturn(null);
 
+    // C+-F-16: employeeType 字段已从 EmployeeCreateRequest 移除
     EmployeeCreateRequest req =
         new EmployeeCreateRequest(
             "张三",
             "13900000099",
             null,
             "employee",
-            "OFFICE",
             1L,
             null,
             null,
@@ -192,7 +192,8 @@ class EmployeeServiceImplTest {
     pageResult.setTotal(2);
     when(employeeMapper.selectPage(any(Page.class), any())).thenReturn(pageResult);
 
-    IPage<Employee> result = service.listEmployees(1, 10, null, null, null, null, null);
+    // C+-F-16: employeeType 参数已移除（原7参数→6参数）
+    IPage<Employee> result = service.listEmployees(1, 10, null, null, null, null);
 
     assertNotNull(result);
     assertEquals(2, result.getTotal());
@@ -208,13 +209,13 @@ class EmployeeServiceImplTest {
     when(employeeMapper.selectOne(any())).thenReturn(emp);
     when(employeeMapper.updateById(any())).thenReturn(1);
 
+    // C+-F-16: employeeType 字段已从 EmployeeUpdateRequest 移除（原20参数→19参数）
     EmployeeUpdateRequest req =
         new EmployeeUpdateRequest(
             "新名字",
             "13900001111",
             null,
             "admin",
-            null,
             null,
             2L,
             null,
@@ -245,10 +246,11 @@ class EmployeeServiceImplTest {
   void updateEmployee_notFound_throwsException() {
     when(employeeMapper.selectOne(any())).thenReturn(null);
 
+    // C+-F-16: employeeType 字段已移除，19 参数
     EmployeeUpdateRequest req =
         new EmployeeUpdateRequest(
             "新名字", null, null, null, null, null, null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null);
+            null, null, null, null, null);
 
     assertThrows(IllegalArgumentException.class, () -> service.updateEmployee(999L, req));
   }
@@ -258,10 +260,11 @@ class EmployeeServiceImplTest {
   void updateEmployee_deleted_throwsException() {
     when(employeeMapper.selectOne(any())).thenReturn(null);
 
+    // C+-F-16: employeeType 字段已移除，19 参数
     EmployeeUpdateRequest req =
         new EmployeeUpdateRequest(
             "新名字", null, null, null, null, null, null, null, null, null, null, null, null, null,
-            null, null, null, null, null, null);
+            null, null, null, null, null);
 
     assertThrows(IllegalArgumentException.class, () -> service.updateEmployee(1L, req));
   }

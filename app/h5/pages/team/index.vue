@@ -10,14 +10,11 @@
         :pagination="false"
         row-key="id"
         size="small"
-        :customRow="() => ({ 'data-catch': 'team-member-row' }) as any"
+        :customRow="() => ({ 'data-catch': 'team-member-row' } as Record<string, string>)"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'roleCode'">
             {{ roleLabel(record.roleCode) }}
-          </template>
-          <template v-if="column.key === 'employeeType'">
-            {{ employeeTypeLabel(record.employeeType) }}
           </template>
           <template v-if="column.key === 'thisMonthLeaveDays'">
             {{ record.thisMonthLeaveDays }} 天
@@ -50,7 +47,6 @@ interface TeamMember {
   id: number
   name: string
   roleCode: string
-  employeeType: string
   accountStatus: string
   thisMonthLeaveDays: number
   thisMonthOvertimeHours: number
@@ -61,8 +57,7 @@ const members = ref<TeamMember[]>([])
 
 const columns = [
   { title: '姓名', dataIndex: 'name', key: 'name' },
-  { title: '角色/类型', key: 'roleCode' },
-  { title: '员工类型', key: 'employeeType' },
+  { title: '角色', key: 'roleCode' },
   { title: '本月请假', key: 'thisMonthLeaveDays' },
   { title: '本月加班', key: 'thisMonthOvertimeHours' },
   { title: '状态', key: 'accountStatus', width: 90 },
@@ -80,12 +75,6 @@ function roleLabel(code: string): string {
     ceo: '首席经营者',
   }
   return map[code] ?? code
-}
-
-function employeeTypeLabel(type: string): string {
-  if (type === 'OFFICE') return '办公室'
-  if (type === 'LABOR') return '劳工'
-  return type
 }
 
 async function loadMembers() {

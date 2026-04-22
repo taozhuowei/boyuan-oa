@@ -4,6 +4,8 @@
 // 3. Enforce role-based route access (whitelist per page)
 // Backend controls menu visibility; this guard blocks direct URL access for restricted pages.
 
+import type { SessionUser } from '~/shared/types/auth'
+
 /**
  * Page access whitelist — maps each restricted route to the roles that MAY access it.
  * Routes not listed here are accessible to all authenticated users (e.g. /workbench, /me, /notifications, /todo, /forms, /expense/apply, /expense/records).
@@ -42,7 +44,7 @@ const PAGE_ACCESS: Record<string, string[]> = {
 export default defineNuxtRouteMiddleware(async (to) => {
   // Use Nuxt's useState for per-request initialization status (SSR-safe)
   const initState = useState<boolean | null>('setup-initialized', () => null)
-  // Public routes (no auth needed)
+  // Public routes (no auth needed) — /setup-account requires auth so excluded here
   const publicPaths = ['/login', '/auth/forgot_password', '/setup']
 
   // Check system initialization status
@@ -72,11 +74,28 @@ export default defineNuxtRouteMiddleware(async (to) => {
   }
 
   const tokenCookie = useCookie<string | null>('oa-token')
-  const userCookie = useCookie<{ role?: string } | null>('oa-user')
+  // Typed as full SessionUser so that role, isDefaultPassword, and email are accessible
+  // without repeated useCookie calls or inline type casts
+  const userCookie = useCookie<SessionUser | null>('oa-user')
 
   // Redirect unauthenticated users
   if (!tokenCookie.value) {
     return navigateTo('/login')
+  }
+
+  // First-login account setup guard (D-F-23):
+  // If the user's session indicates they need to bind email or change default password,
+  // force them to /setup-account before accessing any other page.
+  // We check the oa-user cookie for the isDefaultPassword flag set after /auth/me.
+  const needsSetup =
+    userCookie.value?.isDefaultPassword === true ||
+    userCookie.value?.email === null
+  if (needsSetup && to.path !== '/setup-account') {
+    return navigateTo('/setup-account')
+  }
+  // Prevent accessing /setup-account once account is fully configured
+  if (!needsSetup && to.path === '/setup-account') {
+    return navigateTo('/')
   }
 
   // Role-based route access (whitelist check)

@@ -6,7 +6,7 @@ import com.oa.backend.service.SetupService.SetupRequest;
 import com.oa.backend.service.SetupService.SetupResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -144,7 +144,10 @@ public class SetupController {
       String companyName, // 企业名称（可选）
       @NotBlank(message = "CEO 姓名不能为空") String ceoName,
       @NotBlank(message = "CEO 手机号不能为空") String ceoPhone,
-      @NotBlank(message = "CEO 密码不能为空") @Size(min = 8, message = "CEO 密码长度不能少于 8 位")
+      @NotBlank(message = "CEO 密码不能为空")
+          @Pattern(
+              regexp = "^(?=.*[A-Za-z])(?=.*\\d)[^\\s]{8,64}$",
+              message = "密码须为8-64位，同时包含字母和数字，不允许空格")
           String ceoPassword,
       @NotBlank(message = "HR 姓名不能为空") String hrName,
       @NotBlank(message = "HR 手机号不能为空") String hrPhone,
@@ -156,6 +159,9 @@ public class SetupController {
   /** CEO 密码重置请求。 */
   public record ResetCeoPasswordRequest(
       @NotBlank(message = "恢复码不能为空") String recoveryCode,
-      @NotBlank(message = "新密码不能为空") @Size(min = 8, message = "新密码长度不能少于 8 位")
+      @NotBlank(message = "新密码不能为空")
+          @Pattern(
+              regexp = "^(?=.*[A-Za-z])(?=.*\\d)[^\\s]{8,64}$",
+              message = "密码须为8-64位，同时包含字母和数字，不允许空格")
           String newPassword) {}
 }

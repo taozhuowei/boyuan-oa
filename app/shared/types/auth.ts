@@ -24,11 +24,12 @@ export interface LoginPayload {
  * @property role - 角色代码（系统内部标识，如 'employee'）
  * @property roleName - 角色中文名称（界面展示用，如 '员工'）
  * @property department - 所属部门名称
- * @property employeeType - 员工类型（OFFICE/LABOR）
  * @property status - 当前在线状态（在线值守、离线等）
  * @property userId - 用户ID
  * @property positionId - 岗位ID
  * @property phone - 手机号（可选，用于换绑手机功能）
+ * @property isDefaultPassword - 是否使用初始密码，首次登录时为 true，强制完善账号后清除
+ * @property email - 绑定邮箱地址，未绑定时为 null
  */
 export interface SessionUser {
   username: string
@@ -36,13 +37,16 @@ export interface SessionUser {
   role: string
   roleName: string
   department: string
-  employeeType: string
   status: string
   userId: number | null
   positionId: number | null
   phone?: string
   /** 当前用户持有的第二角色代码列表（如 FOREMAN / AFTER_SALES / MATERIAL_MANAGER）。来源：后端 second_role_assignment 表 */
   secondRoles?: string[]
+  /** 是否使用初始密码。来源：后端 /auth/me 接口，首次登录时为 true */
+  isDefaultPassword?: boolean
+  /** 绑定邮箱，未绑定时为 null。来源：后端 /auth/me 接口 */
+  email?: string | null
 }
 
 /**

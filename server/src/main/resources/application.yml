@@ -63,6 +63,21 @@ spring:
     serialization:
       write-dates-as-timestamps: false
 
+  # D-F-23: 邮件发送配置（凭据通过环境变量注入；MAIL_FROM 为空时跳过实际发送，仅用于开发环境）
+  # spring-boot-starter-mail 仅在 spring.mail.host 非空时自动配置 JavaMailSender，
+  # 此处默认为空，确保未配置时不创建 bean（EmailVerificationService 使用 @Autowired(required=false)）。
+  mail:
+    host: ${MAIL_HOST:}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_FROM:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          ssl:
+            enable: true
+          auth: true
+
 # 附件上传目录（相对于服务启动目录）
 oa:
   upload-dir: ./uploads
@@ -79,6 +94,13 @@ jwt:
   secret: ${JWT_SECRET:__REDACTED_DEFAULT_JWT_SECRET__}
   expiration: 86400000  # 24小时
   issuer: oa-backend
+
+# D-F-20: 全局限流配置（默认 300/min/IP；测试环境通过 application-test.yml 调高）
+# D-F-19: 登录失败阶梯锁定第一阈值（默认5次；测试环境通过 application-test.yml 调高）
+app:
+  rate-limit:
+    global-per-minute: 300
+    login-fail-threshold: 5
 
 # 日志配置（dev profile 会把 com.oa 提到 DEBUG，见 application-dev.yml）
 logging:

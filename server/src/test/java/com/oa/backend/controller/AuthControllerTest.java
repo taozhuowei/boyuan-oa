@@ -48,6 +48,11 @@ class AuthControllerTest {
   // C+-F-11: JwtAuthenticationFilter 现在依赖 EmployeeStatusCache，必须 mock 以防 WebMvcTest 上下文加载失败
   @MockBean private com.oa.backend.service.EmployeeStatusCache employeeStatusCache;
 
+  // D-F-16/D-F-23: AuthController 依赖 EmailVerificationService 和 PasswordEncoder
+  @MockBean private com.oa.backend.service.EmailVerificationService emailVerificationService;
+
+  @MockBean private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
+
   /**
    * 测试开发环境登录接口
    *

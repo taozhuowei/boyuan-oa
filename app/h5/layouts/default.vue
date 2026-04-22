@@ -102,6 +102,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
+import { Modal } from 'ant-design-vue'
 import { useUserStore } from '~/stores/user'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
@@ -297,8 +298,17 @@ function onMenuClick({ key }: MenuInfo) {
 
 async function onAvatarMenuClick({ key }: MenuInfo) {
   if (key === 'logout') {
-    userStore.logout()
-    await navigateTo('/login')
+    // Show confirmation dialog before logout — avoids accidental session termination
+    Modal.confirm({
+      title: '退出登录',
+      content: '确定退出登录吗？',
+      okText: '确定退出',
+      cancelText: '取消',
+      onOk: async () => {
+        userStore.logout()
+        await navigateTo('/login')
+      },
+    })
   } else if (key === 'profile') {
     await navigateTo('/me')
   } else if (key === 'password') {

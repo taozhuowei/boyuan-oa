@@ -7,13 +7,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 
-/** 员工创建请求 DTO — C+-F-08 phone 加手机号格式校验 */
+/** 员工创建请求 DTO — C+-F-08 phone 加手机号格式校验；C+-F-16 移除 employeeType 字段 */
 public record EmployeeCreateRequest(
     @NotBlank(message = "姓名不能为空") String name,
     @Pattern(regexp = "^1[3-9]\\d{9}$", message = "手机号格式不正确") String phone,
     String email,
     @NotBlank(message = "角色不能为空") String roleCode,
-    @NotBlank(message = "员工类型不能为空") String employeeType,
     @NotNull(message = "部门不能为空") Long departmentId,
     Long positionId,
     Long levelId,
