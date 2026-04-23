@@ -1555,378 +1555,399 @@
 
 ## Phase D — 逐模块测试 + 设计对齐 + 人工验收
 
-> **目标**：每个模块走完四步闭环（DESIGN → TEST → FIX → ACC）后方可开始下一模块，全部模块 ACC 通过后执行 D-FINAL 全量回归。
-> **模块顺序**：按依赖关系排列，前序模块 ACC 通过后方可开始下一模块。
-> **当前进度**：M01 认证 DESIGN 已确认（18 条）；M02 员工管理 DESIGN 已确认（99 条）；其余模块从头开始。
->
-> **每个模块四步流程（固定顺序，不可跳过）**
-> - **DESIGN** [Orchestrator × 用户]：Orchestrator 按 DESIGN.md 输出完整用例 → 用户审查提意见 → 循环修改直到确认无异议
-> - **TEST** [QA Engineer]：实现 Playwright E2E 全部用例 → 运行并输出 Pass/Fail 矩阵
-> - **FIX** [Backend/Frontend Engineer × QA Engineer]：QA 输出根因清单 → Backend/Frontend 修复代码 → QA Code Review PASS → 重跑全绿 → Orchestrator 跑回归
-> - **ACC** [用户 × Orchestrator]：用户浏览器走主流程 → 报告问题 → Backend/Frontend 修复 → QA 回归通过 → 用户确认关闭模块
+> 测试用例详见 `test/e2e/TEST_DESIGN.md`，按模块顺序排列。
+> 前序模块 ACC 通过后方可开始下一模块。
 
 ---
 
 ### D-M01 — 认证（无依赖）
 
-**状态**：DESIGN `[x]` | ALIGN `[x]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[x]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M01-DESIGN 测试用例设计确认
-- `[x]` Claude 按 DESIGN.md §2.1 + CEO账号初始化章节输出 18 条用例（2026-04-21 重新设计确认）
-- `[x]` 用户审查确认无异议
-- 用例覆盖：登录（正常/错误密码/账号不存在/空字段/安全输入）、首次登录改密提醒、修改密码（成功/旧密码错/不一致/新密码重登）、CEO 恢复码（展示一次/不可再查/恢复重置）、退出登录（确认弹窗/session 失效）、未授权访问路由跳转
+#### D-M01-DESIGN
+- `[x]` 34 条用例 v3 确认（2026-04-23）→ `test/e2e/TEST_DESIGN.md D-M01`
+  - 覆盖：基础登录（5）、首次登录强制设置（3）、密码修改（4）、CEO 恢复码（3）、退出登录（3）、路由守卫（1）、账号安全（2）、注入与异常输入（13）
 
-#### D-M01-ALIGN 设计偏差识别与修正
-- `[x]` 对照 DESIGN.md §2.1 审计认证相关字段与逻辑，无设计偏差（2026-04-21 确认）
-- `[x]` 偏差清单：无需修复
+#### D-M01-TEST
+- `[ ]` QA 实现 Playwright E2E 全部 34 条（标签 `@auth`）
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
 
-#### D-M01-TEST 测试实现与运行
-- `[ ]` 实现 Playwright E2E 认证模块全部用例（18 条，@auth 标签）
-  - 登录流程：正确登录、错误密码、账号不存在、空字段、XSS/SQL注入/超长字符
-  - 首次登录：初始密码登录后持续提醒，修改后提醒消失
-  - 修改密码：成功全流程、旧密码错误、确认不一致、新密码重登验证
-  - CEO 恢复码：仅展示一次、页面离开后入口消失、用恢复码重置并重登
-  - 退出登录：确认弹窗、跳转登录页、session 失效后访问跳转
-  - 未授权访问：直接输入 URL 被路由守卫重定向
-- `[ ]` `yarn playwright test --grep @auth` 全部通过
-- `[ ]` 修复失败用例，Code Review PASS，重跑全绿
-
-#### D-M01-ACC 人工验收
-- `[ ]` 用户在浏览器完成：正常登录 → 首次登录提醒展示 → 修改密码成功（旧密码重登失败）→ 退出确认弹窗 → CEO 恢复码使用
-- `[ ]` 用户报告问题，Claude 修复
-- `[ ]` 用户确认通过，本模块关闭（注明日期）
-
----
-
-### D-M02 — 员工管理（依赖：D-M01）
-
-**状态**：DESIGN `[x]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
-
-#### D-M02-DESIGN 测试用例设计确认
-- `[x]` Claude 输出 99 用例设计（创建/搜索/更新/Excel 导入/禁用/安全/性能，对话中完成 2026-04-21）
-- `[x]` 用户审查确认无异议
-
-#### D-M02-ALIGN 设计偏差识别与修正
-- `[ ]` 对照 DESIGN.md §3.3 审计员工 CRUD 接口、前端表单字段、权限注解
-- `[ ]` 输出偏差清单（含已知偏差：employeeType 字段待 C+-F-16 处理）
-- `[ ]` C+-F-16 完成后，确认 employeeType 已清理
-- `[ ]` 修复其余偏差，Code Review PASS
-- `[ ]` `mvn test` + `yarn test:integration` 三次全绿
-
-#### D-M02-TEST 测试实现与运行
-- `[ ]` 实现 Playwright E2E 员工管理模块全部用例（99 条）
-- `[ ]` `yarn playwright test --grep @employee` 全部通过
-- `[ ]` 修复失败用例，Code Review PASS，重跑全绿
-
-#### D-M02-ACC 人工验收
-- `[ ]` 用户在浏览器完成：新增员工（全字段）→ 搜索筛选 → 编辑各字段 → Excel 导入（10 条）→ 禁用账号 → 验证被禁用账号无法登录
-- `[ ]` 用户报告问题，Claude 修复
-- `[ ]` 用户确认通过，本模块关闭（注明日期）
-
----
-
-### D-M03 — 部门管理（依赖：D-M01）
-
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
-
-#### D-M03-DESIGN 测试用例设计确认
-- `[ ]` Claude 按 DESIGN.md §3.5 输出部门管理完整测试用例
-- `[ ]` 用户审查提修改意见
-- `[ ]` 循环修改直到用户确认无异议
-
-#### D-M03-ALIGN 设计偏差识别与修正
-- `[ ]` 对照 DESIGN.md §3.5 审计部门 CRUD、组织架构拖拽、直系领导关联逻辑
-- `[ ]` 输出偏差清单，修复偏差，Code Review PASS
-- `[ ]` `mvn test` + `yarn test:integration` 三次全绿
-
-#### D-M03-TEST 测试实现与运行
-- `[ ]` 实现 Playwright E2E 部门管理模块全部用例
-- `[ ]` `yarn playwright test --grep @dept` 全部通过
-- `[ ]` 修复失败用例，Code Review PASS，重跑全绿
-
-#### D-M03-ACC 人工验收
-- `[ ]` 用户在浏览器完成：新增部门 → 编辑部门名称 → 组织架构拖拽调整层级 → 删除空部门 → 删除有员工的部门触发拦截
-- `[ ]` 用户报告问题，Claude 修复
-- `[ ]` 用户确认通过，本模块关闭（注明日期）
-
----
-
-### D-M04 — 岗位与等级（依赖：D-M03）
-
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
-
-#### D-M04-DESIGN 测试用例设计确认
-- `[ ]` Claude 按 DESIGN.md §3.4 输出岗位与等级完整测试用例
-- `[ ]` 用户审查确认
-
-#### D-M04-ALIGN 设计偏差识别与修正
-- `[ ]` 对照 DESIGN.md §3.4 审计岗位/等级 CRUD、薪资绑定、删除约束
-- `[ ]` 修复偏差，Code Review PASS，测试全绿
-
-#### D-M04-TEST 测试实现与运行
-- `[ ]` 实现 Playwright E2E 岗位与等级模块全部用例
-- `[ ]` `yarn playwright test --grep @position` 全部通过
-
-#### D-M04-ACC 人工验收
-- `[ ]` 用户验收通过，注明日期
-
----
-
-### D-M05 — 角色管理（依赖：D-M01）
-
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
-
-#### D-M05-DESIGN 测试用例设计确认
-- `[ ]` Claude 按 DESIGN.md §3.2 输出角色管理完整测试用例
-- `[ ]` 用户审查确认
-
-#### D-M05-ALIGN 设计偏差识别与修正
-- `[ ]` 对照 DESIGN.md §3.2 审计角色列表、权限分配、自定义角色、不可删除内置角色
-- `[ ]` 修复偏差，Code Review PASS，测试全绿
-
-#### D-M05-TEST 测试实现与运行
-- `[ ]` 实现 Playwright E2E 角色管理模块全部用例
-- `[ ]` `yarn playwright test --grep @role` 全部通过
-
-#### D-M05-ACC 人工验收
-- `[ ]` 用户验收通过，注明日期
-
----
-
-### D-M06 — 假期类型配置（依赖：D-M01）
-
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
-
-#### D-M06-DESIGN 测试用例设计确认
-- `[ ]` Claude 按 DESIGN.md §7（假期规则）输出假期类型完整测试用例
-- `[ ]` 用户审查确认
-
-#### D-M06-ALIGN 设计偏差识别与修正
-- `[ ]` 对照设计审计假期类型 CRUD、扣款比例范围校验、默认假期类型
-- `[ ]` 修复偏差，Code Review PASS，测试全绿
-
-#### D-M06-TEST 测试实现与运行
-- `[ ]` 实现 Playwright E2E 假期类型模块全部用例
-- `[ ]` `yarn playwright test --grep @leave-type` 全部通过
-
-#### D-M06-ACC 人工验收
-- `[ ]` 用户验收通过，注明日期
-
----
-
-### D-M07 — 系统配置（依赖：D-M01）
-
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
-
-#### D-M07-DESIGN 测试用例设计确认
-- `[ ]` Claude 按 DESIGN.md §1（系统初始化/配置）输出系统配置完整测试用例
-- `[ ]` 用户审查确认
-
-#### D-M07-ALIGN 设计偏差识别与修正
-- `[ ]` 对照设计审计企业名称/薪资周期/数据保留期配置接口与前端表单
-- `[ ]` 修复偏差，Code Review PASS，测试全绿
-
-#### D-M07-TEST 测试实现与运行
-- `[ ]` 实现 Playwright E2E 系统配置模块全部用例
-- `[ ]` `yarn playwright test --grep @config` 全部通过
-
-#### D-M07-ACC 人工验收
-- `[ ]` 用户验收通过，注明日期
+#### D-M01-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M08 — 初始化向导（依赖：D-M01）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M08-DESIGN 测试用例设计确认
-- `[ ]` Claude 按 DESIGN.md §2 输出初始化向导完整测试用例
-- `[ ]` 用户审查确认
+#### D-M08-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M08`
+- 前置工具：`POST /dev/reset-setup` 重置初始化状态（可反复执行）
 
-#### D-M08-ALIGN 设计偏差识别与修正
-- `[ ]` 对照 DESIGN.md §2 审计向导步骤完整性、幂等性、完成标志
-- `[ ]` 修复偏差，Code Review PASS，测试全绿
+#### D-M08-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
 
-#### D-M08-TEST 测试实现与运行
-- `[ ]` 实现 Playwright E2E 初始化向导模块全部用例
-- `[ ]` `yarn playwright test --grep @setup` 全部通过
+#### D-M08-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
-#### D-M08-ACC 人工验收
-- `[ ]` 用户验收通过，注明日期
+---
+
+### D-M07 — 系统配置（依赖：D-M01）
+
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+
+#### D-M07-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M07`
+
+#### D-M07-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M07-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
+
+---
+
+### D-M03 — 部门管理（依赖：D-M01）
+
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+
+#### D-M03-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M03`
+
+#### D-M03-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M03-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
+
+---
+
+### D-M04 — 岗位与等级（依赖：D-M03）
+
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+
+#### D-M04-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M04`
+
+#### D-M04-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M04-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
+
+---
+
+### D-M05 — 角色管理（依赖：D-M01）
+
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+
+#### D-M05-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M05`
+
+#### D-M05-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M05-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
+
+---
+
+### D-M06 — 假期类型配置（依赖：D-M01）
+
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+
+#### D-M06-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M06`
+
+#### D-M06-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M06-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
+
+---
+
+### D-M02 — 员工管理（依赖：D-M01）
+
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+
+#### D-M02-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M02`
+
+#### D-M02-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M02-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M09 — 请假申请（依赖：D-M01~M04 M06）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M09-DESIGN 测试用例设计确认
-- `[ ]` Claude 按 DESIGN.md §7 输出请假申请完整测试用例
-- `[ ]` 用户审查确认
+#### D-M09-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M09`
 
-#### D-M09-ALIGN 设计偏差识别与修正
-- `[ ]` 对照设计审计请假表单字段、假期类型下拉、时长计算、附件上传、审批流触发
-- `[ ]` 修复偏差，Code Review PASS，测试全绿
+#### D-M09-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
 
-#### D-M09-TEST 测试实现与运行
-- `[ ]` 实现 Playwright E2E 请假申请模块全部用例
-- `[ ]` `yarn playwright test --grep @leave` 全部通过
-
-#### D-M09-ACC 人工验收
-- `[ ]` 用户验收通过，注明日期
+#### D-M09-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M10 — 加班申请（依赖：D-M01~M04）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M10-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M10-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M10`
 
-> 覆盖重点：DESIGN.md §7 加班类型与倍率、开始/结束时间顺序校验、审批流触发
+#### D-M10-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M10-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M11 — 工伤申报（依赖：D-M01 M02）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M11-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M11-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M11`
 
-> 覆盖重点：DESIGN.md §7 工伤三字段（受伤时间/医生诊断/事故经过）、理赔金额仅 Finance 可录入
+#### D-M11-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M11-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M12 — 报销申请（依赖：D-M01 M02）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M12-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M12-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M12`
 
-> 覆盖重点：DESIGN.md §9 报销类型/金额/发票附件必填、报销额度限制、审批流
+#### D-M12-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M12-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M13 — 审批操作（依赖：D-M09~M12）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M13-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M13-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M13`
 
-> 覆盖重点：DESIGN.md §4 待审批列表、通过/驳回操作、驳回意见必填、驳回后重提流程、跨角色审批链
+#### D-M13-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M13-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M14 — 项目管理（依赖：D-M01 M02）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M14-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M14-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M14`
 
-> 覆盖重点：DESIGN.md §8 项目六个 Tab（基本信息/里程碑/成本/营收/施工日志/售后）、项目状态流转
+#### D-M14-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M14-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M15 — 施工日志（依赖：D-M14 M02）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M15-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M15-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M15`
 
-> 覆盖重点：DESIGN.md §8 施工日志提交（需工长角色）、PM 审批施工日志
+#### D-M15-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M15-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M16 — 薪资管理（依赖：D-M02~M04 M09 M10）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M16-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M16-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M16`
 
-> 覆盖重点：DESIGN.md §6 薪资周期创建/结算/发放、工资条查看与签收、五险一金两种模式、补贴/扣款三级配置、薪资条性能（滚动/加载）
+#### D-M16-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M16-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M17 — 通知中心（依赖：D-M09~M13）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M17-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M17-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M17`
 
-> 覆盖重点：各业务事件触发通知、标记已读/全部已读、通知列表性能（200 条）
+#### D-M17-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M17-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M18 — 操作日志（依赖：D-M01+）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M18-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M18-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M18`
 
-> 覆盖重点：日志条目完整性、分页与搜索、CEO 权限可见全量日志
+#### D-M18-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M18-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M19 — 数据导出与查看（依赖：D-M01+）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M19-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M19-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M19`
 
-> 覆盖重点：DESIGN.md §10 导出时间范围选择、.obk 文件格式、历史数据查看器上传与解析
+#### D-M19-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M19-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
 ### D-M20 — 跨模块（安全/性能/无障碍）（依赖：D-M01~M19）
 
-**状态**：DESIGN `[ ]` | ALIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
 
-#### D-M20-DESIGN / ALIGN / TEST / ACC
-- `[ ]` 设计确认 | `[ ]` 偏差修正 | `[ ]` 测试通过 | `[ ]` 人工验收
+#### D-M20-DESIGN
+- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M20`
 
-> 覆盖重点：全模块安全输入测试（§13.0 规则）、全模块内存泄漏跨导航检测、WCAG 无障碍审查
+#### D-M20-TEST
+- `[ ]` QA 实现 Playwright E2E 全部用例
+- `[ ]` 运行，输出 Pass/Fail 矩阵
+- `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+#### D-M20-ACC
+- `[ ]` 用户浏览器走完主流程
+- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` 用户确认关闭（注明日期）
 
 ---
 
-### D-FINAL — 全量回归 + 部署场景测试（依赖：D-M01~M20 全部 ACC 通过）
+### D-FINAL — 全量回归（依赖：D-M01~M20 全部 ACC 通过）
 
-> 所有模块人工验收通过后执行，是进入 Phase E（生产部署）的最终门禁。
-
-- `[ ]` **D-FINAL-01 完整自动化回归**
-  - `mvn test`（含 ArchUnit）全通过
-  - `yarn test:integration` 连续三次全绿
-  - `yarn playwright test`（所有 20 个模块的 E2E 用例）全通过
-  - `yarn workspace oa-h5 lint` 零 error
-
-- `[ ]` **D-FINAL-02 安全全量扫描**
-  - Semgrep 后端 + 前端：0 ERROR
-  - OWASP ZAP baseline scan：无 HIGH 告警
-  - schemathesis 模糊测试：0 server error
-
-- `[ ]` **D-FINAL-03 负载与并发验证**
-  - k6 normal（50VU×5min）：P99 < 500ms，错误率 < 1%
-  - k6 peak（200VU×5min）：P99 < 1s，错误率 < 1%
-  - k6 race（并发审批/薪资结算）：无数据竞争，无 500 错误
-
-- `[ ]` **D-FINAL-04 生产部署场景预演**
-  - Docker Compose 模拟生产环境启动（PostgreSQL + 后端 + 前端）
-  - Flyway V1~V19 全量迁移，无报错
-  - 7 个测试账号均可登录，核心接口返回 200
-  - 环境变量注入方式验证（不依赖硬编码 fallback）
-
-- `[ ]` **D-FINAL-05 阶段完成确认**
-  - 输出验收报告（模块数/通过数/遗留问题清单）
-  - 用户签收，Phase D 正式关闭，进入 Phase E
+- `[ ]` `mvn test`（含 ArchUnit）全通过
+- `[ ]` `yarn test:integration` 连续三次全绿
+- `[ ]` `yarn playwright test`（全部 20 个模块 E2E 用例）全通过
+- `[ ]` 进入 Phase E（生产部署）
 
 ---
 
