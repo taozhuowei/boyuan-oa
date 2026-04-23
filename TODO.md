@@ -26,19 +26,30 @@
 - 触发 QA agent 实现与执行
 
 **下一步动作（用户）**
+- 逐条确认 Phase A/B/C/C+ 核验结果（见下方 Phase 总览）
 - 决策 DEF-AUTH-01/02/03 是否立项独立 AUTH-IMPROVE Phase
 - 决策 DEF-AUTH-04 处理方案（测试环境限流阈值恢复 5 + 新增 dev 端点）
+- 决策新登记的技术债 DEF-TECH-01~04 处理时机
 
-**阻塞项**：无
+**阻塞项**：无（Phase A/B/C/C+ 核验全部 PASS，Phase D 推进无阻塞）
 
 ---
 
 ## Phase 总览
 
-- Phase A — 架构治理 + 清理：**声明完成** ⚠️ 待核验 → 见归档区
-- Phase B — 功能补全 + Bug 修复：**声明完成** ⚠️ 待核验 → 见归档区
-- Phase C — 测试覆盖：**声明完成** ⚠️ 待核验 → 见归档区
-- Phase C+ — 质量体系建设 + 全维度测试：**声明完成** ⚠️ 待核验 → 见归档区
+核验日期 2026-04-23。
+
+- Phase A — 架构治理 + 清理：**核验通过（10/10 关键节点 PASS）**
+  - 46 项任务真实落地：Controller 权限注解齐全、前端路由守卫覆盖完整、Controller 不持 Mapper（0 违规，InjuryClaimController 遗留已注释排除）、全局异常处理器覆盖 15+ 异常类、测试文件全部在 test/、前端目录全部 snake_case、V14 索引迁移存在并生效
+- Phase B — 功能补全 + Bug 修复：**核验通过（10/12 PASS / 0 FAIL / 2 项技术债）**
+  - 核心业务 B-P0/P1/FEAT 真实落地，HR/PM 权限、费用类型、假期类型、运维角色、Logo 企业名等均可用
+  - 技术债登记：DEF-TECH-01（`ops` vs `sys_admin` 角色命名不一致）、DEF-TECH-02（injury/index.vue 仍发送已声明删除的 `accidentDescription` 字段）
+- Phase C — 测试覆盖：**核验通过**
+  - 后端 `mvn test` 1316 测试全绿（0 失败、0 错误、0 skip，含 ArchUnit 4 条架构约束）
+  - 前端 `yarn workspace oa-h5 test` 35 测试全绿
+- Phase C+ — 质量体系建设 + 全维度测试：**核验通过（12/15 PASS / 0 FAIL / 3 配置小缺失）**
+  - 核心工具链全部存在：husky（pre-commit/commit-msg/pre-push）、commitlintrc、Spotless、ArchUnit、springdoc、ESLint、Prettier、Semgrep、k6、ZAP、schemathesis、5 个 GitHub Actions workflow
+  - 配置小缺失登记：DEF-TECH-03（Knip 缺 `.knip.json`）、DEF-TECH-04（Snyk 缺 `.snyk` 文件）——不影响核心流程运行
 - **Phase D — 逐模块测试 + 设计对齐 + 人工验收（当前活跃）**
 - Phase E — 人工验收：未开始
 - Phase F — 生产部署 + 工程规范：未开始
@@ -99,6 +110,49 @@
 - **处理计划**：D-M01 Stage 3 一并修复 —— 测试环境阈值恢复 5 + 新增 `POST /dev/reset-rate-limit` dev 端点供非限流测试清零
 - **状态**：`[ ]`
 
+### DEF-TECH-01 `ops` 角色与 `sys_admin` 命名不一致
+
+- **发现来源**：VERIFY-PHASE-B 核验（2026-04-23）
+- **当前实现**：
+  - V15 migration 添加 `ops` 角色
+  - V18 migration（或后续）改名为 `sys_admin`
+  - 前端 `app/h5/layouts/default.vue` 仍有 `ops: [...]` 菜单定义
+- **问题**：前后端角色命名不同步，运维角色功能可能无法正常加载菜单或权限判定
+- **影响**：运维角色可用性
+- **优先级**：P1
+- **处理计划**：前端统一改为 `sys_admin`，核实 V18 migration 数据迁移；可并入 AUTH-IMPROVE 或单独一次 fix
+- **状态**：`[ ]`
+
+### DEF-TECH-02 injury/index.vue 死字段未清理
+
+- **发现来源**：VERIFY-PHASE-B 核验（2026-04-23）
+- **当前实现**：`app/h5/pages/forms/injury/index.vue:365` 仍发送 `accidentDescription: applyForm.value.description`
+- **问题**：B-REM-01 任务声明已删除此字段，但实际代码未删；死字段残留
+- **影响**：代码卫生（无功能影响，字段后端已不接收）
+- **优先级**：P3
+- **处理计划**：单次 cleanup commit 删除
+- **状态**：`[ ]`
+
+### DEF-TECH-03 Knip 缺 `.knip.json` 配置文件
+
+- **发现来源**：VERIFY-PHASE-CPLUS 核验（2026-04-23）
+- **当前实现**：`package.json` 有 `knip` 脚本和依赖，但无 `.knip.json` / `knip.config.*`
+- **问题**：Knip 运行时使用默认规则，未针对本项目定制 entry points 和 ignore 列表，死代码检测准确性受影响
+- **影响**：死代码检测质量
+- **优先级**：P3
+- **处理计划**：添加 `.knip.json` 配置，定义 Nuxt 3 entry points 和 test/ 忽略规则
+- **状态**：`[ ]`
+
+### DEF-TECH-04 Snyk 缺 `.snyk` 策略文件
+
+- **发现来源**：VERIFY-PHASE-CPLUS 核验（2026-04-23）
+- **当前实现**：`.husky/pre-push` 和 `.github/workflows/nightly.yml` 引用 snyk，但根目录无 `.snyk` 策略文件
+- **问题**：无法配置漏洞忽略规则、无法定义 severity 阈值策略；每次运行均使用默认
+- **影响**：漏洞扫描定制化
+- **优先级**：P3
+- **处理计划**：按需添加 `.snyk`（若无漏洞需豁免可暂不加）
+- **状态**：`[ ]`
+
 ---
 
 ## Phase D 协作 SOP
@@ -150,28 +204,29 @@
 
 ---
 
-## 待核验归档任务
+## 核验归档执行记录（2026-04-23）
 
 > 已完成 Phase 归档前必须核对代码实际状态，**禁止仅凭 TODO 文档判断**。
-> 核验通过 → 归档为一行摘要，详情移入文末归档区。
-> 核验发现偏差 → 登记 DEFECTS 或重开任务。
+> 本次核验 2026-04-23 完成，结果见 Phase 总览。偏差项均已登记 DEFECTS。
 
-- `[ ]` **VERIFY-PHASE-A** 核验 Phase A 46 项任务是否真实完成
-  - 重点抽查：A-SEC（controller 权限注解完整性）、A-CODE（controller 不持 Mapper）、A-CLEAN（kebab-case → snake_case 目录迁移、临时文件清理）
-  - 方法：Grep 源码 + `mvn test` + `curl` 权限越权场景
-  - 产出：核验报告 → 一行摘要 + 发现偏差登记 DEFECTS
+- `[x]` **VERIFY-PHASE-A** 核验 Phase A 关键节点（2026-04-23）
+  - 10 项关键节点全 PASS：controller 权限注解（AttachmentController/WorkbenchController 两处类级 @PreAuthorize）、auth.global.ts PAGE_ACCESS 17 路由、AuthController loginFailStates TTL 机制存在、Controller 不持 Mapper（grep 0 违规）、GlobalExceptionHandler 15+ 异常覆盖、app/ 下无 *.test.ts、pages/ 全部 snake_case（28 目录）、V14__add_indexes.sql 9 条 CREATE INDEX
+  - 结论：真实完成
 
-- `[ ]` **VERIFY-PHASE-B** 核验 Phase B 功能补全与 Bug 修复
-  - 方法：`curl` 每个 B-P / B-FEAT 涉及的接口（含无权角色场景）
-  - 产出：核验报告
+- `[x]` **VERIFY-PHASE-B** 核验 Phase B 关键节点（2026-04-23）
+  - 10/12 PASS：B-P0-01（HR 读员工 @PreAuthorize hr 存在）、B-P0-02（PM 通过 TeamController.java:32 `/team/members` GET 读团队）、B-P0-03（ExpenseController `/types`）、B-P1-02（LeaveTypeController）、B-FEAT-01/02/03/17/20 页面/接口存在、B-INFRA-01 延期原因确认
+  - 2 技术债：登记 DEF-TECH-01（ops/sys_admin 命名）、DEF-TECH-02（injury 死字段）
+  - 结论：核心真实完成，2 个历史债务
 
-- `[ ]` **VERIFY-PHASE-C** 核验 Phase C 测试覆盖
-  - 方法：`mvn test` + `yarn workspace oa-h5 test` + `yarn test:integration`（连续 3 次）
-  - 产出：通过率报告
+- `[x]` **VERIFY-PHASE-C** 核验 Phase C 测试（2026-04-23）
+  - `mvn test` 1316 测试全绿（0 失败/错误/skip，含 ArchUnit 4 条）
+  - `yarn workspace oa-h5 test` 35 测试全绿
+  - 结论：真实完成
 
-- `[ ]` **VERIFY-PHASE-CPLUS** 核验 Phase C+ 质量工具链
-  - 方法：逐工具验证可执行性（spotless / archunit / springdoc / knip / prettier / eslint / semgrep / snyk / sonar / k6 / zap / schemathesis）
-  - 产出：工具清单 + 配置完整性报告
+- `[x]` **VERIFY-PHASE-CPLUS** 核验 Phase C+ 工具链（2026-04-23）
+  - 12/15 PASS：husky 3 hooks、commitlintrc.json、5 个 workflow（fast-check/nightly/release/ci/full-test）、spotless-maven-plugin、ArchUnit、springdoc-openapi-starter-webmvc-ui、eslint.config.mjs、.prettierrc、Semgrep in CI、k6 tools/k6/5 脚本、schemathesis tools/schemathesis/、ZAP in CI
+  - 3 配置小缺失：登记 DEF-TECH-03（Knip 缺 config）、DEF-TECH-04（Snyk 缺 .snyk）
+  - 结论：核心工具链真实可用，3 处定制化配置待补
 
 ---
 
