@@ -53,6 +53,9 @@ class AuthControllerTest {
 
   @MockBean private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
+  // DEF-AUTH-02: AuthController 依赖 CaptchaService
+  @MockBean private com.oa.backend.service.CaptchaService captchaService;
+
   /**
    * 测试开发环境登录接口
    *

@@ -39,6 +39,33 @@
               />
             </a-form-item>
 
+            <!-- DEF-AUTH-02: 图形验证码，失败 ≥ 3 次后出现 -->
+            <a-form-item
+              v-if="captchaImage"
+              label="图形验证码"
+              name="captchaAnswer"
+              :rules="[{ required: true, message: '请输入图形验证码' }]"
+            >
+              <div class="captcha-row">
+                <a-input
+                  v-model:value="form.captchaAnswer"
+                  placeholder="请输入图中数字"
+                  size="large"
+                  :disabled="loading"
+                  :maxlength="6"
+                  data-catch="login-captcha-answer"
+                />
+                <img
+                  :src="'data:image/png;base64,' + captchaImage"
+                  alt="图形验证码"
+                  class="captcha-image"
+                  :title="'点击刷新'"
+                  data-catch="login-captcha-image"
+                  @click="refreshCaptcha"
+                />
+              </div>
+            </a-form-item>
+
             <a-alert
               v-if="errorMsg"
               type="error"
@@ -74,7 +101,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
-import { loginWithAccount } from '~/utils/access'
+import { loginWithAccount, fetchCaptcha, LoginError } from '~/utils/access'
 import { useUserStore } from '~/stores/user'
 
 definePageMeta({ layout: false })
@@ -82,7 +109,9 @@ definePageMeta({ layout: false })
 const userStore = useUserStore()
 const loading = ref(false)
 const errorMsg = ref('')
-const form = reactive({ identifier: '', password: '' })
+const form = reactive({ identifier: '', password: '', captchaAnswer: '' })
+const captchaId = ref<string | null>(null)
+const captchaImage = ref<string | null>(null)
 
 // 企业名：由 useCompanyName 统一管理；fetchIfNeeded 内部已处理「已有值则跳过」逻辑
 // 未设置时模板回退到「博渊」
@@ -90,6 +119,18 @@ const { companyName, fetchIfNeeded } = useCompanyName()
 onMounted(() => {
   fetchIfNeeded()
 })
+
+/** DEF-AUTH-02: 获取图形验证码并显示；用户输入后随下次登录请求一起提交 */
+async function refreshCaptcha() {
+  try {
+    const res = await fetchCaptcha()
+    captchaId.value = res.captchaId
+    captchaImage.value = res.imageBase64
+    form.captchaAnswer = ''
+  } catch {
+    errorMsg.value = '获取验证码失败，请稍后重试'
+  }
+}
 
 async function handleLogin() {
   if (loading.value) return
@@ -99,11 +140,17 @@ async function handleLogin() {
     const result = await loginWithAccount({
       identifier: form.identifier,
       password: form.password,
+      captchaId: captchaId.value ?? undefined,
+      captchaAnswer: captchaImage.value ? form.captchaAnswer : undefined,
     })
     userStore.setSession(result.token, result.user)
     await navigateTo('/')
   } catch (err) {
     errorMsg.value = err instanceof Error ? err.message : '登录失败，请重试'
+    // 后端要求 captcha（首次出现或验证码答错）→ 自动拉取并显示
+    if (err instanceof LoginError && err.info.captchaRequired) {
+      await refreshCaptcha()
+    }
   } finally {
     loading.value = false
   }
@@ -158,6 +205,21 @@ async function handleLogin() {
   color: #003466;
   cursor: pointer;
   margin-top: 4px;
+}
+
+.captcha-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.captcha-image {
+  width: 120px;
+  height: 40px;
+  border-radius: 4px;
+  border: 1px solid #d9d9d9;
+  cursor: pointer;
+  user-select: none;
 }
 
 .powered-by {

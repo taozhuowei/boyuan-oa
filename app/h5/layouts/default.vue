@@ -210,7 +210,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
     { key: '/expense/records', label: '报销记录', path: '/expense/records' },
   ],
-  ops: [
+  sys_admin: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/config', label: '系统配置', path: '/config' },
     { key: '/data_export', label: '数据导出', path: '/data_export' },

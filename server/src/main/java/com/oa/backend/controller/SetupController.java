@@ -38,6 +38,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class SetupController {
 
   private final SetupService setupService;
+  private final AuthController authController;
 
   /**
    * 获取系统初始化状态。 公开端点，无需认证。用于前端判断是否需要跳转到初始化向导页面。
@@ -113,6 +114,8 @@ public class SetupController {
     try {
       String newRecoveryCode =
           setupService.resetCeoPassword(request.recoveryCode(), request.newPassword());
+      // DEF-AUTH-03: 自助解锁 —— CEO 用恢复码重置密码成功后，清零 CEO 账号的登录失败计数
+      authController.resetLoginFailStatesForUsername("CEO001");
       return ResponseEntity.ok(Map.of("recoveryCode", newRecoveryCode, "message", "密码重置成功"));
     } catch (IllegalStateException e) {
       throw new BusinessException(400, e.getMessage() != null ? e.getMessage() : "系统状态不允许此操作");

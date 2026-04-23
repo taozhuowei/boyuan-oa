@@ -36,6 +36,7 @@ public class PasswordResetController {
   private final EmployeeService employeeService;
   private final ResetCodeStore resetCodeStore;
   private final PasswordEncoder passwordEncoder;
+  private final AuthController authController;
 
   private final SecureRandom secureRandom = new SecureRandom();
 
@@ -104,6 +105,9 @@ public class PasswordResetController {
 
     // 删除已使用的 token
     resetCodeStore.removeToken(request.resetToken());
+
+    // DEF-AUTH-03: 自助解锁 —— 密码重置成功后清零该账号的登录失败计数，立即解除锁定
+    authController.resetLoginFailStatesForUsername(employee.getEmployeeNo());
 
     log.info("Password reset successfully for employee: {}", employee.getEmployeeNo());
     return ResponseEntity.noContent().build();

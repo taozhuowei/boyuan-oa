@@ -8,7 +8,9 @@ import java.io.IOException;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
+import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 /**
@@ -20,12 +22,13 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * <p>限速计数存内存（ConcurrentHashMap<IP, Deque<timestampMs>>），重启清零可接受。 不影响 /h2-console 和 /api/v3/api-docs
  * 路径。
  */
+@Component
 public class GlobalRateLimitFilter extends OncePerRequestFilter {
 
   /** 滑动窗口时长（毫秒）。 */
   private static final long WINDOW_MS = 60_000L;
 
-  /** 单 IP 每窗口最大请求数（可通过构造函数注入，支持测试环境配置更高限制）。 */
+  /** 单 IP 每窗口最大请求数。通过 app.rate-limit.global-per-minute 配置，默认 300。 */
   private final int maxRequestsPerWindow;
 
   /** 不受限的路径前缀（context-path 已由 Spring 剥离，此处是 servlet path）。 */
@@ -35,14 +38,14 @@ public class GlobalRateLimitFilter extends OncePerRequestFilter {
   private final ConcurrentHashMap<String, Deque<Long>> requestTimestamps =
       new ConcurrentHashMap<>();
 
-  /** 默认限制：每 IP 每分钟 300 次请求。 */
-  public GlobalRateLimitFilter() {
-    this(300);
+  public GlobalRateLimitFilter(
+      @Value("${app.rate-limit.global-per-minute:300}") int maxRequestsPerWindow) {
+    this.maxRequestsPerWindow = maxRequestsPerWindow;
   }
 
-  /** 允许注入自定义限制（用于测试环境）。 */
-  public GlobalRateLimitFilter(int maxRequestsPerWindow) {
-    this.maxRequestsPerWindow = maxRequestsPerWindow;
+  /** 清空所有 IP 的限流计数。仅由 DevController /dev/reset-rate-limit 使用（dev profile）。 生产环境不应调用。 */
+  public void resetAll() {
+    requestTimestamps.clear();
   }
 
   @Override

@@ -4,7 +4,7 @@
 // 3. Enforce role-based route access (whitelist per page)
 // Backend controls menu visibility; this guard blocks direct URL access for restricted pages.
 
-import type { SessionUser } from '~/shared/types/auth'
+import type { SessionUser } from '@shared/types/auth'
 
 /**
  * Page access whitelist — maps each restricted route to the roles that MAY access it.

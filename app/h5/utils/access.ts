@@ -7,10 +7,44 @@ import { roleNameMap, defaultTestAccounts } from '@shared/types'
 
 export type { LoginPayload, LoginResult, RoleItem, RolePayload }
 
+/**
+ * DEF-AUTH-02: 登录错误扩展信息。
+ * 登录失败 ≥ 3 次后后端返回 401 + captchaRequired=true，或锁定时返回 429 + selfServiceUnlock。
+ */
+export interface LoginErrorInfo {
+  captchaRequired?: boolean
+  selfServiceUnlock?: string
+}
+
+export class LoginError extends Error {
+  readonly info: LoginErrorInfo
+  constructor(message: string, info: LoginErrorInfo = {}) {
+    super(message)
+    this.info = info
+  }
+}
+
+/**
+ * DEF-AUTH-02: 获取一次图形验证码。
+ */
+export async function fetchCaptcha(): Promise<{ captchaId: string; imageBase64: string }> {
+  return request<{ captchaId: string; imageBase64: string }>({
+    url: '/auth/captcha',
+    method: 'GET',
+    skipAuthRedirect: true,
+  })
+}
+
 export async function loginWithAccount(payload: LoginPayload): Promise<LoginResult> {
   const identifier = payload.identifier.trim()
   const password = payload.password.trim()
   if (!identifier || !password) throw new Error('请输入账号和密码')
+
+  const body: Record<string, string> = { username: identifier, password }
+  if (payload.captchaId && payload.captchaAnswer) {
+    body.captchaId = payload.captchaId
+    body.captchaAnswer = payload.captchaAnswer.trim()
+  }
 
   try {
     const response = await request<{
@@ -26,7 +60,7 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
     }>({
       url: '/auth/login',
       method: 'POST',
-      body: { username: identifier, password },
+      body,
       skipAuthRedirect: true,
     })
 
@@ -46,12 +80,19 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
       },
     }
   } catch (err: unknown) {
-    // Only fall back to offline test accounts when the backend is unreachable (no HTTP status code).
-    // If the backend explicitly responded with 4xx (disabled account, wrong credentials, etc.),
-    // propagate the error rather than bypassing the backend security decision.
-    if (typeof (err as { statusCode?: unknown }).statusCode === 'number') {
-      throw new Error('账号或密码错误')
+    const e = err as {
+      statusCode?: number
+      data?: { captchaRequired?: boolean; selfServiceUnlock?: string; message?: string }
     }
+    if (typeof e.statusCode === 'number') {
+      // 后端返回的 captcha 要求或自助解锁提示，附加到 LoginError 供调用方处理
+      const info: LoginErrorInfo = {}
+      if (e.data?.captchaRequired) info.captchaRequired = true
+      if (e.data?.selfServiceUnlock) info.selfServiceUnlock = e.data.selfServiceUnlock
+      const msg = e.data?.message || '账号或密码错误'
+      throw new LoginError(msg, info)
+    }
+    // 后端不可达：仅此时才走离线测试账号兜底
     const matched = defaultTestAccounts.find(
       (a) => a.username === identifier && a.password === password
     )

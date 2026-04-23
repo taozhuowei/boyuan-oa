@@ -10,10 +10,14 @@
  * 登录请求参数类型
  * @property identifier - 用户账号（工号或手机号）
  * @property password - 登录密码（明文传输，后端加密存储）
+ * @property captchaId - （可选，DEF-AUTH-02）图形验证码 ID，失败次数 ≥ 3 后必填
+ * @property captchaAnswer - （可选，DEF-AUTH-02）用户输入的验证码
  */
 export interface LoginPayload {
   identifier: string
   password: string
+  captchaId?: string
+  captchaAnswer?: string
 }
 
 /**

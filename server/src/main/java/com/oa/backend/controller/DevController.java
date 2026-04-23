@@ -1,5 +1,6 @@
 package com.oa.backend.controller;
 
+import com.oa.backend.filter.GlobalRateLimitFilter;
 import com.oa.backend.service.EmailVerificationService;
 import com.oa.backend.service.SetupService;
 import java.util.Map;
@@ -38,6 +39,8 @@ public class DevController {
   private final SetupService setupService;
   private final JdbcTemplate jdbcTemplate;
   private final EmailVerificationService emailVerificationService;
+  private final AuthController authController;
+  private final GlobalRateLimitFilter globalRateLimitFilter;
 
   /**
    * E2E 测试数据重置。
@@ -130,6 +133,21 @@ public class DevController {
   public ResponseEntity<Map<String, String>> skipSetup() {
     setupService.markInitializedForDev();
     return ResponseEntity.ok(Map.of("message", "marked as initialized"));
+  }
+
+  /**
+   * 清空全部限流计数（登录失败阶梯锁定 + 全局 IP 限流）。
+   *
+   * <p>用于 E2E 测试场景：每个非限流专项测试开头调用一次，确保冷却不影响后续测试； 限流专项测试不调用此接口，按生产阈值真实触发 429。
+   *
+   * @return 操作结果消息
+   */
+  @PostMapping("/reset-rate-limit")
+  public ResponseEntity<Map<String, String>> resetRateLimit() {
+    authController.resetAllLoginFailStates();
+    globalRateLimitFilter.resetAll();
+    log.info("[DEV] Rate limit counters cleared (login fail + global IP)");
+    return ResponseEntity.ok(Map.of("message", "rate limit reset ok"));
   }
 
   /**

@@ -41,11 +41,12 @@ jwt:
 app:
   signature:
     aes-key: TestSignatureKey2024ForUnitTests32
-  # D-F-20: 测试环境禁用全局限流（设为极大值），避免集成测试因大量登录请求触发 429
-  # D-F-19: 测试环境将登录失败阶梯锁定阈值调高，避免错误密码测试用例锁定 127.0.0.1 影响后续测试
+  # 测试环境必须与生产一致以真实覆盖限流行为。
+  # 不允许通过调高阈值绕开测试覆盖（历史教训：100000 让 AUTH 限流用例长期 skip）。
+  # 单元/集成测试若需要跳过限流影响，调用 DevController POST /dev/reset-rate-limit 清计数。
   rate-limit:
-    global-per-minute: 100000
-    login-fail-threshold: 100000
+    global-per-minute: 300
+    login-fail-threshold: 5
 
 oa:
   upload-dir: /tmp/oa-test-uploads

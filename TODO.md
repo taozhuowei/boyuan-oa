@@ -26,12 +26,9 @@
 - 触发 QA agent 实现与执行
 
 **下一步动作（用户）**
-- 逐条确认 Phase A/B/C/C+ 核验结果（见下方 Phase 总览）
-- 决策 DEF-AUTH-01/02/03 是否立项独立 AUTH-IMPROVE Phase
-- 决策 DEF-AUTH-04 处理方案（测试环境限流阈值恢复 5 + 新增 dev 端点）
-- 决策新登记的技术债 DEF-TECH-01~04 处理时机
+- 确认 AUTH 模块新测试用例清单（页面→组件→操作 三层结构，11 组）
 
-**阻塞项**：无（Phase A/B/C/C+ 核验全部 PASS，Phase D 推进无阻塞）
+**阻塞项**：无（Phase A/B/C/C+ 核验通过，7 条 DEFECTS 全部关闭）
 
 ---
 
@@ -41,16 +38,17 @@
 
 - Phase A — 架构治理 + 清理：**核验通过（10/10 关键节点 PASS）**
   - 46 项任务真实落地：Controller 权限注解齐全、前端路由守卫覆盖完整、Controller 不持 Mapper（0 违规，InjuryClaimController 遗留已注释排除）、全局异常处理器覆盖 15+ 异常类、测试文件全部在 test/、前端目录全部 snake_case、V14 索引迁移存在并生效
-- Phase B — 功能补全 + Bug 修复：**核验通过（11/12 PASS / 0 FAIL / 1 项技术债）**
+- Phase B — 功能补全 + Bug 修复：**核验通过，技术债已关闭**
   - 核心业务 B-P0/P1/FEAT 真实落地，HR/PM 权限、费用类型、假期类型、运维角色、Logo 企业名等均可用
-  - 技术债登记：DEF-TECH-01（`ops` vs `sys_admin` 角色命名不一致）
-  - 撤回：~~DEF-TECH-02~~ 为 agent 误报（B-REM-01 实际已完成，doApply 映射按设计保留）
+  - DEF-TECH-01（ops vs sys_admin 命名）已修复并关闭
+  - 撤回：~~DEF-TECH-02~~ 为 agent 误报（B-REM-01 实际已完成）
 - Phase C — 测试覆盖：**核验通过**
   - 后端 `mvn test` 1316 测试全绿（0 失败、0 错误、0 skip，含 ArchUnit 4 条架构约束）
   - 前端 `yarn workspace oa-h5 test` 35 测试全绿
-- Phase C+ — 质量体系建设 + 全维度测试：**核验通过（12/15 PASS / 0 FAIL / 3 配置小缺失）**
+- Phase C+ — 质量体系建设 + 全维度测试：**核验通过，技术债已关闭**
   - 核心工具链全部存在：husky（pre-commit/commit-msg/pre-push）、commitlintrc、Spotless、ArchUnit、springdoc、ESLint、Prettier、Semgrep、k6、ZAP、schemathesis、5 个 GitHub Actions workflow
-  - 配置小缺失登记：DEF-TECH-03（Knip 缺 `.knip.json`）、DEF-TECH-04（Snyk 缺 `.snyk` 文件）——不影响核心流程运行
+  - DEF-TECH-03（Knip）：原为误报，复核发现 auth.global.ts 一条错误 import 路径，已修；yarn knip 目前无问题
+  - DEF-TECH-04（Snyk）：`.snyk` 策略骨架已创建
 - **Phase D — 逐模块测试 + 设计对齐 + 人工验收（当前活跃）**
 - Phase E — 人工验收：未开始
 - Phase F — 生产部署 + 工程规范：未开始
@@ -68,86 +66,63 @@
 ### DEF-AUTH-01 登录限流 per-IP 应改为 per-account + per-IP 双层
 
 - **发现来源**：D-M01 Stage 2 调研业内实践（2026-04-23）
-- **当前实现**：`server/src/main/java/com/oa/backend/controller/AuthController.java` LoginFailState 按 clientIp 计数，per-IP 维度
-- **问题**：共享出口 IP 的办公室场景，一个用户输错 5 次导致整个 IP 上所有用户被锁 1 分钟
-- **业内参考**：
-  - Microsoft Entra Smart Lockout —— per-account，默认 10 次
-  - OWASP Authentication Cheat Sheet —— 推荐 per-account 为主，per-IP 辅
-  - NIST 800-63B §5.2.2 —— 限流针对 subscriber account
-- **影响**：用户体验、生产可用性
-- **优先级**：P1
-- **处理计划**：独立立项 AUTH-IMPROVE Phase（待用户确认立项时机），不阻塞 D-M01
-- **状态**：`[ ]`
+- **修复日期**：2026-04-23
+- **修复内容**：`AuthController.java` 新增 `loginFailStatesByUsername` per-账号 ConcurrentHashMap，login() 中双维度独立累计/判锁，任一锁定即拒绝；成功登录双向清零；`resetAllLoginFailStates()` 同时清两侧
+- **验收**：mvn test 1316 全绿（含 ArchUnit 4 条架构约束）
+- **状态**：`[x]` 已关闭
 
 ### DEF-AUTH-02 登录失败缺少验证码挑战层
 
 - **发现来源**：D-M01 Stage 2 调研（2026-04-23）
-- **当前实现**：失败 5 次直接短锁 1 分钟，无中间挑战层
-- **问题**：真实用户偶尔误输密码后直接被锁不友好；业界主流先弹 captcha 挑战
-- **业内参考**：Cloudflare 4/min → JavaScript Challenge；Google 5 次触发 captcha
-- **影响**：用户体验
-- **优先级**：P2
-- **处理计划**：并入 AUTH-IMPROVE Phase
-- **状态**：`[ ]`
+- **修复日期**：2026-04-23
+- **修复内容**：新增 `CaptchaService`（BufferedImage 4 位数字图形验证码，3 分钟 TTL，一次性使用）；`AuthController` 新增 `GET /auth/captcha`；login() 在 failCount ≥ 3 时要求验证码；失败后若达阈值在 401 响应中返回 `captchaRequired: true`；前端 `login.vue` 检测到 `captchaRequired` 自动拉取并展示验证码
+- **验收**：mvn test 1316 全绿；yarn workspace oa-h5 test 35 全绿
+- **状态**：`[x]` 已关闭
 
 ### DEF-AUTH-03 锁定期间缺少自助解锁路径
 
 - **发现来源**：D-M01 Stage 2 调研（2026-04-23）
-- **当前实现**：锁定期间合法用户无任何救济途径，只能等待
-- **问题**：攻击者可通过持续失败登录 DoS 合法用户
-- **业内参考**：OWASP 要求自助解锁（邮件验证）或管理员解锁
-- **影响**：生产可用性
-- **优先级**：P2
-- **处理计划**：与"忘记密码"链路一起做，并入 AUTH-IMPROVE Phase
-- **状态**：`[ ]`
+- **修复日期**：2026-04-23
+- **修复内容**：`AuthController` 暴露 `resetLoginFailStatesForUsername(username)`；`PasswordResetController` 在密码重置成功后调用，`SetupController` 在恢复码重置 CEO 密码后调用；login() 锁定响应 body 包含 `selfServiceUnlock: "/me/forgot-password"` 字段引导用户
+- **验收**：mvn test 1316 全绿
+- **状态**：`[x]` 已关闭
 
 ### DEF-AUTH-04 测试环境限流阈值被改为 100000，等于关闭测试覆盖
 
 - **发现来源**：D-M01 Stage 2（2026-04-23）
-- **当前实现**：`server/src/test/resources/application.yml` 和 dev profile 覆盖到 100000
-- **问题**：限流相关 bug 永远测不出来；AUTH-20 限流测试被迫 skip
-- **影响**：测试工程质量
-- **优先级**：P0（阻塞 D-M01 Stage 3）
-- **处理计划**：D-M01 Stage 3 一并修复 —— 测试环境阈值恢复 5 + 新增 `POST /dev/reset-rate-limit` dev 端点供非限流测试清零
-- **状态**：`[ ]`
+- **修复日期**：2026-04-23
+- **修复内容**：`server/src/test/resources/application.yml` 的 `login-fail-threshold` 恢复为 5、`global-per-minute` 恢复为 300（与生产一致）；`GlobalRateLimitFilter` 改为 Spring `@Component` 并新增 `resetAll()`；`DevController` 新增 `POST /dev/reset-rate-limit` 同时清登录失败计数和全局 IP 限流计数；非限流测试开头可调此端点清零
+- **验收**：mvn test 1316 全绿（测试阈值恢复后所有集成测试仍通过，证明清零机制工作）
+- **状态**：`[x]` 已关闭
 
 ### DEF-TECH-01 `ops` 角色与 `sys_admin` 命名不一致
 
 - **发现来源**：VERIFY-PHASE-B 核验（2026-04-23）
-- **当前实现**：
-  - V15 migration 添加 `ops` 角色
-  - V18 migration（或后续）改名为 `sys_admin`
-  - 前端 `app/h5/layouts/default.vue` 仍有 `ops: [...]` 菜单定义
-- **问题**：前后端角色命名不同步，运维角色功能可能无法正常加载菜单或权限判定
-- **影响**：运维角色可用性
-- **优先级**：P1
-- **处理计划**：前端统一改为 `sys_admin`，核实 V18 migration 数据迁移；可并入 AUTH-IMPROVE 或单独一次 fix
-- **状态**：`[ ]`
+- **修复日期**：2026-04-23
+- **修复内容**：`app/h5/layouts/default.vue` ROLE_MENUS 键 `ops` 改为 `sys_admin`；其余前后端位置（auth.global.ts、test/unit/h5/access.test.ts、backend V18 migration、E-ROLE seed）此前已统一为 `sys_admin`，仅 default.vue 遗漏
+- **验收**：yarn workspace oa-h5 test 35 全绿；grep 全项目无代码层 `'ops'` 角色引用残留
+- **状态**：`[x]` 已关闭
 
 ### ~~DEF-TECH-02~~（撤回）injury accidentDescription 误报
 
 - **原报告**：B-REM-01 未完成
 - **复核**：`app/h5/pages/injury/index.vue:365` 唯一使用 `accidentDescription` 的位置是 `doApply` 提交映射，该映射按 B-REM-01 原任务设计要求**保留**（仅要求删除 `applyForm` 声明）。`applyForm` 中已无该字段。B-REM-01 实际真实完成，本条撤回。
 
-### DEF-TECH-03 Knip 缺 `.knip.json` 配置文件
+### DEF-TECH-03 Knip 配置
 
 - **发现来源**：VERIFY-PHASE-CPLUS 核验（2026-04-23）
-- **当前实现**：`package.json` 有 `knip` 脚本和依赖，但无 `.knip.json` / `knip.config.*`
-- **问题**：Knip 运行时使用默认规则，未针对本项目定制 entry points 和 ignore 列表，死代码检测准确性受影响
-- **影响**：死代码检测质量
-- **优先级**：P3
-- **处理计划**：添加 `.knip.json` 配置，定义 Nuxt 3 entry points 和 test/ 忽略规则
-- **状态**：`[ ]`
+- **修复日期**：2026-04-23
+- **修复内容**：Agent 初报误判 —— 配置文件其实存在（`knip.json` 而非 `.knip.json`，两种命名 Knip 均支持）。复核时运行 `yarn knip` 发现一条真实 unresolved import：`app/h5/middleware/auth.global.ts:7` 的 `~/shared/types/auth` 应为 `@shared/types/auth`（`~` 在 Nuxt 中指向 srcDir 而非项目根）。已修复该 import，`yarn knip` 目前干净无问题
+- **验收**：`yarn knip` 2 秒内完成，0 问题报告
+- **状态**：`[x]` 已关闭
 
 ### DEF-TECH-04 Snyk 缺 `.snyk` 策略文件
 
 - **发现来源**：VERIFY-PHASE-CPLUS 核验（2026-04-23）
-- **当前实现**：`.husky/pre-push` 和 `.github/workflows/nightly.yml` 引用 snyk，但根目录无 `.snyk` 策略文件
-- **问题**：无法配置漏洞忽略规则、无法定义 severity 阈值策略；每次运行均使用默认
-- **影响**：漏洞扫描定制化
-- **优先级**：P3
-- **处理计划**：按需添加 `.snyk`（若无漏洞需豁免可暂不加）
-- **状态**：`[ ]`
+- **修复日期**：2026-04-23
+- **修复内容**：创建 `.snyk` 策略骨架（version v1.25.0 + 空 ignore/patch 段 + 格式说明注释），未来遇到需豁免的漏洞时按注释格式填充
+- **验收**：文件存在且格式合法；Snyk 下次运行时会识别该策略文件
+- **状态**：`[x]` 已关闭
 
 ---
 
@@ -1788,9 +1763,11 @@
 
 #### Stage 3 — 测试实现与执行
 
-- `[ ]` 预处理：修复 DEF-AUTH-04
-  - 恢复 `server/src/test/resources/application.yml` 中 `login-fail-threshold` 为 5
+- `[x]` 预处理：修复 DEF-AUTH-04（2026-04-23 完成）
+  - 测试环境阈值恢复为 5（`login-fail-threshold: 5`、`global-per-minute: 300`）
+  - GlobalRateLimitFilter 改为 Spring bean 并加 resetAll()
   - DevController 新增 `POST /dev/reset-rate-limit`
+- `[x]` 业务改进：DEF-AUTH-01/02/03 全部修复并关闭（2026-04-23）
 - `[ ]` QA agent 实现 `test/e2e/specs/D-M01.spec.ts`（按 Stage 2 定稿清单）
 - `[ ]` 执行：全绿无 skip → 输出 Pass 矩阵
 - `[ ]` FIX 循环：实现 bug → 修复 → 重跑；设计缺陷 → 登记 DEFECTS

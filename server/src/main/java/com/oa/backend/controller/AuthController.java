@@ -7,6 +7,7 @@ import com.oa.backend.entity.Employee;
 import com.oa.backend.security.JwtTokenService;
 import com.oa.backend.service.AccessManagementService;
 import com.oa.backend.service.AuthDataService;
+import com.oa.backend.service.CaptchaService;
 import com.oa.backend.service.EmailVerificationService;
 import com.oa.backend.service.EmployeeService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,13 +48,35 @@ import org.springframework.web.server.ResponseStatusException;
 @RequiredArgsConstructor
 public class AuthController {
 
-  // D-F-19: 阶梯式限速状态，key=IP，value=失败状态记录。存内存，重启清零。
+  // D-F-19: 阶梯式限速状态（双层）。存内存，重启清零。
+  // 1) 按 IP 维度计数（全局粗粒度保护，防止单 IP 爆破）
+  // 2) 按账号维度计数（精准保护，避免共享 IP 场景一人输错全员被锁）
+  // 登录时任一被锁即拒绝；失败时双方都累计；成功时双方都清零。
   private final ConcurrentHashMap<String, LoginFailState> loginFailStates =
       new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, LoginFailState> loginFailStatesByUsername =
+      new ConcurrentHashMap<>();
 
-  /** D-F-19: 触发第一阶梯锁定所需的最小失败次数（默认5）。 测试环境通过 app.rate-limit.login-fail-threshold 调高，避免集成测试互相干扰。 */
+  /** D-F-19: 触发第一阶梯锁定所需的最小失败次数（生产与测试均为 5，保持真实覆盖）。 */
   @Value("${app.rate-limit.login-fail-threshold:5}")
   private int loginFailThreshold;
+
+  /** 清空全部 IP + 账号的登录失败计数。仅由 DevController /dev/reset-rate-limit 使用（dev profile）。 生产环境不应调用。 */
+  public void resetAllLoginFailStates() {
+    loginFailStates.clear();
+    loginFailStatesByUsername.clear();
+  }
+
+  /**
+   * 清空指定账号的登录失败计数（per-account 维度）。 由 PasswordResetController 在密码重置成功时调用，实现 DEF-AUTH-03 自助解锁。
+   *
+   * @param username 要清零的账号用户名（employee_no）
+   */
+  public void resetLoginFailStatesForUsername(String username) {
+    if (username != null) {
+      loginFailStatesByUsername.remove(username);
+    }
+  }
 
   private final JwtTokenService jwtTokenService;
   private final AccessManagementService accessManagementService;
@@ -61,6 +84,7 @@ public class AuthController {
   private final AuthDataService authDataService;
   private final PasswordEncoder passwordEncoder;
   private final EmailVerificationService emailVerificationService;
+  private final CaptchaService captchaService;
 
   /**
    * D-F-19: 阶梯式锁定时长（分钟）查找表。 各阶梯相对于 baseThreshold 等比缩放： baseThreshold*1→1min, *2→5min, *4→15min,
@@ -81,54 +105,119 @@ public class AuthController {
     return 0;
   }
 
+  /** 触发 captcha 挑战的累计失败阈值。达到或超过此值时下次登录必须带验证码。 */
+  private static final int CAPTCHA_THRESHOLD = 3;
+
   /**
-   * 职责：处理用户密码登录请求，验证用户身份并返回JWT令牌 请求含义：提交用户名和密码进行身份验证 响应含义：返回包含JWT令牌的用户认证信息，包括用户名、显示名称、角色、部门等
-   * 权限期望：无需认证，任何用户均可访问
+   * DEF-AUTH-02: 获取图形验证码。登录失败 ≥ 3 次后前端应调用此接口并在下一次 /auth/login 携带 captchaId + captchaAnswer。
    *
-   * <p>D-F-19: 登录失败时累计计数；超过阶梯阈值则锁定并返回 429。
+   * @return {captchaId, imageBase64}
+   */
+  @GetMapping("/captcha")
+  public ResponseEntity<Map<String, String>> getCaptcha() {
+    CaptchaService.Captcha captcha = captchaService.generate();
+    return ResponseEntity.ok(
+        Map.of("captchaId", captcha.captchaId(), "imageBase64", captcha.imageBase64()));
+  }
+
+  /**
+   * 职责：处理用户密码登录请求，验证用户身份并返回 JWT 令牌
+   *
+   * <p>D-F-19: 登录失败阶梯锁定（per-IP + per-account 双层）
+   *
+   * <p>DEF-AUTH-02: 失败 ≥ 3 次后必须通过图形验证码
    */
   @PostMapping("/login")
   public ResponseEntity<?> login(
       @Valid @RequestBody AuthPasswordLoginRequest request, HttpServletRequest httpRequest) {
     String clientIp = httpRequest.getRemoteAddr();
+    String username = request.username();
 
-    // 检查是否处于锁定期
-    LoginFailState state = loginFailStates.get(clientIp);
-    if (state != null && state.isLocked()) {
-      long remainingSeconds = state.remainingLockSeconds();
-      int remainingMinutes = (int) Math.ceil(remainingSeconds / 60.0);
+    // 检查 IP 或账号是否处于锁定期（任一被锁即拒绝）
+    LoginFailState ipState = loginFailStates.get(clientIp);
+    LoginFailState userState = username == null ? null : loginFailStatesByUsername.get(username);
+    LoginFailState lockingState = null;
+    if (ipState != null && ipState.isLocked()) lockingState = ipState;
+    if (userState != null && userState.isLocked()) {
+      if (lockingState == null
+          || userState.remainingLockSeconds() > lockingState.remainingLockSeconds()) {
+        lockingState = userState;
+      }
+    }
+    if (lockingState != null) {
+      int remainingMinutes = (int) Math.ceil(lockingState.remainingLockSeconds() / 60.0);
       Map<String, Object> body = new LinkedHashMap<>();
       body.put("code", 429);
-      body.put("message", "登录尝试过于频繁，请" + remainingMinutes + "分钟后重试");
+      body.put("message", "登录尝试过于频繁，请" + remainingMinutes + "分钟后重试。若忘记密码请通过邮箱验证重置密码，可立即解除锁定。");
+      body.put("selfServiceUnlock", "/me/forgot-password");
       return ResponseEntity.status(429).body(body);
     }
 
-    Optional<Employee> employeeOpt =
-        employeeService.authenticate(request.username(), request.password());
+    // DEF-AUTH-02: 失败 ≥ CAPTCHA_THRESHOLD 次后，下一次登录必须通过图形验证码
+    int prevFailCount =
+        Math.max(
+            ipState == null ? 0 : ipState.failCount(),
+            userState == null ? 0 : userState.failCount());
+    if (prevFailCount >= CAPTCHA_THRESHOLD) {
+      if (!captchaService.verify(request.captchaId(), request.captchaAnswer())) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", 400);
+        body.put("message", "请先通过图形验证码");
+        body.put("captchaRequired", true);
+        return ResponseEntity.badRequest().body(body);
+      }
+    }
+
+    Optional<Employee> employeeOpt = employeeService.authenticate(username, request.password());
 
     if (employeeOpt.isEmpty()) {
-      // 登录失败：累计失败次数，按阶梯触发锁定
+      // 登录失败：IP + 账号双维度累计失败次数，按阶梯触发锁定
       final int threshold = loginFailThreshold;
-      LoginFailState newState =
+      LoginFailState newIpState =
           loginFailStates.compute(
               clientIp,
               (ip, existing) -> {
                 if (existing == null) existing = new LoginFailState();
                 return existing.recordFailure(threshold);
               });
+      LoginFailState newUserState = null;
+      if (username != null) {
+        newUserState =
+            loginFailStatesByUsername.compute(
+                username,
+                (u, existing) -> {
+                  if (existing == null) existing = new LoginFailState();
+                  return existing.recordFailure(threshold);
+                });
+      }
 
-      int lockMinutes = resolveLockMinutes(newState.failCount(), loginFailThreshold);
+      int ipLockMinutes = resolveLockMinutes(newIpState.failCount(), threshold);
+      int userLockMinutes =
+          newUserState == null ? 0 : resolveLockMinutes(newUserState.failCount(), threshold);
+      int lockMinutes = Math.max(ipLockMinutes, userLockMinutes);
       if (lockMinutes > 0) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("code", 429);
-        body.put("message", "登录尝试过于频繁，请" + lockMinutes + "分钟后重试");
+        body.put("message", "登录尝试过于频繁，请" + lockMinutes + "分钟后重试。若忘记密码请通过邮箱验证重置密码，可立即解除锁定。");
+        body.put("selfServiceUnlock", "/me/forgot-password");
         return ResponseEntity.status(429).body(body);
+      }
+      // DEF-AUTH-02: 未锁定但失败次数达到 captcha 阈值，告知前端下次须带验证码
+      int newFailCount =
+          Math.max(newIpState.failCount(), newUserState == null ? 0 : newUserState.failCount());
+      if (newFailCount >= CAPTCHA_THRESHOLD) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("code", 401);
+        body.put("message", "账号或密码错误");
+        body.put("captchaRequired", true);
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
       }
       throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "账号或密码错误");
     }
 
-    // 登录成功：清除该 IP 的失败记录
+    // 登录成功：清除该 IP 与账号的失败记录
     loginFailStates.remove(clientIp);
+    if (username != null) loginFailStatesByUsername.remove(username);
 
     Employee employee = employeeOpt.get();
 

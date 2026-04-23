@@ -1,0 +1,18 @@
+# Snyk (https://snyk.io) policy file
+# Controls which vulnerabilities are ignored / patched during snyk test.
+# Severity threshold is set on the command line (--severity-threshold=high); this file only
+# lists specific vulnerability IDs to suppress when we've accepted the risk.
+
+version: v1.25.0
+
+# Ignore specific vulnerabilities — add entries when we decide to accept a risk.
+# Format:
+#   ignore:
+#     'SNYK-XX-YYYY':
+#       - '* > some-package':
+#           reason: why we accepted this risk
+#           expires: 'YYYY-MM-DD'
+ignore: {}
+
+# Patches applied by `snyk wizard` — none currently.
+patch: {}
