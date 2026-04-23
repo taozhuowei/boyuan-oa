@@ -41,9 +41,10 @@
 
 - Phase A — 架构治理 + 清理：**核验通过（10/10 关键节点 PASS）**
   - 46 项任务真实落地：Controller 权限注解齐全、前端路由守卫覆盖完整、Controller 不持 Mapper（0 违规，InjuryClaimController 遗留已注释排除）、全局异常处理器覆盖 15+ 异常类、测试文件全部在 test/、前端目录全部 snake_case、V14 索引迁移存在并生效
-- Phase B — 功能补全 + Bug 修复：**核验通过（10/12 PASS / 0 FAIL / 2 项技术债）**
+- Phase B — 功能补全 + Bug 修复：**核验通过（11/12 PASS / 0 FAIL / 1 项技术债）**
   - 核心业务 B-P0/P1/FEAT 真实落地，HR/PM 权限、费用类型、假期类型、运维角色、Logo 企业名等均可用
-  - 技术债登记：DEF-TECH-01（`ops` vs `sys_admin` 角色命名不一致）、DEF-TECH-02（injury/index.vue 仍发送已声明删除的 `accidentDescription` 字段）
+  - 技术债登记：DEF-TECH-01（`ops` vs `sys_admin` 角色命名不一致）
+  - 撤回：~~DEF-TECH-02~~ 为 agent 误报（B-REM-01 实际已完成，doApply 映射按设计保留）
 - Phase C — 测试覆盖：**核验通过**
   - 后端 `mvn test` 1316 测试全绿（0 失败、0 错误、0 skip，含 ArchUnit 4 条架构约束）
   - 前端 `yarn workspace oa-h5 test` 35 测试全绿
@@ -123,15 +124,10 @@
 - **处理计划**：前端统一改为 `sys_admin`，核实 V18 migration 数据迁移；可并入 AUTH-IMPROVE 或单独一次 fix
 - **状态**：`[ ]`
 
-### DEF-TECH-02 injury/index.vue 死字段未清理
+### ~~DEF-TECH-02~~（撤回）injury accidentDescription 误报
 
-- **发现来源**：VERIFY-PHASE-B 核验（2026-04-23）
-- **当前实现**：`app/h5/pages/forms/injury/index.vue:365` 仍发送 `accidentDescription: applyForm.value.description`
-- **问题**：B-REM-01 任务声明已删除此字段，但实际代码未删；死字段残留
-- **影响**：代码卫生（无功能影响，字段后端已不接收）
-- **优先级**：P3
-- **处理计划**：单次 cleanup commit 删除
-- **状态**：`[ ]`
+- **原报告**：B-REM-01 未完成
+- **复核**：`app/h5/pages/injury/index.vue:365` 唯一使用 `accidentDescription` 的位置是 `doApply` 提交映射，该映射按 B-REM-01 原任务设计要求**保留**（仅要求删除 `applyForm` 声明）。`applyForm` 中已无该字段。B-REM-01 实际真实完成，本条撤回。
 
 ### DEF-TECH-03 Knip 缺 `.knip.json` 配置文件
 
