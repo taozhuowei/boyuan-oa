@@ -154,7 +154,9 @@ public class SetupService {
    * any accounts.
    */
   public void markInitializedForDev() {
-    systemConfigMapper.setValue(KEY_INITIALIZED, "true", "系统初始化状态");
+    // Use updateValue (standard SQL UPDATE) — setValue uses H2-only MERGE INTO syntax.
+    // The 'initialized' key always exists in the seeded system_config table.
+    systemConfigMapper.updateValue(KEY_INITIALIZED, "true");
     log.info("Dev: system marked as initialized");
   }
 

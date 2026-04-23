@@ -1569,9 +1569,16 @@
   - 覆盖：基础登录（5）、首次登录强制设置（3）、密码修改（4）、CEO 恢复码（3）、退出登录（3）、路由守卫（1）、账号安全（2）、注入与异常输入（13）
 
 #### D-M01-TEST
-- `[ ]` QA 实现 Playwright E2E 全部 34 条（标签 `@auth`）
+- `[~]` QA 实现 Playwright E2E 全部 34 条（标签 `@auth`）
 - `[ ]` 运行，输出 Pass/Fail 矩阵
 - `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+
+**已知阻断问题（待修复，暂不影响 D-M01 推进）**
+
+- `INFRA-BUG-01` DevController.java L54 `SET REFERENTIAL_INTEGRITY FALSE` — H2 专属语法，PostgreSQL dev profile 执行 `POST /dev/reset` 时报 500
+- `INFRA-BUG-02` SetupServiceImpl.java `markInitializedForDev()` 使用 `MERGE INTO` — H2 专属语法，PostgreSQL dev 下执行 `POST /dev/skip-setup` 报 500；两个 bug 导致测试前数据重置流程不可用
+- `TEST-BUG-01` AUTH-21 在 CEO 禁用 employee.demo 后无法恢复（依赖 INFRA-BUG-01 修复）；临时处理：在 auth.spec.ts 内用直接 SQL / API 补偿恢复
+- `FIXTURE-BUG-01` loginAs fixture 将 `email: null` 写入 oa-user cookie，触发 auth.global.ts `email === null` 判断，所有使用 fixture 登录的测试被错误重定向至 /setup-account；已修复：改为 `email: user.email`（undefined 时 JSON.stringify 自动忽略）
 
 #### D-M01-ACC
 - `[ ]` 用户浏览器走完主流程

@@ -82,25 +82,23 @@ spring:
 oa:
   upload-dir: ./uploads
 
-# 电子签名配置
+# 电子签名 + 限流配置
 app:
   signature:
     # AES-256 密钥，必须为 32 字符
     # 生产环境请务必修改此密钥
     aes-key: ${APP_SIGNATURE_AES_KEY:__REDACTED_DEFAULT_AES_KEY__}
+  # D-F-20: 全局限流配置（默认 300/min/IP；测试环境通过 application-test.yml 调高）
+  # D-F-19: 登录失败阶梯锁定第一阈值（默认5次；测试环境通过 application-test.yml 调高）
+  rate-limit:
+    global-per-minute: 300
+    login-fail-threshold: 5
 
 # JWT 配置
 jwt:
   secret: ${JWT_SECRET:__REDACTED_DEFAULT_JWT_SECRET__}
   expiration: 86400000  # 24小时
   issuer: oa-backend
-
-# D-F-20: 全局限流配置（默认 300/min/IP；测试环境通过 application-test.yml 调高）
-# D-F-19: 登录失败阶梯锁定第一阈值（默认5次；测试环境通过 application-test.yml 调高）
-app:
-  rate-limit:
-    global-per-minute: 300
-    login-fail-threshold: 5
 
 # 日志配置（dev profile 会把 com.oa 提到 DEBUG，见 application-dev.yml）
 logging:

@@ -155,6 +155,21 @@ public class EmailVerificationService {
     codeCache.invalidate("pwd:" + email);
   }
 
+  // ── Dev helpers (dev profile only) ───────────────────────────────────────
+
+  /**
+   * Returns the cached verification code for the given email and type prefix. Only intended for the
+   * dev-only DevController — never expose in production.
+   *
+   * @param prefix "bind" or "pwd"
+   * @param email target email address
+   * @return the 6-digit code, or null if no live code exists for this email
+   */
+  public String getCachedCode(String prefix, String email) {
+    CodeEntry entry = codeCache.getIfPresent(prefix + ":" + email);
+    return entry != null ? entry.code() : null;
+  }
+
   // ── Private helpers ───────────────────────────────────────────────────────
 
   private String generateCode() {

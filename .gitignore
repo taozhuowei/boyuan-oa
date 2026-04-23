@@ -42,3 +42,9 @@ sonar-scanner*/
 # Runtime upload directory and test output artifacts
 server/uploads/
 test-results/
+
+# Local server config overrides with credentials (never commit)
+server/config/
+
+# E2E test credentials (generated from local/test.env template)
+.env.test

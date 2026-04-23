@@ -1,5 +1,6 @@
 package com.oa.backend.controller;
 
+import com.oa.backend.service.EmailVerificationService;
 import com.oa.backend.service.SetupService;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -7,8 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -34,6 +37,7 @@ public class DevController {
 
   private final SetupService setupService;
   private final JdbcTemplate jdbcTemplate;
+  private final EmailVerificationService emailVerificationService;
 
   /**
    * E2E 测试数据重置。
@@ -51,21 +55,16 @@ public class DevController {
   public ResponseEntity<Map<String, String>> resetForE2E() {
     log.warn("[DEV] E2E data reset triggered — truncating all business tables");
 
-    jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
-    try {
-      // Business / transactional tables — order does not matter with FK checks disabled
-      for (String table : BUSINESS_TABLES) {
-        jdbcTemplate.execute("TRUNCATE TABLE " + table);
-      }
-      // Remove setup-wizard-created accounts (CEO001/HR001/SYS_ADMIN001/GM001) and
-      // any test-created employees (auto-increment starts at 100, seeds are 1–8)
-      jdbcTemplate.execute(
-          "DELETE FROM employee WHERE employee_no IN ('CEO001','HR001','SYS_ADMIN001','GM001') OR id >= 100");
-      // Restore seed employee statuses — E2E-06 disables an employee; reset must undo that
-      jdbcTemplate.execute("UPDATE employee SET account_status = 'ACTIVE' WHERE id < 100");
-    } finally {
-      jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
-    }
+    // PostgreSQL: truncate all business tables in one statement; CASCADE resolves FK order
+    // automatically.
+    String tableList = String.join(", ", BUSINESS_TABLES);
+    jdbcTemplate.execute("TRUNCATE TABLE " + tableList + " CASCADE");
+    // Remove setup-wizard-created accounts (CEO001/HR001/SYS_ADMIN001/GM001) and
+    // any test-created employees (auto-increment starts at 100, seeds are 1–8)
+    jdbcTemplate.execute(
+        "DELETE FROM employee WHERE employee_no IN ('CEO001','HR001','SYS_ADMIN001','GM001') OR id >= 100");
+    // Restore seed employee statuses — E2E-06 disables an employee; reset must undo that
+    jdbcTemplate.execute("UPDATE employee SET account_status = 'ACTIVE' WHERE id < 100");
 
     log.info("[DEV] E2E data reset completed");
     return ResponseEntity.ok(Map.of("message", "reset ok"));
@@ -131,5 +130,27 @@ public class DevController {
   public ResponseEntity<Map<String, String>> skipSetup() {
     setupService.markInitializedForDev();
     return ResponseEntity.ok(Map.of("message", "marked as initialized"));
+  }
+
+  /**
+   * Returns the live verification code from the in-memory cache for the given email.
+   *
+   * <p>Used by E2E tests instead of IMAP polling — avoids dependency on QQ Mail delivery speed. The
+   * code is the same one that would be sent via email; this endpoint just reads it from the
+   * Caffeine cache before it expires (5-minute TTL).
+   *
+   * @param type "bind" (email-bind flow) or "pwd" (password-reset flow)
+   * @param email the target email address
+   * @return 200 + {"code":"123456"} if a live code exists; 404 if not found or expired
+   */
+  @GetMapping("/verification-code")
+  public ResponseEntity<Map<String, String>> getVerificationCode(
+      @RequestParam String type, @RequestParam String email) {
+    String code = emailVerificationService.getCachedCode(type, email);
+    if (code == null) {
+      return ResponseEntity.notFound().build();
+    }
+    log.info("[DEV] Returning cached verification code for type={} email={}", type, email);
+    return ResponseEntity.ok(Map.of("code", code));
   }
 }

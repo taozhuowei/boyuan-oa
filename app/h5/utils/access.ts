@@ -45,7 +45,13 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
         secondRoles: response.secondRoles ?? [],
       },
     }
-  } catch {
+  } catch (err: unknown) {
+    // Only fall back to offline test accounts when the backend is unreachable (no HTTP status code).
+    // If the backend explicitly responded with 4xx (disabled account, wrong credentials, etc.),
+    // propagate the error rather than bypassing the backend security decision.
+    if (typeof (err as { statusCode?: unknown }).statusCode === 'number') {
+      throw new Error('账号或密码错误')
+    }
     const matched = defaultTestAccounts.find(
       (a) => a.username === identifier && a.password === password
     )

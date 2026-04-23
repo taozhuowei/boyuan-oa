@@ -35,6 +35,8 @@ interface LoginResponse {
   department: string
   employeeType: string
   secondRoles: string[]
+  isDefaultPassword: boolean
+  email: string | null
 }
 
 /**
@@ -87,7 +89,9 @@ export async function loginAs(context: BrowserContext, role: RoleKey): Promise<v
         status: '在线值守',
         userId: user.userId ?? null,
         positionId: null,
-        secondRoles: user.secondRoles ?? []
+        secondRoles: user.secondRoles ?? [],
+        isDefaultPassword: user.isDefaultPassword ?? false,
+        email: user.email
       })),
       domain: 'localhost',
       path: '/',
