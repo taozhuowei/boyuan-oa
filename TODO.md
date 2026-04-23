@@ -14,22 +14,170 @@
 
 ---
 
-## 阶段总览
+## 活跃任务看板
 
-- **Phase A — 架构治理 + 清理**：安全加固、DB 索引、代码分层、命名规范、临时文件清除。A 阶段决定后续是否返工。
-- **Phase B — 功能补全 + Bug 修复**：基于 A 阶段干净架构，补全所有功能缺口和已知缺陷。
-- **Phase C — 测试覆盖**：编写并执行全部自动化测试，Claude 自执行黑盒测试。
-- **Phase C+ — 遗留修复 + 质量体系建设 + 完整验收**：补齐 A/B/C 遗留问题，建立工具链（k6/ZAP/schemathesis/Dependency-Check），执行全维度五轮测试，用户确认测试用例设计与验收报告，方可进入 D。
-- **Phase D — 设计对齐审计**：以 DESIGN.md 为权威，逐模块确认业务规则 → 审计代码 → 整改差距 → 再次检查；确保实现 1:1 还原设计，不错漏、不新增。
-- **Phase E — 人工验收**：用户在真实浏览器完成完整业务链路验收，Claude 跟进修复。
-- **Phase F — 生产部署 + 工程规范**：首版上线 + 建立 git/PR/分支/代码审查/issue/SemVer/CHANGELOG/RUNBOOK 全套规范。规范越早建立越好。
-- **Phase G — 微信小程序**：补齐小程序完整能力，含测试。
-- **Phase H — 运维维护**：日常运维操作，引用 Phase F 建立的规范文档。
+**当前 Phase**：Phase D — 逐模块测试 + 设计对齐 + 人工验收
+**当前模块**：D-M01 认证
+**当前 Stage**：Stage 2 — 测试用例设计（用户与我对齐中）
+
+**下一步动作（我）**
+- 等待用户确认 AUTH 新用例清单（页面→组件→操作 三层结构）
+- 确认后落地到 `test/e2e/modules/D-M01.md`
+- 触发 QA agent 实现与执行
+
+**下一步动作（用户）**
+- 决策 DEF-AUTH-01/02/03 是否立项独立 AUTH-IMPROVE Phase
+- 决策 DEF-AUTH-04 处理方案（测试环境限流阈值恢复 5 + 新增 dev 端点）
+
+**阻塞项**：无
 
 ---
 
-## Phase A — 架构治理 + 清理
+## Phase 总览
 
+- Phase A — 架构治理 + 清理：**声明完成** ⚠️ 待核验 → 见归档区
+- Phase B — 功能补全 + Bug 修复：**声明完成** ⚠️ 待核验 → 见归档区
+- Phase C — 测试覆盖：**声明完成** ⚠️ 待核验 → 见归档区
+- Phase C+ — 质量体系建设 + 全维度测试：**声明完成** ⚠️ 待核验 → 见归档区
+- **Phase D — 逐模块测试 + 设计对齐 + 人工验收（当前活跃）**
+- Phase E — 人工验收：未开始
+- Phase F — 生产部署 + 工程规范：未开始
+- Phase G — 微信小程序：未开始
+- Phase H — 运维维护：未开始
+
+---
+
+## 设计缺陷池（DEFECTS）
+
+> **规则**：测试、验收、使用过程中发现的**设计层面**问题（非单点 bug），统一在此登记。
+> 每条 DEFECT 独立立项，不阻塞发现它的那个 Phase/模块的推进。
+> 状态：`[ ]` 待立项 / `[~]` 立项中 / `[>]` 修复中 / `[?]` 待验收 / `[x]` 已关闭
+
+### DEF-AUTH-01 登录限流 per-IP 应改为 per-account + per-IP 双层
+
+- **发现来源**：D-M01 Stage 2 调研业内实践（2026-04-23）
+- **当前实现**：`server/src/main/java/com/oa/backend/controller/AuthController.java` LoginFailState 按 clientIp 计数，per-IP 维度
+- **问题**：共享出口 IP 的办公室场景，一个用户输错 5 次导致整个 IP 上所有用户被锁 1 分钟
+- **业内参考**：
+  - Microsoft Entra Smart Lockout —— per-account，默认 10 次
+  - OWASP Authentication Cheat Sheet —— 推荐 per-account 为主，per-IP 辅
+  - NIST 800-63B §5.2.2 —— 限流针对 subscriber account
+- **影响**：用户体验、生产可用性
+- **优先级**：P1
+- **处理计划**：独立立项 AUTH-IMPROVE Phase（待用户确认立项时机），不阻塞 D-M01
+- **状态**：`[ ]`
+
+### DEF-AUTH-02 登录失败缺少验证码挑战层
+
+- **发现来源**：D-M01 Stage 2 调研（2026-04-23）
+- **当前实现**：失败 5 次直接短锁 1 分钟，无中间挑战层
+- **问题**：真实用户偶尔误输密码后直接被锁不友好；业界主流先弹 captcha 挑战
+- **业内参考**：Cloudflare 4/min → JavaScript Challenge；Google 5 次触发 captcha
+- **影响**：用户体验
+- **优先级**：P2
+- **处理计划**：并入 AUTH-IMPROVE Phase
+- **状态**：`[ ]`
+
+### DEF-AUTH-03 锁定期间缺少自助解锁路径
+
+- **发现来源**：D-M01 Stage 2 调研（2026-04-23）
+- **当前实现**：锁定期间合法用户无任何救济途径，只能等待
+- **问题**：攻击者可通过持续失败登录 DoS 合法用户
+- **业内参考**：OWASP 要求自助解锁（邮件验证）或管理员解锁
+- **影响**：生产可用性
+- **优先级**：P2
+- **处理计划**：与"忘记密码"链路一起做，并入 AUTH-IMPROVE Phase
+- **状态**：`[ ]`
+
+### DEF-AUTH-04 测试环境限流阈值被改为 100000，等于关闭测试覆盖
+
+- **发现来源**：D-M01 Stage 2（2026-04-23）
+- **当前实现**：`server/src/test/resources/application.yml` 和 dev profile 覆盖到 100000
+- **问题**：限流相关 bug 永远测不出来；AUTH-20 限流测试被迫 skip
+- **影响**：测试工程质量
+- **优先级**：P0（阻塞 D-M01 Stage 3）
+- **处理计划**：D-M01 Stage 3 一并修复 —— 测试环境阈值恢复 5 + 新增 `POST /dev/reset-rate-limit` dev 端点供非限流测试清零
+- **状态**：`[ ]`
+
+---
+
+## Phase D 协作 SOP
+
+> 每个 D-M 模块走 4 个 Stage，逐阶段交接，上一阶段未产出不进入下一阶段。
+
+### Stage 1 — 设计对齐（我 + 用户，同步讨论）
+
+- **输入**：`DESIGN.md` 模块章节 §M{XX}
+- **我的动作**：
+  1. 读 DESIGN.md §M
+  2. 提取模块功能清单（页面、组件、操作、权限、数据来源与走向）
+  3. 标出疑问点（描述模糊、冲突、未覆盖的边界）
+- **用户的动作**：逐条确认/修正；对模糊点给出业务决策
+- **我的收尾**：更新 DESIGN.md §M；发现设计层缺陷登记到 DEFECTS
+- **产出**：DESIGN.md §M 定稿；模块功能清单定稿
+
+### Stage 2 — 测试用例设计（我 + 用户，同步讨论）
+
+- **输入**：Stage 1 产出 + 业内实践调研
+- **我的动作**：
+  1. 按 **"页面 → 表单组件 → 操作/输入维度"** 三层结构设计用例
+  2. 每个用例明确：前置条件、操作步骤、断言
+  3. **禁止**在用例中加 skip 逻辑（见 `memory/feedback_no_test_skips.md`）
+- **用户的动作**：确认粒度、遗漏、冗余
+- **产出**：`test/e2e/modules/D-M{XX}.md` 用例清单定稿
+
+### Stage 3 — 测试实现与执行（QA agent 主导）
+
+- **输入**：Stage 2 定稿用例清单
+- **流程**：
+  1. QA agent 实现 `test/e2e/specs/D-M{XX}.spec.ts`
+  2. QA agent 执行，输出 Pass/Fail 矩阵
+  3. 我分类每个 Fail：
+     - 实现 bug → Backend/Frontend agent 修 → Code Reviewer → 重跑
+     - 设计缺陷 → 登记 DEFECTS 后继续（不阻塞）
+     - 测试代码缺陷 → QA agent 修 → 重跑
+  4. 必须全绿且**无 skip**，方可推 Stage 4
+- **产出**：Pass 矩阵（全绿）；本模块 DEFECTS 登记列表
+
+### Stage 4 — 人工验收（用户主导）
+
+- **输入**：Stage 3 全绿
+- **流程**：
+  1. 用户在浏览器走完模块主流程
+  2. 用户反馈 bug → 我分类处理（修 / 登记 DEFECTS）→ 回归
+  3. 直到用户无反馈
+- **产出**：用户签字日期；模块 `[x]`
+
+---
+
+## 待核验归档任务
+
+> 已完成 Phase 归档前必须核对代码实际状态，**禁止仅凭 TODO 文档判断**。
+> 核验通过 → 归档为一行摘要，详情移入文末归档区。
+> 核验发现偏差 → 登记 DEFECTS 或重开任务。
+
+- `[ ]` **VERIFY-PHASE-A** 核验 Phase A 46 项任务是否真实完成
+  - 重点抽查：A-SEC（controller 权限注解完整性）、A-CODE（controller 不持 Mapper）、A-CLEAN（kebab-case → snake_case 目录迁移、临时文件清理）
+  - 方法：Grep 源码 + `mvn test` + `curl` 权限越权场景
+  - 产出：核验报告 → 一行摘要 + 发现偏差登记 DEFECTS
+
+- `[ ]` **VERIFY-PHASE-B** 核验 Phase B 功能补全与 Bug 修复
+  - 方法：`curl` 每个 B-P / B-FEAT 涉及的接口（含无权角色场景）
+  - 产出：核验报告
+
+- `[ ]` **VERIFY-PHASE-C** 核验 Phase C 测试覆盖
+  - 方法：`mvn test` + `yarn workspace oa-h5 test` + `yarn test:integration`（连续 3 次）
+  - 产出：通过率报告
+
+- `[ ]` **VERIFY-PHASE-CPLUS** 核验 Phase C+ 质量工具链
+  - 方法：逐工具验证可执行性（spotless / archunit / springdoc / knip / prettier / eslint / semgrep / snyk / sonar / k6 / zap / schemathesis）
+  - 产出：工具清单 + 配置完整性报告
+
+---
+
+## Phase A — 架构治理 + 清理（声明完成，⚠️ 待核验）
+
+> **状态**：所有任务均标记 `[x]`，但未经代码核验归档；详情见文档开头 **VERIFY-PHASE-A** 任务。
 > **目标**：消除上线前安全漏洞、性能隐患、架构腐化、命名不规范、遗留临时文件。
 > **优先级**：A-SEC（安全）> A-DB（性能）> A-CODE（架构）> A-CLEAN（清理）> A-OPS（运维配置）。
 > **完成标准**：所有子任务 `[x]`，`git ls-files` 无临时脚本，`app/h5/pages/` 无 kebab-case 目录，`app/` 下无 `*.test.ts`，后端每个 Controller 方法均有权限注解或 Service 层隔离。
@@ -408,7 +556,9 @@
 
 ---
 
-## Phase B — 功能补全 + Bug 修复
+## Phase B — 功能补全 + Bug 修复（声明完成，⚠️ 待核验）
+
+> **状态**：所有任务均标记 `[?]` 或 `[x]`，但未经代码核验归档；详情见文档开头 **VERIFY-PHASE-B** 任务。
 
 > **前置条件**：Phase A 全部 `[x]`。
 > **目标**：在干净架构基础上修复全部已知缺陷，补全所有功能缺口。
@@ -885,7 +1035,9 @@
 
 ---
 
-## Phase C — 测试覆盖
+## Phase C — 测试覆盖（声明完成，⚠️ 待核验）
+
+> **状态**：所有任务均标记完成，但未经代码核验归档；详情见文档开头 **VERIFY-PHASE-C** 任务。
 
 > **前置条件**：Phase B 全部 `[?]`（P0/P1/P2/P3/FEAT 自动化测试全通过；`[x]` 待 Phase E 人工走查后补齐）。
 > **目标**：编写并执行全部自动化测试；Claude 自执行黑盒测试；测试文档修复。
@@ -1143,16 +1295,13 @@
 
 ---
 
-## Phase D — 遗留修复 + 质量体系建设 + 全维度测试 + 补充设计完成
+## Phase C+ — 质量体系建设 + 全维度测试（声明完成，⚠️ 待核验）
 
-> **原名 Phase C+，重命名为 Phase D。**
-> **前置条件**：Phase C 全部任务记录完毕（含 C-QUALITY 设计）。
-> **目标**：补齐遗留问题与新发现设计偏差，建立完整 CI/CD 门禁与测试工具链，逐模块确认测试用例设计，执行全维度测试（含生产冒烟测试设计），完整确认真实完成。
-> **完成标准**：全部 FIX 项完成，20 个模块测试设计逐一经用户确认，五轮测试全通过，方可进入 Phase F。
+> **状态**：声明完成，待 VERIFY-PHASE-CPLUS 任务核验实际工具可用性后归档为摘要。
+> **内容**：CI/CD 门禁、测试工具链（ArchUnit/springdoc/Snyk/SonarQube/Semgrep/Prettier/Spotless/Knip/jsdoc/k6/ZAP/schemathesis）、五轮全维度测试、遗留问题修复。
+> **下一阶段**：Phase D — 逐模块测试 + 设计对齐 + 人工验收。
 >
-> **下一阶段**：Phase F — 业务设计确认 + 人工真实验收 + 修问题。
->
-> **执行顺序（严格）**：D-INFRA → D-DESIGN → D-FIX → D-TEST → D-GATE
+> **执行顺序（历史记录）**：C+-INFRA → C+-DESIGN → C+-FIX → C+-TEST → C+-GATE
 
 ---
 
@@ -1555,42 +1704,57 @@
 
 ## Phase D — 逐模块测试 + 设计对齐 + 人工验收
 
-> 测试用例详见 `test/e2e/TEST_DESIGN.md`，按模块顺序排列。
-> 前序模块 ACC 通过后方可开始下一模块。
+> 协作流程见文档开头 **Phase D 协作 SOP**（Stage 1/2/3/4）。
+> 前序模块 Stage 4 通过后方可开始下一模块。
+> D-M01 为完整四阶段模板示例，D-M02~M20 骨架将在启动时按此模板扩展。
 
 ---
 
 ### D-M01 — 认证（无依赖）
 
-**状态**：DESIGN `[x]` | TEST `[x]` | ACC `[ ]`
+**整体状态**：Stage 2 进行中（用例清单重设计）
 
-#### D-M01-DESIGN
-- `[x]` 34 条用例 v3 确认（2026-04-23）→ `test/e2e/TEST_DESIGN.md D-M01`
-  - 覆盖：基础登录（5）、首次登录强制设置（3）、密码修改（4）、CEO 恢复码（3）、退出登录（3）、路由守卫（1）、账号安全（2）、注入与异常输入（13）
+**模块范围**
+- 页面：`/login`、`/setup-account`、`/me/password`、初始化向导 step 5（恢复码）
+- 流程：登录、退出、首次登录绑邮箱改密、普通用户改密、CEO 恢复码、账号禁用恢复、路由守卫、登录限流
+- 相关 DEFECTS：DEF-AUTH-01 / 02 / 03 / 04
 
-#### D-M01-TEST
-- `[x]` QA 实现 Playwright E2E 全部 34 条（标签 `@auth`）
-- `[x]` 运行，输出 Pass/Fail 矩阵：26 pass / 4 skip-by-design / 4 skip-conditional（2026-04-23）
-- `[x]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
+#### Stage 1 — 设计对齐
 
-**已修复问题（2026-04-23）**
+- `[x]` DESIGN.md §1 认证章节确认（在 Stage 2 之前完成）
+- `[x]` 模块功能清单定稿
 
-- `INFRA-BUG-01` DevController `/dev/reset`：H2 专属 `SET REFERENTIAL_INTEGRITY` 改为 PostgreSQL 兼容 `TRUNCATE ... CASCADE` ✓
-- `INFRA-BUG-02` SetupService `markInitializedForDev()`：H2 专属 `MERGE INTO` 改为标准 `UPDATE` ✓
-- `TEST-BUG-01` AUTH-21 账号恢复：依赖 INFRA-BUG-01 已修复，恢复逻辑通过 API 直接调用 ✓
-- `FIXTURE-BUG-01` loginAs fixture email 字段：改为 `email: user.email`，消除错误重定向 ✓
-- `EMAIL-BUG-01` QQ Mail SMTP 延迟（3-30分钟）：改用 `GET /dev/verification-code` 直读 Caffeine 缓存，AUTH-07/09/12/31 全部通过 ✓
+#### Stage 2 — 测试用例设计（进行中）
 
-**Skip 说明（非失败）**
+- `[x]` 原 34 条独立 test 清单（弃用，原因：同一用户流程被拆成独立 test 导致 60s 冷却冲突和 4 条条件 skip）
+- `[~]` 按"页面 → 表单组件 → 操作"三层结构重构用例（11 组分，见对话 2026-04-23）
+- `[ ]` 用户确认新用例清单 → 落地 `test/e2e/modules/D-M01.md`
 
-- AUTH-13/14/15（4条）：`test.skip(true)` by design — 需要初始化向导未完成状态，系统已初始化
-- AUTH-20：`test.skip(true)` by design — 限流阈值 100000，测试环境不触发
-- AUTH-11/28/29/30：条件 skip — 依赖上一个 send-code 的 60s 冷却，顺序执行时概率 skip（非失败）
+**Stage 2 产出的发现**
 
-#### D-M01-ACC
+- 原 34 条独立 test 设计不合理，改为三层结构：一次浏览器 context 内跑完一个页面上多个组件的多个操作，规避冷却冲突
+- 登记 4 个设计缺陷：DEF-AUTH-01（per-IP → per-account）/ DEF-AUTH-02（缺 captcha）/ DEF-AUTH-03（缺自助解锁）/ DEF-AUTH-04（测试环境阈值 100000）
+
+#### Stage 3 — 测试实现与执行
+
+- `[ ]` 预处理：修复 DEF-AUTH-04
+  - 恢复 `server/src/test/resources/application.yml` 中 `login-fail-threshold` 为 5
+  - DevController 新增 `POST /dev/reset-rate-limit`
+- `[ ]` QA agent 实现 `test/e2e/specs/D-M01.spec.ts`（按 Stage 2 定稿清单）
+- `[ ]` 执行：全绿无 skip → 输出 Pass 矩阵
+- `[ ]` FIX 循环：实现 bug → 修复 → 重跑；设计缺陷 → 登记 DEFECTS
+
+#### Stage 4 — 人工验收
+
 - `[ ]` 用户浏览器走完主流程
-- `[ ]` FIX 循环：修复反馈问题，直到无问题
-- `[ ]` 用户确认关闭（注明日期）
+- `[ ]` 回归修复至无反馈
+- `[ ]` 用户签字确认日期
+
+**执行记录**
+
+- 2026-04-23 完成原 34 条用例实现与运行，结果 26 pass / 8 skip
+- 2026-04-23 登记 DEF-AUTH-01~04；决定重新设计用例弃用 skip
+- 2026-04-23 测试粒度重构为"页面→组件→操作"三层结构，等待用户确认清单
 
 ---
 
@@ -1998,9 +2162,9 @@
 
 ---
 
-### E-STD — 工程规范建立
+### F-STD — 工程规范建立
 
-#### E-STD-01 Git 提交规范与分支策略
+#### F-STD-01 Git 提交规范与分支策略
 - **目标**：团队所有成员统一 git 工作流
 - **步骤**
   1. 在 `.github/CONTRIBUTING.md` 中定义：
@@ -2013,7 +2177,7 @@
 - **验收流程**：尝试 push 一个格式错误的 commit，CI 报错
 - **状态**：`[ ]`
 
-#### E-STD-02 PR 模板 + 代码审查 Checklist
+#### F-STD-02 PR 模板 + 代码审查 Checklist
 - **目标**：标准化 PR 提交和审查流程
 - **步骤**
   1. 新建 `.github/pull_request_template.md`，包含：
@@ -2027,7 +2191,7 @@
 - **验收流程**：新建一个测试 PR，确认模板自动出现
 - **状态**：`[ ]`
 
-#### E-STD-03 Issue 模板
+#### F-STD-03 Issue 模板
 - **目标**：Bug 报告和功能请求有统一格式
 - **步骤**
   1. 新建 `.github/ISSUE_TEMPLATE/bug_report.md`：复现步骤、期望行为、实际行为、环境信息、截图
@@ -2036,7 +2200,7 @@
 - **验收流程**：GitHub 新建 Issue 验证
 - **状态**：`[ ]`
 
-#### E-STD-04 SemVer + CHANGELOG
+#### F-STD-04 SemVer + CHANGELOG
 - **目标**：版本号管理与发布记录规范化
 - **步骤**
   1. 在 `package.json`（前端）和 `pom.xml`（后端）中定义初始版本 `1.0.0`
@@ -2047,7 +2211,7 @@
 - **验收流程**：打 tag 后查看 CI Actions
 - **状态**：`[ ]`
 
-#### E-STD-05 RUNBOOK（操作手册）
+#### F-STD-05 RUNBOOK（操作手册）
 - **目标**：生产环境操作步骤文档化，任何人可独立执行
 - **步骤**
   1. 新建 `docs/RUNBOOK.md`，包含：
@@ -2064,38 +2228,38 @@
 
 ---
 
-### E-CICD — CI/CD 完善
+### F-CICD — CI/CD 完善
 
-- `[ ]` **E-CICD-01 CI commitlint 检查**
+- `[ ]` **F-CICD-01 CI commitlint 检查**
   - `.github/workflows/ci.yml` 添加 `commitlint` job
   - PR 提交时自动校验 commit message 格式
 
-- `[ ]` **E-CICD-02 CI 发布 workflow**
+- `[ ]` **F-CICD-02 CI 发布 workflow**
   - `.github/workflows/release.yml`：tag `v*` 触发
   - 步骤：build backend JAR → build frontend static → create GitHub Release → upload artifacts
 
 ---
 
-### E-DEPLOY — 生产部署
+### F-DEPLOY — 生产部署
 
-- `[ ]` **E-DEPLOY-01 服务器环境准备**
+- `[ ]` **F-DEPLOY-01 服务器环境准备**
   - 选定云主机方案（Ubuntu 22.04 推荐）
   - 配置域名 + HTTPS 证书（Let's Encrypt）
   - 配置生产环境变量：DB_URL / DB_USERNAME / DB_PASSWORD / JWT_SECRET / APP_SIGNATURE_AES_KEY
 
-- `[ ]` **E-DEPLOY-02 数据库迁移验证**
+- `[ ]` **F-DEPLOY-02 数据库迁移验证**
   - PostgreSQL 启动，`-Dspring.profiles.active=prod` 下 Flyway V1–V14 迁移无报错
   - 种子账号（ceo.demo/123456）可登录
 
-- `[ ]` **E-DEPLOY-03 Docker 构建与部署**
+- `[ ]` **F-DEPLOY-03 Docker 构建与部署**
   - `docker build -t boyuan-oa .` 成功
   - `/actuator/health` 返回 `{"status":"UP"}`
   - H5 前端静态文件通过 Nginx 托管，`/api/` 代理到后端
 
-- `[ ]` **E-DEPLOY-04 版本号注入验证**
+- `[ ]` **F-DEPLOY-04 版本号注入验证**
   - git tag → JAR manifest + 前端 `VITE_APP_VERSION` 正确注入
 
-- `[ ]` **E-DEPLOY-05 生产环境 7 角色全菜单走查**
+- `[ ]` **F-DEPLOY-05 生产环境 7 角色全菜单走查**
   - 在真实服务器重跑 Phase E 验收清单
   - 全部通过后 v1.0.0 正式上线
 
@@ -2107,46 +2271,46 @@
 
 ---
 
-### F-PREP — 前置清理
+### G-PREP — 前置清理
 
-- `[ ]` **F-PREP-01** 清理 `app/mp/src/pages.json`：仅保留 6 个入口（登录、工作台、待办、考勤、项目、忘记密码）
-- `[ ]` **F-PREP-02** 恢复 CI `frontend-mp-test` job（A-OPS-02 中已跳过，Phase G 启动时恢复）
-- `[ ]` **F-PREP-03 短信验证码找回密码**（延期自 Phase B）：后端 PasswordResetController 及短信发送逻辑已实现，前端忘记密码页已存在；Phase G 启动时对接真实短信服务商，补充 E2E 测试。延期原因：小程序上线后才需要通用短信找回，H5 端优先使用初始密码+HR重置流程。
-
----
-
-### F-CORE — 核心页面实现
-
-- `[ ]` **F-CORE-01 登录页**：手机号/密码登录，token 写入 uni storage
-- `[ ]` **F-CORE-02 工作台**：动态菜单卡片（按角色），未读待办徽章
-- `[ ]` **F-CORE-03 待办页**：待审批列表，支持通过/驳回操作
-- `[ ]` **F-CORE-04 考勤页**：请假/加班申请入口，本月记录展示
-- `[ ]` **F-CORE-05 项目页**：项目列表，PM 查成员，劳工填施工日志
-- `[ ]` **F-CORE-06 忘记密码**：完整 4 步流程
+- `[ ]` **G-PREP-01** 清理 `app/mp/src/pages.json`：仅保留 6 个入口（登录、工作台、待办、考勤、项目、忘记密码）
+- `[ ]` **G-PREP-02** 恢复 CI `frontend-mp-test` job（A-OPS-02 中已跳过，Phase G 启动时恢复）
+- `[ ]` **G-PREP-03 短信验证码找回密码**（延期自 Phase B）：后端 PasswordResetController 及短信发送逻辑已实现，前端忘记密码页已存在；Phase G 启动时对接真实短信服务商，补充 E2E 测试。延期原因：小程序上线后才需要通用短信找回，H5 端优先使用初始密码+HR重置流程。
 
 ---
 
-### F-TEST — 小程序测试
+### G-CORE — 核心页面实现
 
-- `[ ]` **F-TEST-01 TC-MP-01**：各角色登录后菜单与权限一致
-- `[ ]` **F-TEST-02 TC-MP-02**：提交请假后审批人待办出现，操作后状态同步
-- `[ ]` **F-TEST-03 TC-MP-03**：施工日志（worker）可提交
+- `[ ]` **G-CORE-01 登录页**：手机号/密码登录，token 写入 uni storage
+- `[ ]` **G-CORE-02 工作台**：动态菜单卡片（按角色），未读待办徽章
+- `[ ]` **G-CORE-03 待办页**：待审批列表，支持通过/驳回操作
+- `[ ]` **G-CORE-04 考勤页**：请假/加班申请入口，本月记录展示
+- `[ ]` **G-CORE-05 项目页**：项目列表，PM 查成员，劳工填施工日志
+- `[ ]` **G-CORE-06 忘记密码**：完整 4 步流程
+
+---
+
+### G-TEST — 小程序测试
+
+- `[ ]` **G-TEST-01 TC-MP-01**：各角色登录后菜单与权限一致
+- `[ ]` **G-TEST-02 TC-MP-02**：提交请假后审批人待办出现，操作后状态同步
+- `[ ]` **G-TEST-03 TC-MP-03**：施工日志（worker）可提交
 
 ---
 
 ## Phase H — 运维维护
 
 > **前置条件**：Phase F 完成，生产环境运行中。
-> **说明**：运维操作规范已在 Phase F（E-STD-05 RUNBOOK）建立，本阶段为日常维护执行层。
+> **说明**：运维操作规范已在 Phase F（F-STD-05 RUNBOOK）建立，本阶段为日常维护执行层。
 
 ---
 
-- `[ ]` **G-ONCALL-01 建立 on-call 值班制度**
+- `[ ]` **H-ONCALL-01 建立 on-call 值班制度**
   - 参照 `docs/RUNBOOK.md` 中故障排查章节
   - 定义值班轮换表、响应 SLA（P0：15 分钟内，P1：2 小时内，P2：次日）
   - 配置监控告警（服务宕机、响应时间 > 3s、数据库连接异常）
 
-- `[ ]` **G-ONCALL-02 定期维护执行**
+- `[ ]` **H-ONCALL-02 定期维护执行**
   - 每月执行：`npm audit`（前端依赖安全检查）、`./mvnw dependency:check`（后端依赖）
   - 每季度：数据备份演练（按 RUNBOOK §备份恢复章节执行）
   - 每半年：非功能性性能压测（`ab` 或 `k6`），确认关键接口 P95 < 500ms
