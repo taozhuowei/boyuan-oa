@@ -3,11 +3,11 @@
   <div class="workbench-page" data-catch="workbench-summary-root">
     <h2 class="page-title">工作台</h2>
 
-    <!-- First-login warning banner -->
+    <!-- First-login warning banner — 不暴露明文密码，只提示状态 -->
     <a-alert
       v-if="isDefaultPwd === true"
       type="warning"
-      message="当前密码为初始密码（123456），请立即修改以确保账户安全"
+      message="您仍在使用初始密码，为账户安全请尽快修改"
       show-icon
     >
       <template #description>

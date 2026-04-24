@@ -5,12 +5,12 @@
 
     <a-card>
       <a-spin :spinning="loading">
-        <!-- Warning alert for default password -->
+        <!-- Warning alert for default password — 不暴露明文密码，只提示状态 -->
         <a-alert
           v-if="userInfo?.isDefaultPassword"
           type="warning"
           show-icon
-          :message="'当前密码为初始密码（123456），请立即修改。'"
+          message="您仍在使用初始密码，请立即修改以确保账户安全"
           class="password-alert"
         >
           <template #action>
