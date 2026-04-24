@@ -10,6 +10,10 @@ interface SetupStatusResponse {
   companyName?: string | null
 }
 
+/**
+ * 企业名共享 composable。SSR 阶段即可用。
+ * 返回 { companyName: ref, fetchIfNeeded: () => Promise<void> }；未设置时 companyName 为 null，调用方模板应回退到默认。
+ */
 export function useCompanyName() {
   // SSR-safe shared state — must use exactly this key to align with app.vue SSR hydration
   const companyName = useState<string | null>('company-name', () => null)

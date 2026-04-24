@@ -404,7 +404,8 @@ function getSubtreeIds(rootId: number): Set<number> {
   const ids = new Set<number>([rootId])
   const queue = [rootId]
   while (queue.length) {
-    const curr = queue.shift()!
+    const curr = queue.shift()
+    if (curr === undefined) break
     allEmployees.value
       .filter((e) => e.directSupervisorId === curr)
       .forEach((e) => {
@@ -496,7 +497,9 @@ async function loadSupervisorTree() {
 }
 
 interface AntdTreeDropInfo {
-  dragNode: any // 原因：AntDV EventDataNode 泛型与 TreeDropEvent 不兼容，暂无精确类型
+  // AntDV EventDataNode 泛型与 TreeDropEvent 不兼容，我们只消费 employeeId 字段，
+  // 其余字段由 AntDV 运行时填充，这里用最小 shape 而非 any。
+  dragNode: { employeeId: number }
   node: { employeeId: number }
   dropToGap: boolean
 }
@@ -535,7 +538,8 @@ function isAncestor(employeeId: number, candidateAncestorId: number): boolean {
   // 从 employeeId 向下查找其子树，若 candidateAncestorId 在子树中则成立
   const queue: number[] = [employeeId]
   while (queue.length) {
-    const curr = queue.shift()!
+    const curr = queue.shift()
+    if (curr === undefined) break
     const children = allEmployees.value.filter((e) => e.directSupervisorId === curr)
     for (const c of children) {
       if (c.id === candidateAncestorId) return true

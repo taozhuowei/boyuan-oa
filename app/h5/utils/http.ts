@@ -12,6 +12,11 @@ export interface RequestOptions {
   skipAuthRedirect?: boolean
 }
 
+/**
+ * 统一 HTTP 请求封装。自动注入 JWT token 与 X-Client-Type；401 且未显式 skipAuthRedirect 时退出并重定向 /login。
+ * @param options 请求配置（url/method/body/skipAuthRedirect）
+ * @param _isClient 内部参数，单元测试覆盖客户端分支用，生产代码不应显式传入
+ */
 export async function request<T>(options: RequestOptions, _isClient = import.meta.client): Promise<T> {
   const tokenCookie = useCookie<string | null>('oa-token')
   const headers: Record<string, string> = { 'X-Client-Type': 'web' }

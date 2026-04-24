@@ -35,6 +35,10 @@ export async function fetchCaptcha(): Promise<{ captchaId: string; imageBase64: 
   })
 }
 
+/**
+ * 账号密码登录。后端返回 401 + captchaRequired 时抛 LoginError，
+ * 调用方应根据 LoginError.info 决定是否渲染验证码或引导自助解锁。
+ */
 export async function loginWithAccount(payload: LoginPayload): Promise<LoginResult> {
   const identifier = payload.identifier.trim()
   const password = payload.password.trim()
@@ -114,6 +118,7 @@ export async function loginWithAccount(payload: LoginPayload): Promise<LoginResu
   }
 }
 
+/** 拉取系统角色列表；若后端不可达则返回空数组，调用方应自行兜底显示空状态。 */
 export async function fetchRoles(): Promise<RoleItem[]> {
   try {
     return await request<RoleItem[]>({ url: '/roles', method: 'GET' })
@@ -122,6 +127,7 @@ export async function fetchRoles(): Promise<RoleItem[]> {
   }
 }
 
+/** 保存角色（存在 id 时 PUT 更新，否则 POST 新建）。roleCode 会被规范化为小写。 */
 export async function saveRole(payload: RolePayload): Promise<RoleItem> {
   const normalized = {
     ...payload,
@@ -136,6 +142,7 @@ export async function saveRole(payload: RolePayload): Promise<RoleItem> {
   return request<RoleItem>({ url: '/roles', method: 'POST', body: normalized })
 }
 
+/** 按角色 id 删除。后端若检测到该角色仍被使用会返回 409。 */
 export async function deleteRole(id: number): Promise<void> {
   return request<void>({ url: '/roles/' + id, method: 'DELETE' })
 }
