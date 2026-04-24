@@ -50,7 +50,7 @@
   - DEF-TECH-01（ops vs sys_admin 命名）已修复并关闭
   - 撤回：~~DEF-TECH-02~~ 为 agent 误报（B-REM-01 实际已完成）
 - Phase C — 测试覆盖：**核验通过**
-  - 后端 `mvn test` 1316 测试全绿（0 失败、0 错误、0 skip，含 ArchUnit 4 条架构约束）
+  - 后端 `mvn test` 1315 测试全绿（0 失败、0 错误、0 skip，含 ArchUnit 4 条架构约束）
   - 前端 `yarn workspace oa-h5 test` 35 测试全绿
 - Phase C+ — 质量体系建设 + 全维度测试：**核验通过，技术债已关闭**
   - 核心工具链全部存在：husky（pre-commit/commit-msg/pre-push）、commitlintrc、Spotless、ArchUnit、springdoc、ESLint、Prettier、Semgrep、k6、ZAP、schemathesis、5 个 GitHub Actions workflow
@@ -197,7 +197,7 @@
   - 结论：核心真实完成，2 个历史债务
 
 - `[x]` **VERIFY-PHASE-C** 核验 Phase C 测试（2026-04-23）
-  - `mvn test` 1316 测试全绿（0 失败/错误/skip，含 ArchUnit 4 条）
+  - `mvn test` 1315 测试全绿（0 失败/错误/skip，含 ArchUnit 4 条）
   - `yarn workspace oa-h5 test` 35 测试全绿
   - 结论：真实完成
 
