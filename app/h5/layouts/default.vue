@@ -2,7 +2,8 @@
   <!-- a-config-provider: disable AntD's auto space insertion between Chinese characters in buttons -->
   <a-config-provider :auto-insert-space-in-button="false" :locale="zhCN">
     <a-layout class="app-shell">
-      <!-- Left sidebar navigation — menus fetched from /workbench/config (role-based) -->
+      <!-- Left sidebar navigation — role-based menus, grouped by cluster, icons always visible.
+           折叠时显示图标（AntD sider collapsed=80px + MenuItemGroup 隐藏 title） -->
       <a-layout-sider v-model:collapsed="collapsed" collapsible width="220" theme="dark">
         <div class="logo">
           <span v-if="!collapsed" class="logo-text">
@@ -17,17 +18,21 @@
           data-catch="nav-sidebar"
           @click="onMenuClick"
         >
-          <template v-for="item in menuItems" :key="item.key">
-            <a-sub-menu v-if="item.children?.length" :key="item.key">
-              <template #title>{{ item.label }}</template>
-              <a-menu-item v-for="child in item.children" :key="child.path">
-                <span :data-catch="'nav-item-' + child.path">{{ child.label }}</span>
-              </a-menu-item>
-            </a-sub-menu>
-            <a-menu-item v-else :key="item.path">
-              <span :data-catch="'nav-item-' + item.path">{{ item.label }}</span>
+          <a-menu-item-group v-for="group in groupedMenus" :key="group.title">
+            <template #title>
+              <span class="group-title">{{ group.title }}</span>
+            </template>
+            <a-menu-item
+              v-for="item in group.items"
+              :key="item.path"
+              :data-catch="'nav-item-' + item.path"
+            >
+              <template #icon>
+                <component :is="item.iconComponent" />
+              </template>
+              <span>{{ item.label }}</span>
             </a-menu-item>
-          </template>
+          </a-menu-item-group>
         </a-menu>
       </a-layout-sider>
 
@@ -101,8 +106,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, shallowRef, markRaw } from 'vue'
+import type { Component } from 'vue'
 import { Modal } from 'ant-design-vue'
+import {
+  HomeOutlined,
+  AuditOutlined,
+  FormOutlined,
+  ProjectOutlined,
+  FileTextOutlined,
+  AppstoreOutlined,
+  TeamOutlined,
+  ApartmentOutlined,
+  ProfileOutlined,
+  SafetyCertificateOutlined,
+  ClockCircleOutlined,
+  GiftOutlined,
+  ScheduleOutlined,
+  MoneyCollectOutlined,
+  AccountBookOutlined,
+  FileSearchOutlined,
+  MedicineBoxOutlined,
+  SettingOutlined,
+  DatabaseOutlined,
+  ExportOutlined,
+  SolutionOutlined,
+  FileDoneOutlined,
+} from '@ant-design/icons-vue'
 import { useUserStore } from '~/stores/user'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import type { MenuInfo } from 'ant-design-vue/es/menu/src/interface'
@@ -114,6 +144,71 @@ interface MenuItem {
   icon?: string
   children?: MenuItem[]
 }
+
+/**
+ * 路径 → 图标组件。新页面必须在此登记，否则默认用 HomeOutlined（能看到但不贴切）。
+ * 用 markRaw 避免 Vue 把图标 Component 变成 reactive proxy。
+ */
+const PATH_ICON: Record<string, Component> = {
+  '/': markRaw(HomeOutlined),
+  '/todo': markRaw(AuditOutlined),
+  '/forms': markRaw(FormOutlined),
+  '/projects': markRaw(ProjectOutlined),
+  '/construction_log': markRaw(FileTextOutlined),
+  '/construction_log/templates': markRaw(AppstoreOutlined),
+  '/employees': markRaw(TeamOutlined),
+  '/team': markRaw(TeamOutlined),
+  '/org': markRaw(ApartmentOutlined),
+  '/positions': markRaw(ProfileOutlined),
+  '/role': markRaw(SafetyCertificateOutlined),
+  '/leave_types': markRaw(ClockCircleOutlined),
+  '/allowances': markRaw(GiftOutlined),
+  '/attendance': markRaw(ScheduleOutlined),
+  '/payroll': markRaw(MoneyCollectOutlined),
+  '/expense/apply': markRaw(AccountBookOutlined),
+  '/expense/records': markRaw(FileSearchOutlined),
+  '/injury': markRaw(MedicineBoxOutlined),
+  '/config': markRaw(SettingOutlined),
+  '/retention': markRaw(DatabaseOutlined),
+  '/data_export': markRaw(ExportOutlined),
+  '/data_viewer': markRaw(DatabaseOutlined),
+  '/operation_logs': markRaw(FileDoneOutlined),
+  '/me': markRaw(SolutionOutlined),
+}
+
+/**
+ * 路径 → 聚类组名。五大类：工作 / 项目 / 人事 / 考勤薪资 / 财务 / 系统。
+ * "工资条"（worker/employee 视角的 /payroll）也归考勤薪资。
+ * 新页面必须在此登记，否则默认进"其他"。
+ */
+const PATH_GROUP: Record<string, string> = {
+  '/': '工作',
+  '/todo': '工作',
+  '/forms': '工作',
+  '/projects': '项目',
+  '/construction_log': '项目',
+  '/construction_log/templates': '项目',
+  '/employees': '人事',
+  '/team': '人事',
+  '/org': '人事',
+  '/positions': '人事',
+  '/role': '人事',
+  '/leave_types': '人事',
+  '/allowances': '人事',
+  '/attendance': '考勤薪资',
+  '/payroll': '考勤薪资',
+  '/expense/apply': '财务',
+  '/expense/records': '财务',
+  '/injury': '财务',
+  '/config': '系统',
+  '/retention': '系统',
+  '/data_export': '系统',
+  '/data_viewer': '系统',
+  '/operation_logs': '系统',
+}
+
+/** 聚类显示顺序。 */
+const GROUP_ORDER = ['工作', '项目', '人事', '考勤薪资', '财务', '系统', '其他']
 
 interface WorkbenchMenu {
   code: string
@@ -237,11 +332,51 @@ const notificationCount = ref(0)
 const todoCount = ref(0)
 
 // Menus computed immediately from role (no async delay), overridden by API data
-const apiMenus = ref<MenuItem[] | null>(null)
+const apiMenus = shallowRef<MenuItem[] | null>(null)
 const menuItems = computed<MenuItem[]>(() => {
   if (apiMenus.value) return apiMenus.value
   const role = userStore.userInfo?.role ?? 'employee'
   return ROLE_MENUS[role] ?? DEFAULT_MENUS
+})
+
+interface GroupedItem {
+  path: string
+  label: string
+  iconComponent: Component
+}
+interface MenuGroup {
+  title: string
+  items: GroupedItem[]
+}
+
+/**
+ * 将扁平 menuItems 按 PATH_GROUP 聚类成 MenuGroup[]。每个 item 带图标；未登记图标的用 HomeOutlined。
+ * 若 menuItems 里含 children（来自后端的嵌套数据），展开为扁平后再聚类。
+ */
+const groupedMenus = computed<MenuGroup[]>(() => {
+  const flat: MenuItem[] = []
+  const walk = (items: MenuItem[]) => {
+    for (const it of items) {
+      if (it.children?.length) walk(it.children)
+      else flat.push(it)
+    }
+  }
+  walk(menuItems.value)
+
+  const byGroup: Record<string, GroupedItem[]> = {}
+  for (const it of flat) {
+    const group = PATH_GROUP[it.path] ?? '其他'
+    byGroup[group] = byGroup[group] ?? []
+    byGroup[group].push({
+      path: it.path,
+      label: it.label,
+      iconComponent: PATH_ICON[it.path] ?? markRaw(HomeOutlined),
+    })
+  }
+  return GROUP_ORDER.filter((g) => byGroup[g]?.length).map((g) => ({
+    title: g,
+    items: byGroup[g],
+  }))
 })
 
 watch(
@@ -340,6 +475,13 @@ async function onAvatarMenuClick({ key }: MenuInfo) {
   font-size: 18px;
   font-weight: 700;
 }
+
+.group-title {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  letter-spacing: 0.5px;
+}
+
 
 .app-header {
   background: #fff;

@@ -11,6 +11,7 @@ import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -46,12 +47,14 @@ public class EmailVerificationService {
   private JavaMailSender mailSender;
 
   private final EmployeeMapper employeeMapper;
+  private final Environment environment;
 
   @Value("${spring.mail.username:}")
   private String mailFrom;
 
-  public EmailVerificationService(EmployeeMapper employeeMapper) {
+  public EmailVerificationService(EmployeeMapper employeeMapper, Environment environment) {
     this.employeeMapper = employeeMapper;
+    this.environment = environment;
   }
 
   /** 验证码缓存：key = "bind:{email}" 或 "pwd:{email}"，value = CodeEntry。 TTL=5分钟，到期自动失效。 */
@@ -178,10 +181,16 @@ public class EmailVerificationService {
   }
 
   /**
-   * 发送邮件。若 MAIL_FROM 为空（开发/测试环境），仅日志输出，不实际发送 —— 该分支天然避免 dev/test 环境的 SMTP 调用。
+   * 发送邮件。若 MAIL_FROM 为空 → 跳过（无 SMTP 配置，dev 默认）。
    *
-   * <p>生产环境必须配置有效 SMTP；若 send 抛出异常（网络/鉴权/配额），此处抛 IllegalStateException 由 GlobalExceptionHandler
-   * 统一包装为 500 + 业务提示「邮件发送失败，请稍后重试」，确保用户看到真实错误而非虚假成功。
+   * <p>若 SMTP 已配置但 send 失败（鉴权/配额/网络）：
+   *
+   * <ul>
+   *   <li>dev profile 激活时 → warn 日志 + 吞异常。验证码已写入 Caffeine 缓存，E2E 测试通过 /dev/verification-code
+   *       读取；真实用户无法收到邮件但不阻塞开发环境自动化
+   *   <li>非 dev profile（prod/staging）→ ERROR 日志 + 抛 IllegalStateException，由 GlobalExceptionHandler
+   *       包装为业务错误返回给用户，确保用户看到真实失败
+   * </ul>
    *
    * @param to 收件人邮箱
    * @param subject 主题
@@ -204,6 +213,20 @@ public class EmailVerificationService {
       message.setText(text);
       mailSender.send(message);
     } catch (Exception e) {
+      boolean devProfile = false;
+      for (String p : environment.getActiveProfiles()) {
+        if ("dev".equalsIgnoreCase(p) || "test".equalsIgnoreCase(p)) {
+          devProfile = true;
+          break;
+        }
+      }
+      if (devProfile) {
+        log.warn(
+            "[DEV/TEST] Email send failed (code still in cache, readable via /dev/verification-code): to={}, reason={}",
+            to,
+            e.getMessage());
+        return;
+      }
       log.error("Failed to send email to {}: {}", to, e.getMessage(), e);
       throw new IllegalStateException("邮件发送失败，请稍后重试");
     }

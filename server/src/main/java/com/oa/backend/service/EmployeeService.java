@@ -43,6 +43,9 @@ public interface EmployeeService {
   /** 根据手机号查找员工 */
   Optional<Employee> findByPhone(String phone);
 
+  /** 根据绑定邮箱查找员工（未删除、非空邮箱） */
+  Optional<Employee> findByEmail(String email);
+
   /** 更新员工密码 */
   void updatePassword(Long id, String newPasswordHash, boolean isDefaultPassword);
 

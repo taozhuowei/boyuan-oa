@@ -6,9 +6,9 @@ import com.oa.backend.dto.VerifyResetCodeRequest;
 import com.oa.backend.dto.VerifyResetCodeResponse;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.security.ResetCodeStore;
+import com.oa.backend.service.EmailVerificationService;
 import com.oa.backend.service.EmployeeService;
 import jakarta.validation.Valid;
-import java.security.SecureRandom;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -23,9 +23,22 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * 密码重置控制器 负责处理忘记密码场景的完整三步流程： 1. 发送验证码到手机号 (/auth/send-reset-code) 2. 验证验证码并签发 resetToken
- * (/auth/verify-reset-code) 3. 凭 resetToken 提交新密码完成重置 (/auth/reset-password) 所有端点均无需登录认证，通过
- * resetToken 机制保证操作安全性。 从 AuthController 拆分，遵守单一职责原则。
+ * 忘记密码控制器（无需登录）。
+ *
+ * <p>采用邮箱链路：用户输入绑定邮箱 → 后端通过 EmailVerificationService 发 "pwd:" 验证码 → 用户填码换 resetToken → 凭 resetToken
+ * 提交新密码完成重置。
+ *
+ * <p>三步流程：
+ *
+ * <ol>
+ *   <li>POST /auth/send-reset-code : {"email":"xxx"} → 发码到该邮箱
+ *   <li>POST /auth/verify-reset-code : {"email":"xxx","code":"123456"} → 换 resetToken
+ *   <li>POST /auth/reset-password : {"resetToken":"xxx","newPassword":"yyy"} → 完成重置
+ * </ol>
+ *
+ * <p>DEF-AUTH-03 自助解锁：重置成功后调用 AuthController.resetLoginFailStatesForUsername 立即解除该账号的登录锁定。
+ *
+ * <p>为避免邮箱枚举，步骤 1 对「邮箱不存在」和「邮箱存在但发送失败」同样返回 200；实际发码只在邮箱存在时进行。
  */
 @Slf4j
 @RestController
@@ -34,92 +47,64 @@ import org.springframework.web.server.ResponseStatusException;
 public class PasswordResetController {
 
   private final EmployeeService employeeService;
+  private final EmailVerificationService emailVerificationService;
   private final ResetCodeStore resetCodeStore;
   private final PasswordEncoder passwordEncoder;
   private final AuthController authController;
 
-  private final SecureRandom secureRandom = new SecureRandom();
-
-  /**
-   * 职责：发送密码重置验证码到用户手机 请求含义：提交手机号请求发送验证码（开发阶段仅打印日志） 响应含义：返回发送成功消息（无论手机号是否存在，都返回成功，避免暴露用户信息）
-   * 权限期望：无需认证
-   */
+  /** 职责：向绑定邮箱发送密码重置验证码（6 位数字，5 分钟 TTL，Caffeine 缓存）。 邮箱不存在时仍返回 200，避免邮箱枚举。 */
   @PostMapping("/send-reset-code")
   public ResponseEntity<Map<String, String>> sendResetCode(
       @Valid @RequestBody SendResetCodeRequest request) {
-    // 查找该手机号对应的员工（仅用于日志记录，不暴露是否存在）
-    Optional<Employee> employeeOpt = employeeService.findByPhone(request.phone());
-
+    Optional<Employee> employeeOpt = employeeService.findByEmail(request.email());
     if (employeeOpt.isPresent()) {
-      // 生成6位随机验证码
-      String code = String.format("%06d", secureRandom.nextInt(1000000));
-      resetCodeStore.storeCode(request.phone(), code);
-      log.debug("SMS code generated for phone={}", maskPhone(request.phone()));
+      // sendPasswordResetCode 已校验 email 非空并写 Caffeine 缓存 + 发邮件；失败时抛 IllegalStateException
+      emailVerificationService.sendPasswordResetCode(employeeOpt.get());
     } else {
-      // 手机号不存在，仍然返回成功，但记录日志用于调试
-      log.debug("Send reset code requested for non-existent phone: {}", request.phone());
+      log.info("send-reset-code requested for unknown email (not disclosing)");
     }
-
-    return ResponseEntity.ok(Map.of("message", "验证码已发送"));
+    return ResponseEntity.ok(Map.of("message", "若邮箱存在，验证码已发送"));
   }
 
-  /** 职责：验证重置验证码 请求含义：提交手机号和验证码进行验证 响应含义：验证成功后返回 resetToken，用于后续重置密码 权限期望：无需认证 */
+  /** 职责：验证邮箱+验证码，通过后签发 resetToken。验证码消费后立即失效（EmailVerificationService.verifyPasswordResetCode）。 */
   @PostMapping("/verify-reset-code")
   public ResponseEntity<VerifyResetCodeResponse> verifyResetCode(
       @Valid @RequestBody VerifyResetCodeRequest request) {
-    // 验证验证码
-    if (!resetCodeStore.verifyCode(request.phone(), request.code())) {
+    Employee employee =
+        employeeService
+            .findByEmail(request.email())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "验证码不正确或已过期"));
+    try {
+      emailVerificationService.verifyPasswordResetCode(
+          employee.getId(), request.email(), request.code());
+    } catch (IllegalArgumentException e) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "验证码不正确或已过期");
     }
-
-    // 删除已使用的验证码
-    resetCodeStore.removeCode(request.phone());
-
-    // 生成 resetToken
-    String token = resetCodeStore.createToken(request.phone());
-
+    // 复用 ResetCodeStore 的 token 分发与校验能力；key 使用邮箱以便第三步查回员工
+    String token = resetCodeStore.createToken(request.email());
     return ResponseEntity.ok(new VerifyResetCodeResponse(token));
   }
 
-  /**
-   * 职责：使用 resetToken 重置密码 请求含义：提交 resetToken 和新密码进行密码重置 响应含义：重置成功返回 204 No Content 权限期望：无需认证（通过
-   * resetToken 验证身份）
-   */
+  /** 职责：凭 resetToken 重置密码并立即解除该账号的登录失败锁定（DEF-AUTH-03 自助解锁）。 */
   @PostMapping("/reset-password")
   public ResponseEntity<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
-    // 验证 resetToken
-    String phone = resetCodeStore.verifyToken(request.resetToken());
-    if (phone == null) {
+    String email = resetCodeStore.verifyToken(request.resetToken());
+    if (email == null) {
       throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "重置令牌无效或已过期");
     }
-
-    // 查找员工
     Employee employee =
         employeeService
-            .findByPhone(phone)
+            .findByEmail(email)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
 
-    // 更新密码
     String newPasswordHash = passwordEncoder.encode(request.newPassword());
     employeeService.updatePassword(employee.getId(), newPasswordHash, false);
-
-    // 删除已使用的 token
     resetCodeStore.removeToken(request.resetToken());
 
-    // DEF-AUTH-03: 自助解锁 —— 密码重置成功后清零该账号的登录失败计数，立即解除锁定
+    // DEF-AUTH-03: 立即清零该账号的登录失败计数，无需等锁超时
     authController.resetLoginFailStatesForUsername(employee.getEmployeeNo());
 
-    log.info("Password reset successfully for employee: {}", employee.getEmployeeNo());
+    log.info("Password reset successful via email for employee: {}", employee.getEmployeeNo());
     return ResponseEntity.noContent().build();
-  }
-
-  /**
-   * 职责：对手机号进行脱敏处理用于日志输出 规则：保留前 3 位和后 4 位，中间用 **** 替代；长度不足 7 或 null 时返回 **** 原因：防止明文手机号写入日志造成个人信息泄露
-   */
-  private static String maskPhone(String phone) {
-    if (phone == null || phone.length() < 7) {
-      return "****";
-    }
-    return phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4);
   }
 }

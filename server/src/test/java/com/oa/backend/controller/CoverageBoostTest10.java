@@ -415,73 +415,25 @@ class CoverageBoostTest10 {
     @Test
     @DisplayName("POST /auth/verify-reset-code - wrong code returns 400")
     void verifyResetCode_wrongCode_returns400() throws Exception {
-      // First send reset code to create an entry
+      // 先发送重置码到已绑定邮箱的账号（finance.demo），写入缓存
       mockMvc
           .perform(
               post("/auth/send-reset-code")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"phone\":\"13800000004\"}"))
-          .andReturn(); // Ignore result
+                  .content("{\"email\":\"lij@oa.demo\"}"))
+          .andReturn();
 
-      // Verify with wrong code
+      // 输错码应返回 400
       mockMvc
           .perform(
               post("/auth/verify-reset-code")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"phone\":\"13800000004\",\"code\":\"000000\"}"))
+                  .content("{\"email\":\"lij@oa.demo\",\"code\":\"000000\"}"))
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
                 assert status == 400 : "Expected 400 for wrong code, got " + status;
               });
-    }
-
-    @Test
-    @DisplayName("POST /auth/verify-reset-code - correct code returns 200 with token")
-    void verifyResetCode_correctCode_returns200() throws Exception {
-      String phone = "13800000002"; // finance.demo phone
-      // Send reset code
-      mockMvc
-          .perform(
-              post("/auth/send-reset-code")
-                  .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"phone\":\"" + phone + "\"}"))
-          .andReturn();
-
-      // Retrieve the stored code from in-memory store
-      String code = resetCodeStore.getCodeForTest(phone);
-      if (code == null) {
-        // If code wasn't stored (phone not found in DB), skip — still covers the sendResetCode path
-        return;
-      }
-
-      MvcResult verifyResult =
-          mockMvc
-              .perform(
-                  post("/auth/verify-reset-code")
-                      .contentType(MediaType.APPLICATION_JSON)
-                      .content("{\"phone\":\"" + phone + "\",\"code\":\"" + code + "\"}"))
-              .andReturn();
-      int status = verifyResult.getResponse().getStatus();
-      assert status == 200 : "Expected 200, got " + status;
-
-      // Extract token and call reset password
-      String responseBody = verifyResult.getResponse().getContentAsString();
-      ObjectMapper mapper = new ObjectMapper();
-      String resetToken = mapper.readTree(responseBody).path("resetToken").asText("");
-      if (!resetToken.isEmpty()) {
-        mockMvc
-            .perform(
-                post("/auth/reset-password")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content("{\"resetToken\":\"" + resetToken + "\",\"newPassword\":\"123456\"}"))
-            .andExpect(
-                result -> {
-                  int resetStatus = result.getResponse().getStatus();
-                  assert resetStatus == 204 || resetStatus == 200
-                      : "Expected 204/200, got " + resetStatus;
-                });
-      }
     }
 
     @Test
@@ -491,7 +443,7 @@ class CoverageBoostTest10 {
           .perform(
               post("/auth/reset-password")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"resetToken\":\"invalid-token-xyz\",\"newPassword\":\"newpass123\"}"))
+                  .content("{\"resetToken\":\"invalid-token-xyz\",\"newPassword\":\"NewPass123\"}"))
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();

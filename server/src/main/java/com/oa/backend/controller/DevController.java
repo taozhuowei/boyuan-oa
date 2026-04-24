@@ -138,6 +138,28 @@ public class DevController {
   }
 
   /**
+   * 将 employee.demo 恢复到首次登录状态：密码重置为 123456 + isDefaultPassword=true + 清空 email。
+   *
+   * <p>用于 DevToolbar 一键测"首次登录"链路，避免手工操作 DB。@Profile("dev") 只在开发环境存在。
+   */
+  @PostMapping("/restore-employee-demo")
+  public ResponseEntity<Map<String, String>> restoreEmployeeDemo() {
+    int rows =
+        jdbcTemplate.update(
+            "UPDATE employee SET password_hash = ?, is_default_password = TRUE, email = NULL,"
+                + " updated_at = CURRENT_TIMESTAMP WHERE employee_no = 'employee.demo'",
+            // bcrypt 哈希 for "123456"，与 R__test_accounts.sql 保持一致
+            "$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi");
+    log.info("[DEV] employee.demo restored to first-login state, rows={}", rows);
+    if (rows == 0) {
+      return ResponseEntity.status(404).body(Map.of("message", "employee.demo not found in DB"));
+    }
+    // 清零该账号的登录失败计数，避免因之前锁定影响后续测试
+    authController.resetLoginFailStatesForUsername("employee.demo");
+    return ResponseEntity.ok(Map.of("message", "restored"));
+  }
+
+  /**
    * 清空全部限流计数（登录失败阶梯锁定 + 全局 IP 限流）。
    *
    * <p>用于 E2E 测试场景：每个非限流专项测试开头调用一次，确保冷却不影响后续测试； 限流专项测试不调用此接口，按生产阈值真实触发 429。

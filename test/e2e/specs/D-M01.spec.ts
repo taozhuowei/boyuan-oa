@@ -2012,96 +2012,190 @@ test.describe('D-M01 忘记密码页', () => {
     await resetRateLimit()
   })
 
-  test('完整链路 + 自助解锁', async ({ browser }) => {
+  test('完整链路 + 自助解锁（邮箱链路，UI 真实走 4 步）', async ({ browser }) => {
     const ceoToken = await loginAsCeoForApi()
-    const phone = '13800000001'
-    const newPassword = 'ForgotOK999!'
+    // 确保 employee.demo 有绑定邮箱（忘记密码 = 邮箱链路，必须绑定）
+    await restoreEmployeeDemoEmail(ceoToken)
+    const newPassword = 'ForgotOK999'
 
-    await test.step('输入手机号 + 发送验证码 Toast', async () => {
+    await test.step('页面标题 + step label 均为邮箱（不是手机号，UI 断言）', async () => {
       const context = await browser.newContext({ baseURL: BASE_URL })
       try {
         const page = await context.newPage()
         await page.goto('/auth/forgot_password')
-        const phoneInput = page.locator('input[placeholder*="手机号"]').first()
-        await phoneInput.fill(phone)
-        await Promise.all([
-          page.waitForResponse(
-            (r) =>
-              r.url().includes('/auth/send-reset-code') &&
-              r.request().method() === 'POST',
-            { timeout: 10000 },
-          ),
-          page.locator('button:has-text("发送验证码")').click(),
-        ])
-        await expect(page.locator('.ant-message-success').first()).toBeVisible({
-          timeout: 5000,
-        })
-        // 进入 step 1（验证码输入）
-        await expect(page.locator('input[placeholder*="6 位验证码"]')).toBeVisible({
+        // 页面可见文案必须匹配邮箱流
+        await expect(page.locator('text=重置密码').first()).toBeVisible({ timeout: 5000 })
+        await expect(page.locator('text=通过绑定邮箱重置密码').first()).toBeVisible({
           timeout: 3000,
         })
+        // Steps 首步 label 必须是「邮箱」
+        await expect(page.locator('.ant-steps-item').first()).toContainText('邮箱')
+        // 不允许出现「手机号」字样（核心反例）
+        const pageText = await page.locator('body').textContent()
+        expect(pageText ?? '').not.toContain('手机号')
+        await expect(page.getByTestId('forgot-email-input')).toBeVisible()
       } finally {
         await context.close()
       }
     })
 
-    await test.step('锁定账号后 CEO reset-password + reset-rate-limit = 自助解锁等价路径，立即可登录', async () => {
-      // 说明：项目无 SMS 码 dev endpoint，UI 忘记密码完整链路需 SMS code。
-      // 替代方案：通过浏览器 UI 触发 per-account 锁定 → CEO reset-password（等价忘记密码终点）
-      // → resetRateLimit 清 IP 锁（等价自助解锁时后端 authController.resetLoginFailStatesForUsername）
-      // → 验证立即可登录。这覆盖了 spec 的「锁定 → 重置 → 立即可登录」核心意图。
-      await resetRateLimit()
-      await lockAccountViaBrowser(browser, 'employee.demo')
+    await test.step('Step 1 → Step 2：填邮箱 + 发码 → dev API 取码 → 验证通过进入 step 2', async () => {
+      const context = await browser.newContext({ baseURL: BASE_URL })
+      try {
+        const page = await context.newPage()
+        await page.goto('/auth/forgot_password')
+        await page.getByTestId('forgot-email-input').fill(EMPLOYEE_DEMO_EMAIL)
+        await Promise.all([
+          page.waitForResponse(
+            (r) => r.url().includes('/auth/send-reset-code') && r.request().method() === 'POST',
+            { timeout: 10000 },
+          ),
+          page.getByTestId('forgot-send-code-btn').click(),
+        ])
+        await expect(page.locator('.ant-message-success').first()).toBeVisible({
+          timeout: 5000,
+        })
+        // step 1 label 必含已发送邮箱
+        await expect(
+          page.locator(`text=已向 ${EMPLOYEE_DEMO_EMAIL} 发送验证码`),
+        ).toBeVisible({ timeout: 5000 })
 
-      // CEO reset-password = 忘记密码流程终点等价
+        const code = await getVerificationCodeFromDev('pwd', EMPLOYEE_DEMO_EMAIL)
+        await page.getByTestId('forgot-code-input').fill(code)
+        await Promise.all([
+          page.waitForResponse(
+            (r) =>
+              r.url().includes('/auth/verify-reset-code') && r.request().method() === 'POST',
+            { timeout: 10000 },
+          ),
+          page.getByTestId('forgot-verify-code-btn').click(),
+        ])
+        // step 2: 新密码输入框出现
+        await expect(page.getByTestId('forgot-new-password-input')).toBeVisible({
+          timeout: 5000,
+        })
+
+        // Step 3：输入新密码 + 确认 → 重置成功 → step 4
+        await page.getByTestId('forgot-new-password-input').fill(newPassword)
+        await page.getByTestId('forgot-confirm-password-input').fill(newPassword)
+        await Promise.all([
+          page.waitForResponse(
+            (r) => r.url().includes('/auth/reset-password') && r.request().method() === 'POST',
+            { timeout: 10000 },
+          ),
+          page.getByTestId('forgot-reset-submit-btn').click(),
+        ])
+        await expect(page.locator('text=密码重置成功').first()).toBeVisible({
+          timeout: 5000,
+        })
+        await expect(page.getByTestId('forgot-goto-login-btn')).toBeVisible()
+      } finally {
+        await context.close()
+      }
+    })
+
+    await test.step('旧密码登录失败（UI）', async () => {
+      await resetRateLimit()
+      const ctx = await browser.newContext({ baseURL: BASE_URL })
+      const page = await ctx.newPage()
+      const login = new LoginPage(page)
+      await login.goto()
+      await login.fillUsername('employee.demo')
+      await login.fillPassword('123456')
+      await login.submit()
+      await expect(page).toHaveURL(/\/login/, { timeout: 5000 })
+      await ctx.close()
+    })
+
+    await test.step('新密码登录成功（UI）', async () => {
+      await resetRateLimit()
+      const ctx = await browser.newContext({ baseURL: BASE_URL })
+      const page = await ctx.newPage()
+      const login = new LoginPage(page)
+      await login.goto()
+      await login.fillUsername('employee.demo')
+      await login.fillPassword(newPassword)
+      await Promise.all([
+        page.waitForURL((u) => !u.toString().endsWith('/login'), { timeout: 10000 }),
+        login.submit(),
+      ])
+      expect(await readOaToken(ctx)).not.toBeNull()
+      await ctx.close()
+    })
+
+    await test.step('自助解锁：锁定后走完整 UI 忘记密码流程 → 新密码立即可登录', async () => {
+      await resetRateLimit()
+      // 先让 employee.demo 被锁（真实 per-account 锁定）
+      await lockAccountViaBrowser(browser, 'employee.demo')
+      const unlockPassword = 'Unlock2026'
+      // UI 走完整 4 步重置
+      const context = await browser.newContext({ baseURL: BASE_URL })
+      const page = await context.newPage()
+      try {
+        await page.goto('/auth/forgot_password')
+        await page.getByTestId('forgot-email-input').fill(EMPLOYEE_DEMO_EMAIL)
+        await Promise.all([
+          page.waitForResponse(
+            (r) => r.url().includes('/auth/send-reset-code'),
+            { timeout: 10000 },
+          ),
+          page.getByTestId('forgot-send-code-btn').click(),
+        ])
+        const code = await getVerificationCodeFromDev('pwd', EMPLOYEE_DEMO_EMAIL)
+        await page.getByTestId('forgot-code-input').fill(code)
+        await Promise.all([
+          page.waitForResponse(
+            (r) => r.url().includes('/auth/verify-reset-code'),
+            { timeout: 10000 },
+          ),
+          page.getByTestId('forgot-verify-code-btn').click(),
+        ])
+        await page.getByTestId('forgot-new-password-input').fill(unlockPassword)
+        await page.getByTestId('forgot-confirm-password-input').fill(unlockPassword)
+        await Promise.all([
+          page.waitForResponse(
+            (r) => r.url().includes('/auth/reset-password'),
+            { timeout: 10000 },
+          ),
+          page.getByTestId('forgot-reset-submit-btn').click(),
+        ])
+        await expect(page.locator('text=密码重置成功').first()).toBeVisible({
+          timeout: 5000,
+        })
+      } finally {
+        await context.close()
+      }
+      // lockAccountViaBrowser 在相同 IP 触发锁定时也会连带 per-IP 锁。
+      // 真实用户语义是"换网络/等一分钟"；E2E 用 resetRateLimit 模拟等同效果。
+      // 核心断言：per-account 已因 PasswordResetController.resetPassword 清零，
+      // 从未锁 IP 登录新密码立即成功。
+      await resetRateLimit()
+      const ctx = await browser.newContext({ baseURL: BASE_URL })
+      const page2 = await ctx.newPage()
+      const login = new LoginPage(page2)
+      await login.goto()
+      await login.fillUsername('employee.demo')
+      await login.fillPassword(unlockPassword)
+      await Promise.all([
+        page2.waitForURL((u) => !u.toString().endsWith('/login'), { timeout: 10000 }),
+        login.submit(),
+      ])
+      expect(await readOaToken(ctx)).not.toBeNull()
+      await ctx.close()
+    })
+
+    await test.step('收尾：CEO 将 employee.demo 密码恢复为 123456 + 邮箱复位', async () => {
       const apiCtx = await playwrightRequest.newContext()
       try {
-        const resetResp = await apiCtx.post(
+        const resp = await apiCtx.post(
           `${API_URL}/employees/${EMPLOYEE_DEMO_ID}/reset-password`,
           { headers: { Authorization: `Bearer ${ceoToken}` } },
         )
-        expect(resetResp.ok()).toBeTruthy()
+        expect(resp.ok(), `CEO reset-password failed: ${resp.status()}`).toBeTruthy()
       } finally {
         await apiCtx.dispose()
       }
-      await resetRateLimit()
-
-      // 立即用 123456 登录成功
-      const ctx = await browser.newContext({ baseURL: BASE_URL })
-      const page = await ctx.newPage()
-      const login = new LoginPage(page)
-      await login.goto()
-      await login.fillUsername('employee.demo')
-      await login.fillPassword('123456')
-      await Promise.all([
-        page.waitForURL((u) => !u.toString().endsWith('/login'), { timeout: 10000 }),
-        login.submit(),
-      ])
-      expect(await readOaToken(ctx)).not.toBeNull()
-      await ctx.close()
-    })
-
-    await test.step('新密码 UI 登录成功', async () => {
-      await resetRateLimit()
-      const ctx = await browser.newContext({ baseURL: BASE_URL })
-      const page = await ctx.newPage()
-      const login = new LoginPage(page)
-      await login.goto()
-      await login.fillUsername('employee.demo')
-      await login.fillPassword('123456')
-      await Promise.all([
-        page.waitForURL((u) => !u.toString().endsWith('/login'), { timeout: 10000 }),
-        login.submit(),
-      ])
-      expect(await readOaToken(ctx)).not.toBeNull()
-      await ctx.close()
-    })
-
-    await test.step('收尾：已保持 employee.demo 密码为 123456', async () => {
-      // 已在上一步完成；确认即可
       await restoreEmployeeDemoEmail(ceoToken)
-      // 避免未使用变量警告
-      expect(newPassword.length).toBeGreaterThan(0)
     })
   })
 })

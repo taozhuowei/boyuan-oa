@@ -17,11 +17,32 @@
           <div class="btn-group">
             <button class="dev-btn" :disabled="resetting" @click="resetSetup">
               <span v-if="resetting">⏳</span>
-              重置初始化
+              重置初始化（测 CEO 恢复码）
             </button>
             <button class="dev-btn" :disabled="skipping" @click="skipSetup">
               <span v-if="skipping">⏳</span>
               跳过初始化
+            </button>
+          </div>
+        </div>
+
+        <div class="divider" />
+
+        <!-- Section: Test Data -->
+        <div class="dev-section">
+          <div class="section-title">测试数据</div>
+          <div class="btn-group">
+            <button class="dev-btn" :disabled="resettingData" @click="resetData">
+              <span v-if="resettingData">⏳</span>
+              清业务数据（保留账号）
+            </button>
+            <button class="dev-btn" :disabled="clearingRate" @click="clearRateLimit">
+              <span v-if="clearingRate">⏳</span>
+              清登录限流计数
+            </button>
+            <button class="dev-btn" :disabled="restoringEmp" @click="restoreEmployeeDemo">
+              <span v-if="restoringEmp">⏳</span>
+              恢复 employee.demo 首次登录
             </button>
           </div>
         </div>
@@ -65,6 +86,9 @@ const isDev = import.meta.env.DEV
 const expanded = ref(false)
 const resetting = ref(false)
 const skipping = ref(false)
+const resettingData = ref(false)
+const clearingRate = ref(false)
+const restoringEmp = ref(false)
 const errorMsg = ref('')
 
 interface QuickUser {
@@ -139,6 +163,85 @@ async function skipSetup() {
   } finally {
     skipping.value = false
   }
+}
+
+async function resetData() {
+  resettingData.value = true
+  try {
+    const resp = await fetch('/api/dev/reset', { method: 'POST' })
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    showFlash('业务数据已清理')
+  } catch (error: unknown) {
+    showError((error as { message?: string })?.message || '清理失败')
+  } finally {
+    resettingData.value = false
+  }
+}
+
+async function clearRateLimit() {
+  clearingRate.value = true
+  try {
+    const resp = await fetch('/api/dev/reset-rate-limit', { method: 'POST' })
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    showFlash('限流计数已清零')
+  } catch (error: unknown) {
+    showError((error as { message?: string })?.message || '清限流失败')
+  } finally {
+    clearingRate.value = false
+  }
+}
+
+/**
+ * 恢复 employee.demo 到首次登录状态：先用 CEO 登录拿 token，
+ * 再调后端 /employees/{id}/reset-first-login（如未实现则直接走两步：reset-password + 清空 email）。
+ */
+async function restoreEmployeeDemo() {
+  restoringEmp.value = true
+  try {
+    // 1. CEO 登录拿 token
+    const ceoResp = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: 'ceo.demo', password: '123456' }),
+    })
+    if (!ceoResp.ok) throw new Error('CEO 登录失败，请确保 ceo.demo 密码仍为 123456')
+    const { token } = (await ceoResp.json()) as { token: string }
+    const authHeaders = {
+      'Content-Type': 'application/json',
+      Authorization: 'Bearer ' + token,
+    }
+
+    // 2. 调用现有后端 dev endpoint（若不存在则下一步直接回退）
+    const restoreResp = await fetch('/api/dev/restore-employee-demo', {
+      method: 'POST',
+      headers: authHeaders,
+    })
+    if (restoreResp.ok) {
+      showFlash('employee.demo 已恢复首次登录')
+    } else if (restoreResp.status === 404) {
+      // 后端没有专用端点：仅重置密码（现有 API 能做到），email 保持现状
+      const putResp = await fetch('/api/employees/1/reset-password', {
+        method: 'POST',
+        headers: authHeaders,
+      })
+      if (!putResp.ok) throw new Error(`HTTP ${putResp.status}`)
+      showFlash('employee.demo 密码已重置为 123456（邮箱需手动清空）')
+    } else {
+      throw new Error(`HTTP ${restoreResp.status}`)
+    }
+  } catch (error: unknown) {
+    showError((error as { message?: string })?.message || '恢复失败')
+  } finally {
+    restoringEmp.value = false
+  }
+}
+
+/** 临时成功提示（1.5s 自动消失）。 */
+function showFlash(msg: string) {
+  errorMsg.value = msg
+  setTimeout(() => {
+    errorMsg.value = ''
+  }, 1500)
 }
 
 async function quickLogin(user: QuickUser) {

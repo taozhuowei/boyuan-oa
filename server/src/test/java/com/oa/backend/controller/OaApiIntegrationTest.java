@@ -124,24 +124,24 @@ class OaApiIntegrationTest {
     }
 
     @Test
-    @DisplayName("POST /auth/send-reset-code - 手机号存在返回 200")
-    void sendResetCode_existingPhone_returns200() throws Exception {
+    @DisplayName("POST /auth/send-reset-code - 邮箱存在返回 200")
+    void sendResetCode_existingEmail_returns200() throws Exception {
       mockMvc
           .perform(
               post("/auth/send-reset-code")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"phone\":\"13800000001\"}"))
+                  .content("{\"email\":\"lij@oa.demo\"}"))
           .andExpect(status().isOk());
     }
 
     @Test
-    @DisplayName("POST /auth/send-reset-code - 手机号不存在也返回 200（故意不暴露用户是否存在）")
-    void sendResetCode_unknownPhone_returns200() throws Exception {
+    @DisplayName("POST /auth/send-reset-code - 邮箱不存在也返回 200（避免邮箱枚举）")
+    void sendResetCode_unknownEmail_returns200() throws Exception {
       mockMvc
           .perform(
               post("/auth/send-reset-code")
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"phone\":\"19999999999\"}"))
+                  .content("{\"email\":\"nobody@example.com\"}"))
           .andExpect(status().isOk());
     }
 

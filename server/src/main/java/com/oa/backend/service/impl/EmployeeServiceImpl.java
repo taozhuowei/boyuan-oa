@@ -313,6 +313,15 @@ public class EmployeeServiceImpl implements EmployeeService {
   }
 
   @Override
+  public Optional<Employee> findByEmail(String email) {
+    if (email == null || email.isBlank()) return Optional.empty();
+    QueryWrapper<Employee> wrapper = new QueryWrapper<>();
+    wrapper.eq("email", email);
+    wrapper.eq("deleted", 0);
+    return Optional.ofNullable(employeeMapper.selectOne(wrapper));
+  }
+
+  @Override
   @Transactional
   public void updatePassword(Long id, String newPasswordHash, boolean isDefaultPassword) {
     Employee employee = employeeMapper.selectById(id);
