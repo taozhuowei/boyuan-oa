@@ -49,6 +49,27 @@
 
         <div class="divider" />
 
+        <!-- Section: Verification Code -->
+        <div class="dev-section">
+          <div class="section-title">最新验证码（dev 只打日志不发信）</div>
+          <div v-if="latestCode" class="code-display">
+            <span class="code-value">{{ latestCode }}</span>
+            <span class="code-meta">{{ latestCodeMeta }}</span>
+          </div>
+          <div class="btn-group">
+            <button class="dev-btn" :disabled="fetchingCode" @click="fetchLatestCode('bind')">
+              <span v-if="fetchingCode">⏳</span>
+              查 bind 码（绑邮箱）
+            </button>
+            <button class="dev-btn" :disabled="fetchingCode" @click="fetchLatestCode('pwd')">
+              <span v-if="fetchingCode">⏳</span>
+              查 pwd 码（忘记/改密）
+            </button>
+          </div>
+        </div>
+
+        <div class="divider" />
+
         <!-- Section 2: Quick Login -->
         <div class="dev-section">
           <div class="section-title">快速登录</div>
@@ -89,7 +110,13 @@ const skipping = ref(false)
 const resettingData = ref(false)
 const clearingRate = ref(false)
 const restoringEmp = ref(false)
+const fetchingCode = ref(false)
+const latestCode = ref('')
+const latestCodeMeta = ref('')
 const errorMsg = ref('')
+
+/** 默认查询邮箱：employee.demo 绑定的 email（876593497@qq.com）。生产绝不暴露此端点。 */
+const CODE_EMAIL = '876593497@qq.com'
 
 interface QuickUser {
   username: string
@@ -233,6 +260,30 @@ async function restoreEmployeeDemo() {
     showError((error as { message?: string })?.message || '恢复失败')
   } finally {
     restoringEmp.value = false
+  }
+}
+
+/** 查当前缓存中的最新验证码并显示。 */
+async function fetchLatestCode(type: 'bind' | 'pwd') {
+  fetchingCode.value = true
+  latestCode.value = ''
+  latestCodeMeta.value = ''
+  try {
+    const resp = await fetch(
+      `/api/dev/verification-code?type=${type}&email=${encodeURIComponent(CODE_EMAIL)}`
+    )
+    if (resp.status === 404) {
+      showError(`无缓存：请先触发${type === 'bind' ? '发绑定码' : '发重置码'}`)
+      return
+    }
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+    const data = (await resp.json()) as { code: string }
+    latestCode.value = data.code
+    latestCodeMeta.value = `${type} · ${CODE_EMAIL}`
+  } catch (error: unknown) {
+    showError((error as { message?: string })?.message || '取码失败')
+  } finally {
+    fetchingCode.value = false
   }
 }
 
@@ -397,6 +448,31 @@ async function quickLogin(user: QuickUser) {
 
 .login-btn {
   padding: 10px 8px;
+}
+
+.code-display {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.code-value {
+  font-family: 'SF Mono', Consolas, Menlo, monospace;
+  font-size: 20px;
+  font-weight: 700;
+  color: #60a5fa;
+  letter-spacing: 2px;
+  user-select: all;
+}
+
+.code-meta {
+  font-size: 10px;
+  color: #94a3b8;
 }
 
 /* Divider */

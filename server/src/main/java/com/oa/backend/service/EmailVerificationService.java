@@ -181,22 +181,28 @@ public class EmailVerificationService {
   }
 
   /**
-   * 发送邮件。若 MAIL_FROM 为空 → 跳过（无 SMTP 配置，dev 默认）。
-   *
-   * <p>若 SMTP 已配置但 send 失败（鉴权/配额/网络）：
+   * 发送邮件。行为取决于激活的 profile：
    *
    * <ul>
-   *   <li>dev profile 激活时 → warn 日志 + 吞异常。验证码已写入 Caffeine 缓存，E2E 测试通过 /dev/verification-code
-   *       读取；真实用户无法收到邮件但不阻塞开发环境自动化
-   *   <li>非 dev profile（prod/staging）→ ERROR 日志 + 抛 IllegalStateException，由 GlobalExceptionHandler
-   *       包装为业务错误返回给用户，确保用户看到真实失败
+   *   <li><b>dev / test profile</b>：**永不调用 SMTP**。验证码仅写入 Caffeine 缓存 + 明码打到 INFO 日志，测试环境通过
+   *       /dev/verification-code 读取。避免 QQ Mail 限流下旧邮件堆积混淆最新码。
+   *   <li><b>其他 profile（prod/staging）</b>：若 MAIL_FROM 未配置则跳过（同 dev 默认）；否则真实 send，失败抛
+   *       IllegalStateException 由 GlobalExceptionHandler 返回用户"邮件发送失败"。
    * </ul>
    *
    * @param to 收件人邮箱
    * @param subject 主题
-   * @param text 正文
+   * @param text 正文（含明码，仅在 dev 日志里打印）
    */
   private void sendEmail(String to, String subject, String text) {
+    if (isDevOrTestProfile()) {
+      log.info(
+          "[DEV/TEST] Email NOT sent (SMTP skipped in dev). to={}, subject={}, body={}",
+          to,
+          subject,
+          text);
+      return;
+    }
     if (mailSender == null || mailFrom == null || mailFrom.isBlank()) {
       log.info(
           "[DEV] Email skipped (mail not configured). to={}, subject={}, text={}",
@@ -213,23 +219,16 @@ public class EmailVerificationService {
       message.setText(text);
       mailSender.send(message);
     } catch (Exception e) {
-      boolean devProfile = false;
-      for (String p : environment.getActiveProfiles()) {
-        if ("dev".equalsIgnoreCase(p) || "test".equalsIgnoreCase(p)) {
-          devProfile = true;
-          break;
-        }
-      }
-      if (devProfile) {
-        log.warn(
-            "[DEV/TEST] Email send failed (code still in cache, readable via /dev/verification-code): to={}, reason={}",
-            to,
-            e.getMessage());
-        return;
-      }
       log.error("Failed to send email to {}: {}", to, e.getMessage(), e);
       throw new IllegalStateException("邮件发送失败，请稍后重试");
     }
+  }
+
+  private boolean isDevOrTestProfile() {
+    for (String p : environment.getActiveProfiles()) {
+      if ("dev".equalsIgnoreCase(p) || "test".equalsIgnoreCase(p)) return true;
+    }
+    return false;
   }
 
   // ── Inner types ───────────────────────────────────────────────────────────
