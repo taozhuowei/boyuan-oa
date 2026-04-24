@@ -52,16 +52,30 @@
         <!-- Section: Verification Code -->
         <div class="dev-section">
           <div class="section-title">最新验证码（dev 只打日志不发信）</div>
+          <input
+            v-model="codeEmail"
+            class="code-email-input"
+            type="email"
+            placeholder="粘贴要查码的邮箱（employee.demo 当前绑定）"
+          />
           <div v-if="latestCode" class="code-display">
             <span class="code-value">{{ latestCode }}</span>
             <span class="code-meta">{{ latestCodeMeta }}</span>
           </div>
           <div class="btn-group">
-            <button class="dev-btn" :disabled="fetchingCode" @click="fetchLatestCode('bind')">
+            <button
+              class="dev-btn"
+              :disabled="fetchingCode || !codeEmail"
+              @click="fetchLatestCode('bind')"
+            >
               <span v-if="fetchingCode">⏳</span>
               查 bind 码（绑邮箱）
             </button>
-            <button class="dev-btn" :disabled="fetchingCode" @click="fetchLatestCode('pwd')">
+            <button
+              class="dev-btn"
+              :disabled="fetchingCode || !codeEmail"
+              @click="fetchLatestCode('pwd')"
+            >
               <span v-if="fetchingCode">⏳</span>
               查 pwd 码（忘记/改密）
             </button>
@@ -97,7 +111,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { loginWithAccount } from '~/utils/access'
 import { useUserStore } from '~/stores/user'
 
@@ -115,8 +129,18 @@ const latestCode = ref('')
 const latestCodeMeta = ref('')
 const errorMsg = ref('')
 
-/** 默认查询邮箱：employee.demo 绑定的 email（876593497@qq.com）。生产绝不暴露此端点。 */
-const CODE_EMAIL = '876593497@qq.com'
+/**
+ * 查询邮箱：从 localStorage 读，支持用户手动编辑。
+ * 默认从 localStorage 缓存，首次为空时用户需在输入框粘贴 employee.demo 当前绑定的邮箱。
+ * 禁止硬编码个人邮箱到仓库。
+ */
+const STORAGE_KEY = 'dev-toolbar-code-email'
+const codeEmail = ref(
+  typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) ?? '' : '',
+)
+watch(codeEmail, (v) => {
+  if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, v)
+})
 
 interface QuickUser {
   username: string
@@ -270,7 +294,7 @@ async function fetchLatestCode(type: 'bind' | 'pwd') {
   latestCodeMeta.value = ''
   try {
     const resp = await fetch(
-      `/api/dev/verification-code?type=${type}&email=${encodeURIComponent(CODE_EMAIL)}`
+      `/api/dev/verification-code?type=${type}&email=${encodeURIComponent(codeEmail.value)}`
     )
     if (resp.status === 404) {
       showError(`无缓存：请先触发${type === 'bind' ? '发绑定码' : '发重置码'}`)
@@ -279,7 +303,7 @@ async function fetchLatestCode(type: 'bind' | 'pwd') {
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
     const data = (await resp.json()) as { code: string }
     latestCode.value = data.code
-    latestCodeMeta.value = `${type} · ${CODE_EMAIL}`
+    latestCodeMeta.value = `${type} · ${codeEmail.value}`
   } catch (error: unknown) {
     showError((error as { message?: string })?.message || '取码失败')
   } finally {
@@ -448,6 +472,23 @@ async function quickLogin(user: QuickUser) {
 
 .login-btn {
   padding: 10px 8px;
+}
+
+.code-email-input {
+  width: 100%;
+  background: rgba(15, 23, 42, 0.8);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  margin-bottom: 8px;
+  box-sizing: border-box;
+}
+
+.code-email-input:focus {
+  outline: none;
+  border-color: rgba(59, 130, 246, 0.5);
 }
 
 .code-display {

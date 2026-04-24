@@ -27,9 +27,17 @@ import { getVerificationCodeFromDev } from '../../tools/helpers/email-reader'
 
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3001'
 
-// employee.demo 种子邮箱，dev profile 初始化由 seed-data.sql 写入。
-// 若某个测试需要恢复邮箱绑定，统一用该值。
-const EMPLOYEE_DEMO_EMAIL = '876593497@qq.com'
+// employee.demo 测试邮箱。从 test/.env.test 的 TEST_EMAIL 读，避免硬编码个人邮箱。
+// 若未设置则抛错，强制 CI / 本地都必须显式配置测试邮箱（默认用 mail.tm 一次性邮箱）。
+const EMPLOYEE_DEMO_EMAIL = (() => {
+  const v = process.env.TEST_EMAIL
+  if (!v) {
+    throw new Error(
+      '环境变量 TEST_EMAIL 未设置。请在 test/.env.test 配置（可用 test/tools/mail-ops/provision_mailtm.ts 生成），或在 shell 中 export。',
+    )
+  }
+  return v
+})()
 
 // 固定种子账号 id，与 local/seed-data.sql 对齐。
 const EMPLOYEE_DEMO_ID = 1

@@ -26,15 +26,25 @@ loadEnv({ path: join(__dirname, '../../.env.test') })
 
 const TRASH = 'Deleted Messages'
 
+/** 清理目标：OA 系统发出的验证码 + QQ PostMaster 退信 + mailer-daemon 退信。 */
+async function findTargetUids(client: ImapFlow): Promise<number[]> {
+  const [oa, pm, md] = await Promise.all([
+    client.search({ subject: 'OA系统' }, { uid: true }) as Promise<number[] | false>,
+    client.search({ from: 'postmaster' }, { uid: true }) as Promise<number[] | false>,
+    client.search({ from: 'mailer-daemon' }, { uid: true }) as Promise<number[] | false>,
+  ])
+  const merged = new Set<number>()
+  for (const arr of [oa, pm, md]) if (arr) for (const u of arr) merged.add(u)
+  return [...merged]
+}
+
 async function moveToTrash(client: ImapFlow, folder: string): Promise<number> {
   const lock = await client.getMailboxLock(folder)
   try {
-    const uids = (await client.search({ subject: 'OA系统' }, { uid: true })) as
-      | number[]
-      | false
-    if (!uids || uids.length === 0) return 0
+    const uids = await findTargetUids(client)
+    if (uids.length === 0) return 0
     await client.messageMove(uids, TRASH, { uid: true })
-    console.log(`[${folder}] moved ${uids.length} OA emails → ${TRASH}`)
+    console.log(`[${folder}] moved ${uids.length} OA+PostMaster emails → ${TRASH}`)
     return uids.length
   } finally {
     lock.release()
@@ -45,14 +55,12 @@ async function moveToTrash(client: ImapFlow, folder: string): Promise<number> {
  * 清空 TRASH：select + STORE all \Deleted + mailboxClose() 触发 CLOSE→EXPUNGE。
  * 只清匹配 OA 主题的邮件，避免误删用户其他已删除邮件。
  */
-async function purgeOaFromTrash(client: ImapFlow): Promise<number> {
+async function purgeTargetsFromTrash(client: ImapFlow): Promise<number> {
   await client.mailboxOpen(TRASH)
   try {
-    const uids = (await client.search({ subject: 'OA系统' }, { uid: true })) as
-      | number[]
-      | false
-    if (!uids || uids.length === 0) {
-      console.log(`[${TRASH}] 0 OA emails to purge`)
+    const uids = await findTargetUids(client)
+    if (uids.length === 0) {
+      console.log(`[${TRASH}] 0 targets to purge`)
       return 0
     }
     await client.messageFlagsAdd(uids, ['\\Deleted'], { uid: true })
@@ -62,7 +70,6 @@ async function purgeOaFromTrash(client: ImapFlow): Promise<number> {
     console.log(`[${TRASH}] EXPUNGE triggered via CLOSE`)
     return uids.length
   } catch (e) {
-    // mailboxClose 本身若失败也要释放
     try {
       await client.mailboxClose()
     } catch {}
@@ -87,7 +94,7 @@ async function main() {
     console.log('Connected as', process.env.TEST_EMAIL)
     const movedInbox = await moveToTrash(client, 'INBOX')
     const movedJunk = await moveToTrash(client, 'Junk')
-    const purged = await purgeOaFromTrash(client)
+    const purged = await purgeTargetsFromTrash(client)
     console.log(
       `\nDone: moved INBOX=${movedInbox}, Junk=${movedJunk}; physically purged Trash=${purged}`,
     )
