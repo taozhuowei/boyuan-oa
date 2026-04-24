@@ -228,6 +228,8 @@ async function handleBindEmail() {
       body: { email: step1Form.email, code: step1Form.code },
     })
     message.success('邮箱绑定成功')
+    // 同步到 cookie，避免 auth.global.ts 按 email===null 仍重定向回 /setup-account
+    userStore.setUserInfo({ email: step1Form.email })
     currentStep.value = 1
   } catch (err: unknown) {
     const fetchError = err as { data?: { message?: string } }
@@ -241,7 +243,7 @@ async function handleSetPassword() {
   settingPassword.value = true
   try {
     await request({
-      url: '/auth/password/verify-reset',
+      url: '/auth/password/first-login-set',
       method: 'POST',
       body: { newPassword: step2Form.newPassword },
     })

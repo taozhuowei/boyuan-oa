@@ -178,7 +178,10 @@ public class EmailVerificationService {
   }
 
   /**
-   * 发送邮件。若 MAIL_FROM 为空（开发环境），仅日志输出，不实际发送。
+   * 发送邮件。若 MAIL_FROM 为空（开发/测试环境），仅日志输出，不实际发送 —— 该分支天然避免 dev/test 环境的 SMTP 调用。
+   *
+   * <p>生产环境必须配置有效 SMTP；若 send 抛出异常（网络/鉴权/配额），此处抛 IllegalStateException 由 GlobalExceptionHandler
+   * 统一包装为 500 + 业务提示「邮件发送失败，请稍后重试」，确保用户看到真实错误而非虚假成功。
    *
    * @param to 收件人邮箱
    * @param subject 主题

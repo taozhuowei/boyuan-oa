@@ -1,6 +1,7 @@
 package com.oa.backend.controller;
 
 import com.oa.backend.filter.GlobalRateLimitFilter;
+import com.oa.backend.service.CaptchaService;
 import com.oa.backend.service.EmailVerificationService;
 import com.oa.backend.service.SetupService;
 import java.util.Map;
@@ -41,6 +42,7 @@ public class DevController {
   private final EmailVerificationService emailVerificationService;
   private final AuthController authController;
   private final GlobalRateLimitFilter globalRateLimitFilter;
+  private final CaptchaService captchaService;
 
   /**
    * E2E 测试数据重置。
@@ -170,5 +172,31 @@ public class DevController {
     }
     log.info("[DEV] Returning cached verification code for type={} email={}", type, email);
     return ResponseEntity.ok(Map.of("code", code));
+  }
+
+  /**
+   * Returns the expected answer for a live captcha from the in-memory cache.
+   *
+   * <p>Used by E2E tests to solve the image-based captcha without OCR. The captcha image is
+   * rendered server-side with AWT (BufferedImage) and cannot be decoded by automated test code;
+   * this endpoint exposes the cached answer so tests can submit a valid captcha to exercise the
+   * login rate-limit lockout flow (per-IP + per-account) which requires clearing the captcha
+   * challenge on every attempt after failure count ≥ 3.
+   *
+   * <p>The captcha answer is consumed on first successful /auth/login verify, so tests must call
+   * this endpoint after each captcha generation and before submitting the login request. The
+   * endpoint is dev-profile-only and does not leak captcha data in production.
+   *
+   * @param captchaId the id returned by GET /auth/captcha
+   * @return 200 + {"answer":"1234"} if a live captcha exists; 404 if not found or expired
+   */
+  @GetMapping("/captcha-answer")
+  public ResponseEntity<Map<String, String>> getCaptchaAnswer(@RequestParam String captchaId) {
+    String answer = captchaService.peekAnswer(captchaId);
+    if (answer == null) {
+      return ResponseEntity.notFound().build();
+    }
+    log.info("[DEV] Returning cached captcha answer for captchaId={}", captchaId);
+    return ResponseEntity.ok(Map.of("answer", answer));
   }
 }

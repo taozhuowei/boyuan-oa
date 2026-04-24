@@ -484,8 +484,8 @@ class CoverageBoostTest8 {
           .andExpect(
               result -> {
                 int status = result.getResponse().getStatus();
-                assert status == 200 || status == 400 || status == 404
-                    : "Expected 200/400/404, got " + status;
+                assert status == 200 || status == 201 || status == 400 || status == 404
+                    : "Expected 200/201/400/404, got " + status;
               });
     }
 

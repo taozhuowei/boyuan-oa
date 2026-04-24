@@ -328,6 +328,49 @@ public class AuthController {
     return ResponseEntity.noContent().build();
   }
 
+  /**
+   * 首次登录设置密码。
+   *
+   * <p>仅限 isDefaultPassword=true 的已认证用户使用；不要求验证码，因为身份认证由 step 1（绑定邮箱+验证码）完成，step 2 不需要重复验证。
+   *
+   * <p>调用者：前端 /setup-account 页 step 2 "设置密码"。普通密码修改走 /auth/password/verify-reset。
+   *
+   * @param request 新密码（同 D-F-17 强度规则）
+   * @return 204
+   * @throws ResponseStatusException 用户未使用默认密码（非首次登录）→ 400；未绑定邮箱 → 400
+   */
+  @PostMapping("/password/first-login-set")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<Void> firstLoginSetPassword(
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @Valid @RequestBody FirstLoginSetPasswordRequest request) {
+    Long userId = getCurrentUserId(authorization);
+    if (userId == null) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "无法获取当前用户信息");
+    }
+    Employee employee =
+        employeeService
+            .findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
+    if (Boolean.FALSE.equals(employee.getIsDefaultPassword())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "当前账号非首次登录状态，请通过密码修改流程");
+    }
+    if (employee.getEmail() == null || employee.getEmail().isBlank()) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "请先绑定邮箱");
+    }
+    String newPasswordHash = passwordEncoder.encode(request.newPassword());
+    employeeService.updatePassword(employee.getId(), newPasswordHash, false);
+    return ResponseEntity.noContent().build();
+  }
+
+  /** 首次登录设置密码请求体。 */
+  public record FirstLoginSetPasswordRequest(
+      @NotBlank(message = "新密码不能为空")
+          @Pattern(
+              regexp = "^(?=.*[A-Za-z])(?=.*\\d)[^\\s]{8,64}$",
+              message = "密码须为8-64位，同时包含字母和数字，不允许空格")
+          String newPassword) {}
+
   /** D-F-16 密码重置请求体。 */
   public record VerifyResetRequest(
       @NotBlank(message = "验证码不能为空") @Size(min = 6, max = 6, message = "验证码必须为6位") String code,

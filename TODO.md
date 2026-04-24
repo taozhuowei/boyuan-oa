@@ -18,14 +18,15 @@
 
 **当前 Phase**：Phase D — 逐模块测试 + 设计对齐 + 人工验收
 **当前模块**：D-M01 认证
-**当前 Stage**：Stage 3 — 测试实现与执行（进行中）
+**当前 Stage**：Stage 4 — 人工验收（等待用户浏览器走查）
 
 **下一步动作（我）**
-- QA Engineer agent 按 `test/e2e/modules/D-M01.md` 实现 `test/e2e/specs/D-M01.spec.ts`
-- 执行测试，分类 Fail，全绿后推 Stage 4
+- 等用户浏览器走完 AUTH 主流程后修 bug / 登记 DEFECTS
 
 **下一步动作（用户）**
-- 等 Stage 3 全绿报告 → 进 Stage 4 浏览器人工验收
+- 浏览器走 AUTH 全链路：登录 / 首次登录 / 改密码 / 忘记密码 / 退出 / 路由守卫 / 账号禁用 / CEO 恢复码
+- 反馈问题 → 我回归修复
+- 无问题后签字确认日期
 
 **阻塞项**：无
 
@@ -1760,16 +1761,21 @@
 - 原 34 条独立 test 设计不合理，改为三层结构：一次浏览器 context 内跑完一个页面上多个组件的多个操作，规避冷却冲突
 - 登记 4 个设计缺陷：DEF-AUTH-01（per-IP → per-account）/ DEF-AUTH-02（缺 captcha）/ DEF-AUTH-03（缺自助解锁）/ DEF-AUTH-04（测试环境阈值 100000）
 
-#### Stage 3 — 测试实现与执行
+#### Stage 3 — 测试实现与执行（完成 2026-04-24）
 
-- `[x]` 预处理：修复 DEF-AUTH-04（2026-04-23 完成）
-  - 测试环境阈值恢复为 5（`login-fail-threshold: 5`、`global-per-minute: 300`）
-  - GlobalRateLimitFilter 改为 Spring bean 并加 resetAll()
-  - DevController 新增 `POST /dev/reset-rate-limit`
-- `[x]` 业务改进：DEF-AUTH-01/02/03 全部修复并关闭（2026-04-23）
-- `[ ]` QA agent 实现 `test/e2e/specs/D-M01.spec.ts`（按 Stage 2 定稿清单）
-- `[ ]` 执行：全绿无 skip → 输出 Pass 矩阵
-- `[ ]` FIX 循环：实现 bug → 修复 → 重跑；设计缺陷 → 登记 DEFECTS
+- `[x]` 预处理：修复 DEF-AUTH-04
+- `[x]` 业务改进：DEF-AUTH-01/02/03 全部修复并关闭
+- `[x]` Frontend Developer agent 实现 `test/e2e/specs/D-M01.spec.ts`（29 个 test，2646 行）
+- `[x]` 执行：29/29 全绿，无 skip，1.2 分钟/轮
+- `[x]` FIX 循环：修复了 3 个 agent 发现的真实 bug
+  - **SystemConfigMapper**：`MERGE INTO ... KEY(...)` 改为 PostgreSQL 兼容 `INSERT ... ON CONFLICT ... DO UPDATE`（latent 生产 bug，阻塞 `/setup/init` 在 PG 上）
+  - **setup-account.vue step 2**：原前端调 `/auth/password/verify-reset` 但未传 `code`，后端 `@NotBlank` 必然 400；新增 `POST /auth/password/first-login-set` 端点（仅 `isDefaultPassword=true` 可用，无需 code，身份已由 step 1 邮箱验证完成）+ 前端改调新端点
+  - **setup-account.vue step 1**：`handleBindEmail` 成功后未同步 `email` 到 cookie，导致 auth.global.ts `email === null` 仍重定向回 setup-account；补 `userStore.setUserInfo({ email })`
+- `[x]` 新增 dev 端点 `POST /dev/captcha-answer`：供 E2E 测试读图形验证码答案（避免 OCR 解图），与 `/dev/verification-code` 同模式
+- `[x]` Agent 误改回滚：EmailVerificationService 被 agent 改为静默吞 SMTP 失败，已回滚 —— 生产必须抛出真实错误
+- `[x]` 测试断言修复：CoverageBoostTest8 `createLevel_hr_returnsOk` 原只认 200/400/404，补 201（POST 创建成功标准状态）
+- `[x]` Mandatory Code Review Checklist 6 项全 PASS（自审）：
+  - 无 Controller 持 Mapper、无 Entity 暴露、无 test.skip、无 typeof unsafe、新端点均有 `@PreAuthorize` 或 `@Profile("dev")`、每处改动有对应 DEFECTS 或 bug 发现可追溯
 
 #### Stage 4 — 人工验收
 

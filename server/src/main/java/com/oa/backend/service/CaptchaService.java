@@ -61,6 +61,20 @@ public class CaptchaService {
     return expected.equalsIgnoreCase(userAnswer.trim());
   }
 
+  /**
+   * Reads the cached captcha answer without invalidating the entry.
+   *
+   * <p>Dev-only helper exposed via /dev/captcha-answer for E2E tests that need to solve the
+   * image-based captcha to drive rate-limit lockout flows. Production code never calls this.
+   *
+   * @param captchaId id returned by {@link #generate()}
+   * @return the expected answer, or null if not cached / expired
+   */
+  public String peekAnswer(String captchaId) {
+    if (captchaId == null) return null;
+    return store.getIfPresent(captchaId);
+  }
+
   private String generateCode() {
     StringBuilder sb = new StringBuilder(CODE_LENGTH);
     for (int i = 0; i < CODE_LENGTH; i++) sb.append(random.nextInt(10));

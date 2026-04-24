@@ -24,13 +24,20 @@ public interface SystemConfigMapper extends BaseMapper<SystemConfig> {
   /**
    * 设置配置值。如果键已存在则更新，不存在则插入。
    *
+   * <p>使用 PostgreSQL 原生 ON CONFLICT 语法（替代之前的 H2 MERGE INTO + KEY(...) 语法， 后者在 PostgreSQL 上会导致
+   * "syntax error at or near '('"，阻塞 setup/init 流程）。 PostgreSQL 与 H2（默认模式）均支持 INSERT ... ON
+   * CONFLICT ... DO UPDATE 语法。
+   *
    * @param key 配置键
    * @param value 配置值
    * @param description 配置描述
    */
   @Insert(
-      "MERGE INTO system_config (config_key, config_value, description) "
-          + "KEY (config_key) VALUES (#{key}, #{value}, #{description})")
+      "INSERT INTO system_config (config_key, config_value, description) "
+          + "VALUES (#{key}, #{value}, #{description}) "
+          + "ON CONFLICT (config_key) DO UPDATE SET "
+          + "config_value = EXCLUDED.config_value, "
+          + "description = EXCLUDED.description")
   void setValue(
       @Param("key") String key,
       @Param("value") String value,
