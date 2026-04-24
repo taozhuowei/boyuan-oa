@@ -48,3 +48,6 @@ server/config/
 
 # E2E test credentials (generated from local/test.env template)
 .env.test
+
+# 自动化走查截图（每次覆盖，不追踪）
+test/tools/manual-walkthrough/screenshots/

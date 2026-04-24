@@ -58,6 +58,7 @@
               :key="acc.employeeNo"
               class="dev-btn email-btn"
               :title="acc.email"
+              @mousedown="rememberFocusThenPrevent"
               @click="fillAccountEmail(acc)"
             >
               {{ acc.label }}
@@ -191,8 +192,26 @@ onMounted(() => {
   if (isDev) loadAccountEmails()
 })
 
+/** 保存点击按钮前页面上真正聚焦的输入框，防止按钮自身抢焦点导致填入目标丢失。 */
+let rememberedInput: HTMLInputElement | HTMLTextAreaElement | null = null
+
+function rememberFocusThenPrevent(e: MouseEvent) {
+  const el = document.activeElement
+  if (
+    el &&
+    (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') &&
+    !(el as HTMLElement).classList.contains('code-email-input')
+  ) {
+    rememberedInput = el as HTMLInputElement | HTMLTextAreaElement
+  } else {
+    rememberedInput = null
+  }
+  // preventDefault 阻止按钮获取焦点；点击事件仍会触发
+  e.preventDefault()
+}
+
 /**
- * 点按钮：(1) 设 codeEmail（查码目标），(2) 写 clipboard，(3) 若页面当前有聚焦输入框则 fill，
+ * 点按钮：(1) 设 codeEmail（查码目标），(2) 写 clipboard，(3) 若 mousedown 时记住了输入框则填入，
  * 并通过 input 事件通知 Vue 响应式更新。
  */
 async function fillAccountEmail(acc: AccountEmail) {
@@ -203,19 +222,17 @@ async function fillAccountEmail(acc: AccountEmail) {
   } catch {
     /* clipboard 权限未授予时静默 */
   }
-  // 填当前聚焦的 input / textarea（如 /login、/setup-account、/auth/forgot_password）
-  const el = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null
-  const isInput =
-    el &&
-    (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') &&
-    el !== (document.querySelector('.code-email-input') as HTMLElement)
-  if (isInput) {
-    // 原生 setter 绕过 Vue input；再派发 input 事件触发 v-model 同步
-    const proto = Object.getPrototypeOf(el)
+  // 填入 mousedown 时记住的输入框（按钮自身 preventDefault 后不会抢焦点，但仍有些浏览器
+  // 在 mousedown 时已经转移 activeElement；所以提前 remember）
+  const target = rememberedInput
+  rememberedInput = null
+  if (target) {
+    const proto = Object.getPrototypeOf(target)
     const descriptor = Object.getOwnPropertyDescriptor(proto, 'value')
-    descriptor?.set?.call(el, acc.email)
-    el.dispatchEvent(new Event('input', { bubbles: true }))
-    el.dispatchEvent(new Event('change', { bubbles: true }))
+    descriptor?.set?.call(target, acc.email)
+    target.dispatchEvent(new Event('input', { bubbles: true }))
+    target.dispatchEvent(new Event('change', { bubbles: true }))
+    target.focus()
     showFlash(`已填入 ${acc.label} 邮箱 + 复制到剪贴板`)
   } else {
     showFlash(`${acc.label} 邮箱已复制到剪贴板；未检测到聚焦输入框`)
@@ -451,12 +468,27 @@ async function quickLogin(user: QuickUser) {
 /* Panel */
 .dev-panel {
   width: 240px;
+  max-height: calc(100vh - 40px);
+  display: flex;
+  flex-direction: column;
   background: rgba(30, 41, 59, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(12px);
   overflow: hidden;
+}
+
+.panel-content {
+  overflow-y: auto;
+  padding: 12px;
+}
+.panel-content::-webkit-scrollbar {
+  width: 6px;
+}
+.panel-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
 }
 
 .panel-header {
@@ -488,9 +520,6 @@ async function quickLogin(user: QuickUser) {
   color: #f1f5f9;
 }
 
-.panel-content {
-  padding: 12px;
-}
 
 /* Section */
 .dev-section {

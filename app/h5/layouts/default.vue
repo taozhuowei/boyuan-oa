@@ -7,7 +7,7 @@
       <a-layout-sider v-model:collapsed="collapsed" collapsible width="220" theme="dark">
         <div class="logo">
           <span v-if="!collapsed" class="logo-text">
-            {{ companyName ? companyName + 'OA' : '博渊OA' }}工作台
+            {{ companyName ? companyName + ' OA 工作台' : '博渊 OA 工作台' }}
           </span>
           <span v-else class="logo-icon">OA</span>
         </div>
@@ -478,8 +478,15 @@ async function onAvatarMenuClick({ key }: MenuInfo) {
 
 .group-title {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
-  letter-spacing: 0.5px;
+  color: rgba(255, 255, 255, 0.78);
+  letter-spacing: 1px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* 折叠态隐藏组标题（AntD MenuItemGroup 的 title 默认仍显示） */
+:deep(.ant-layout-sider-collapsed .ant-menu-item-group-title) {
+  display: none;
 }
 
 

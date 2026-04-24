@@ -72,6 +72,8 @@ public class DevController {
         "DELETE FROM employee WHERE employee_no IN ('CEO001','HR001','SYS_ADMIN001','GM001') OR id >= 100");
     // Restore seed employee statuses — E2E-06 disables an employee; reset must undo that
     jdbcTemplate.execute("UPDATE employee SET account_status = 'ACTIVE' WHERE id < 100");
+    // 清除上次初始化向导测试残留的 company_name，恢复默认"博渊"显示
+    jdbcTemplate.execute("DELETE FROM system_config WHERE config_key = 'company_name'");
 
     log.info("[DEV] E2E data reset completed");
     return ResponseEntity.ok(Map.of("message", "reset ok"));
