@@ -18,15 +18,22 @@
 
 **当前 Phase**：Phase D — 逐模块测试 + 设计对齐 + 人工验收
 **当前模块**：D-M01 认证
-**当前 Stage**：Stage 4 — 人工验收（等待用户浏览器走查）
+**当前 Stage**：Stage 4 — 人工验收（Claude dogfood + UX 修复已完成，等用户浏览器最终复核）
 
-**下一步动作（我）**
-- 等用户浏览器走完 AUTH 主流程后修 bug / 登记 DEFECTS
+**Stage 4 完成度**
+- Claude 通过 agent-browser + dogfood skill 自主走完 AUTH 8 场景并截图 / 视觉审查（2026-04-24）
+- 发现 8 个问题，7 修复 + 1 撤销（详见 `test/tools/manual-walkthrough/report.md`）
+- 修复包括：DevToolbar 一键填入按钮抢焦点、`/dev/reset` 未清 company_name、DevToolbar 面板过高、Logo 字符粘连、侧边栏组标题对比度、折叠态组标题未隐藏、**初始密码警告暴露明文"123456"**（安全文案问题）
+- 所有 DEFECTS 池已清零，mvn 1315 / yarn lint 0/0 / D-M01 E2E 29/29 全绿
 
 **下一步动作（用户）**
 - 浏览器走 AUTH 全链路：登录 / 首次登录 / 改密码 / 忘记密码 / 退出 / 路由守卫 / 账号禁用 / CEO 恢复码
 - 反馈问题 → 我回归修复
 - 无问题后签字确认日期
+
+**下一步动作（我）**
+- 等用户反馈走查结果
+- 用户签字后 `[x]` D-M01 推进 D-M02（员工管理，依赖 D-M01）
 
 **阻塞项**：无
 
@@ -1777,10 +1784,19 @@
 - `[x]` Mandatory Code Review Checklist 6 项全 PASS（自审）：
   - 无 Controller 持 Mapper、无 Entity 暴露、无 test.skip、无 typeof unsafe、新端点均有 `@PreAuthorize` 或 `@Profile("dev")`、每处改动有对应 DEFECTS 或 bug 发现可追溯
 
-#### Stage 4 — 人工验收
+#### Stage 4 — 人工验收（Claude dogfood 完成，等用户最终复核）
 
-- `[ ]` 用户浏览器走完主流程
-- `[ ]` 回归修复至无反馈
+- `[x]` Claude 自主 dogfood 走查（2026-04-24）：agent-browser + dogfood skill 驱动 Chrome，8 场景截图 + 视觉审查
+- `[x]` 发现 8 问题并处理：7 修复 + 1 撤销（详见 `test/tools/manual-walkthrough/report.md`）
+  - DevToolbar 一键填入按钮抢焦点
+  - `/dev/reset` 未清 company_name
+  - DevToolbar 面板过高
+  - Logo 字符粘连
+  - 侧边栏组标题对比度
+  - 折叠态组标题未隐藏
+  - **初始密码警告暴露明文"123456"**（安全文案问题，初次误撤销后复核修复）
+- `[ ]` 用户浏览器走完主流程（Claude 已做过自主走查，用户做最终签字复核）
+- `[ ]` 用户反馈问题 → 回归修复
 - `[ ]` 用户签字确认日期
 
 **执行记录**
