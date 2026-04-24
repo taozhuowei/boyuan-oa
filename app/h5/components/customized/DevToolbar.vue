@@ -51,12 +51,23 @@
 
         <!-- Section: Verification Code -->
         <div class="dev-section">
-          <div class="section-title">最新验证码（dev 只打日志不发信）</div>
+          <div class="section-title">一键填入账号邮箱（点一下复制到剪贴板 + 填入页面当前输入框 + 设为查码目标）</div>
+          <div class="btn-group login-group">
+            <button
+              v-for="acc in accountEmails"
+              :key="acc.employeeNo"
+              class="dev-btn email-btn"
+              :title="acc.email"
+              @click="fillAccountEmail(acc)"
+            >
+              {{ acc.label }}
+            </button>
+          </div>
           <input
             v-model="codeEmail"
             class="code-email-input"
             type="email"
-            placeholder="粘贴要查码的邮箱（employee.demo 当前绑定）"
+            placeholder="上面点按钮会填这里；也可以手动粘贴"
           />
           <div v-if="latestCode" class="code-display">
             <span class="code-value">{{ latestCode }}</span>
@@ -69,7 +80,7 @@
               @click="fetchLatestCode('bind')"
             >
               <span v-if="fetchingCode">⏳</span>
-              查 bind 码（绑邮箱）
+              查 bind 码
             </button>
             <button
               class="dev-btn"
@@ -77,7 +88,7 @@
               @click="fetchLatestCode('pwd')"
             >
               <span v-if="fetchingCode">⏳</span>
-              查 pwd 码（忘记/改密）
+              查 pwd 码
             </button>
           </div>
         </div>
@@ -111,7 +122,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { loginWithAccount } from '~/utils/access'
 import { useUserStore } from '~/stores/user'
 
@@ -130,8 +141,7 @@ const latestCodeMeta = ref('')
 const errorMsg = ref('')
 
 /**
- * 查询邮箱：从 localStorage 读，支持用户手动编辑。
- * 默认从 localStorage 缓存，首次为空时用户需在输入框粘贴 employee.demo 当前绑定的邮箱。
+ * 查询邮箱：从 localStorage 读取最近一次填入值，支持用户手动编辑。
  * 禁止硬编码个人邮箱到仓库。
  */
 const STORAGE_KEY = 'dev-toolbar-code-email'
@@ -141,6 +151,76 @@ const codeEmail = ref(
 watch(codeEmail, (v) => {
   if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, v)
 })
+
+/** 测试账号邮箱映射，页面加载时从 /api/dev/test-emails 拉取（dev profile 独有）。 */
+interface AccountEmail {
+  employeeNo: string
+  label: string
+  email: string
+}
+const ROLE_LABELS: Record<string, string> = {
+  'ceo.demo': 'CEO',
+  'hr.demo': 'HR',
+  'finance.demo': '财务',
+  'pm.demo': 'PM',
+  'employee.demo': '员工',
+  'worker.demo': '劳工',
+  'dept_manager.demo': '部门经理',
+  'sys_admin.demo': '系统管理',
+}
+const accountEmails = ref<AccountEmail[]>([])
+
+async function loadAccountEmails() {
+  try {
+    const resp = await fetch('/api/dev/test-emails')
+    if (!resp.ok) return
+    const map = (await resp.json()) as Record<string, string>
+    accountEmails.value = Object.entries(map)
+      .filter(([k]) => ROLE_LABELS[k])
+      .map(([employeeNo, email]) => ({ employeeNo, email, label: ROLE_LABELS[employeeNo] }))
+      .sort(
+        (a, b) =>
+          Object.keys(ROLE_LABELS).indexOf(a.employeeNo) -
+          Object.keys(ROLE_LABELS).indexOf(b.employeeNo),
+      )
+  } catch {
+    /* endpoint 不存在（非 dev profile）时静默 */
+  }
+}
+onMounted(() => {
+  if (isDev) loadAccountEmails()
+})
+
+/**
+ * 点按钮：(1) 设 codeEmail（查码目标），(2) 写 clipboard，(3) 若页面当前有聚焦输入框则 fill，
+ * 并通过 input 事件通知 Vue 响应式更新。
+ */
+async function fillAccountEmail(acc: AccountEmail) {
+  codeEmail.value = acc.email
+  // 写 clipboard（兜底，用户可手动 Cmd/Ctrl+V 粘贴）
+  try {
+    await navigator.clipboard.writeText(acc.email)
+  } catch {
+    /* clipboard 权限未授予时静默 */
+  }
+  // 填当前聚焦的 input / textarea（如 /login、/setup-account、/auth/forgot_password）
+  const el = document.activeElement as HTMLInputElement | HTMLTextAreaElement | null
+  const isInput =
+    el &&
+    (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') &&
+    el !== (document.querySelector('.code-email-input') as HTMLElement)
+  if (isInput) {
+    // 原生 setter 绕过 Vue input；再派发 input 事件触发 v-model 同步
+    const proto = Object.getPrototypeOf(el)
+    const descriptor = Object.getOwnPropertyDescriptor(proto, 'value')
+    descriptor?.set?.call(el, acc.email)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+    showFlash(`已填入 ${acc.label} 邮箱 + 复制到剪贴板`)
+  } else {
+    showFlash(`${acc.label} 邮箱已复制到剪贴板；未检测到聚焦输入框`)
+  }
+}
 
 interface QuickUser {
   username: string

@@ -4,6 +4,8 @@ import com.oa.backend.filter.GlobalRateLimitFilter;
 import com.oa.backend.service.CaptchaService;
 import com.oa.backend.service.EmailVerificationService;
 import com.oa.backend.service.SetupService;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -157,6 +159,27 @@ public class DevController {
     // 清零该账号的登录失败计数，避免因之前锁定影响后续测试
     authController.resetLoginFailStatesForUsername("employee.demo");
     return ResponseEntity.ok(Map.of("message", "restored"));
+  }
+
+  /**
+   * 返回所有测试种子账号当前绑定的邮箱。DevToolbar 用此渲染"一键填入账号邮箱"按钮。
+   *
+   * @return 形如 {"ceo.demo":"oa-ceo-xxx@mail.tm", ...}；若 email 为 NULL 则该 key 不返回
+   */
+  @GetMapping("/test-emails")
+  public ResponseEntity<Map<String, String>> getTestEmails() {
+    List<Map<String, Object>> rows =
+        jdbcTemplate.queryForList(
+            "SELECT employee_no, email FROM employee WHERE employee_no IN "
+                + "('ceo.demo','hr.demo','finance.demo','pm.demo','employee.demo',"
+                + "'worker.demo','dept_manager.demo','sys_admin.demo') AND email IS NOT NULL");
+    Map<String, String> result = new LinkedHashMap<>();
+    for (Map<String, Object> row : rows) {
+      String no = (String) row.get("employee_no");
+      String email = (String) row.get("email");
+      if (no != null && email != null) result.put(no, email);
+    }
+    return ResponseEntity.ok(result);
   }
 
   /**
