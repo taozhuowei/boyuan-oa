@@ -67,10 +67,12 @@ jobs:
 
       - name: Start backend service (dev profile)
         working-directory: server
-        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev > /tmp/backend.log 2>&1 &
 
       - name: Wait for backend to be ready
-        run: npx wait-on http://localhost:8080/actuator/health --timeout 120000
+        run: |
+          npx wait-on http://localhost:8080/api/actuator/health --timeout 300000 \
+            || (echo "===== backend.log ====="; cat /tmp/backend.log; exit 1)
 
       # Three consecutive runs — all must pass to satisfy the quality gate
       - name: Run integration tests — pass 1 of 3
@@ -148,15 +150,17 @@ jobs:
 
       - name: Start backend service (dev profile)
         working-directory: server
-        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev > /tmp/backend.log 2>&1 &
 
       - name: Start frontend (dev mode)
-        run: yarn workspace oa-h5 dev &
+        run: yarn workspace oa-h5 dev > /tmp/frontend.log 2>&1 &
 
       - name: Wait for backend and frontend to be ready
         run: |
-          npx wait-on http://localhost:8080/actuator/health --timeout 120000
-          npx wait-on http://localhost:3000 --timeout 120000
+          npx wait-on http://localhost:8080/api/actuator/health --timeout 300000 \
+            || (echo "===== backend.log ====="; cat /tmp/backend.log; exit 1)
+          npx wait-on http://localhost:3000 --timeout 180000 \
+            || (echo "===== frontend.log ====="; cat /tmp/frontend.log; exit 1)
 
       - name: Run E2E tests
         run: yarn test:e2e
@@ -210,10 +214,12 @@ jobs:
 
       - name: Start backend service (dev profile)
         working-directory: server
-        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev > /tmp/backend.log 2>&1 &
 
       - name: Wait for backend to be ready
-        run: npx wait-on http://localhost:8080/actuator/health --timeout 120000
+        run: |
+          npx wait-on http://localhost:8080/api/actuator/health --timeout 300000 \
+            || (echo "===== backend.log ====="; cat /tmp/backend.log; exit 1)
 
       - name: Prepare ZAP working directory
         run: mkdir -p tools/zap

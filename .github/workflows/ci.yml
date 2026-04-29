@@ -196,10 +196,17 @@ jobs:
 
       - name: Start backend service
         working-directory: server
-        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev &
+        # Capture stdout/stderr to /tmp/backend.log so the readiness step can
+        # surface startup failures instead of just hitting a timeout.
+        run: mvn spring-boot:run -Dspring-boot.run.profiles=dev > /tmp/backend.log 2>&1 &
 
       - name: Wait for backend to be ready
-        run: npx wait-on http://localhost:8080/actuator/health --timeout 120000
+        # Backend application.yml sets servlet.context-path=/api → actuator exposed
+        # at /api/actuator/health, not /actuator/health. Cold CI also needs more
+        # than 120s for mvn dep resolution + Spring context init + Flyway migrate.
+        run: |
+          npx wait-on http://localhost:8080/api/actuator/health --timeout 300000 \
+            || (echo "===== backend.log ====="; cat /tmp/backend.log; exit 1)
 
       - name: Run integration tests
         run: yarn test:integration
