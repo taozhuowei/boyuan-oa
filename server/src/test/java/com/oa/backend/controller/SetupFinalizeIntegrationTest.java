@@ -98,9 +98,19 @@ class SetupFinalizeIntegrationTest {
         "DELETE FROM employee WHERE employee_no IN ('CEO001','HR001','SYS_ADMIN001','GM001')");
     // 删除 wizard step 5 写入的非系统角色（is_system=0）
     jdbcTemplate.update("DELETE FROM sys_role WHERE is_system = 0");
-    // 清理 wizard step 10 写入的保留期数据 — 顺序关键：先 reminder 后 policy（FK 依赖）
+    // 清理 wizard step 10 写入的保留期数据。
+    // V2__init_data.sql 种入 retention_policy id=1..6（PAYROLL_SLIP/FORM_RECORD/...）并 setval=100，
+    // SetupService.applyRetention 对已存在 dataType 走 UPDATE 路径，对新 dataType 走 INSERT（id>=100）。
+    // 因此：reminder 全表清空（V2 无种子）；policy 只删 wizard 新建的（id>=100），并把可能被 wizard
+    // UPDATE 过的种子字段还原为 V2 默认值，否则会污染其他依赖种子的测试
+    // （例如 CoverageBoostTest17.dismissReminder_* 依赖 policy id=1/2 存在）。
     jdbcTemplate.update("DELETE FROM retention_reminder");
-    jdbcTemplate.update("DELETE FROM retention_policy");
+    jdbcTemplate.update("DELETE FROM retention_policy WHERE id >= 100");
+    jdbcTemplate.update(
+        "UPDATE retention_policy SET retention_years = 1, warn_before_days = 30,"
+            + " updated_at = CURRENT_TIMESTAMP"
+            + " WHERE data_type IN ('PAYROLL_SLIP','FORM_RECORD','ATTENDANCE_RECORD',"
+            + "'CONSTRUCTION_LOG','INJURY_CLAIM','OPERATION_LOG')");
   }
 
   // ─── Test 1: finalize_success ───────────────────────────────────────────
