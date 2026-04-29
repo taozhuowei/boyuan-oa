@@ -38,10 +38,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
       # Install k6 from the official GPG-signed repository
       - name: Install k6
@@ -133,29 +133,30 @@ jobs:
 
   snyk-audit:
     name: Snyk Dependency Audit
-    # Only runs when SNYK_TOKEN secret is present
-    if: ${{ secrets.SNYK_TOKEN != '' }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # secrets cannot be referenced inside `if` directly — bridge through env so
+    # the audit steps skip cleanly when SNYK_TOKEN is not configured.
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - name: Checkout repository
+        if: env.SNYK_TOKEN != ''
         uses: actions/checkout@v4
 
       # H5 frontend dependency audit — JSON report saved as artifact
       - name: Snyk audit — H5 frontend (package.json)
+        if: env.SNYK_TOKEN != ''
         run: npx snyk@latest test --file=app/h5/package.json --json > snyk-h5-report.json || true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       # Backend dependency audit — JSON report saved as artifact
       - name: Snyk audit — backend (pom.xml)
+        if: env.SNYK_TOKEN != ''
         run: npx snyk@latest test --file=server/pom.xml --json > snyk-server-report.json || true
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       - name: Upload Snyk H5 report
-        if: always()
+        if: env.SNYK_TOKEN != ''
         uses: actions/upload-artifact@v4
         with:
           name: snyk-h5-report
@@ -163,7 +164,7 @@ jobs:
           retention-days: 30
 
       - name: Upload Snyk server report
-        if: always()
+        if: env.SNYK_TOKEN != ''
         uses: actions/upload-artifact@v4
         with:
           name: snyk-server-report

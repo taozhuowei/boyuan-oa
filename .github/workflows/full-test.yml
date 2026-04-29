@@ -36,10 +36,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'yarn'
           cache-dependency-path: yarn.lock
 
@@ -96,10 +96,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'yarn'
           cache-dependency-path: yarn.lock
 
@@ -186,27 +186,32 @@ jobs:
 
   sonarqube:
     name: SonarCloud Analysis
-    # Only runs when SONAR_TOKEN secret is present
-    if: ${{ secrets.SONAR_TOKEN != '' }}
     # continue-on-error: SonarCloud analysis failures must not block deployment
     continue-on-error: true
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # secrets cannot be referenced inside `if` directly — bridge through env so
+    # downstream steps can skip cleanly when SONAR_TOKEN is not configured.
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout repository
+        if: env.SONAR_TOKEN != ''
         uses: actions/checkout@v4
         with:
           # Fetch full history so SonarCloud can compute blame info
           fetch-depth: 0
 
       - name: Setup Java 21 (Temurin)
+        if: env.SONAR_TOKEN != ''
         uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
 
       - name: Cache Maven dependencies
+        if: env.SONAR_TOKEN != ''
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository
@@ -215,8 +220,8 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Run Maven verify and SonarCloud analysis
+        if: env.SONAR_TOKEN != ''
         working-directory: server
         run: mvn verify sonar:sonar
         env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: https://sonarcloud.io

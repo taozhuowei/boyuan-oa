@@ -64,10 +64,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'yarn'
           cache-dependency-path: yarn.lock
 
@@ -96,6 +96,9 @@ jobs:
     continue-on-error: true
     permissions:
       contents: read
+    # secrets cannot be referenced inside `if` directly — bridge through env
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -117,17 +120,13 @@ jobs:
 
       # Snyk backend — only runs when SNYK_TOKEN secret is present
       - name: Snyk test — backend (pom.xml)
-        if: ${{ secrets.SNYK_TOKEN != '' }}
+        if: env.SNYK_TOKEN != ''
         run: npx snyk@latest test --file=server/pom.xml --severity-threshold=high
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
       # Snyk frontend — only runs when SNYK_TOKEN secret is present
       - name: Snyk test — H5 frontend (package.json)
-        if: ${{ secrets.SNYK_TOKEN != '' }}
+        if: env.SNYK_TOKEN != ''
         run: npx snyk@latest test --file=app/h5/package.json --severity-threshold=high
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
 
   build-verify:
     name: Build Verification
@@ -154,10 +153,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Setup Node.js 20
+      - name: Setup Node.js 22
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'yarn'
           cache-dependency-path: yarn.lock
 
