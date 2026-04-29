@@ -18,6 +18,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # spring-boot:run dev profile → oa_dev on Postgres 5433
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: oa_dev
+          POSTGRES_USER: oa_dev
+          POSTGRES_PASSWORD: oa_dev_password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -45,6 +60,10 @@ jobs:
 
       - name: Install Node dependencies
         run: yarn install --frozen-lockfile
+
+      - name: Generate Nuxt types (.nuxt/tsconfig.json)
+        working-directory: app/h5
+        run: npx nuxt prepare
 
       - name: Start backend service (dev profile)
         working-directory: server
@@ -78,6 +97,20 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: oa_dev
+          POSTGRES_USER: oa_dev
+          POSTGRES_PASSWORD: oa_dev_password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -105,6 +138,10 @@ jobs:
 
       - name: Install Node dependencies
         run: yarn install --frozen-lockfile
+
+      - name: Generate Nuxt types (.nuxt/tsconfig.json)
+        working-directory: app/h5
+        run: npx nuxt prepare
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -139,6 +176,20 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: oa_dev
+          POSTGRES_USER: oa_dev
+          POSTGRES_PASSWORD: oa_dev_password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -191,6 +242,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    # mvn verify runs surefire tests against oa_test on Postgres 5433
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: oa_test
+          POSTGRES_USER: oa_dev
+          POSTGRES_PASSWORD: oa_dev_password
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     # secrets cannot be referenced inside `if` directly — bridge through env so
     # downstream steps can skip cleanly when SONAR_TOKEN is not configured.
     env:
