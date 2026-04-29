@@ -225,6 +225,18 @@ jobs:
           cat /tmp/backend.log
           exit 1
 
+      # Dev profile sets sql.init.mode=never and Flyway only loads migrations from
+      # src/main/resources, so the demo accounts in src/test/resources/.../R__test_accounts.sql
+      # are not seeded automatically. Apply them via psql against the service
+      # container so /auth/login can authenticate ceo.demo, hr.demo, etc. during
+      # integration tests.
+      - name: Seed demo accounts for integration tests
+        env:
+          PGPASSWORD: oa_dev_password
+        run: |
+          psql -h localhost -p 5433 -U oa_dev -d oa_dev \
+            -f server/src/test/resources/db/migration/R__test_accounts.sql
+
       - name: Run integration tests
         run: yarn test:integration
 

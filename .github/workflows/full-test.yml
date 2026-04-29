@@ -87,6 +87,15 @@ jobs:
           cat /tmp/backend.log
           exit 1
 
+      # Dev profile doesn't load src/test/resources, so R__test_accounts.sql
+      # is not applied automatically. Seed the demo accounts via psql.
+      - name: Seed demo accounts for integration tests
+        env:
+          PGPASSWORD: oa_dev_password
+        run: |
+          psql -h localhost -p 5433 -U oa_dev -d oa_dev \
+            -f server/src/test/resources/db/migration/R__test_accounts.sql
+
       # Three consecutive runs — all must pass to satisfy the quality gate
       - name: Run integration tests — pass 1 of 3
         run: yarn test:integration
@@ -186,6 +195,13 @@ jobs:
           done
           npx wait-on http://localhost:3000 --timeout 180000 \
             || (echo "===== frontend.log ====="; cat /tmp/frontend.log; exit 1)
+
+      - name: Seed demo accounts for E2E tests
+        env:
+          PGPASSWORD: oa_dev_password
+        run: |
+          psql -h localhost -p 5433 -U oa_dev -d oa_dev \
+            -f server/src/test/resources/db/migration/R__test_accounts.sql
 
       - name: Run E2E tests
         run: yarn test:e2e
