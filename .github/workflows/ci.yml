@@ -207,17 +207,19 @@ jobs:
         # explicit GET-based curl loop that probes both possible URLs and prints
         # status codes each tick — much easier to diagnose than wait-on timeouts.
         run: |
+          # 200 = all components UP. 503 = backend is up and serving HTTP, but some
+          # health indicator (typically mail — MAIL_HOST defaults to '' in dev profile,
+          # which still triggers JavaMailSender auto-config and reports DOWN). Either
+          # response means the backend can answer integration test traffic.
           for i in $(seq 1 60); do
             sleep 5
-            api_code=$(curl -s -o /dev/null -w "%{http_code}" \
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
               http://localhost:8080/api/actuator/health || echo 000)
-            root_code=$(curl -s -o /dev/null -w "%{http_code}" \
-              http://localhost:8080/actuator/health || echo 000)
-            if [ "$api_code" = "200" ] || [ "$root_code" = "200" ]; then
-              echo "Backend ready at attempt $i (api=$api_code, root=$root_code)"
+            if [ "$code" = "200" ] || [ "$code" = "503" ]; then
+              echo "Backend ready at attempt $i (status=$code)"
               exit 0
             fi
-            echo "attempt $i: /api/actuator/health=$api_code, /actuator/health=$root_code"
+            echo "attempt $i: /api/actuator/health=$code"
           done
           echo "===== backend.log ====="
           cat /tmp/backend.log
