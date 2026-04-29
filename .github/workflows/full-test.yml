@@ -71,8 +71,21 @@ jobs:
 
       - name: Wait for backend to be ready
         run: |
-          npx wait-on http://localhost:8080/api/actuator/health --timeout 300000 \
-            || (echo "===== backend.log ====="; cat /tmp/backend.log; exit 1)
+          for i in $(seq 1 60); do
+            sleep 5
+            api_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/api/actuator/health || echo 000)
+            root_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/actuator/health || echo 000)
+            if [ "$api_code" = "200" ] || [ "$root_code" = "200" ]; then
+              echo "Backend ready at attempt $i (api=$api_code, root=$root_code)"
+              exit 0
+            fi
+            echo "attempt $i: /api/actuator/health=$api_code, /actuator/health=$root_code"
+          done
+          echo "===== backend.log ====="
+          cat /tmp/backend.log
+          exit 1
 
       # Three consecutive runs — all must pass to satisfy the quality gate
       - name: Run integration tests — pass 1 of 3
@@ -157,8 +170,22 @@ jobs:
 
       - name: Wait for backend and frontend to be ready
         run: |
-          npx wait-on http://localhost:8080/api/actuator/health --timeout 300000 \
-            || (echo "===== backend.log ====="; cat /tmp/backend.log; exit 1)
+          for i in $(seq 1 60); do
+            sleep 5
+            api_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/api/actuator/health || echo 000)
+            root_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/actuator/health || echo 000)
+            if [ "$api_code" = "200" ] || [ "$root_code" = "200" ]; then
+              echo "Backend ready at attempt $i"
+              break
+            fi
+            if [ "$i" = "60" ]; then
+              echo "===== backend.log ====="
+              cat /tmp/backend.log
+              exit 1
+            fi
+          done
           npx wait-on http://localhost:3000 --timeout 180000 \
             || (echo "===== frontend.log ====="; cat /tmp/frontend.log; exit 1)
 
@@ -218,8 +245,20 @@ jobs:
 
       - name: Wait for backend to be ready
         run: |
-          npx wait-on http://localhost:8080/api/actuator/health --timeout 300000 \
-            || (echo "===== backend.log ====="; cat /tmp/backend.log; exit 1)
+          for i in $(seq 1 60); do
+            sleep 5
+            api_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/api/actuator/health || echo 000)
+            root_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/actuator/health || echo 000)
+            if [ "$api_code" = "200" ] || [ "$root_code" = "200" ]; then
+              echo "Backend ready at attempt $i"
+              exit 0
+            fi
+          done
+          echo "===== backend.log ====="
+          cat /tmp/backend.log
+          exit 1
 
       - name: Prepare ZAP working directory
         run: mkdir -p tools/zap

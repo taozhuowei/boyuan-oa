@@ -201,12 +201,27 @@ jobs:
         run: mvn spring-boot:run -Dspring-boot.run.profiles=dev > /tmp/backend.log 2>&1 &
 
       - name: Wait for backend to be ready
-        # Backend application.yml sets servlet.context-path=/api → actuator exposed
-        # at /api/actuator/health, not /actuator/health. Cold CI also needs more
-        # than 120s for mvn dep resolution + Spring context init + Flyway migrate.
+        # `wait-on http://...` defaults to HEAD which Spring Boot 3 actuator may
+        # not handle, and the actuator base-path behaviour relative to
+        # servlet.context-path differs between Spring Boot versions. Use an
+        # explicit GET-based curl loop that probes both possible URLs and prints
+        # status codes each tick — much easier to diagnose than wait-on timeouts.
         run: |
-          npx wait-on http://localhost:8080/api/actuator/health --timeout 300000 \
-            || (echo "===== backend.log ====="; cat /tmp/backend.log; exit 1)
+          for i in $(seq 1 60); do
+            sleep 5
+            api_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/api/actuator/health || echo 000)
+            root_code=$(curl -s -o /dev/null -w "%{http_code}" \
+              http://localhost:8080/actuator/health || echo 000)
+            if [ "$api_code" = "200" ] || [ "$root_code" = "200" ]; then
+              echo "Backend ready at attempt $i (api=$api_code, root=$root_code)"
+              exit 0
+            fi
+            echo "attempt $i: /api/actuator/health=$api_code, /actuator/health=$root_code"
+          done
+          echo "===== backend.log ====="
+          cat /tmp/backend.log
+          exit 1
 
       - name: Run integration tests
         run: yarn test:integration
