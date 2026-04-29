@@ -1,13 +1,30 @@
 package com.oa.backend.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.oa.backend.dto.PositionLevelUpsertRequest;
+import com.oa.backend.dto.PositionResponse;
+import com.oa.backend.dto.RoleUpsertRequest;
+import com.oa.backend.dto.SetupFinalizeRequest;
+import com.oa.backend.entity.ApprovalFlowDef;
+import com.oa.backend.entity.Department;
 import com.oa.backend.entity.Employee;
+import com.oa.backend.entity.RetentionPolicy;
 import com.oa.backend.entity.Role;
+import com.oa.backend.mapper.DepartmentMapper;
 import com.oa.backend.mapper.EmployeeMapper;
+import com.oa.backend.mapper.RetentionPolicyMapper;
 import com.oa.backend.mapper.RoleMapper;
 import com.oa.backend.mapper.SystemConfigMapper;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +42,7 @@ import org.springframework.transaction.annotation.Transactional;
  *   <li>CEO 账户创建时生成 32 位恢复码，用于密码重置
  *   <li>恢复码使用 BCrypt 哈希存储，明文仅返回一次
  *   <li>验证恢复码后自动轮换，确保一次性使用
+ *   <li>finalize 阶段（DEF-SETUP-04 C2）使用独立的 wizard_finalize_token，避免与恢复码语义混用
  * </ul>
  */
 @Slf4j
@@ -36,12 +54,28 @@ public class SetupService {
   private static final String KEY_INITIALIZED_AT = "initialized_at";
   private static final String KEY_RECOVERY_CODE_HASH = "recovery_code_hash";
   private static final String KEY_COMPANY_NAME = "company_name";
+  private static final String KEY_FINALIZE_COMPLETED = "wizard_finalize_completed";
+  private static final String KEY_FINALIZE_TOKEN = "wizard_finalize_token";
   private static final String DEFAULT_PASSWORD = "123456";
+  private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
   private final SystemConfigMapper systemConfigMapper;
   private final EmployeeMapper employeeMapper;
   private final RoleMapper roleMapper;
+  private final DepartmentMapper departmentMapper;
+  private final RetentionPolicyMapper retentionPolicyMapper;
   private final PasswordEncoder passwordEncoder;
+  // services injected for finalize step orchestration; controller-layer rule
+  // forbids Mapper injection in controllers, but service-to-service injection
+  // is allowed and preferred for business reuse.
+  private final EmployeeService employeeService;
+  private final PositionService positionService;
+  private final OrgService orgService;
+  private final SystemConfigService systemConfigService;
+  private final ApprovalFlowService approvalFlowService;
+  // D-M08 finalize 双写：DB sys_role 之外，同时把角色注入 AccessManagementService 内存存储，
+  // 与运营态 POST /api/roles 写入路径保持一致；DEF-ROLE-01 修复完成后此双写可统一收敛。
+  private final AccessManagementService accessManagementService;
 
   /**
    * 检查系统是否已初始化。
@@ -50,6 +84,16 @@ public class SetupService {
    */
   public boolean isInitialized() {
     String value = systemConfigMapper.getValue(KEY_INITIALIZED);
+    return Boolean.parseBoolean(value);
+  }
+
+  /**
+   * 检查 finalize（step 5-10 原子提交）是否已完成。
+   *
+   * @return 如果 wizard_finalize_completed 为 "true" 返回 true，否则返回 false
+   */
+  public boolean isFinalizeCompleted() {
+    String value = systemConfigMapper.getValue(KEY_FINALIZE_COMPLETED);
     return Boolean.parseBoolean(value);
   }
 
@@ -73,11 +117,12 @@ public class SetupService {
    *   <li>可选：创建运营总监账户
    *   <li>可选：创建总经理账户
    *   <li>可选：创建自定义角色
+   *   <li>生成 finalize 幂等性令牌（哈希入库，明文返回前端缓存）
    *   <li>标记系统已初始化
    * </ol>
    *
    * @param request 初始化请求，包含账户信息和可选配置
-   * @return 初始化结果，包含恢复码（仅返回一次）
+   * @return 初始化结果，包含恢复码（仅返回一次）和 finalize 令牌
    * @throws IllegalArgumentException 如果请求无效或系统已初始化
    */
   @Transactional
@@ -133,19 +178,39 @@ public class SetupService {
       systemConfigMapper.setValue(KEY_COMPANY_NAME, request.companyName().trim(), "企业名称");
     }
 
+    // 生成 finalize 幂等性令牌（明文返回，哈希入库）
+    String finalizeToken = generateFinalizeToken();
+    String finalizeTokenHash = sha256Hex(finalizeToken);
+    systemConfigMapper.setValue(
+        KEY_FINALIZE_TOKEN, finalizeTokenHash, "初始化向导 finalize 幂等性令牌（SHA-256 哈希）");
+    // ensure completed flag is explicitly false (V21 seeded it, but keep idempotent)
+    systemConfigMapper.setValue(KEY_FINALIZE_COMPLETED, "false", "初始化向导 step 5-10 finalize 完成标记");
+
     // 标记系统已初始化
     systemConfigMapper.setValue(KEY_INITIALIZED, "true", "系统初始化状态");
     systemConfigMapper.setValue(KEY_INITIALIZED_AT, LocalDateTime.now().toString(), "系统初始化时间");
 
     log.info("系统初始化完成");
 
-    return new SetupResult(recoveryCode, "系统初始化成功");
+    return new SetupResult(recoveryCode, finalizeToken, "系统初始化成功");
   }
 
   /** 开发环境重置初始化状态。 仅在开发环境使用，将 initialized 标记为 false。 */
   public void resetForDev() {
     systemConfigMapper.updateValue(KEY_INITIALIZED, "false");
     log.info("开发环境：系统初始化状态已重置");
+  }
+
+  /**
+   * 开发环境重置 finalize 状态。
+   *
+   * <p>将 wizard_finalize_completed 重置为 "false"，清空 wizard_finalize_token。 业务数据（角色、员工、配置等）的清理由调用方
+   * /dev/reset-finalize 端点单独处理（复用 /dev/reset 的清理逻辑并补齐 finalize 写入的特殊项）。
+   */
+  public void resetFinalizeForDev() {
+    systemConfigMapper.updateValue(KEY_FINALIZE_COMPLETED, "false");
+    systemConfigMapper.updateValue(KEY_FINALIZE_TOKEN, null);
+    log.info("开发环境：finalize 状态已重置");
   }
 
   /**
@@ -224,6 +289,304 @@ public class SetupService {
     return newRecoveryCode;
   }
 
+  /**
+   * 初始化向导 step 5-10 原子提交（DEF-SETUP-04 C2）。
+   *
+   * <p>鉴权：比对 SHA-256 哈希后的 wizard_finalize_token，避免与恢复码语义混用。
+   *
+   * <p>幂等：wizard_finalize_completed=true 时拒绝重复提交。
+   *
+   * <p>事务：{@code @Transactional(rollbackFor = Exception.class)} 确保任一步骤失败全部回滚。
+   *
+   * @param request finalize 请求体
+   * @throws IllegalArgumentException 令牌为空或不匹配
+   * @throws IllegalStateException finalize 已完成 / token 未设置
+   */
+  @Transactional(rollbackFor = Exception.class)
+  public void finalizeWizard(SetupFinalizeRequest request) {
+    // step ordering rationale (do not reorder without checking the dependency chain):
+    //   step 5 (roles) MUST run before step 6 (employees) — employee.role_code references
+    //     custom roles introduced here.
+    //   step 5 (roles) MUST run before step 9 (approval flows) — approver_type=ROLE
+    //     entries reference role codes.
+    //   step 6 (employees) MUST run before step 7 (organization) — supervisor mappings
+    //     are resolved via the tempId→realId map populated in applyEmployeeImport.
+    //   step 8/10 are independent and may run anywhere after token validation.
+    if (request == null) {
+      throw new IllegalArgumentException("finalize 请求不能为空");
+    }
+    validateRequired(request.wizardFinalizeToken(), "finalize 令牌");
+
+    // 1. 校验幂等性
+    if (isFinalizeCompleted()) {
+      throw new IllegalStateException("初始化向导已完成，不能重复提交");
+    }
+
+    // 2. 校验令牌（constant-time 比较防止时序攻击）
+    String storedHash = systemConfigMapper.getValue(KEY_FINALIZE_TOKEN);
+    if (storedHash == null || storedHash.isBlank()) {
+      throw new IllegalStateException("finalize 令牌未设置");
+    }
+    String providedHash = sha256Hex(request.wizardFinalizeToken());
+    if (!MessageDigest.isEqual(
+        storedHash.getBytes(StandardCharsets.UTF_8),
+        providedHash.getBytes(StandardCharsets.UTF_8))) {
+      throw new IllegalArgumentException("finalize 令牌不正确");
+    }
+
+    // 3. 按依赖顺序应用 step 5-10
+    //    tempIdToEmployeeId 在 step 6 中填充，供 step 7 汇报关系解析
+    Map<String, Long> tempIdToEmployeeId = new HashMap<>();
+    applyRoles(request.roles());
+    applyEmployeeImport(request.employeeImport(), tempIdToEmployeeId);
+    applyOrganization(request.organization(), tempIdToEmployeeId);
+    applyGlobalConfig(request.globalConfig());
+    applyApprovalFlows(request.approvalFlows());
+    applyRetention(request.retention());
+
+    // 4. 标记完成 + 清空令牌
+    systemConfigMapper.updateValue(KEY_FINALIZE_COMPLETED, "true");
+    systemConfigMapper.updateValue(KEY_FINALIZE_TOKEN, null);
+    log.info("初始化向导 finalize 完成");
+  }
+
+  // ==================== Finalize Step Helpers ====================
+
+  /**
+   * step 5：自定义角色（fail-fast，缺关键字段或与系统内置角色冲突 → 抛异常触发回滚）。
+   *
+   * <p>顶层已经校验过 roles==null 视为跳过；进入此方法即视为有内容，每条 entry 必须完整。
+   *
+   * <p>D-M08 双写策略：DB {@code sys_role} 之外，同时调 {@link AccessManagementService#createRole} 写入内存， 与运营态
+   * POST /api/roles 一致。permissions 字段不做白名单校验（合法性属于 DEF-ROLE-01 范畴）。
+   * AccessManagementService.createRole 抛异常 → 让 {@code @Transactional(rollbackFor =
+   * Exception.class)} 整体回滚 DB 部分；接受"@Transactional 不回滚内存"的弱一致性现状（DEF-ROLE-01 修复范畴）。
+   */
+  private void applyRoles(List<SetupFinalizeRequest.RoleConfigDto> roles) {
+    if (roles == null || roles.isEmpty()) return;
+    for (int i = 0; i < roles.size(); i++) {
+      SetupFinalizeRequest.RoleConfigDto r = roles.get(i);
+      if (r == null) {
+        throw new IllegalArgumentException("roles[" + i + "] 不能为 null");
+      }
+      if (r.code() == null || r.code().isBlank()) {
+        throw new IllegalArgumentException("roles[" + i + "].code 为空");
+      }
+      String code = r.code();
+      String name = r.name() == null ? code : r.name();
+      // P2-3：与系统内置角色冲突时给出明确错误，而不是依赖 unique-index 的原始约束异常
+      Role existing = roleMapper.selectOne(new QueryWrapper<Role>().eq("role_code", code));
+      if (existing != null) {
+        throw new IllegalArgumentException("自定义角色编码 " + code + " 与系统内置角色冲突");
+      }
+      Role role = new Role();
+      role.setRoleCode(code);
+      role.setRoleName(name);
+      role.setDescription(r.description());
+      role.setStatus(1);
+      role.setIsSystem(0);
+      role.setCreateTime(LocalDateTime.now());
+      role.setUpdateTime(LocalDateTime.now());
+      roleMapper.insert(role);
+      // 双写：注入 AccessManagementService 内存（与运营态 /api/roles 创建路径一致）；
+      // permissions=null 时传 emptyList（AccessManagementService.normalizePermissions 同样接受 null，
+      // 但显式传 emptyList 让契约更清晰）。
+      List<String> permissions = r.permissions() == null ? List.of() : r.permissions();
+      accessManagementService.createRole(
+          new RoleUpsertRequest(code, name, r.description(), 1, permissions));
+    }
+    log.info("finalize step 5: created {} custom role(s)", roles.size());
+  }
+
+  /**
+   * step 6：员工批量导入（部门 → 岗位/等级 → 员工）。
+   *
+   * <p>员工创建后将其 tempId → 真实 id 写入 {@code tempIdMap}，供 step 7 解析汇报关系。 同一 finalize 请求中 tempId 必须唯一，否则抛
+   * IllegalArgumentException。
+   */
+  private void applyEmployeeImport(
+      SetupFinalizeRequest.EmployeeImportDto dto, Map<String, Long> tempIdMap) {
+    if (dto == null) return;
+    if (dto.departments() != null) {
+      for (int i = 0; i < dto.departments().size(); i++) {
+        SetupFinalizeRequest.DepartmentDto d = dto.departments().get(i);
+        if (d == null) {
+          throw new IllegalArgumentException("employeeImport.departments[" + i + "] 不能为 null");
+        }
+        if (d.name() == null || d.name().isBlank()) {
+          throw new IllegalArgumentException("employeeImport.departments[" + i + "].name 为空");
+        }
+        Department dept = new Department();
+        dept.setParentId(d.parentId());
+        dept.setName(d.name());
+        dept.setSort(d.sort() == null ? 0 : d.sort());
+        dept.setCreatedAt(LocalDateTime.now());
+        dept.setUpdatedAt(LocalDateTime.now());
+        dept.setDeleted(0);
+        departmentMapper.insert(dept);
+      }
+    }
+    if (dto.positions() != null) {
+      for (int i = 0; i < dto.positions().size(); i++) {
+        SetupFinalizeRequest.PositionDto p = dto.positions().get(i);
+        if (p == null) {
+          throw new IllegalArgumentException("employeeImport.positions[" + i + "] 不能为 null");
+        }
+        if (p.position() == null) {
+          throw new IllegalArgumentException("employeeImport.positions[" + i + "].position 为空");
+        }
+        PositionResponse created = positionService.createPosition(p.position());
+        if (p.levels() != null) {
+          for (int j = 0; j < p.levels().size(); j++) {
+            PositionLevelUpsertRequest lvl = p.levels().get(j);
+            if (lvl == null) {
+              throw new IllegalArgumentException(
+                  "employeeImport.positions[" + i + "].levels[" + j + "] 不能为 null");
+            }
+            positionService.createLevel(created.id(), lvl);
+          }
+        }
+      }
+    }
+    if (dto.employees() != null) {
+      for (int i = 0; i < dto.employees().size(); i++) {
+        SetupFinalizeRequest.EmployeeImportEntryDto entry = dto.employees().get(i);
+        if (entry == null) {
+          throw new IllegalArgumentException("employeeImport.employees[" + i + "] 不能为 null");
+        }
+        if (entry.tempId() == null || entry.tempId().isBlank()) {
+          throw new IllegalArgumentException("employeeImport.employees[" + i + "].tempId 为空");
+        }
+        if (entry.payload() == null) {
+          throw new IllegalArgumentException("employeeImport.employees[" + i + "].payload 为空");
+        }
+        if (tempIdMap.containsKey(entry.tempId())) {
+          throw new IllegalArgumentException("员工 tempId 重复: " + entry.tempId());
+        }
+        Employee created = employeeService.createEmployee(entry.payload());
+        tempIdMap.put(entry.tempId(), created.getId());
+      }
+    }
+    log.info("finalize step 6: employee import applied (tempId map size={})", tempIdMap.size());
+  }
+
+  /**
+   * step 7：汇报关系（通过 tempId 解析为真实员工 id）。
+   *
+   * <p>未知 tempId → IllegalArgumentException 触发整体回滚。 supervisorTempId == null 表示清空汇报关系，向 OrgService
+   * 传入 null 即可。
+   */
+  private void applyOrganization(
+      SetupFinalizeRequest.OrganizationDto dto, Map<String, Long> tempIdMap) {
+    if (dto == null || dto.supervisors() == null) return;
+    for (int i = 0; i < dto.supervisors().size(); i++) {
+      SetupFinalizeRequest.SupervisorMappingDto m = dto.supervisors().get(i);
+      if (m == null) {
+        throw new IllegalArgumentException("organization.supervisors[" + i + "] 不能为 null");
+      }
+      if (m.employeeTempId() == null || m.employeeTempId().isBlank()) {
+        throw new IllegalArgumentException("organization.supervisors[" + i + "].employeeTempId 为空");
+      }
+      Long employeeId = tempIdMap.get(m.employeeTempId());
+      if (employeeId == null) {
+        throw new IllegalArgumentException("未知的员工 tempId: " + m.employeeTempId());
+      }
+      Long supervisorId = null;
+      if (m.supervisorTempId() != null && !m.supervisorTempId().isBlank()) {
+        supervisorId = tempIdMap.get(m.supervisorTempId());
+        if (supervisorId == null) {
+          throw new IllegalArgumentException("未知的员工 tempId: " + m.supervisorTempId());
+        }
+      }
+      orgService.updateSupervisor(employeeId, supervisorId);
+    }
+    log.info("finalize step 7: applied {} supervisor mappings", dto.supervisors().size());
+  }
+
+  /** step 8：全局配置（fail-fast）。 */
+  private void applyGlobalConfig(SetupFinalizeRequest.GlobalConfigDto dto) {
+    if (dto == null || dto.entries() == null) return;
+    for (int i = 0; i < dto.entries().size(); i++) {
+      SetupFinalizeRequest.ConfigEntryDto e = dto.entries().get(i);
+      if (e == null) {
+        throw new IllegalArgumentException("globalConfig.entries[" + i + "] 不能为 null");
+      }
+      if (e.key() == null || e.key().isBlank()) {
+        throw new IllegalArgumentException("globalConfig.entries[" + i + "].key 为空");
+      }
+      systemConfigService.upsertConfig(e.key(), e.value(), e.description());
+    }
+    log.info("finalize step 8: upserted {} system_config entries", dto.entries().size());
+  }
+
+  /**
+   * step 9：审批流节点替换。
+   *
+   * <p>使用 businessType 解析为 flowId（前端复用 ApprovalFlowPanel 组件，吐出 businessType 字符串）。 businessType
+   * 在数据库中为大写枚举（LEAVE/OVERTIME/...），此处统一 toUpperCase 后再查询。
+   */
+  private void applyApprovalFlows(List<SetupFinalizeRequest.ApprovalFlowDto> flows) {
+    if (flows == null) return;
+    for (int i = 0; i < flows.size(); i++) {
+      SetupFinalizeRequest.ApprovalFlowDto f = flows.get(i);
+      if (f == null) {
+        throw new IllegalArgumentException("approvalFlows[" + i + "] 不能为 null");
+      }
+      if (f.businessType() == null || f.businessType().isBlank()) {
+        throw new IllegalArgumentException("approvalFlows[" + i + "].businessType 为空");
+      }
+      if (f.nodes() == null || f.nodes().isEmpty()) {
+        throw new IllegalArgumentException("approvalFlows[" + i + "].nodes 为空");
+      }
+      String businessType = f.businessType().toUpperCase();
+      ApprovalFlowDef def = approvalFlowService.findActiveFlowDefByBusinessType(businessType);
+      if (def == null) {
+        throw new IllegalArgumentException("无效的审批流业务类型: " + businessType);
+      }
+      List<ApprovalFlowService.ApprovalFlowNodeSpec> specs =
+          f.nodes().stream()
+              .filter(n -> n != null)
+              .map(
+                  n ->
+                      new ApprovalFlowService.ApprovalFlowNodeSpec(
+                          n.nodeName(), n.approverType(), n.approverRef(), n.skipCondition()))
+              .toList();
+      approvalFlowService.replaceFlowNodes(def.getId(), specs);
+    }
+    log.info("finalize step 9: replaced nodes for {} flow(s)", flows.size());
+  }
+
+  /** step 10：数据保留期。upsert 语义 — 已存在则更新年限/警告，否则插入。 fail-fast：dataType 缺失即抛异常。 */
+  private void applyRetention(SetupFinalizeRequest.RetentionDto dto) {
+    if (dto == null || dto.policies() == null) return;
+    for (int i = 0; i < dto.policies().size(); i++) {
+      SetupFinalizeRequest.RetentionPolicyDto p = dto.policies().get(i);
+      if (p == null) {
+        throw new IllegalArgumentException("retention.policies[" + i + "] 不能为 null");
+      }
+      if (p.dataType() == null || p.dataType().isBlank()) {
+        throw new IllegalArgumentException("retention.policies[" + i + "].dataType 为空");
+      }
+      RetentionPolicy existing = retentionPolicyMapper.findByDataType(p.dataType());
+      if (existing != null) {
+        existing.setRetentionYears(p.retentionYears());
+        existing.setWarnBeforeDays(p.warnBeforeDays());
+        existing.setUpdatedAt(LocalDateTime.now());
+        retentionPolicyMapper.updateById(existing);
+      } else {
+        RetentionPolicy policy = new RetentionPolicy();
+        policy.setDataType(p.dataType());
+        policy.setRetentionYears(p.retentionYears());
+        policy.setWarnBeforeDays(p.warnBeforeDays());
+        policy.setCreatedAt(LocalDateTime.now());
+        policy.setUpdatedAt(LocalDateTime.now());
+        policy.setDeleted(0);
+        retentionPolicyMapper.insert(policy);
+      }
+    }
+    log.info("finalize step 10: applied {} retention policies", dto.policies().size());
+  }
+
   // ==================== Private Helpers ====================
 
   private void validateRequired(String value, String fieldName) {
@@ -238,6 +601,32 @@ public class SetupService {
 
   private String generateRecoveryCode() {
     return UUID.randomUUID().toString().replace("-", "").substring(0, 32);
+  }
+
+  /**
+   * 生成 finalize 幂等性令牌：32 位 secure random（base64url，无填充）。 与恢复码隔离，避免 verifyAndRotateRecoveryCode
+   * 的轮换语义影响 finalize 鉴权。
+   */
+  private String generateFinalizeToken() {
+    byte[] bytes = new byte[24]; // 24 bytes → 32 chars base64url
+    SECURE_RANDOM.nextBytes(bytes);
+    return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+  }
+
+  /** SHA-256(input) → hex string；用于 finalize 令牌入库存储与比对。 */
+  private String sha256Hex(String input) {
+    try {
+      MessageDigest md = MessageDigest.getInstance("SHA-256");
+      byte[] digest = md.digest(input.getBytes(StandardCharsets.UTF_8));
+      StringBuilder sb = new StringBuilder(digest.length * 2);
+      for (byte b : digest) {
+        sb.append(String.format("%02x", b));
+      }
+      return sb.toString();
+    } catch (NoSuchAlgorithmException e) {
+      // SHA-256 is part of every JRE; this branch is unreachable in practice.
+      throw new IllegalStateException("SHA-256 algorithm not available", e);
+    }
   }
 
   private Long createCeoAccount(SetupRequest request, String recoveryCodeHash) {
@@ -412,7 +801,8 @@ public class SetupService {
    * 初始化结果。
    *
    * @param recoveryCode CEO 恢复码（明文，仅返回一次）
+   * @param wizardFinalizeToken finalize 阶段使用的明文幂等性令牌（仅返回一次，前端在 reactive state 缓存）
    * @param message 结果消息
    */
-  public record SetupResult(String recoveryCode, String message) {}
+  public record SetupResult(String recoveryCode, String wizardFinalizeToken, String message) {}
 }

@@ -1,126 +1,97 @@
 <template>
+  <!--
+    /role 角色管理页（CEO 运营态）
+
+    重构记录（D-M08 / DEF-SETUP-04 C2 方案）：
+    - 自定义角色的新增/编辑/删除/权限矩阵全部下沉到共用组件 <RoleConfigPanel />，
+      与 /setup 初始化向导步骤 5 共享 UI 与交互。
+    - 本页继续承担数据加载（GET /api/roles）与持久化（POST/PUT/DELETE /api/roles），
+      并保留系统内置角色的只读展示（系统角色不可编辑/删除，用单独的只读表格呈现）。
+  -->
   <div class="roles-page">
     <h2 class="page-title">角色管理</h2>
 
-    <a-card>
-      <!-- Top actions bar -->
-      <div class="search-bar">
-        <div />
-        <a-button v-if="isCEO" type="primary" @click="openCreateModal">新增角色</a-button>
-      </div>
-
-      <a-table :columns="columns" :data-source="roles" :loading="loading" row-key="id" size="small">
+    <!-- 系统角色只读展示：保持原页面的"类型/状态"信息可见 -->
+    <a-card title="系统内置角色（只读）" class="role-section" size="small">
+      <a-table
+        :columns="systemColumns"
+        :data-source="systemRoles"
+        :loading="loading"
+        :pagination="false"
+        row-key="id"
+        size="small"
+      >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'isSystem'">
-            <a-tag :color="record.isSystem ? 'blue' : 'default'">
-              {{ record.isSystem ? '系统' : '自定义' }}
-            </a-tag>
+            <a-tag color="blue">系统</a-tag>
           </template>
           <template v-if="column.key === 'status'">
-            <a-tag :color="record.status === 1 ? 'success' : 'default'">
-              {{ record.status === 1 ? '启用' : '禁用' }}
+            <a-tag :color="(record as Role).status === 1 ? 'success' : 'default'">
+              {{ (record as Role).status === 1 ? '启用' : '禁用' }}
             </a-tag>
           </template>
-          <template v-if="column.key === 'action'">
-            <template v-if="isCEO && !record.isSystem">
-              <a-button
-                type="link"
-                size="small"
-                :data-catch="'role-row-edit-btn-' + record.roleCode"
-                @click="openEditModal(record as Role)"
-              >
-                编辑
-              </a-button>
-              <a-popconfirm
-                title="确定删除该角色吗？"
-                ok-text="确定"
-                cancel-text="取消"
-                @confirm="handleDelete(record.id)"
-              >
-                <a-button
-                  type="link"
-                  size="small"
-                  danger
-                  :data-catch="'role-row-delete-btn-' + record.roleCode"
-                >
-                  删除
-                </a-button>
-              </a-popconfirm>
-            </template>
-            <template v-else>-</template>
+          <template v-if="column.key === 'permissions'">
+            <a-tag>{{ ((record as Role).permissions || []).length }} 项</a-tag>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <!-- Create/Edit Modal -->
-    <a-modal
-      v-model:open="modalVisible"
-      :title="isEditMode ? '编辑角色' : '新增角色'"
-      ok-text="保存"
-      @ok="handleModalOk"
-      @cancel="closeModal"
-    >
-      <a-form :model="formState" :rules="rules" ref="formRef" layout="vertical">
-        <a-form-item label="角色编码" name="roleCode">
-          <a-input
-            v-model:value="formState.roleCode"
-            placeholder="请输入角色编码"
-            :disabled="isEditMode"
-          />
-        </a-form-item>
-        <a-form-item label="角色名称" name="roleName">
-          <a-input v-model:value="formState.roleName" placeholder="请输入角色名称" />
-        </a-form-item>
-        <a-form-item label="描述" name="description">
-          <a-textarea v-model:value="formState.description" placeholder="请输入描述" :rows="3" />
-        </a-form-item>
-        <a-form-item label="状态" name="status">
-          <a-select v-model:value="formState.status" :options="statusOptions" />
-        </a-form-item>
-
-        <a-divider style="margin: 8px 0">权限矩阵（设计 §2.2 步骤 5）</a-divider>
-        <table class="perm-matrix">
-          <thead>
-            <tr>
-              <th>模块</th>
-              <th v-for="lvl in PERMISSION_LEVELS" :key="lvl.code">{{ lvl.label }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="mod in PERMISSION_MODULES" :key="mod.code">
-              <td>{{ mod.label }}</td>
-              <td v-for="lvl in PERMISSION_LEVELS" :key="lvl.code">
-                <a-checkbox
-                  :checked="hasPermission(mod.code, lvl.code)"
-                  @change="
-                    (e: CheckboxChangeEvent) =>
-                      togglePermission(mod.code, lvl.code, Boolean(e.target.checked))
-                  "
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </a-form>
-      <template #footer>
-        <a-button @click="closeModal">取消</a-button>
-        <a-button type="primary" data-catch="role-modal-save-btn" @click="handleModalOk">
-          保存
-        </a-button>
+    <!-- 自定义角色：复用 RoleConfigPanel，CEO 才允许编辑（非 CEO 模式下面板仍渲染但所有交互按钮无效，
+         由后端 @PreAuthorize('hasRole(CEO)') 二次保护，避免前端绕过） -->
+    <a-card title="自定义角色" class="role-section" size="small">
+      <template v-if="isCEO">
+        <RoleConfigPanel
+          v-model="customRoles"
+          mode="operation"
+          @change="handleRoleChange"
+        />
       </template>
-    </a-modal>
+      <template v-else>
+        <a-empty description="仅 CEO 可管理自定义角色" />
+      </template>
+    </a-card>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+/**
+ * /role 页面脚本
+ *
+ * 职责：
+ *   1. 拉取所有角色（GET /api/roles）并按 isSystem 拆分为
+ *      systemRoles（只读展示）与 customRoles（绑定 RoleConfigPanel v-model）
+ *   2. 在 RoleConfigPanel 'change' 事件触发时分发到对应 API：
+ *        create → POST /api/roles
+ *        update → PUT  /api/roles/{id}
+ *        delete → DELETE /api/roles/{id}
+ *   3. API 调用成功后重新拉取列表，保证乐观更新与后端真实状态一致
+ *
+ * 不变量：
+ *   - 本页不直接操作权限矩阵 UI，矩阵交互全部由 RoleConfigPanel 承担
+ *   - API 仍保留旧字段（roleCode/roleName/status:number），通过 mapper 与 CustomRole 双向转换
+ */
+import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
-import type { Rule } from 'ant-design-vue/es/form'
-import type { CheckboxChangeEvent } from 'ant-design-vue/es/checkbox/interface'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
+import RoleConfigPanel, { type CustomRole } from '~/components/setup/RoleConfigPanel.vue'
 
+// ────────────────────────────────────────────────────────────────────
+// API 数据模型（与后端 RoleViewResponse / RoleUpsertRequest 对齐）
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * 后端 RoleViewResponse 的前端镜像类型；与 CustomRole 通过 mapper 互转。
+ *
+ * @property id          数据库主键（PUT/DELETE 用）
+ * @property roleCode    角色编码（系统唯一）
+ * @property roleName    角色显示名
+ * @property description 描述
+ * @property status      1=启用，0=禁用（后端为 Integer）
+ * @property isSystem    是否系统内置（true 时不可编辑/删除）
+ * @property permissions 权限码数组
+ */
 interface Role {
   id: number
   roleCode: string
@@ -131,176 +102,155 @@ interface Role {
   permissions: string[]
 }
 
-interface FormState {
-  id?: number
-  roleCode: string
-  roleName: string
-  description: string
-  status: number
-  permissions: string[]
-}
-
 const userStore = useUserStore()
 const isCEO = computed(() => userStore.userInfo?.role === 'ceo')
 
-// 设计 §2.2 步骤 5：4 级权限 × 6 大模块 = 24 个权限码
-const PERMISSION_MODULES = [
-  { code: 'HR', label: '人员' },
-  { code: 'PROJECT', label: '项目' },
-  { code: 'PAYROLL', label: '薪资' },
-  { code: 'ATTENDANCE', label: '考勤' },
-  { code: 'EXPENSE', label: '报销' },
-  { code: 'INJURY', label: '工伤' },
-]
-const PERMISSION_LEVELS = [
-  { code: 'VIEW', label: '查看' },
-  { code: 'EDIT', label: '修改' },
-  { code: 'MANAGE', label: '增删' },
-  { code: 'APPROVE', label: '审批' },
-]
-function permCode(mod: string, lvl: string) {
-  return `${mod}_${lvl}`
-}
-function hasPermission(mod: string, lvl: string): boolean {
-  return formState.permissions.includes(permCode(mod, lvl))
-}
-function togglePermission(mod: string, lvl: string, checked: boolean) {
-  const code = permCode(mod, lvl)
-  if (checked && !formState.permissions.includes(code)) {
-    formState.permissions.push(code)
-  } else if (!checked) {
-    formState.permissions = formState.permissions.filter((p) => p !== code)
-  }
-}
-
 const loading = ref(false)
-const roles = ref<Role[]>([])
-const modalVisible = ref(false)
-const isEditMode = ref(false)
-const formRef = ref()
+/** 全量角色列表（含系统 + 自定义），由 GET /api/roles 加载 */
+const allRoles = ref<Role[]>([])
+/**
+ * 自定义角色列表（CustomRole 5 字段视图），与 RoleConfigPanel v-model 双向绑定。
+ * 数据来源：allRoles 中 isSystem=false 的子集，经 toCustomRole 映射；
+ * 用户在面板内编辑时本地数组先变更，再由 handleRoleChange 调用 API 同步。
+ */
+const customRoles = ref<CustomRole[]>([])
 
-const formState = reactive<FormState>({
-  roleCode: '',
-  roleName: '',
-  description: '',
-  status: 1,
-  permissions: [],
-})
+/** 系统角色列表（只读展示） */
+const systemRoles = computed(() => allRoles.value.filter((r) => r.isSystem))
 
-const statusOptions = [
-  { value: 1, label: '启用' },
-  { value: 0, label: '禁用' },
-]
-
-const columns = [
+const systemColumns = [
   { title: '角色名称', dataIndex: 'roleName', key: 'roleName' },
   { title: '角色编码', dataIndex: 'roleCode', key: 'roleCode' },
   { title: '描述', dataIndex: 'description', key: 'description' },
   { title: '类型', key: 'isSystem', width: 100 },
   { title: '状态', key: 'status', width: 100 },
-  { title: '操作', key: 'action', width: 120 },
+  { title: '权限数量', key: 'permissions', width: 100 },
 ]
 
-const rules: Record<string, Rule[]> = {
-  roleCode: [{ required: true, message: '角色编码不能为空', trigger: 'blur' }],
-  roleName: [{ required: true, message: '角色名称不能为空', trigger: 'blur' }],
+// ────────────────────────────────────────────────────────────────────
+// 数据映射
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * Role(API) → CustomRole(panel)
+ * @param r 后端返回的角色对象
+ */
+function toCustomRole(r: Role): CustomRole {
+  return {
+    code: r.roleCode,
+    name: r.roleName,
+    description: r.description ?? '',
+    status: r.status === 1 ? 'active' : 'inactive',
+    permissions: r.permissions ?? [],
+  }
 }
 
-async function loadRoles() {
+/**
+ * CustomRole(panel) → 后端 Upsert 请求体
+ * @param c 面板回调返回的角色对象
+ */
+function toUpsertPayload(c: CustomRole): {
+  roleCode: string
+  roleName: string
+  description: string
+  status: number
+  permissions: string[]
+} {
+  return {
+    roleCode: c.code,
+    roleName: c.name,
+    description: c.description ?? '',
+    status: c.status === 'inactive' ? 0 : 1,
+    permissions: c.permissions ?? [],
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// 数据加载
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * 从后端拉取全部角色，按 isSystem 拆分到 systemRoles / customRoles。
+ * 失败时静默置空，由 request 公共拦截器输出错误 toast。
+ */
+async function loadRoles(): Promise<void> {
   loading.value = true
   try {
     const data = await request<Role[]>({ url: '/roles' })
-    roles.value = data ?? []
+    allRoles.value = data ?? []
+    customRoles.value = (data ?? []).filter((r) => !r.isSystem).map(toCustomRole)
   } catch {
-    roles.value = []
+    allRoles.value = []
+    customRoles.value = []
   } finally {
     loading.value = false
   }
 }
 
-function resetForm() {
-  formState.id = undefined
-  formState.roleCode = ''
-  formState.roleName = ''
-  formState.description = ''
-  formState.status = 1
-  formState.permissions = []
-}
+// ────────────────────────────────────────────────────────────────────
+// RoleConfigPanel @change 事件分发
+// ────────────────────────────────────────────────────────────────────
 
-function openCreateModal() {
-  isEditMode.value = false
-  resetForm()
-  modalVisible.value = true
-}
-
-function openEditModal(record: Role) {
-  isEditMode.value = true
-  formState.id = record.id
-  formState.roleCode = record.roleCode
-  formState.roleName = record.roleName
-  formState.description = record.description
-  formState.status = record.status
-  formState.permissions = record.permissions ?? []
-  modalVisible.value = true
-}
-
-function closeModal() {
-  modalVisible.value = false
-  formRef.value?.resetFields()
-}
-
-async function handleModalOk() {
-  try {
-    await formRef.value.validate()
-  } catch {
-    return
-  }
-
-  const payload = {
-    roleCode: formState.roleCode,
-    roleName: formState.roleName,
-    description: formState.description,
-    status: formState.status,
-    permissions: formState.permissions,
-  }
+/**
+ * 面板内交互事件分发：根据 action 调用对应 API。
+ * 成功后重载完整列表（避免本地数组与后端真实主键 id 不同步）。
+ *
+ * @param payload 面板回传的事件载荷
+ * @param payload.action 用户动作：create | update | delete
+ * @param payload.role   关联角色（CustomRole 5 字段）
+ */
+async function handleRoleChange(payload: {
+  action: 'create' | 'update' | 'delete'
+  role: CustomRole
+}): Promise<void> {
+  const { action, role } = payload
 
   try {
-    if (isEditMode.value && formState.id) {
-      await request({
-        url: `/roles/${formState.id}`,
-        method: 'PUT',
-        body: payload,
-      })
-      message.success('角色更新成功')
-    } else {
+    if (action === 'create') {
       await request({
         url: '/roles',
         method: 'POST',
-        body: payload,
+        body: toUpsertPayload(role),
       })
       message.success('角色创建成功')
+    } else if (action === 'update') {
+      // 通过 code 找到对应的真实主键 id
+      const target = allRoles.value.find((r) => r.roleCode === role.code)
+      if (!target) {
+        message.error('未找到目标角色，请刷新后重试')
+        await loadRoles()
+        return
+      }
+      await request({
+        url: `/roles/${target.id}`,
+        method: 'PUT',
+        body: toUpsertPayload(role),
+      })
+      message.success('角色更新成功')
+    } else if (action === 'delete') {
+      const target = allRoles.value.find((r) => r.roleCode === role.code)
+      if (!target) {
+        message.error('未找到目标角色，请刷新后重试')
+        await loadRoles()
+        return
+      }
+      await request({
+        url: `/roles/${target.id}`,
+        method: 'DELETE',
+      })
+      message.success('角色删除成功')
     }
-    closeModal()
-    await loadRoles()
-  } catch {
-    // Error handling is done by the request utility, but we can show additional message if needed
-  }
-}
-
-async function handleDelete(id: number) {
-  try {
-    await request({
-      url: `/roles/${id}`,
-      method: 'DELETE',
-    })
-    message.success('角色删除成功')
-    await loadRoles()
   } catch (err: unknown) {
+    // 后端返回 400（系统角色不可删除等）时给出更具体提示
     const status = (err as { statusCode?: number }).statusCode
-    const messageText = (err as { message?: string }).message
-    if (status === 400) {
-      message.error(messageText || '不能删除系统角色')
+    const msg = (err as { message?: string }).message
+    if (status === 400 && msg) {
+      message.error(msg)
     }
+    // 其他错误已由 request 拦截器统一提示
+  } finally {
+    // 不论成功失败均重载，确保 UI 与后端一致
+    await loadRoles()
   }
 }
 
@@ -319,35 +269,7 @@ onMounted(loadRoles)
   color: #003466;
 }
 
-/* Removed flex constraints to allow natural content flow */
-
-.search-bar {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+.role-section {
   margin-bottom: 16px;
-}
-
-.perm-matrix {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.perm-matrix th,
-.perm-matrix td {
-  border: 1px solid #f0f0f0;
-  padding: 6px 8px;
-  text-align: center;
-}
-
-.perm-matrix th {
-  background: #fafafa;
-  font-weight: 500;
-}
-
-.perm-matrix td:first-child {
-  font-weight: 500;
-  background: #fafafa;
-  text-align: left;
 }
 </style>

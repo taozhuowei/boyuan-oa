@@ -1,5 +1,6 @@
 package com.oa.backend.controller;
 
+import com.oa.backend.dto.SetupFinalizeRequest;
 import com.oa.backend.exception.BusinessException;
 import com.oa.backend.service.SetupService;
 import com.oa.backend.service.SetupService.SetupRequest;
@@ -7,6 +8,7 @@ import com.oa.backend.service.SetupService.SetupResult;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,6 +29,7 @@ import org.springframework.web.server.ResponseStatusException;
  * <ul>
  *   <li>/setup/status - 公开端点，无需认证
  *   <li>/setup/init - 公开端点，但系统初始化后返回 403
+ *   <li>/setup/finalize - 公开端点，但需 wizardFinalizeToken 鉴权（DEF-SETUP-04 C2）
  *   <li>/setup/reset-ceo-password - 公开端点，需要有效的恢复码
  *   <li>其他 POST /setup/** - 系统初始化后返回 403
  * </ul>
@@ -43,16 +46,34 @@ public class SetupController {
   /**
    * 获取系统初始化状态。 公开端点，无需认证。用于前端判断是否需要跳转到初始化向导页面。
    *
-   * @return 初始化状态信息，包含 initialized 标志和提示消息
+   * <p>响应字段：
+   *
+   * <ul>
+   *   <li>initialized - step 1-4 的 /setup/init 是否已执行
+   *   <li>wizardFinalizeCompleted - step 5-10 的 /setup/finalize 是否已执行
+   *   <li>companyName - 企业名称（可能为 null）
+   *   <li>message - 用户可读提示
+   * </ul>
+   *
+   * @return 初始化状态信息
    */
   @GetMapping("/status")
   public ResponseEntity<Map<String, Object>> status() {
     boolean initialized = setupService.isInitialized();
+    boolean finalizeCompleted = setupService.isFinalizeCompleted();
     String companyName = setupService.getCompanyName();
-    String message = initialized ? "系统已初始化" : "系统待初始化，请完成初始化向导";
+    String message;
+    if (!initialized) {
+      message = "系统待初始化，请完成初始化向导";
+    } else if (!finalizeCompleted) {
+      message = "请完成初始化向导剩余步骤";
+    } else {
+      message = "系统已初始化";
+    }
     // Use HashMap to allow null values (Map.of rejects null)
-    java.util.Map<String, Object> body = new java.util.HashMap<>();
+    Map<String, Object> body = new HashMap<>();
     body.put("initialized", initialized);
+    body.put("wizardFinalizeCompleted", finalizeCompleted);
     body.put("companyName", companyName);
     body.put("message", message);
     return ResponseEntity.ok(body);
@@ -76,7 +97,7 @@ public class SetupController {
    * </ul>
    *
    * @param request 初始化请求
-   * @return 初始化结果，包含 recoveryCode（仅返回一次，请妥善保存）
+   * @return 初始化结果，包含 recoveryCode（仅返回一次，请妥善保存）和 wizardFinalizeToken（前端缓存至 step 10）
    * @throws ResponseStatusException 如果系统已初始化（403）或请求无效（400）
    */
   @PostMapping("/init")
@@ -91,11 +112,47 @@ public class SetupController {
       return ResponseEntity.ok(
           Map.of(
               "recoveryCode", result.recoveryCode(),
+              "wizardFinalizeToken", result.wizardFinalizeToken(),
               "message", result.message()));
     } catch (IllegalStateException e) {
       // 初始化冲突（如已存在同名账户）→ 409
       // IllegalArgumentException 交由 GlobalExceptionHandler 统一 400
       throw new BusinessException(HttpStatus.CONFLICT.value(), e.getMessage());
+    }
+  }
+
+  /**
+   * 初始化向导 step 5-10 原子提交（DEF-SETUP-04 C2）。
+   *
+   * <p>公开端点，但需要 {@code wizardFinalizeToken} 明文鉴权。后端比对 SHA-256 哈希后通过则执行。
+   *
+   * <p>幂等保证：wizard_finalize_completed=true 时返回 409，确保不会重复写入业务数据。
+   *
+   * <p>事务：服务层 {@code @Transactional(rollbackFor = Exception.class)} 确保任一 step 失败整体回滚。
+   *
+   * @param request finalize 请求体（顶层字段除 token 外全部 nullable，对应"用户跳过该步骤"）
+   * @return 仅消息字段；business data 由前端跳转 /login 后通过登录态查看
+   * @throws ResponseStatusException 令牌不正确（401）或 finalize 已完成（409）
+   */
+  @PostMapping("/finalize")
+  public ResponseEntity<?> finalizeWizard(@Valid @RequestBody SetupFinalizeRequest request) {
+    try {
+      setupService.finalizeWizard(request);
+      return ResponseEntity.ok(Map.of("message", "初始化向导完成"));
+    } catch (IllegalArgumentException e) {
+      // 令牌为空或不匹配 → 401（区别于 IllegalArgumentException 的 GlobalExceptionHandler 400 行为）
+      String msg = e.getMessage() == null ? "" : e.getMessage();
+      if (msg.contains("令牌")) {
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, msg);
+      }
+      throw new BusinessException(HttpStatus.BAD_REQUEST.value(), msg);
+    } catch (IllegalStateException e) {
+      String msg = e.getMessage() == null ? "" : e.getMessage();
+      if (msg.contains("已完成")) {
+        throw new BusinessException(HttpStatus.CONFLICT.value(), msg);
+      }
+      // 令牌未设置 / 系统状态异常 → 400
+      throw new BusinessException(HttpStatus.BAD_REQUEST.value(), msg);
     }
   }
 

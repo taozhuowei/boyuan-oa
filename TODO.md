@@ -17,25 +17,62 @@
 ## 活跃任务看板
 
 **当前 Phase**：Phase D — 逐模块测试 + 设计对齐 + 人工验收
-**当前模块**：D-M01 认证
-**当前 Stage**：Stage 4 — 人工验收（Claude dogfood + UX 修复已完成，等用户浏览器最终复核）
+**当前模块**：D-M08 初始化向导（D-M01 Stage 4 人工复核暂搁）
+**当前 Stage**：Stage 1（设计对齐）已完成 + 阶段 2/3（DEFECT 修复 + C2 改造）已完成 + Stage 2（测试用例清单初稿）已写入；**用户表示有东西要改，整体推迟，等用户调整方案后回来重审**
 
-**Stage 4 完成度**
-- Claude 通过 agent-browser + dogfood skill 自主走完 AUTH 8 场景并截图 / 视觉审查（2026-04-24）
-- 发现 8 个问题，7 修复 + 1 撤销（详见 `test/tools/manual-walkthrough/report.md`）
-- 修复包括：DevToolbar 一键填入按钮抢焦点、`/dev/reset` 未清 company_name、DevToolbar 面板过高、Logo 字符粘连、侧边栏组标题对比度、折叠态组标题未隐藏、**初始密码警告暴露明文"123456"**（安全文案问题）
-- 所有 DEFECTS 池已清零，mvn 1315 / yarn lint 0/0 / D-M01 E2E 29/29 全绿
+**已完成进度（2026-04-28 全天）**
+
+阶段 1 文档对齐
+- DESIGN.md §2 修订完毕（行 40-235），覆盖 4 个 DEFECT 设计语义
+- TODO.md DEFECTS 池立项 DEF-SETUP-01/02/03/04/05 + DEF-ROLE-01
+
+阶段 2 DEF-SETUP-01 beforeunload 提示
+- /setup 注册 beforeunload 监听 + finishSetup 解绑（Frontend Developer 实施 + Code Reviewer PASS）
+- Code Reviewer P1（step 6-10 跳转按钮静默丢数据）按"接 SETUP-04 改造覆盖"延期处理
+
+阶段 3 DEF-SETUP-04 C2 改造
+- 后端
+  - V21__add_wizard_finalize_state.sql 新增 wizard_finalize_completed + wizard_finalize_token
+  - SetupFinalizeRequest 新增 + 11 个嵌套 DTO（含 tempId 系统）
+  - SetupController 新增 POST /setup/finalize（公开端点 + 令牌鉴权）
+  - SetupController.status 扩展 wizardFinalizeCompleted 字段
+  - SetupController.init 响应新增 wizardFinalizeToken
+  - SetupService.finalizeWizard + 7 个 applyXxx 助手 + tempId→realId 解析 + AccessManagementService 双写注入（DEF-ROLE-01 折中方案）
+  - DevController 新增 /dev/reset-finalize（@Profile dev）
+  - SecurityConfig.permitAll 加 /setup/finalize
+  - 5 个新增集成测试（finalize_success / invalid_token / partial_failure_rolls_back / already_completed / role_with_permissions）
+  - mvn test 1320 全绿，含 ArchUnit 4 条规则
+  - Code Reviewer 审 1 轮发现 3 P1 + 4 P2/P3 全部修复（businessType 替换 flowId / tempId 系统 / fail-fast / partial rollback 测试 / constant-time 比较 / 阈值常量）
+- 前端 5 个业务组件抽取
+  - app/h5/components/setup/RoleConfigPanel.vue（533 行；/role 改造 354→275 行）
+  - app/h5/components/setup/EmployeeImportPanel.vue（758 行；/directory 改造 320→129 行）
+  - app/h5/components/setup/RetentionPanel.vue（388 行；/retention 改造 414→437 行）
+  - app/h5/components/setup/DepartmentManager.vue（487 行）+ SupervisorTree.vue（512 行）（/org 改造 571→391 行）
+  - 5 个组件全部支持 mode='wizard' / 'operation' 双模式
+  - yarn lint 0/0、yarn test 35/35
+- /setup 重写
+  - app/h5/pages/setup/index.vue 581→1297 行
+  - step 6-10 全部内嵌组件 + Tabs 拆 step 7 部门/员工
+  - step 9 wizard 专用全局配置 + 审批流面板（/config 子组件 4 个就地重写，1 个 onMounted 调 API 与 wizard 不兼容）
+  - finalizeSetup 函数：序列化 step 5-10 数据 + token 提交 + Toast 反馈 + removeEventListener + navigateTo /login
+  - middleware/auth.global.ts 路由守卫扩展支持"已 init 未 finalize"状态允许进 /setup
+- 测试用例清单已写入 test/e2e/modules/D-M08.md（16 章节 / 约 100 条），等用户调整方案后再确认
+
+**已立项延期 DEFECT**
+- DEF-SETUP-05 wizard_finalize_token 无 TTL 与 per-IP 限流 → Phase F
+- DEF-ROLE-01 角色权限系统未持久化到 DB（AccessManagementService 写内存）→ D-M05 模块独立修复，2026-05-15 前完成
+
+**当前阻塞**：无（用户主动暂停，等调整方向）
 
 **下一步动作（用户）**
-- 浏览器走 AUTH 全链路：登录 / 首次登录 / 改密码 / 忘记密码 / 退出 / 路由守卫 / 账号禁用 / CEO 恢复码
-- 反馈问题 → 我回归修复
-- 无问题后签字确认日期
+- 给出要改的部分（DEF-SETUP-04 C2 实施细节 / DESIGN.md 措辞 / 测试用例清单 任一）
+- 也可以直接进 Stage 2 用例确认（如果只是小调整不影响代码）
 
 **下一步动作（我）**
-- 等用户反馈走查结果
-- 用户签字后 `[x]` D-M01 推进 D-M02（员工管理，依赖 D-M01）
+- 等用户告知调整方向
+- 收到后判断是改文档还是改代码，重新组装计划送审
 
-**阻塞项**：无
+**D-M01 Stage 4 待办**：用户浏览器人工复核暂时搁置，待 D-M08 闭环或用户主动恢复
 
 ---
 
@@ -130,6 +167,70 @@
 - **修复内容**：创建 `.snyk` 策略骨架（version v1.25.0 + 空 ignore/patch 段 + 格式说明注释），未来遇到需豁免的漏洞时按注释格式填充
 - **验收**：文件存在且格式合法；Snyk 下次运行时会识别该策略文件
 - **状态**：`[x]` 已关闭
+
+### DEF-SETUP-01 /setup 刷新/关闭浏览器需用户确认
+
+- **发现来源**：D-M08 Stage 1 设计对齐（2026-04-28）
+- **设计差异**：原 DESIGN.md §2 措辞"会话失效"与实现不符（公开端点无 session），但效果上"已填数据不保留"是设计预期行为
+- **处理方案**：用户裁决方案 C — /setup 加 `beforeunload` 监听，已填任意字段时触发浏览器原生确认提示，用户确认后才允许刷新/关闭；DESIGN.md §2 措辞同步修正
+- **状态**：`[~]` 立项中（DESIGN.md 已改，前端 beforeunload 待实施）
+
+### DEF-SETUP-02 DESIGN §2.3 部署者账号失效描述与实现不符
+
+- **发现来源**：D-M08 Stage 1 设计对齐（2026-04-28）
+- **设计差异**：DESIGN 写"部署者完成初始化后账号失效"，但实现是匿名公开端点 /setup/init，无"部署者账号"概念
+- **处理方案**：用户裁决方案 A — DESIGN.md §2.3 改写为"部署者无需登录、不创建账号、自然无法访问"，纯文档修正
+- **状态**：`[x]` 已关闭（2026-04-28）
+
+### DEF-SETUP-03 DESIGN 步骤 1-4 措辞像分步提交，实现是单次原子提交
+
+- **发现来源**：D-M08 Stage 1 设计对齐（2026-04-28）
+- **设计差异**：DESIGN 步骤 1-4 标题为"创建 X 账号"，读起来像每步立即建账号；实现是 step 1-3 仅收集前端、step 4 一次性 POST /setup/init 在事务内创建所有账号
+- **处理方案**：用户裁决方案 A — 保持单次原子提交（避免中间不一致状态），DESIGN.md §2.2 步骤 1-4 标题改为"填写 X 账号信息"+ 加"确认与提交"注解明示原子性
+- **状态**：`[x]` 已关闭（2026-04-28）
+
+### DEF-ROLE-01 角色权限系统未持久化到 DB（运营态 AccessManagementService 写内存）
+
+- **发现来源**：D-M08 阶段 3.2a 抽 RoleConfigPanel + 后端补 finalize.permissions 字段时，由 Backend Architect 阻塞调研发现（2026-04-28）
+- **设计差异**：
+  - 现状：运营态 POST /api/roles 经 AccessManagementService.createRole() 写 LinkedHashMap 内存，不写 sys_role / role_permission DB 表
+  - V1__init_schema.sql 行 169-190 定义的 permission / role_permission 关联表悬空，无任何 Java Entity / Mapper / Service 引用
+  - JwtAuthenticationFilter 走 AccessManagementService 查内存 → 服务重启后所有运营态创建的角色 + 权限全丢
+  - DESIGN.md §2.2 系统权限总表用中文短语（如"查看全体人员基础信息"），实际 /role 页面 + AccessManagementService 接受任意字符串作权限码（无白名单）
+- **影响**：
+  - 运营态创建的自定义角色 + 权限重启服务即丢（生产环境长期严重 bug）
+  - DESIGN.md 权限码与代码实现命名不一致
+  - finalize 创建的角色若仅写 DB sys_role 不入内存，则 JwtAuthenticationFilter 看不到
+- **D-M08 当前折中**：finalize.applyRoles 既写 DB sys_role 也调 AccessManagementService.createRole 注入内存（双写）；permissions 字段不做白名单，沿用运营态弱契约
+- **目标修复**：
+  1. AccessManagementService 启动时从 sys_role / role_permission 表加载，运行时所有写操作同时持久化
+  2. DESIGN.md 系统权限总表与代码权限码统一（选 SCREAMING_SNAKE_CASE 英文码或中文短语）
+  3. 移除"内存唯一来源"的双写隐患
+- **延期理由**：属于 D-M05 角色管理模块的历史遗留 bug；当下 D-M08 修需先重写 D-M05 整套服务实现，与 D-M08 主线（向导改造）耦合度低，独立处理代价更小
+- **目标阶段**：D-M05 模块独立修复（计划 2026-05-15 前完成）
+- **状态**：`[ ]` 已立项延期（用户书面确认日期：2026-04-28）
+
+### DEF-SETUP-05 wizard_finalize_token 无 TTL 与 per-IP 限流
+
+- **发现来源**：D-M08 阶段 3.1 Code Reviewer 审计 P2-2（2026-04-28）
+- **设计差异**：finalize_token 一旦 init 返回后无过期时间，仅在 finalize 成功 / dev 重置时清空；token 32 字符 base64url 192 位熵防暴力，但缺乏 TTL 与失败次数限流的纵深防御
+- **处理方案**：立项延期至 Phase F 生产部署阶段统一处理：(1) token_created_at 字段 + 24h TTL 校验 (2) 失败次数 per-IP 限流（独立于全局 GlobalRateLimitFilter）
+- **延期理由**：当前 D-M08 主线是功能 / 流程改造；TTL 与限流属于安全增强，与生产部署期的安全加固整体打包更合适
+- **目标阶段**：Phase F
+- **状态**：`[ ]` 已立项延期（用户书面确认日期：2026-04-28）
+
+### DEF-SETUP-04 /setup step 6-10 跳转模式无法贯穿初始化全流程
+
+- **发现来源**：D-M08 Stage 1 设计对齐（2026-04-28）
+- **设计差异**：当前实现 step 6-10 只是"前往对应业务页"的跳转按钮，跳走后回到 /setup 因系统已初始化被踢到 /login，部署人员无法在向导内完成 step 5-10 的配置
+- **处理方案**：用户裁决方案 C2 — /setup 重构为"内嵌组件 + 末步统一原子提交"
+  1. 前端从 /role、/directory、/org、/config、/retention 抽取 5 个核心组件（与运营期独立功能复用同一组件）
+  2. /setup step 6-10 改为内嵌这些组件，部署人员从 step 1 到 step 10 始终在 /setup
+  3. 后端新增 POST /setup/finalize 端点，接收 step 5-10 全部数据原子写入
+  4. step 10 末尾"完成初始化"按钮调用 /setup/finalize，成功后跳 /login
+- **工程量**：约 5-7 天前端 + 1 天后端
+- **DESIGN.md**：§2.2 步骤 5-10 已加"实现说明"注解（2026-04-28）
+- **状态**：`[~]` 实施中（前端组件抽取 + /setup 重写 + 后端 finalize 端点）
 
 ---
 
@@ -1809,20 +1910,59 @@
 
 ### D-M08 — 初始化向导（依赖：D-M01）
 
-**状态**：DESIGN `[ ]` | TEST `[ ]` | ACC `[ ]`
+**状态**：DESIGN `[x]` | DEFECT-FIX `[x]` | TEST-CASES `[?]`（已写入待用户确认）| TEST-IMPL `[ ]` | ACC `[ ]`
+**当前进度**：Stage 1 + 阶段 2/3 全部完成；Stage 2 用例清单已写入 D-M08.md；用户表示有东西要改，整体推迟
 
-#### D-M08-DESIGN
-- `[ ]` 输出完整测试用例 → 用户确认 → 写入 `test/e2e/TEST_DESIGN.md D-M08`
-- 前置工具：`POST /dev/reset-setup` 重置初始化状态（可反复执行）
+#### D-M08-DESIGN（Stage 1，已完成 2026-04-28）
+- `[x]` 阅读 DESIGN.md §2 + /setup 实现 + SetupController
+- `[x]` 与用户对齐 4 个设计/实现差异（DEF-SETUP-01/02/03/04）
+- `[x]` 修订 DESIGN.md §2 措辞
+- `[x]` DEFECTS 池登记 DEF-SETUP-01/02/03/04（运行中又登记 DEF-SETUP-05 + DEF-ROLE-01）
 
-#### D-M08-TEST
-- `[ ]` QA 实现 Playwright E2E 全部用例
+#### D-M08-DEFECT-FIX（阶段 2/3，已完成 2026-04-28）
+
+阶段 2：DEF-SETUP-01 beforeunload 提示
+- `[x]` /setup 注册 beforeunload 监听器（hasUnsavedData 判定）
+- `[x]` finishSetup / finalizeSetup 跳转前 removeEventListener
+- `[x]` Code Reviewer PASS；P1（step 6-10 跳转按钮静默丢数据）由 SETUP-04 改造覆盖
+
+阶段 3.1：DEF-SETUP-04 后端 finalize 端点
+- `[x]` V21__add_wizard_finalize_state.sql migration
+- `[x]` SetupFinalizeRequest DTO + 11 个嵌套 record（含 tempId 系统）
+- `[x]` SetupController.finalize + status 扩展 + init 响应新增 token
+- `[x]` SetupService.finalizeWizard + 7 个 applyXxx + AccessManagementService 双写注入（DEF-ROLE-01 折中）
+- `[x]` DevController.reset-finalize（dev 端点）
+- `[x]` SecurityConfig permitAll 加 /setup/finalize
+- `[x]` 5 个集成测试（mvn test 1320 全绿）
+- `[x]` Code Reviewer 1 轮 + 修复 3 P1 + 4 P2/P3
+
+阶段 3.2：DEF-SETUP-04 前端 5 个业务组件抽取
+- `[x]` RoleConfigPanel.vue + /role 改造
+- `[x]` EmployeeImportPanel.vue + /directory 改造
+- `[x]` RetentionPanel.vue + /retention 改造
+- `[x]` DepartmentManager.vue + SupervisorTree.vue + /org 改造
+- 注：/config 已有 6 个子组件中 4 个 onMounted 调 API 与 wizard 不兼容，在 /setup 内重写 wizard 专用面板（按用户原始指令"不能复用就重写"）
+
+阶段 3.3：DEF-SETUP-04 重写 /setup step 6-10
+- `[x]` /setup/index.vue 重写：step 6-10 全部内嵌组件，Tabs 拆 step 7 部门/员工
+- `[x]` step 9 wizard 专用全局配置 + 审批流面板（5 个 a-card 区块）
+- `[x]` finalizeSetup 函数：序列化 + 提交 + 错误分类 + 跳 /login
+- `[x]` middleware/auth.global.ts 路由守卫扩展支持"已 init 未 finalize"状态
+- `[x]` yarn lint 0/0、yarn test 35/35
+
+#### D-M08-DESIGN-CASES（Stage 2，2026-04-28 已输出）
+- `[x]` 编写测试用例清单 → 写入 `test/e2e/modules/D-M08.md`（16 章节约 100 条）
+- `[ ]` 用户最终确认 → 推迟（用户表示有东西要改）
+- 前置工具：`POST /dev/reset-setup` + `POST /dev/reset-finalize`（已实现）
+
+#### D-M08-TEST-IMPL（Stage 3，等用户确认 Stage 2 后启动）
+- `[ ]` QA 实现 Playwright E2E 全部用例（spec.ts）
 - `[ ]` 运行，输出 Pass/Fail 矩阵
 - `[ ]` FIX 循环：修复失败项 → Code Review PASS → 重跑，直到全绿
 
-#### D-M08-ACC
+#### D-M08-ACC（Stage 4）
 - `[ ]` 用户浏览器走完主流程
-- `[ ]` FIX 循环：修复反馈问题，直到无问题
+- `[ ]` FIX 循环：修复反馈问题
 - `[ ]` 用户确认关闭（注明日期）
 
 ---

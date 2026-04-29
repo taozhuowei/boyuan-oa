@@ -1,231 +1,55 @@
 <template>
-  <!-- 组织架构页 — 部门树展示（所有登录用户可看；CEO 可新建/编辑/删除）
-       数据来源：GET /api/departments（返回树形结构） -->
+  <!--
+    组织架构页 — /org
+
+    部门树展示（所有登录用户可看；CEO 可新建/编辑/删除）
+    数据来源：GET /api/departments（返回树形结构） + GET /api/employees?size=500（汇报关系）
+
+    UI 由两个可复用 SFC 组件承担（D-M08 初始化向导改造，向导态共用同两个组件）：
+      - DepartmentManager  ：部门 CRUD（v-model 双向绑定 DepartmentNode[]）
+      - SupervisorTree     ：汇报关系拖拽（v-model 双向绑定 SupervisorMapping[]）
+
+    本页（运营态）职责：
+      - 拉取 /api/departments、/api/employees 数据并以组件期望的形状传入
+      - 接收 change 事件后调对应 API（POST/PUT/DELETE /departments、PUT /employees/{id}），
+        API 成功后 reload 以同步真实状态
+      - 接收 invalid 事件后用 antd message 输出提示文案（向导态由 SetupWizard 自行处理）
+  -->
   <div class="org-page">
-    <div
-      class="page-header"
-      style="
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 16px;
-      "
-    >
-      <h2 class="page-title" style="margin: 0">组织架构</h2>
-      <a-button
-        v-if="isCeo"
-        type="primary"
-        data-catch="dept-create-btn"
-        @click="openCreateModal(null)"
-      >
-        + 新建部门
-      </a-button>
+    <!-- 顶部标题 + 新建部门按钮（按钮放在 DepartmentManager 内部，这里只放标题） -->
+    <div class="page-header">
+      <h2 class="page-title">组织架构</h2>
     </div>
 
-    <a-spin :spinning="loading">
-      <a-card v-if="departments.length === 0 && !loading">
-        <a-empty description="暂无部门数据" />
-      </a-card>
-
-      <a-card v-else>
-        <a-tree
-          :tree-data="treeData"
-          :default-expand-all="true"
-          :selectable="false"
-          data-catch="org-tree"
-        >
-          <template #title="node">
-            <div style="display: flex; align-items: center; gap: 8px; padding: 2px 0">
-              <span style="font-weight: 500">{{ node.deptName }}</span>
-              <a-tag color="blue" style="margin: 0">{{ node.employeeCount }} 人</a-tag>
-              <template v-if="isCeo">
-                <a-button
-                  type="link"
-                  size="small"
-                  style="padding: 0 4px"
-                  @click.stop="openCreateModal(node.deptId)"
-                >
-                  + 子部门
-                </a-button>
-                <a-button
-                  type="link"
-                  size="small"
-                  style="padding: 0 4px"
-                  :data-catch="'org-dept-edit-btn-' + node.deptName"
-                  @click.stop="
-                    openEditModal({
-                      id: node.deptId,
-                      name: node.deptName,
-                      parentId: node.deptParentId,
-                      sort: node.deptSort,
-                      employeeCount: node.employeeCount,
-                      children: [],
-                    })
-                  "
-                >
-                  编辑
-                </a-button>
-                <a-popconfirm
-                  title="确认删除该部门？（需无员工且无子部门）"
-                  @confirm="doDeleteDept(node.deptId)"
-                  @click.stop
-                >
-                  <a-button
-                    type="link"
-                    size="small"
-                    danger
-                    style="padding: 0 4px"
-                    :data-catch="'org-dept-delete-btn-' + node.deptName"
-                  >
-                    删除
-                  </a-button>
-                </a-popconfirm>
-              </template>
-            </div>
-          </template>
-        </a-tree>
-      </a-card>
+    <a-spin :spinning="loadingDepartments">
+      <DepartmentManager
+        v-model="departmentTree"
+        mode="operation"
+        :can-edit="isCeo"
+        :loading="deptLoading"
+        @change="handleDepartmentChange"
+      />
     </a-spin>
 
-    <!-- 新建/编辑部门弹窗 -->
-    <a-modal
-      v-model:open="showDeptModal"
-      :title="editingDept ? '编辑部门' : parentId ? '新建子部门' : '新建部门'"
-      @ok="doSaveDept"
-      :confirm-loading="deptLoading"
-      @cancel="resetDeptForm"
-    >
-      <a-form :model="deptForm" layout="vertical">
-        <a-form-item label="部门名称" required>
-          <a-input
-            v-model:value="deptForm.name"
-            data-catch="dept-name-input"
-            placeholder="请输入部门名称"
-          />
-        </a-form-item>
-        <a-form-item label="排序">
-          <a-input-number v-model:value="deptForm.sort" :min="0" style="width: 100%" />
-        </a-form-item>
-        <a-form-item v-if="parentId" label="上级部门">
-          <a-input :value="getParentName(parentId)" disabled />
-        </a-form-item>
-      </a-form>
-      <template #footer>
-        <a-button @click="resetDeptForm">取消</a-button>
-        <a-button
-          type="primary"
-          :loading="deptLoading"
-          data-catch="org-dept-modal-ok"
-          @click="doSaveDept"
-        >
-          确定
-        </a-button>
-      </template>
-    </a-modal>
-
     <!-- 汇报关系（直系领导可视化 + 拖拽重组） -->
-    <a-card title="汇报关系" style="margin-top: 16px">
+    <a-card title="汇报关系" class="supervisor-card">
       <template #extra>
         <a-space>
-          <span style="color: #999; font-size: 12px">拖拽左侧节点到右侧树指定上级下方</span>
-          <a-button :loading="loadingTree" size="small" @click="loadSupervisorTree">刷新</a-button>
+          <span class="extra-hint">拖拽左侧节点到右侧树指定上级下方</span>
+          <a-button :loading="loadingTree" size="small" @click="loadSupervisorTree">
+            刷新
+          </a-button>
         </a-space>
       </template>
       <a-spin :spinning="loadingTree">
-        <div style="display: flex; gap: 16px; min-height: 300px">
-          <!-- Left panel: unassigned employees -->
-          <div
-            style="
-              width: 220px;
-              border: 1px dashed #d9d9d9;
-              border-radius: 6px;
-              padding: 12px;
-              flex-shrink: 0;
-            "
-          >
-            <div style="font-weight: 500; margin-bottom: 8px; color: #555">
-              备选节点（未纳入汇报关系）
-            </div>
-            <div v-if="unassignedEmployees.length === 0" style="color: #bbb; font-size: 12px">
-              暂无未分配人员
-            </div>
-            <div
-              v-for="emp in unassignedEmployees"
-              :key="emp.id"
-              draggable="true"
-              style="
-                padding: 6px 10px;
-                margin-bottom: 6px;
-                background: #f5f5f5;
-                border-radius: 4px;
-                cursor: grab;
-                user-select: none;
-                border: 1px solid #e8e8e8;
-              "
-              data-catch="org-unassigned-node"
-              @dragstart="onLeftItemDragStart($event, emp.id)"
-            >
-              <span style="font-weight: 500">{{ emp.name }}</span>
-              <span v-if="emp.roleName" style="color: #999; font-size: 11px; margin-left: 6px">
-                {{ emp.roleName }}
-              </span>
-            </div>
-          </div>
-
-          <!-- Right panel: CEO subtree -->
-          <div
-            style="
-              flex: 1;
-              border: 1px solid #e8e8e8;
-              border-radius: 6px;
-              padding: 12px;
-              position: relative;
-            "
-          >
-            <div style="font-weight: 500; margin-bottom: 8px; color: #555">
-              汇报关系树（CEO 固定在顶端）
-            </div>
-            <a-tree
-              v-if="ceoTree.length"
-              :tree-data="ceoTree"
-              :default-expand-all="true"
-              :selectable="false"
-              :draggable="isCeoOrHr"
-              data-catch="org-supervisor-tree"
-              @drop="(info: AntdTreeDropInfo) => onSupervisorDrop(info)"
-            >
-              <template #title="node">
-                <span
-                  style="
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    padding: 2px 4px;
-                    border-radius: 3px;
-                    transition: background 0.2s;
-                  "
-                  :style="dragOverNodeId === node.employeeId ? 'background: #e6f4ff;' : ''"
-                  @dragover="onRightNodeDragOver($event, node.employeeId)"
-                  @drop="onRightNodeDrop($event, node.employeeId)"
-                  @dragleave="dragOverNodeId = null"
-                >
-                  <span style="font-weight: 500">{{ node.title }}</span>
-                  <a-tag
-                    v-if="node.employeeId === ceoEmployee?.id"
-                    color="gold"
-                    style="margin: 0; font-size: 11px"
-                  >
-                    固定
-                  </a-tag>
-                  <span v-else-if="node.subtitle" style="color: #999; font-size: 12px">
-                    {{ node.subtitle }}
-                  </span>
-                </span>
-              </template>
-            </a-tree>
-            <a-empty v-else description="暂无员工（请先在员工管理中创建员工）" />
-          </div>
-        </div>
+        <SupervisorTree
+          v-model="supervisorMappings"
+          :employees="employeeBriefs"
+          mode="operation"
+          :can-edit="isCeoOrHr"
+          @change="handleSupervisorChange"
+          @invalid="handleSupervisorInvalid"
+        />
       </a-spin>
     </a-card>
   </div>
@@ -233,148 +57,168 @@
 
 <script setup lang="ts">
 /**
- * 组织架构页 — org/index.vue
- * 数据来源：GET /api/departments（树形，含 children）
- * CEO 可 POST /departments 创建、PUT /departments/{id} 编辑、DELETE /departments/{id} 删除
+ * /org/index.vue — 组织架构页（运营态）
+ *
+ * 设计依据：
+ *   - DESIGN.md §3.x 组织架构（运营期 CEO/HR 维护）
+ *   - D-M08 初始化向导改造：抽 DepartmentManager + SupervisorTree 两个 SFC 复用
+ *
+ * 不变量：
+ *   - 本页只负责 API 调用 + 数据形状转换；UI 与交互完全交给两个子组件
+ *   - tempId 在运营态以 "emp-{realId}" 形式生成（逐字符不与向导态 "emp-1" 等冲突）
+ *   - 对 SupervisorTree 提交的 change 事件，在 changed tempId 上反解析回真实 employeeId
+ *     后调 PUT /api/employees/{id} 更新 directSupervisorId
  */
 import { ref, computed, onMounted } from 'vue'
 import { request } from '~/utils/http'
 import { useUserStore } from '~/stores/user'
 import { message } from 'ant-design-vue'
+import DepartmentManager from '~/components/setup/DepartmentManager.vue'
+import SupervisorTree from '~/components/setup/SupervisorTree.vue'
 
-interface DeptNode {
+// 与 DepartmentManager / SupervisorTree 组件公共类型对齐
+// 由于 Vue SFC 在 type-only 导入时常被工具误判为副作用导入，这里采用结构性接口本地复刻，
+// 字段命名与组件 export 完全一致，保证编译期一致性。
+interface DepartmentNode {
   id: number
   name: string
   parentId: number | null
   sort: number
   employeeCount: number
-  children: DeptNode[]
+  children: DepartmentNode[]
 }
 
-interface TreeNode {
-  key: number
-  title: string
-  // AntD Tree 内部会占用 dataRef，因此把所有字段直接展开在节点上
-  deptId: number
-  deptName: string
-  deptParentId: number | null
-  deptSort: number
-  employeeCount: number
-  children: TreeNode[]
+interface DepartmentChangePayload {
+  action: 'create' | 'update' | 'delete'
+  node: DepartmentNode
+  parentId?: number | null
 }
+
+interface EmployeeBrief {
+  tempId: string
+  name: string
+  roleCode?: string
+  roleName?: string
+  isCeo?: boolean
+}
+
+interface SupervisorMapping {
+  employeeTempId: string
+  supervisorTempId: string | null
+}
+
+interface SupervisorChangePayload {
+  mappings: SupervisorMapping[]
+  changed: string
+  newSupervisorTempId: string | null
+}
+
+interface SupervisorInvalidPayload {
+  reason: 'CYCLE' | 'CEO_IMMUTABLE' | 'DROP_TO_GAP' | 'SELF'
+  employeeTempId: string
+  attemptedSupervisorTempId: string | null
+}
+
+// ────────────────────────────────────────────────────────────────────
+// 角色判定
+// ────────────────────────────────────────────────────────────────────
 
 const userStore = useUserStore()
 const isCeo = computed(() => userStore.userInfo?.role === 'ceo')
+const isCeoOrHr = computed(() =>
+  ['ceo', 'hr'].includes(userStore.userInfo?.role ?? ''),
+)
 
-const loading = ref(false)
-const departments = ref<DeptNode[]>([])
+// ────────────────────────────────────────────────────────────────────
+// 部门树（DepartmentManager 数据源）
+// ────────────────────────────────────────────────────────────────────
 
-function toTreeNodes(nodes: DeptNode[]): TreeNode[] {
+interface ApiDeptNode {
+  id: number
+  name: string
+  parentId: number | null
+  sort: number
+  employeeCount: number
+  children: ApiDeptNode[]
+}
+
+const loadingDepartments = ref(false)
+const deptLoading = ref(false)
+const departmentTree = ref<DepartmentNode[]>([])
+
+/**
+ * API 部门节点 → 组件期望的 DepartmentNode（字段名一致，仅做深拷贝以避免引用泄漏）
+ */
+function toDepartmentNodes(nodes: ApiDeptNode[]): DepartmentNode[] {
   return nodes.map((n) => ({
-    key: n.id,
-    title: n.name,
-    deptId: n.id,
-    deptName: n.name,
-    deptParentId: n.parentId,
-    deptSort: n.sort,
-    employeeCount: n.employeeCount,
-    children: toTreeNodes(n.children ?? []),
+    id: n.id,
+    name: n.name,
+    parentId: n.parentId,
+    sort: n.sort,
+    employeeCount: n.employeeCount ?? 0,
+    children: toDepartmentNodes(n.children ?? []),
   }))
 }
 
-const treeData = computed(() => toTreeNodes(departments.value))
-
-async function loadDepartments() {
-  loading.value = true
+async function loadDepartments(): Promise<void> {
+  loadingDepartments.value = true
   try {
-    const res = await request<DeptNode[]>({ url: '/departments', method: 'GET' })
-    departments.value = res
+    const res = await request<ApiDeptNode[]>({ url: '/departments', method: 'GET' })
+    departmentTree.value = toDepartmentNodes(res ?? [])
   } catch {
     message.error('加载部门数据失败')
   } finally {
-    loading.value = false
+    loadingDepartments.value = false
   }
 }
 
-function flattenDepts(nodes: DeptNode[]): DeptNode[] {
-  return nodes.flatMap((n) => [n, ...flattenDepts(n.children ?? [])])
-}
-
-function getParentName(id: number | null): string {
-  if (!id) return ''
-  const found = flattenDepts(departments.value).find((d: DeptNode) => d.id === id)
-  return found?.name ?? String(id)
-}
-
-const showDeptModal = ref(false)
-const deptLoading = ref(false)
-const editingDept = ref<DeptNode | null>(null)
-const parentId = ref<number | null>(null)
-const deptForm = ref({ name: '', sort: 0 })
-
-function openCreateModal(pid: number | null) {
-  editingDept.value = null
-  parentId.value = pid
-  deptForm.value = { name: '', sort: 0 }
-  showDeptModal.value = true
-}
-
-function openEditModal(dept: DeptNode) {
-  editingDept.value = dept
-  parentId.value = dept.parentId
-  deptForm.value = { name: dept.name, sort: dept.sort }
-  showDeptModal.value = true
-}
-
-function resetDeptForm() {
-  editingDept.value = null
-  parentId.value = null
-  deptForm.value = { name: '', sort: 0 }
-}
-
-async function doSaveDept() {
-  if (!deptForm.value.name.trim()) {
-    message.warning('部门名称不能为空')
-    return
-  }
+/**
+ * 处理 DepartmentManager change 事件：根据 action 分发 API 调用，成功后 reload 同步真实状态
+ */
+async function handleDepartmentChange(payload: DepartmentChangePayload): Promise<void> {
+  if (!isCeo.value) return
   deptLoading.value = true
   try {
-    const body: Record<string, unknown> = {
-      name: deptForm.value.name,
-      sort: deptForm.value.sort,
-    }
-    if (parentId.value) body.parentId = parentId.value
-
-    if (editingDept.value) {
-      await request({ url: `/departments/${editingDept.value.id}`, method: 'PUT', body })
-      message.success('已更新')
-    } else {
+    if (payload.action === 'create') {
+      const body: Record<string, unknown> = {
+        name: payload.node.name,
+        sort: payload.node.sort,
+      }
+      if (payload.parentId !== null && payload.parentId !== undefined) {
+        body.parentId = payload.parentId
+      }
       await request({ url: '/departments', method: 'POST', body })
       message.success('部门已创建')
+    } else if (payload.action === 'update') {
+      await request({
+        url: `/departments/${payload.node.id}`,
+        method: 'PUT',
+        body: { name: payload.node.name, sort: payload.node.sort },
+      })
+      message.success('已更新')
+    } else if (payload.action === 'delete') {
+      await request({ url: `/departments/${payload.node.id}`, method: 'DELETE' })
+      message.success('已删除')
     }
-    showDeptModal.value = false
-    resetDeptForm()
     await loadDepartments()
   } catch {
-    message.error('操作失败')
+    if (payload.action === 'delete') {
+      message.error('删除失败（可能存在员工或子部门）')
+    } else {
+      message.error('操作失败')
+    }
+    // 失败时强制 reload 以纠正 v-model 中的乐观更新
+    await loadDepartments()
   } finally {
     deptLoading.value = false
   }
 }
 
-async function doDeleteDept(id: number) {
-  try {
-    await request({ url: `/departments/${id}`, method: 'DELETE' })
-    message.success('已删除')
-    await loadDepartments()
-  } catch {
-    message.error('删除失败（可能存在员工或子部门）')
-  }
-}
+// ────────────────────────────────────────────────────────────────────
+// 汇报关系（SupervisorTree 数据源）
+// ────────────────────────────────────────────────────────────────────
 
-// ── 汇报关系（直系领导）可视化 + 拖拽重组 ──────────────────────
-
-interface EmployeeBrief {
+interface ApiEmployee {
   id: number
   name: string
   employeeNo?: string
@@ -382,112 +226,75 @@ interface EmployeeBrief {
   roleCode?: string
   directSupervisorId?: number | null
 }
-interface SupervisorTreeNode {
-  key: string
-  title: string
-  subtitle?: string
-  employeeId: number
-  children: SupervisorTreeNode[]
-}
 
-const isCeoOrHr = computed(() => ['ceo', 'hr'].includes(userStore.userInfo?.role ?? ''))
-const allEmployees = ref<EmployeeBrief[]>([])
 const loadingTree = ref(false)
+const allEmployees = ref<ApiEmployee[]>([])
 
-const ceoEmployee = computed(() =>
+/**
+ * 把真实 employeeId 包装为 tempId（运营态约定 "emp-{id}"）
+ * 注：此前缀与 SetupWizard 向导态 tempId（如 "emp-1"）形式相同但语义不同，
+ * 由组件本身视为不透明字符串，调用方负责反解析。
+ */
+function realIdToTempId(id: number): string {
+  return `emp-${id}`
+}
+
+function tempIdToRealId(tempId: string): number | null {
+  const match = /^emp-(\d+)$/.exec(tempId)
+  return match ? Number(match[1]) : null
+}
+
+const ceoEmployee = computed<ApiEmployee | undefined>(() =>
   allEmployees.value.find(
-    (e) => e.roleCode === 'ceo' || e.roleName?.includes('CEO') || e.roleName?.includes('总裁')
-  )
+    (e) =>
+      e.roleCode === 'ceo' ||
+      e.roleName?.includes('CEO') === true ||
+      e.roleName?.includes('总裁') === true,
+  ),
 )
 
-function getSubtreeIds(rootId: number): Set<number> {
-  const ids = new Set<number>([rootId])
-  const queue = [rootId]
-  while (queue.length) {
-    const curr = queue.shift()
-    if (curr === undefined) break
+/**
+ * 把 ApiEmployee[] 投影成 SupervisorTree 期望的 EmployeeBrief[]
+ */
+const employeeBriefs = computed<EmployeeBrief[]>(() =>
+  allEmployees.value.map((e) => ({
+    tempId: realIdToTempId(e.id),
+    name: e.name,
+    roleCode: e.roleCode,
+    roleName: e.roleName,
+    isCeo: ceoEmployee.value?.id === e.id,
+  })),
+)
+
+/**
+ * 把 ApiEmployee[].directSupervisorId 投影成 SupervisorMapping[]
+ * 仅纳入 directSupervisorId !== null 的员工 — null 的员工自动通过组件的"未分配区"展示
+ */
+const supervisorMappings = computed<SupervisorMapping[]>({
+  get: () =>
     allEmployees.value
-      .filter((e) => e.directSupervisorId === curr)
-      .forEach((e) => {
-        ids.add(e.id)
-        queue.push(e.id)
-      })
-  }
-  return ids
-}
-
-const ceoSubtreeIds = computed(() => {
-  const ceo = ceoEmployee.value
-  if (!ceo) return new Set<number>()
-  return getSubtreeIds(ceo.id)
+      .filter((e) => e.directSupervisorId !== null && e.directSupervisorId !== undefined)
+      .map((e) => ({
+        employeeTempId: realIdToTempId(e.id),
+        supervisorTempId:
+          e.directSupervisorId !== null && e.directSupervisorId !== undefined
+            ? realIdToTempId(e.directSupervisorId)
+            : null,
+      })),
+  // 写入路径有意为空：运营态以"API 调用 + reload"为唯一真理来源，
+  // 由 handleSupervisorChange 负责落库后 reload allEmployees，
+  // 避免组件本地的乐观更新与服务端最终状态产生闪烁。
+  set: () => {
+    // intentional no-op
+  },
 })
 
-const unassignedEmployees = computed(() =>
-  allEmployees.value.filter((e) => !ceoSubtreeIds.value.has(e.id))
-)
-
-function buildSubtree(rootId: number): SupervisorTreeNode[] {
-  const emp = allEmployees.value.find((e) => e.id === rootId)
-  if (!emp) return []
-  const node: SupervisorTreeNode = {
-    key: 'emp-' + emp.id,
-    title: emp.name,
-    subtitle: emp.roleName ?? '',
-    employeeId: emp.id,
-    children: allEmployees.value
-      .filter((e) => e.directSupervisorId === emp.id)
-      .flatMap((e) => buildSubtree(e.id)),
-  }
-  return [node]
-}
-
-const ceoTree = computed(() => {
-  const ceo = ceoEmployee.value
-  if (!ceo) return []
-  return buildSubtree(ceo.id)
-})
-
-const draggingEmployeeId = ref<number | null>(null)
-const dragOverNodeId = ref<number | null>(null)
-
-function onLeftItemDragStart(e: DragEvent, empId: number) {
-  draggingEmployeeId.value = empId
-  if (e.dataTransfer) e.dataTransfer.effectAllowed = 'move'
-}
-
-function onRightNodeDragOver(e: DragEvent, nodeEmpId: number) {
-  if (draggingEmployeeId.value == null) return
-  e.preventDefault()
-  dragOverNodeId.value = nodeEmpId
-}
-
-async function onRightNodeDrop(e: DragEvent, targetEmpId: number) {
-  e.preventDefault()
-  const dragId = draggingEmployeeId.value
-  draggingEmployeeId.value = null
-  dragOverNodeId.value = null
-  if (!dragId || dragId === targetEmpId) return
-  if (isAncestor(dragId, targetEmpId)) {
-    message.error('不允许循环汇报')
-    return
-  }
-  try {
-    await request({
-      url: `/employees/${dragId}`,
-      method: 'PUT',
-      body: { directSupervisorId: targetEmpId },
-    })
-    message.success('已加入汇报关系')
-    await loadSupervisorTree()
-  } catch {
-    message.error('保存失败')
-  }
-}
-
-async function loadSupervisorTree() {
+async function loadSupervisorTree(): Promise<void> {
   loadingTree.value = true
   try {
-    const data = await request<{ content: EmployeeBrief[] }>({ url: '/employees?size=500' })
+    const data = await request<{ content: ApiEmployee[] }>({
+      url: '/employees?size=500',
+    })
     allEmployees.value = data?.content ?? []
   } catch {
     allEmployees.value = []
@@ -496,68 +303,74 @@ async function loadSupervisorTree() {
   }
 }
 
-interface AntdTreeDropInfo {
-  // AntDV EventDataNode 泛型与 TreeDropEvent 不兼容，我们只消费 employeeId 字段，
-  // 其余字段由 AntDV 运行时填充，这里用最小 shape 而非 any。
-  dragNode: { employeeId: number }
-  node: { employeeId: number }
-  dropToGap: boolean
-}
-async function onSupervisorDrop(info: AntdTreeDropInfo) {
+/**
+ * 处理 SupervisorTree change 事件：把 tempId 反解析回 employeeId，调 PUT /employees/{id}
+ */
+async function handleSupervisorChange(payload: SupervisorChangePayload): Promise<void> {
   if (!isCeoOrHr.value) return
-  const ceo = ceoEmployee.value
-  if (ceo && info.dragNode.employeeId === ceo.id) {
-    message.warning('CEO 节点不可移动')
+  const employeeId = tempIdToRealId(payload.changed)
+  if (employeeId === null) {
+    message.error('无效的员工句柄')
     return
   }
-  const dragId = info.dragNode.employeeId
-  const newSupervisorId = info.dropToGap ? null : info.node.employeeId
-  if (!newSupervisorId) {
-    message.warning('当前仅支持拖拽到具体上级节点')
-    return
-  }
-  if (dragId === newSupervisorId) return
-  if (isAncestor(dragId, newSupervisorId)) {
-    message.error('不允许循环汇报：目标上级是当前节点的下属')
-    return
-  }
+  const supervisorId =
+    payload.newSupervisorTempId !== null
+      ? tempIdToRealId(payload.newSupervisorTempId)
+      : null
   try {
     await request({
-      url: `/employees/${dragId}`,
+      url: `/employees/${employeeId}`,
       method: 'PUT',
-      body: { directSupervisorId: newSupervisorId },
+      body: { directSupervisorId: supervisorId },
     })
-    message.success('汇报关系已更新')
+    message.success(supervisorId === null ? '已移出汇报关系' : '汇报关系已更新')
     await loadSupervisorTree()
   } catch {
     message.error('保存失败')
+    await loadSupervisorTree()
   }
 }
 
-function isAncestor(employeeId: number, candidateAncestorId: number): boolean {
-  // 从 employeeId 向下查找其子树，若 candidateAncestorId 在子树中则成立
-  const queue: number[] = [employeeId]
-  while (queue.length) {
-    const curr = queue.shift()
-    if (curr === undefined) break
-    const children = allEmployees.value.filter((e) => e.directSupervisorId === curr)
-    for (const c of children) {
-      if (c.id === candidateAncestorId) return true
-      queue.push(c.id)
-    }
+/**
+ * 处理 SupervisorTree invalid 事件：根据 reason 输出对应中文提示
+ */
+function handleSupervisorInvalid(payload: SupervisorInvalidPayload): void {
+  switch (payload.reason) {
+    case 'CYCLE':
+      message.error('不允许循环汇报：目标上级是当前节点的下属')
+      break
+    case 'CEO_IMMUTABLE':
+      message.warning('CEO 节点不可移动')
+      break
+    case 'DROP_TO_GAP':
+      message.warning('当前仅支持拖拽到具体上级节点')
+      break
+    case 'SELF':
+      message.error('不能将自己设为自己的上级')
+      break
   }
-  return false
 }
+
+// ────────────────────────────────────────────────────────────────────
+// 生命周期
+// ────────────────────────────────────────────────────────────────────
 
 onMounted(() => {
-  loadDepartments()
-  loadSupervisorTree()
+  void loadDepartments()
+  void loadSupervisorTree()
 })
 </script>
 
 <style scoped>
 .org-page {
   /* Flow layout: natural top-to-bottom content flow */
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
 }
 
 .page-title {
@@ -567,5 +380,12 @@ onMounted(() => {
   margin: 0 0 16px 0;
 }
 
-/* Removed flex constraints to allow natural content flow */
+.supervisor-card {
+  margin-top: 16px;
+}
+
+.extra-hint {
+  color: #999;
+  font-size: 12px;
+}
 </style>

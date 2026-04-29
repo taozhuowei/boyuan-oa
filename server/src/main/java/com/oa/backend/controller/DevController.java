@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
  *   <li>POST /dev/reset - 截断全部业务/事务表，保留账号/角色/参照数据（E2E 测试用）
  *   <li>POST /dev/reset-setup - 重置系统初始化状态（允许重新执行初始化向导）
  *   <li>POST /dev/skip-setup - 标记系统为已初始化（跳过向导直接进入登录）
+ *   <li>POST /dev/reset-finalize - 重置 finalize 状态 + 清理 finalize 写入的业务数据（DEF-SETUP-04 C2）
  * </ul>
  */
 @Slf4j
@@ -45,6 +46,12 @@ public class DevController {
   private final AuthController authController;
   private final GlobalRateLimitFilter globalRateLimitFilter;
   private final CaptchaService captchaService;
+
+  /**
+   * 数据库 employee/department/position 等业务表的种子记录占用 id 1–8（详见 R__test_accounts.sql）。 测试或 wizard
+   * 创建的记录均使用自增 id ≥ 100（auto-increment 起点已配置为 100）， 因此 dev 重置时按"id ≥ 阈值"区分种子与非种子记录。
+   */
+  private static final long WIZARD_AUTOINC_THRESHOLD = 100L;
 
   /**
    * E2E 测试数据重置。
@@ -67,11 +74,13 @@ public class DevController {
     String tableList = String.join(", ", BUSINESS_TABLES);
     jdbcTemplate.execute("TRUNCATE TABLE " + tableList + " CASCADE");
     // Remove setup-wizard-created accounts (CEO001/HR001/SYS_ADMIN001/GM001) and
-    // any test-created employees (auto-increment starts at 100, seeds are 1–8)
+    // any test-created employees (auto-increment starts at WIZARD_AUTOINC_THRESHOLD, seeds are 1–8)
     jdbcTemplate.execute(
-        "DELETE FROM employee WHERE employee_no IN ('CEO001','HR001','SYS_ADMIN001','GM001') OR id >= 100");
+        "DELETE FROM employee WHERE employee_no IN ('CEO001','HR001','SYS_ADMIN001','GM001') OR id >= "
+            + WIZARD_AUTOINC_THRESHOLD);
     // Restore seed employee statuses — E2E-06 disables an employee; reset must undo that
-    jdbcTemplate.execute("UPDATE employee SET account_status = 'ACTIVE' WHERE id < 100");
+    jdbcTemplate.execute(
+        "UPDATE employee SET account_status = 'ACTIVE' WHERE id < " + WIZARD_AUTOINC_THRESHOLD);
     // 清除上次初始化向导测试残留的 company_name，恢复默认"博渊"显示
     jdbcTemplate.execute("DELETE FROM system_config WHERE config_key = 'company_name'");
 
@@ -139,6 +148,45 @@ public class DevController {
   public ResponseEntity<Map<String, String>> skipSetup() {
     setupService.markInitializedForDev();
     return ResponseEntity.ok(Map.of("message", "marked as initialized"));
+  }
+
+  /**
+   * 重置 finalize 状态，便于 E2E 反复测试 /setup/finalize（DEF-SETUP-04 C2）。
+   *
+   * <p>动作：
+   *
+   * <ul>
+   *   <li>system_config.wizard_finalize_completed → "false"
+   *   <li>system_config.wizard_finalize_token → NULL（下次 /setup/init 会重新生成）
+   *   <li>清理 finalize 阶段写入的业务数据（自定义角色、向导新建员工/部门/岗位、retention_policy、finalize 写入的 system_config
+   *       项以及审批流节点替换历史）
+   * </ul>
+   *
+   * <p>仅 dev profile 加载，生产物理不存在。
+   *
+   * @return operation result message
+   */
+  @PostMapping("/reset-finalize")
+  public ResponseEntity<Map<String, String>> resetFinalize() {
+    log.warn("[DEV] finalize state reset triggered");
+    // 1. 重置状态键
+    setupService.resetFinalizeForDev();
+    // 2. 清理 finalize 写入的业务数据。复用 /dev/reset 的清理目标并补齐：
+    //    - 非系统角色（is_system=0）— finalize step 5
+    //    - 向导新建的部门 / 员工 / 岗位等级（id >= WIZARD_AUTOINC_THRESHOLD，与 /dev/reset 阈值一致）
+    //    - retention_policy 全部清空（V1 schema 无种子，由 finalize step 10 写入）
+    //    - 审批流节点（finalize step 9 仅替换 nodes，不删除 def）
+    jdbcTemplate.execute("DELETE FROM sys_role WHERE is_system = 0");
+    jdbcTemplate.execute("DELETE FROM employee WHERE id >= " + WIZARD_AUTOINC_THRESHOLD);
+    jdbcTemplate.execute(
+        "DELETE FROM position_level WHERE position_id IN (SELECT id FROM position WHERE id >= "
+            + WIZARD_AUTOINC_THRESHOLD
+            + ")");
+    jdbcTemplate.execute("DELETE FROM position WHERE id >= " + WIZARD_AUTOINC_THRESHOLD);
+    jdbcTemplate.execute("DELETE FROM department WHERE id >= " + WIZARD_AUTOINC_THRESHOLD);
+    jdbcTemplate.execute("DELETE FROM retention_policy");
+    log.info("[DEV] finalize state + finalize-written business data cleared");
+    return ResponseEntity.ok(Map.of("message", "finalize reset ok"));
   }
 
   /**

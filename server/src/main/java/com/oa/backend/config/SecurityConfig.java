@@ -147,6 +147,7 @@ public class SecurityConfig {
                         "/health",
                         "/setup/status",
                         "/setup/init",
+                        "/setup/finalize",
                         "/setup/reset-ceo-password",
                         "/dev/**", // @Profile("dev") ensures this path doesn't exist in prod
                         "/v3/api-docs/**",

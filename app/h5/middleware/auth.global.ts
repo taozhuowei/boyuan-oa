@@ -43,18 +43,26 @@ const PAGE_ACCESS: Record<string, string[]> = {
 
 export default defineNuxtRouteMiddleware(async (to) => {
   // Use Nuxt's useState for per-request initialization status (SSR-safe)
+  // initState：/setup/init 是否已完成；wizardFinalizeState：/setup/finalize 是否已完成
+  // D-M08：向导拆为两阶段后，"已 init 但未 finalize"也允许停留在 /setup 完成 step 5-10
   const initState = useState<boolean | null>('setup-initialized', () => null)
+  const wizardFinalizeState = useState<boolean | null>('wizard-finalize-completed', () => null)
   // Public routes (no auth needed) — /setup-account requires auth so excluded here
   const publicPaths = ['/login', '/auth/forgot_password', '/setup']
 
   // Check system initialization status
-  if (initState.value === null) {
+  if (initState.value === null || wizardFinalizeState.value === null) {
     try {
-      const response = await $fetch<{ initialized: boolean }>('/api/setup/status')
+      const response = await $fetch<{
+        initialized: boolean
+        wizardFinalizeCompleted: boolean
+      }>('/api/setup/status')
       initState.value = response.initialized
+      wizardFinalizeState.value = response.wizardFinalizeCompleted ?? false
     } catch {
-      // If API fails, assume system is initialized to avoid blocking
+      // If API fails, assume system is fully initialized to avoid blocking authed users
       initState.value = true
+      wizardFinalizeState.value = true
     }
   }
 
@@ -63,8 +71,13 @@ export default defineNuxtRouteMiddleware(async (to) => {
     return navigateTo('/setup')
   }
 
-  // Redirect away from /setup if already initialized
-  if (initState.value === true && to.path === '/setup') {
+  // D-M08：仅在 wizard 全部 step（含 finalize）完成后，才把进入 /setup 的访问导回 /login
+  // 这样"已 init 但未 finalize"的用户刷新浏览器仍可继续 step 5-10 而不被踢出
+  if (
+    initState.value === true &&
+    wizardFinalizeState.value === true &&
+    to.path === '/setup'
+  ) {
     return navigateTo('/login')
   }
 
