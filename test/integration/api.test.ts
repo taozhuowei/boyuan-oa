@@ -548,6 +548,19 @@ describe('C-INT-03 - 报销 API', () => {
     expect(Array.isArray(body)).toBe(true)
   })
 
+  it('EX-04b: POST /forms/{expenseId}/approve — CEO 审批通过节点 1，推进到财务节点', async (ctx: SkipCtx) => {
+    if (!serverUp) return ctx.skip()
+    if (expenseId === null) return ctx.skip()
+    // EXPENSE 审批流（V3__expense_module.sql §77-93）为两节点：CEO → 财务。
+    // 测试 EX-05 期望财务审批通过，前置条件是表单已推进到节点 2，因此先由 CEO 通过节点 1。
+    const { status } = await post(
+      `/forms/${expenseId}/approve`,
+      { action: 'APPROVE' },
+      ceoToken
+    )
+    expect(status).toBe(200)
+  })
+
   it('EX-05: POST /forms/{expenseId}/approve — finance token 审批通过，返回 200', async (ctx: SkipCtx) => {
     if (!serverUp) return ctx.skip()
     if (expenseId === null) return ctx.skip()
@@ -852,9 +865,14 @@ describe('C-INT-08 - 薪资结算链路 API', () => {
     const { status, body } = await get<any[]>(`/payroll/slips?cycleId=${cycleId}`, financeToken)
     expect(status).toBe(200)
     expect(Array.isArray(body)).toBe(true)
-    // 记录第一条工资条 id，供 PR-05 使用
+    // PR-05 用 employeeToken（employee.demo, id=1）确认工资条，PayrollSlipService.getOwnSlip
+    // 仅放行 slip.employee_id 等于当前登录员工 id 的记录；因此从 finance 拿到的全量列表中
+    // 必须挑选出属于 employee.demo 的那一条，否则 PR-05 会收到 403（无权操作此工资条）。
     if ((body as any[]).length > 0) {
-      slipId = (body as any[])[0].id ?? null
+      const ownSlip = (body as any[]).find(
+        (s) => (s.employeeId ?? s.employee_id) === 1
+      )
+      slipId = ownSlip?.id ?? null
     }
   })
 

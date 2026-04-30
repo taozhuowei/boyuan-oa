@@ -371,6 +371,46 @@ public class AuthController {
               message = "密码须为8-64位，同时包含字母和数字，不允许空格")
           String newPassword) {}
 
+  /**
+   * 已登录用户主动修改密码（DESIGN.md §头像菜单 修改密码）。
+   *
+   * <p>与首次登录设置密码不同：此端点要求提供原密码并校验，适用于运营期密码轮换。
+   *
+   * @param authorization Authorization 请求头（JWT）
+   * @param request 包含原密码 + 新密码
+   * @return 204 No Content 表示修改成功
+   * @throws ResponseStatusException 401（无法解析当前用户）/ 400（用户不存在 / 原密码错误）
+   */
+  @PostMapping("/change-password")
+  @PreAuthorize("isAuthenticated()")
+  public ResponseEntity<Void> changePassword(
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @Valid @RequestBody ChangePasswordRequest request) {
+    Long userId = getCurrentUserId(authorization);
+    if (userId == null) {
+      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "无法获取当前用户信息");
+    }
+    Employee employee =
+        employeeService
+            .findById(userId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
+    if (!passwordEncoder.matches(request.currentPassword(), employee.getPasswordHash())) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "原密码错误");
+    }
+    String newPasswordHash = passwordEncoder.encode(request.newPassword());
+    employeeService.updatePassword(employee.getId(), newPasswordHash, false);
+    return ResponseEntity.noContent().build();
+  }
+
+  /** 已登录用户修改密码请求体。 newPassword 复用首次登录密码强度规则（8–64 位含字母与数字、不允许空格）。 */
+  public record ChangePasswordRequest(
+      @NotBlank(message = "原密码不能为空") String currentPassword,
+      @NotBlank(message = "新密码不能为空")
+          @Pattern(
+              regexp = "^(?=.*[A-Za-z])(?=.*\\d)[^\\s]{8,64}$",
+              message = "密码须为8-64位，同时包含字母和数字，不允许空格")
+          String newPassword) {}
+
   /** D-F-16 密码重置请求体。 */
   public record VerifyResetRequest(
       @NotBlank(message = "验证码不能为空") @Size(min = 6, max = 6, message = "验证码必须为6位") String code,
