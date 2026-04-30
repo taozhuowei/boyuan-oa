@@ -204,6 +204,14 @@ jobs:
             -f server/src/test/resources/db/migration/R__test_accounts.sql
 
       - name: Run E2E tests
+        # TEST_EMAIL is required by the spec's import-time guard
+        # (test/e2e/specs/D-M01.spec.ts §32-39). It only feeds string into form
+        # inputs — verification codes are read via /dev/verification-code from
+        # the in-process Caffeine cache, so we don't need a real IMAP mailbox.
+        # IMAP password gets a placeholder so email-reader.ts still imports.
+        env:
+          TEST_EMAIL: e2e-ci@example.com
+          TEST_EMAIL_IMAP_PASSWORD: ci-placeholder-no-imap
         run: yarn test:e2e
 
       - name: Upload Playwright report on failure
@@ -273,7 +281,12 @@ jobs:
           exit 1
 
       - name: Prepare ZAP working directory
-        run: mkdir -p tools/zap
+        # zaproxy/zap-stable image runs as user `zap` (uid 1000); the host bind-mount
+        # is owned by the runner user, so without chmod the container hits
+        # `PermissionError: /zap/wrk/zap.yaml` before it can scan.
+        run: |
+          mkdir -p tools/zap
+          chmod 777 tools/zap
 
       # -I: ignore alert rules (never blocks pipeline); report saved as artifact
       - name: Run OWASP ZAP baseline scan

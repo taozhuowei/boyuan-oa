@@ -405,15 +405,13 @@ public class AuthController {
   /**
    * 已登录用户修改密码请求体。
    *
-   * <p>newPassword 长度规则：6–64 位且不允许空格。比 first-login 的 8 位含字母数字要求更宽， 与现有种子密码（"123456"）和 C-INT-07
-   * 测试 PW-03 用例（"新密码少于 6 位返回 400"）保持一致。 头像菜单的运营期密码修改与首次登录强密码门槛是不同场景，不强制套用同一规则。
+   * <p>newPassword 长度规则：6–64 位且不允许空格。比 first-login 的 8 位含字母数字要求更宽， 与现有种子密码（"123456"）和 C-INT-07 测试
+   * PW-03 用例（"新密码少于 6 位返回 400"）保持一致。 头像菜单的运营期密码修改与首次登录强密码门槛是不同场景，不强制套用同一规则。
    */
   public record ChangePasswordRequest(
       @NotBlank(message = "原密码不能为空") String currentPassword,
       @NotBlank(message = "新密码不能为空")
-          @Pattern(
-              regexp = "^[^\\s]{6,64}$",
-              message = "新密码长度需为 6-64 位，且不允许空格")
+          @Pattern(regexp = "^[^\\s]{6,64}$", message = "新密码长度需为 6-64 位，且不允许空格")
           String newPassword) {}
 
   /** D-F-16 密码重置请求体。 */
