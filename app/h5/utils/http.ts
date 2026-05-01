@@ -29,6 +29,18 @@ export async function request<T>(options: RequestOptions, _isClient = import.met
       method: options.method ?? 'GET',
       body: options.body as Record<string, unknown> | undefined,
       headers,
+      // Dev-only: capture _devCode from any response and expose it to DevToolbar.
+      // Tree-shaken in production builds because import.meta.env.DEV is a build-time constant.
+      onResponse: import.meta.env.DEV
+        ? ({ response }) => {
+            const data = response._data
+            if (data && typeof data === 'object' && '_devCode' in (data as object)) {
+              useState<string>('dev-latest-code', () => '').value = String(
+                (data as Record<string, unknown>)._devCode,
+              )
+            }
+          }
+        : undefined,
     })
   } catch (err: unknown) {
     const status = (err as { statusCode?: number }).statusCode

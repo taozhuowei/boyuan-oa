@@ -147,6 +147,7 @@
 import { ref, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
+import { request } from '~/utils/http'
 
 definePageMeta({ layout: false })
 
@@ -158,8 +159,6 @@ const code = ref('')
 const resetToken = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
-
-const API_BASE = '/api'
 
 // D-F-17 密码强度规则（前端预校验），与后端 ResetPasswordRequest 保持一致
 const PASSWORD_REGEX = /^(?=.*[A-Za-z])(?=.*\d)[^\s]{8,64}$/
@@ -182,10 +181,7 @@ async function doSendCode() {
   }
   loading.value = true
   try {
-    await $fetch(`${API_BASE}/auth/send-reset-code`, {
-      method: 'POST',
-      body: { email: v },
-    })
+    await request({ url: '/auth/send-reset-code', method: 'POST', body: { email: v } })
     message.success('若该邮箱已绑定账号，验证码已发送')
     step.value = 1
   } catch {

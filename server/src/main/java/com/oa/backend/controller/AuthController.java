@@ -27,6 +27,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.core.env.Environment;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -85,6 +86,7 @@ public class AuthController {
   private final PasswordEncoder passwordEncoder;
   private final EmailVerificationService emailVerificationService;
   private final CaptchaService captchaService;
+  private final Environment environment;
 
   /**
    * D-F-19: 阶梯式锁定时长（分钟）查找表。 各阶梯相对于 baseThreshold 等比缩放： baseThreshold*1→1min, *2→5min, *4→15min,
@@ -288,7 +290,7 @@ public class AuthController {
   /** D-F-16: 向当前用户绑定邮箱发送密码重置验证码。 若用户未绑定邮箱返回 400。 权限期望：已认证用户。 */
   @PostMapping("/password/send-reset-code")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<Void> sendPasswordResetCode(
+  public ResponseEntity<?> sendPasswordResetCode(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
     Long userId = getCurrentUserId(authorization);
     if (userId == null) {
@@ -298,7 +300,10 @@ public class AuthController {
         employeeService
             .findById(userId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "用户不存在"));
-    emailVerificationService.sendPasswordResetCode(employee);
+    String code = emailVerificationService.sendPasswordResetCode(employee);
+    if (isDevProfile()) {
+      return ResponseEntity.ok(Map.of("_devCode", code));
+    }
     return ResponseEntity.noContent().build();
   }
 
@@ -460,6 +465,13 @@ public class AuthController {
   }
 
   // ── Private helpers ──────────────────────────────────────────────────────
+
+  private boolean isDevProfile() {
+    for (String p : environment.getActiveProfiles()) {
+      if ("dev".equalsIgnoreCase(p)) return true;
+    }
+    return false;
+  }
 
   private Long getCurrentUserId(String authorization) {
     if (authorization == null || !authorization.startsWith("Bearer ")) {

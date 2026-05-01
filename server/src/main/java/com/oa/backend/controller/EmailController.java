@@ -8,7 +8,9 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -32,6 +34,7 @@ public class EmailController {
   private final EmailVerificationService emailVerificationService;
   private final EmployeeService employeeService;
   private final JwtTokenService jwtTokenService;
+  private final Environment environment;
 
   /**
    * 发送邮箱绑定验证码。
@@ -42,12 +45,22 @@ public class EmailController {
    */
   @PostMapping("/send-bind-code")
   @PreAuthorize("isAuthenticated()")
-  public ResponseEntity<Void> sendBindCode(
+  public ResponseEntity<?> sendBindCode(
       @RequestHeader("Authorization") String authorization,
       @Valid @RequestBody SendBindCodeRequest request) {
     Long employeeId = resolveEmployeeId(authorization);
-    emailVerificationService.sendBindCode(employeeId, request.email());
+    String code = emailVerificationService.sendBindCode(employeeId, request.email());
+    if (isDevProfile()) {
+      return ResponseEntity.ok(Map.of("_devCode", code));
+    }
     return ResponseEntity.noContent().build();
+  }
+
+  private boolean isDevProfile() {
+    for (String p : environment.getActiveProfiles()) {
+      if ("dev".equalsIgnoreCase(p)) return true;
+    }
+    return false;
   }
 
   /**

@@ -9,10 +9,12 @@ import com.oa.backend.security.ResetCodeStore;
 import com.oa.backend.service.EmailVerificationService;
 import com.oa.backend.service.EmployeeService;
 import jakarta.validation.Valid;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -51,19 +53,31 @@ public class PasswordResetController {
   private final ResetCodeStore resetCodeStore;
   private final PasswordEncoder passwordEncoder;
   private final AuthController authController;
+  private final Environment environment;
 
   /** 职责：向绑定邮箱发送密码重置验证码（6 位数字，5 分钟 TTL，Caffeine 缓存）。 邮箱不存在时仍返回 200，避免邮箱枚举。 */
   @PostMapping("/send-reset-code")
   public ResponseEntity<Map<String, String>> sendResetCode(
       @Valid @RequestBody SendResetCodeRequest request) {
     Optional<Employee> employeeOpt = employeeService.findByEmail(request.email());
+    Map<String, String> body = new LinkedHashMap<>();
+    body.put("message", "若邮箱存在，验证码已发送");
     if (employeeOpt.isPresent()) {
-      // sendPasswordResetCode 已校验 email 非空并写 Caffeine 缓存 + 发邮件；失败时抛 IllegalStateException
-      emailVerificationService.sendPasswordResetCode(employeeOpt.get());
+      String code = emailVerificationService.sendPasswordResetCode(employeeOpt.get());
+      if (isDevProfile()) {
+        body.put("_devCode", code);
+      }
     } else {
       log.info("send-reset-code requested for unknown email (not disclosing)");
     }
-    return ResponseEntity.ok(Map.of("message", "若邮箱存在，验证码已发送"));
+    return ResponseEntity.ok(body);
+  }
+
+  private boolean isDevProfile() {
+    for (String p : environment.getActiveProfiles()) {
+      if ("dev".equalsIgnoreCase(p)) return true;
+    }
+    return false;
   }
 
   /** 职责：验证邮箱+验证码，通过后签发 resetToken。验证码消费后立即失效（EmailVerificationService.verifyPasswordResetCode）。 */

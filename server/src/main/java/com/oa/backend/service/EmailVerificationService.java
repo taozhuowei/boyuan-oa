@@ -70,7 +70,7 @@ public class EmailVerificationService {
    * @param email 待绑定的邮箱
    * @throws IllegalArgumentException 若邮箱已被其他员工占用
    */
-  public void sendBindCode(Long employeeId, String email) {
+  public String sendBindCode(Long employeeId, String email) {
     // 检查邮箱是否已被其他员工占用
     Employee existing =
         employeeMapper.selectOne(
@@ -85,6 +85,7 @@ public class EmailVerificationService {
     codeCache.put("bind:" + email, new CodeEntry(code, employeeId));
     sendEmail(email, "【OA系统】邮箱绑定验证码", "您的邮箱绑定验证码为：" + code + "，5分钟内有效，请勿泄露。");
     log.info("Email bind code sent to {} for employee {}", email, employeeId);
+    return code;
   }
 
   /**
@@ -131,7 +132,7 @@ public class EmailVerificationService {
    * @param employee 当前员工实体
    * @throws IllegalArgumentException 若员工未绑定邮箱
    */
-  public void sendPasswordResetCode(Employee employee) {
+  public String sendPasswordResetCode(Employee employee) {
     if (employee.getEmail() == null || employee.getEmail().isBlank()) {
       throw new IllegalArgumentException("请先绑定邮箱");
     }
@@ -140,6 +141,7 @@ public class EmailVerificationService {
     codeCache.put("pwd:" + email, new CodeEntry(code, employee.getId()));
     sendEmail(email, "【OA系统】密码重置验证码", "您的密码重置验证码为：" + code + "，5分钟内有效，请勿泄露。");
     log.info("Password reset code sent to {} for employee {}", email, employee.getId());
+    return code;
   }
 
   /**
