@@ -256,66 +256,8 @@
       <div v-if="currentStep === 8" class="step-content">
         <h3>全局配置 / 审批流</h3>
         <p class="step-hint">
-          配置考勤计量单位、薪资周期、临时薪资审批，以及各业务类型的审批流末端节点。
+          配置各业务类型的审批流末端节点。
         </p>
-
-        <a-card title="考勤计量单位" class="config-block">
-          <div class="form-row">
-            <span class="form-label">请假单位：</span>
-            <a-select
-              v-model:value="globalForm.leaveUnit"
-              :options="UNIT_OPTIONS"
-              style="width: 160px"
-              data-catch="wizard-global-leave-unit"
-            />
-          </div>
-          <div class="form-row">
-            <span class="form-label">加班单位：</span>
-            <a-select
-              v-model:value="globalForm.overtimeUnit"
-              :options="UNIT_OPTIONS"
-              style="width: 160px"
-              data-catch="wizard-global-overtime-unit"
-            />
-          </div>
-        </a-card>
-
-        <a-card title="薪资周期" class="config-block">
-          <div class="form-row">
-            <span class="form-label">发薪日：</span>
-            <a-input-number
-              v-model:value="globalForm.payday"
-              :min="1"
-              :max="28"
-              style="width: 120px"
-              data-catch="wizard-global-payday"
-            />
-            <span class="form-suffix">日（每月）</span>
-          </div>
-          <div class="form-row">
-            <span class="form-label">结算截止日：</span>
-            <a-input-number
-              v-model:value="globalForm.settlementCutoff"
-              :min="1"
-              :max="15"
-              style="width: 120px"
-              data-catch="wizard-global-settlement-cutoff"
-            />
-            <span class="form-suffix">天前（发薪日前 N 天）</span>
-          </div>
-        </a-card>
-
-        <a-card title="临时薪资调整审批" class="config-block">
-          <div class="form-row">
-            <span class="form-label">是否需要 CEO 审批：</span>
-            <a-switch
-              v-model:checked="globalForm.bonusApprovalRequired"
-              checked-children="需要"
-              un-checked-children="不需要"
-              data-catch="wizard-global-bonus-approval"
-            />
-          </div>
-        </a-card>
 
         <a-card title="审批流末端节点" class="config-block">
           <p class="form-hint">
@@ -560,25 +502,6 @@ interface SupervisorMapping {
 }
 const supervisors = ref<SupervisorMapping[]>([])
 
-/**
- * Step 9：全局配置表单（wizard 专用，非 system_config 直存形式）
- * finalizeSetup 时序列化为 globalConfig.entries 提交
- */
-interface GlobalConfigForm {
-  leaveUnit: 'HOUR' | 'HALF_DAY' | 'DAY'
-  overtimeUnit: 'HOUR' | 'HALF_DAY' | 'DAY'
-  payday: number
-  settlementCutoff: number
-  bonusApprovalRequired: boolean
-}
-const globalForm = reactive<GlobalConfigForm>({
-  leaveUnit: 'HOUR',
-  overtimeUnit: 'HOUR',
-  payday: 15,
-  settlementCutoff: 5,
-  bonusApprovalRequired: true,
-})
-
 /** Step 9：审批流节点编辑（wizard 专用） */
 interface ApprovalFlowNodeEntry {
   nodeName: string
@@ -616,13 +539,6 @@ const finalizeError = ref('')
 // ────────────────────────────────────────────────────────────────────
 // Step 9：常量选项
 // ────────────────────────────────────────────────────────────────────
-
-/** 考勤计量单位下拉项（与现网 /config AttendanceUnitConfig 完全一致） */
-const UNIT_OPTIONS: ReadonlyArray<{ value: 'HOUR' | 'HALF_DAY' | 'DAY'; label: string }> = [
-  { value: 'HOUR', label: '小时' },
-  { value: 'HALF_DAY', label: '半天' },
-  { value: 'DAY', label: '天' },
-]
 
 /** 审批人类型下拉项 */
 const APPROVER_TYPE_OPTIONS = [
@@ -903,44 +819,6 @@ function flattenWizardDepartments(
 }
 
 /**
- * 把 globalForm 序列化为 SetupFinalizeRequest.GlobalConfigDto.entries
- * Key 与现网 SystemConfigController / PayrollBonusService 常量保持一致
- */
-function buildGlobalConfigEntries(): Array<{
-  key: string
-  value: string
-  description: string
-}> {
-  return [
-    {
-      key: 'attendance.leave.unit',
-      value: globalForm.leaveUnit,
-      description: '请假最小计量单位（HOUR/HALF_DAY/DAY）',
-    },
-    {
-      key: 'attendance.overtime.unit',
-      value: globalForm.overtimeUnit,
-      description: '加班最小计量单位（HOUR/HALF_DAY/DAY）',
-    },
-    {
-      key: 'payroll.payday',
-      value: String(globalForm.payday),
-      description: '月发薪日（1-28）',
-    },
-    {
-      key: 'payroll.settlement.cutoff',
-      value: String(globalForm.settlementCutoff),
-      description: '发薪日前 N 天截止结算',
-    },
-    {
-      key: 'payroll_bonus_approval_required',
-      value: globalForm.bonusApprovalRequired ? 'true' : 'false',
-      description: '临时薪资调整是否需要 CEO 审批',
-    },
-  ]
-}
-
-/**
  * 过滤 approvalFlowsForm，仅提交至少有 1 个有效节点的 flow；空 flow 被跳过
  * 节点必填：nodeName + approverType；空节点视为无效
  */
@@ -1025,7 +903,6 @@ async function finalizeSetup() {
     roles: roles.value.length === 0 ? null : roles.value,
     employeeImport: employeeImportPayload,
     organization: organizationPayload,
-    globalConfig: { entries: buildGlobalConfigEntries() },
     approvalFlows: approvalFlowsPayload.length === 0 ? null : approvalFlowsPayload,
     retention: retentionPayload,
   }

@@ -16,8 +16,7 @@ import org.springframework.stereotype.Service;
  * employee_no 查询）、department 表（按 department_id 查询）。 缓存键：employee_no（即 JWT sub，在一次登录会话期间不变），TTL =
  * 60s（见 CacheConfig）。
  *
- * <p>注意：@Cacheable 需要方法被外部 bean 调用（Spring AOP 代理机制），因此本类独立于 WorkbenchService；WorkbenchService 注入此
- * bean 后调用 loadByEmployeeNo 才能命中缓存。
+ * <p>注意：@Cacheable 需要方法被外部 bean 调用（Spring AOP 代理机制），调用方注入此 bean 后调用 loadByEmployeeNo 才能命中缓存。
  */
 @Service
 @RequiredArgsConstructor

@@ -5,7 +5,6 @@ import com.oa.backend.annotation.OperationLogRecord;
 import com.oa.backend.dto.EmployeeCreateRequest;
 import com.oa.backend.dto.EmployeeResponse;
 import com.oa.backend.dto.EmployeeUpdateRequest;
-import com.oa.backend.dto.SalaryOverrideRequest;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.service.EmployeeService;
 import jakarta.validation.Valid;
@@ -119,17 +118,6 @@ public class EmployeeController {
   public ResponseEntity<Void> resetPassword(@PathVariable Long id) {
     employeeService.resetPassword(id);
     return ResponseEntity.noContent().build();
-  }
-
-  /** 职责：更新员工薪资覆盖 请求含义：修改指定员工的薪资覆盖字段 响应含义：返回更新后的员工信息 权限期望：财务或 CEO 可操作 */
-  @PatchMapping("/{id}/salary-override")
-  @PreAuthorize("hasAnyRole('FINANCE','CEO')")
-  public ResponseEntity<EmployeeResponse> updateSalaryOverride(
-      @PathVariable Long id,
-      @RequestBody SalaryOverrideRequest request,
-      Authentication authentication) {
-    Employee employee = employeeService.applySalaryOverride(id, request);
-    return ResponseEntity.ok(toResponse(employee, authentication));
   }
 
   /**

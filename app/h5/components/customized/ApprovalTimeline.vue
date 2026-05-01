@@ -2,8 +2,8 @@
   <!--
     ApprovalTimeline — 审批历史时间轴组件
     用途：展示单个表单记录的完整审批历史，按时间顺序排列。
-    使用方：todo/index.vue 审批详情弹窗、attendance/index.vue 历史详情。
-    数据来源：父组件从 GET /attendance/:id/history 或嵌套在表单详情 API 中获取。
+    使用方：todo/index.vue 审批详情弹窗。
+    数据来源：父组件从表单详情 API 中获取。
   -->
   <div class="approval-timeline">
     <div class="timeline-header">审批历史</div>

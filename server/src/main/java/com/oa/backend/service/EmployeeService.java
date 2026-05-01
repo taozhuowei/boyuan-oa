@@ -4,7 +4,6 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.oa.backend.dto.EmployeeCreateRequest;
 import com.oa.backend.dto.EmployeeResponse;
 import com.oa.backend.dto.EmployeeUpdateRequest;
-import com.oa.backend.dto.SalaryOverrideRequest;
 import com.oa.backend.entity.Employee;
 import java.util.List;
 import java.util.Optional;
@@ -51,9 +50,6 @@ public interface EmployeeService {
 
   /** 更新员工手机号 */
   void updatePhone(Long id, String newPhone);
-
-  /** 应用薪资覆盖 */
-  Employee applySalaryOverride(Long id, SalaryOverrideRequest request);
 
   /** 根据用户名（employee_no）解析员工 ID；用于 controller 脱离 EmployeeMapper 直注入 */
   Long resolveEmployeeIdByUsername(String username);

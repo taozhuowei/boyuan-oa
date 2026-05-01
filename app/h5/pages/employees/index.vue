@@ -125,9 +125,6 @@
         <a-descriptions-item label="出差日补贴">
           {{ detailRecord.dailySubsidy ?? '—' }}
         </a-descriptions-item>
-        <a-descriptions-item label="差旅报销额度">
-          {{ detailRecord.expenseLimit ?? '—' }}
-        </a-descriptions-item>
         <a-descriptions-item label="绩效比例">
           {{ detailRecord.performanceRatio != null ? detailRecord.performanceRatio + '%' : '—' }}
         </a-descriptions-item>
@@ -332,16 +329,6 @@
             </a-form-item>
           </a-col>
           <a-col :span="8">
-            <a-form-item label="差旅报销额度（元/次）">
-              <a-input-number
-                v-model:value="form.expenseLimit"
-                :precision="2"
-                :min="0"
-                style="width: 100%"
-              />
-            </a-form-item>
-          </a-col>
-          <a-col :span="8">
             <a-form-item label="绩效比例（%）">
               <a-input-number
                 v-model:value="form.performanceRatio"
@@ -427,7 +414,6 @@ interface Employee {
   socialSeniority?: number | null
   contractType?: string | null
   dailySubsidy?: number | null
-  expenseLimit?: number | null
   performanceRatio?: number | null
   emergencyContacts?: EmergencyContact[]
   gender?: string
@@ -499,7 +485,6 @@ const form = ref<{
   socialSeniority: number | undefined
   contractType: string | undefined
   dailySubsidy: number | undefined
-  expenseLimit: number | undefined
   performanceRatio: number | undefined
   emergencyContacts: EmergencyContact[]
   gender: string
@@ -518,7 +503,6 @@ const form = ref<{
   socialSeniority: undefined,
   contractType: undefined,
   dailySubsidy: undefined,
-  expenseLimit: undefined,
   performanceRatio: undefined,
   emergencyContacts: [],
   gender: '',
@@ -561,7 +545,6 @@ function resetForm() {
     socialSeniority: undefined,
     contractType: undefined,
     dailySubsidy: undefined,
-    expenseLimit: undefined,
     performanceRatio: undefined,
     emergencyContacts: [],
     gender: '',
@@ -598,7 +581,6 @@ async function openEdit(record: Employee) {
     socialSeniority: record.socialSeniority ?? undefined,
     contractType: record.contractType ?? undefined,
     dailySubsidy: record.dailySubsidy ?? undefined,
-    expenseLimit: record.expenseLimit ?? undefined,
     performanceRatio: record.performanceRatio ?? undefined,
     emergencyContacts: (record.emergencyContacts ?? []).map((c) => ({ ...c })),
     directSupervisorId: record.directSupervisorId ?? undefined,

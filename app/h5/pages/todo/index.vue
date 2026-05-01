@@ -15,14 +15,8 @@
     />
 
     <a-card>
-      <a-tabs v-model:activeKey="activeTab" @change="onTabChange">
+      <a-tabs v-model:activeKey="activeTab">
         <a-tab-pane key="all" tab="全部" />
-        <a-tab-pane key="attendance">
-          <template #tab>
-            <span data-catch="todo-tab-approval">考勤审批</span>
-          </template>
-        </a-tab-pane>
-        <a-tab-pane key="expense" tab="报销审批" />
       </a-tabs>
 
       <a-table
@@ -105,7 +99,6 @@ import { ref, computed, onMounted } from 'vue'
 import { message } from 'ant-design-vue'
 import { request } from '~/utils/http'
 import type { ApprovalStep } from '~/types/approval'
-import { formatFormSummary } from '../../../shared/utils/formLabels'
 
 interface FormRecord {
   id: number
@@ -134,18 +127,7 @@ const columns = [
   { title: '操作', key: 'action', width: 100 },
 ]
 
-const ATTENDANCE_TYPES = ['LEAVE', 'OVERTIME', 'INJURY']
-const EXPENSE_TYPES = ['EXPENSE']
-
-const filteredList = computed(() => {
-  if (activeTab.value === 'attendance') {
-    return todoList.value.filter((r) => ATTENDANCE_TYPES.includes(r.formType))
-  }
-  if (activeTab.value === 'expense') {
-    return todoList.value.filter((r) => EXPENSE_TYPES.includes(r.formType))
-  }
-  return todoList.value
-})
+const filteredList = computed(() => todoList.value)
 
 function formatTime(t: string | undefined) {
   if (!t) return '—'
@@ -153,11 +135,7 @@ function formatTime(t: string | undefined) {
 }
 
 function getSummary(record: FormRecord): string {
-  return formatFormSummary(record.formType, record.formData) || record.formTypeName
-}
-
-function onTabChange(key: string | number) {
-  activeTab.value = String(key)
+  return record.formTypeName
 }
 
 async function viewApproval(record: FormRecord) {

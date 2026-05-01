@@ -78,8 +78,12 @@ export async function request<T>(options: RequestOptions): Promise<T>
    | `/config` | `ceo` |
    | `/org` | `ceo`, `hr` |
    | `/employees` | `ceo`, `hr`, `finance`, `project_manager`, `department_manager` |
-   | `/payroll` | `ceo`, `finance`, `worker`, `employee` |
-   | `/projects` | `ceo`, `finance`, `project_manager`, `employee` |
+   | `/positions` | `ceo`, `hr`, `finance` |
+   | `/retention` | `ceo` |
+   | `/team` | `ceo`, `hr`, `project_manager`, `department_manager` |
+   | `/operation_logs` | `ceo`, `sys_admin` |
+   | `/data_export` | `ceo`, `sys_admin` |
+   | `/data_viewer` | `ceo`, `sys_admin` |
 
 ---
 
@@ -235,7 +239,7 @@ export default defineNuxtConfig({
 |----------------|----------------------------------|----------------------------------------------------------------------|
 | 登录页           | `LoginPage.spec.ts`              | 成功后 userStore 写入 employeeType/positionId；忘记密码链接可点击       |
 | HTTP 层          | `http.spec.ts`                   | 401 自动跳转登录；同 URL 并发请求被防重提交拦截；自动携带 X-Client-Type   |
-| 权限过滤          | `permissionUtils.spec.ts`        | OFFICE 角色过滤施工日志/工伤菜单；LABOR 角色可见并不可见 payroll 入口    |
+| 权限过滤          | `permissionUtils.spec.ts`        | 角色路由守卫验证（PAGE_ACCESS 白名单覆盖）                               |
 | 忘记密码页        | `ForgotPassword.spec.ts`         | 4步 Step 正确推进；resetToken 写入临时 store；成功后跳转登录页           |
 | 签名画板          | `SignatureCanvas.spec.ts`        | getBase64() 返回非空字符串；clear() 清空画布；H5/MP 双端渲染             |
 | usePageConfig   | `usePageConfig.spec.ts`          | 同 routeCode 第二次不重复请求（session 缓存）；不同角色返回不同字段配置    |

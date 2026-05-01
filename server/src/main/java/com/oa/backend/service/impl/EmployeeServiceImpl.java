@@ -7,7 +7,6 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oa.backend.dto.EmployeeCreateRequest;
 import com.oa.backend.dto.EmployeeResponse;
 import com.oa.backend.dto.EmployeeUpdateRequest;
-import com.oa.backend.dto.SalaryOverrideRequest;
 import com.oa.backend.entity.Department;
 import com.oa.backend.entity.EmergencyContact;
 import com.oa.backend.entity.Employee;
@@ -341,24 +340,6 @@ public class EmployeeServiceImpl implements EmployeeService {
     employee.setPhone(newPhone);
     employee.setUpdatedAt(LocalDateTime.now());
     employeeMapper.updateById(employee);
-  }
-
-  @Override
-  @Transactional
-  public Employee applySalaryOverride(Long id, SalaryOverrideRequest request) {
-    Employee employee = findById(id).orElseThrow(() -> new IllegalArgumentException("员工不存在"));
-    if (request.baseSalaryOverride() != null) {
-      employee.setBaseSalaryOverride(request.baseSalaryOverride());
-    }
-    if (request.performanceBaseOverride() != null) {
-      employee.setPerformanceBaseOverride(request.performanceBaseOverride());
-    }
-    if (request.note() != null) {
-      employee.setSalaryOverrideNote(request.note());
-    }
-    employee.setUpdatedAt(LocalDateTime.now());
-    employeeMapper.updateById(employee);
-    return employee;
   }
 
   @Override

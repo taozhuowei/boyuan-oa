@@ -8,11 +8,9 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oa.backend.dto.EmployeeCreateRequest;
 import com.oa.backend.dto.EmployeeUpdateRequest;
-import com.oa.backend.dto.SalaryOverrideRequest;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.service.impl.EmployeeServiceImpl;
-import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.Optional;
 import org.junit.jupiter.api.DisplayName;
@@ -404,38 +402,6 @@ class EmployeeServiceImplTest {
     service.updatePhone(1L, "13900002222");
 
     assertEquals("13900002222", emp.getPhone());
-    verify(employeeMapper).updateById(emp);
-  }
-
-  // ─── applySalaryOverride ─────────────────────────────────
-
-  @Test
-  @DisplayName("applySalaryOverride：员工不存在抛出 IllegalArgumentException")
-  void applySalaryOverride_notFound_throwsException() {
-    when(employeeMapper.selectOne(any())).thenReturn(null);
-
-    SalaryOverrideRequest req =
-        new SalaryOverrideRequest(new BigDecimal("5000"), new BigDecimal("1000"), "备注");
-
-    assertThrows(IllegalArgumentException.class, () -> service.applySalaryOverride(999L, req));
-  }
-
-  @Test
-  @DisplayName(
-      "applySalaryOverride：成功更新 baseSalaryOverride/performanceBaseOverride/salaryOverrideNote")
-  void applySalaryOverride_success_updatesFields() {
-    Employee emp = activeEmployee("emp.001", "hashed");
-    when(employeeMapper.selectOne(any())).thenReturn(emp);
-    when(employeeMapper.updateById(any())).thenReturn(1);
-
-    SalaryOverrideRequest req =
-        new SalaryOverrideRequest(new BigDecimal("8000"), new BigDecimal("2000"), "绩效调整");
-
-    Employee result = service.applySalaryOverride(1L, req);
-
-    assertEquals(new BigDecimal("8000"), result.getBaseSalaryOverride());
-    assertEquals(new BigDecimal("2000"), result.getPerformanceBaseOverride());
-    assertEquals("绩效调整", result.getSalaryOverrideNote());
     verify(employeeMapper).updateById(emp);
   }
 

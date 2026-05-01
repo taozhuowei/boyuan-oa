@@ -13,7 +13,6 @@ import org.springframework.stereotype.Component;
  *
  * <ul>
  *   <li>{@link ApprovalNodeChangedEvent} - 审批节点变更时通知审批人
- *   <li>{@link PayrollSlipPublishedEvent} - 工资条发布时通知员工
  * </ul>
  *
  * <p>注意：此类仅注入核心通知服务，不直接依赖其他业务模块的服务。
@@ -60,27 +59,4 @@ public class NotificationEventListener {
     }
   }
 
-  /**
-   * 处理工资条发布事件。
-   *
-   * <p>当工资条正式发布时，通知员工查看工资条。
-   *
-   * @param event 工资条发布事件
-   */
-  @EventListener
-  public void onPayrollSlipPublished(PayrollSlipPublishedEvent event) {
-    log.info("收到工资条发布事件: slipId={}, employeeId={}", event.getSlipId(), event.getEmployeeId());
-
-    try {
-      notificationService.send(
-          event.getEmployeeId(),
-          "工资条已发布",
-          "您的工资条已发布，请前往薪资管理模块查看详情",
-          "PAYROLL",
-          "PAYROLL_SLIP",
-          event.getSlipId());
-    } catch (Exception e) {
-      log.error("发送工资条通知失败: employeeId={}, slipId={}", event.getEmployeeId(), event.getSlipId(), e);
-    }
-  }
 }

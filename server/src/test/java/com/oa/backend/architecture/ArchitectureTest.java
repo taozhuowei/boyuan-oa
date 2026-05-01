@@ -10,23 +10,17 @@ import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 @AnalyzeClasses(packages = "com.oa.backend")
 class ArchitectureTest {
 
-  /**
-   * Rule 1: Controllers must not directly inject MyBatis Mapper beans (types in
-   * com.oa.backend.mapper). InjuryClaimController is excluded — its FormRecordMapper violation is
-   * tracked as C+-F-01.
-   */
+  /** Rule 1: Controllers must not directly inject MyBatis Mapper beans (types in com.oa.backend.mapper). */
   @ArchTest
   static final ArchRule no_mapper_injection_in_controllers =
       ArchRuleDefinition.noFields()
           .that()
           .areDeclaredInClassesThat(
-              new DescribedPredicate<JavaClass>(
-                  "are @RestController classes except InjuryClaimController") {
+              new DescribedPredicate<JavaClass>("are @RestController classes") {
                 @Override
                 public boolean test(JavaClass javaClass) {
                   return javaClass.isAnnotatedWith(
-                          org.springframework.web.bind.annotation.RestController.class)
-                      && !javaClass.getSimpleName().equals("InjuryClaimController");
+                      org.springframework.web.bind.annotation.RestController.class);
                 }
               })
           .and()

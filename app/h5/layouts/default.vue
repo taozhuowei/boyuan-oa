@@ -106,27 +106,17 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, shallowRef, markRaw } from 'vue'
+import { ref, computed, watch, onMounted, markRaw } from 'vue'
 import type { Component } from 'vue'
 import { Modal } from 'ant-design-vue'
 import {
   HomeOutlined,
   AuditOutlined,
   FormOutlined,
-  ProjectOutlined,
-  FileTextOutlined,
-  AppstoreOutlined,
   TeamOutlined,
   ApartmentOutlined,
   ProfileOutlined,
   SafetyCertificateOutlined,
-  ClockCircleOutlined,
-  GiftOutlined,
-  ScheduleOutlined,
-  MoneyCollectOutlined,
-  AccountBookOutlined,
-  FileSearchOutlined,
-  MedicineBoxOutlined,
   SettingOutlined,
   DatabaseOutlined,
   ExportOutlined,
@@ -153,21 +143,11 @@ const PATH_ICON: Record<string, Component> = {
   '/': markRaw(HomeOutlined),
   '/todo': markRaw(AuditOutlined),
   '/forms': markRaw(FormOutlined),
-  '/projects': markRaw(ProjectOutlined),
-  '/construction_log': markRaw(FileTextOutlined),
-  '/construction_log/templates': markRaw(AppstoreOutlined),
   '/employees': markRaw(TeamOutlined),
   '/team': markRaw(TeamOutlined),
   '/org': markRaw(ApartmentOutlined),
   '/positions': markRaw(ProfileOutlined),
   '/role': markRaw(SafetyCertificateOutlined),
-  '/leave_types': markRaw(ClockCircleOutlined),
-  '/allowances': markRaw(GiftOutlined),
-  '/attendance': markRaw(ScheduleOutlined),
-  '/payroll': markRaw(MoneyCollectOutlined),
-  '/expense/apply': markRaw(AccountBookOutlined),
-  '/expense/records': markRaw(FileSearchOutlined),
-  '/injury': markRaw(MedicineBoxOutlined),
   '/config': markRaw(SettingOutlined),
   '/retention': markRaw(DatabaseOutlined),
   '/data_export': markRaw(ExportOutlined),
@@ -177,29 +157,18 @@ const PATH_ICON: Record<string, Component> = {
 }
 
 /**
- * 路径 → 聚类组名。五大类：工作 / 项目 / 人事 / 考勤薪资 / 财务 / 系统。
- * "工资条"（worker/employee 视角的 /payroll）也归考勤薪资。
+ * 路径 → 聚类组名。四大类：工作 / 人事 / 系统 / 其他。
  * 新页面必须在此登记，否则默认进"其他"。
  */
 const PATH_GROUP: Record<string, string> = {
   '/': '工作',
   '/todo': '工作',
   '/forms': '工作',
-  '/projects': '项目',
-  '/construction_log': '项目',
-  '/construction_log/templates': '项目',
   '/employees': '人事',
   '/team': '人事',
   '/org': '人事',
   '/positions': '人事',
   '/role': '人事',
-  '/leave_types': '人事',
-  '/allowances': '人事',
-  '/attendance': '考勤薪资',
-  '/payroll': '考勤薪资',
-  '/expense/apply': '财务',
-  '/expense/records': '财务',
-  '/injury': '财务',
   '/config': '系统',
   '/retention': '系统',
   '/data_export': '系统',
@@ -208,20 +177,9 @@ const PATH_GROUP: Record<string, string> = {
 }
 
 /** 聚类显示顺序。 */
-const GROUP_ORDER = ['工作', '项目', '人事', '考勤薪资', '财务', '系统', '其他']
+const GROUP_ORDER = ['工作', '人事', '系统', '其他']
 
-interface WorkbenchMenu {
-  code: string
-  name: string
-  icon: string
-  path: string
-  visible: boolean
-  children: WorkbenchMenu[] | null
-}
-
-// Static role→menus map — mirrors backend WorkbenchController logic.
-// Provides immediate rendering without async delay.
-// Updated by API response in onMounted.
+// Static role→menus map — provides immediate rendering without async delay.
 const ROLE_MENUS: Record<string, MenuItem[]> = {
   ceo: [
     { key: '/', label: '工作台', path: '/' },
@@ -229,16 +187,7 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/org', label: '组织架构', path: '/org' },
     { key: '/positions', label: '岗位管理', path: '/positions' },
-    { key: '/allowances', label: '补贴配置', path: '/allowances' },
-    { key: '/leave_types', label: '假期配额', path: '/leave_types' },
     { key: '/role', label: '角色管理', path: '/role' },
-    { key: '/attendance', label: '考勤管理', path: '/attendance' },
-    { key: '/projects', label: '项目管理', path: '/projects' },
-    { key: '/payroll', label: '薪资管理', path: '/payroll' },
-    { key: '/construction_log', label: '施工日志', path: '/construction_log' },
-    { key: '/injury', label: '工伤补偿', path: '/injury' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
-    { key: '/expense/records', label: '报销记录', path: '/expense/records' },
     { key: '/retention', label: '数据保留', path: '/retention' },
     { key: '/data_export', label: '数据导出', path: '/data_export' },
     { key: '/data_viewer', label: '数据查看', path: '/data_viewer' },
@@ -249,61 +198,33 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
     { key: '/', label: '工作台', path: '/' },
     { key: '/todo', label: '审批中心', path: '/todo' },
     { key: '/employees', label: '员工管理', path: '/employees' },
-    { key: '/payroll', label: '薪资管理', path: '/payroll' },
-    { key: '/injury', label: '工伤理赔', path: '/injury' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
-    { key: '/expense/records', label: '报销记录', path: '/expense/records' },
-    { key: '/allowances', label: '补贴配置', path: '/allowances' },
     { key: '/positions', label: '岗位薪资配置', path: '/positions' },
-    { key: '/projects', label: '项目管理', path: '/projects' },
   ],
   project_manager: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/todo', label: '审批中心', path: '/todo' },
-    { key: '/projects', label: '项目管理', path: '/projects' },
-    { key: '/construction_log', label: '施工日志', path: '/construction_log' },
-    {
-      key: '/construction_log/templates',
-      label: '工作项模板',
-      path: '/construction_log/templates',
-    },
     { key: '/forms', label: '表单中心', path: '/forms' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
   ],
   hr: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/employees', label: '员工管理', path: '/employees' },
     { key: '/org', label: '组织架构', path: '/org' },
     { key: '/positions', label: '岗位管理', path: '/positions' },
-    { key: '/leave_types', label: '假期配额', path: '/leave_types' },
-    { key: '/attendance', label: '考勤管理', path: '/attendance' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
-    { key: '/expense/records', label: '报销记录', path: '/expense/records' },
   ],
   department_manager: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/todo', label: '审批中心', path: '/todo' },
     { key: '/team', label: '团队成员', path: '/team' },
-    { key: '/attendance', label: '考勤管理', path: '/attendance' },
     { key: '/employees', label: '员工管理', path: '/employees' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
   ],
   worker: [
     { key: '/', label: '工作台', path: '/' },
-    { key: '/attendance', label: '考勤申请', path: '/attendance' },
-    { key: '/construction_log', label: '施工日志', path: '/construction_log' },
-    { key: '/injury', label: '工伤补偿', path: '/injury' },
     { key: '/forms', label: '表单中心', path: '/forms' },
-    { key: '/payroll', label: '工资条', path: '/payroll' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
   ],
-  // 总经理：可见全项目与营收，但不见考勤/薪资/HR 档案（设计 §3.2）
+  // 总经理：可见工作台与审批中心（设计 §3.2）
   general_manager: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/todo', label: '审批中心', path: '/todo' },
-    { key: '/projects', label: '项目管理', path: '/projects' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
-    { key: '/expense/records', label: '报销记录', path: '/expense/records' },
   ],
   sys_admin: [
     { key: '/', label: '工作台', path: '/' },
@@ -315,9 +236,6 @@ const ROLE_MENUS: Record<string, MenuItem[]> = {
   employee: [
     { key: '/', label: '工作台', path: '/' },
     { key: '/forms', label: '表单中心', path: '/forms' },
-    { key: '/attendance', label: '考勤管理', path: '/attendance' },
-    { key: '/payroll', label: '工资条', path: '/payroll' },
-    { key: '/expense/apply', label: '费用报销', path: '/expense/apply' },
   ],
 }
 
@@ -331,10 +249,8 @@ const selectedKeys = ref([route.path])
 const notificationCount = ref(0)
 const todoCount = ref(0)
 
-// Menus computed immediately from role (no async delay), overridden by API data
-const apiMenus = shallowRef<MenuItem[] | null>(null)
+// Menus computed immediately from role — no async dependency needed
 const menuItems = computed<MenuItem[]>(() => {
-  if (apiMenus.value) return apiMenus.value
   const role = userStore.userInfo?.role ?? 'employee'
   return ROLE_MENUS[role] ?? DEFAULT_MENUS
 })
@@ -386,30 +302,13 @@ watch(
   }
 )
 
-function buildMenuItems(menus: WorkbenchMenu[]): MenuItem[] {
-  return menus.map((m) => ({
-    key: m.path,
-    label: m.name,
-    path: m.path,
-    icon: m.icon,
-    children: m.children ? buildMenuItems(m.children) : undefined,
-  }))
-}
-
-// Refresh menus and todo count from API (updates after initial static render)
+// Refresh todo count and company name from API (updates after initial static render)
 onMounted(async () => {
   const token = userStore.token
   const headers: Record<string, string> = { 'X-Client-Type': 'web' }
   if (token) headers['Authorization'] = 'Bearer ' + token
 
   await Promise.all([
-    $fetch<{ menus: WorkbenchMenu[] }>('/api/workbench/config', { headers })
-      .then((data) => {
-        if (data.menus?.length) apiMenus.value = buildMenuItems(data.menus)
-      })
-      .catch(() => {
-        /* keep computed fallback */
-      }),
     $fetch<unknown[]>('/api/forms/todo', { headers })
       .then((list) => {
         todoCount.value = list?.length ?? 0

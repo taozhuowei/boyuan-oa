@@ -35,15 +35,9 @@ class RetentionServiceTest {
 
   @Mock private CleanupTaskMapper cleanupTaskMapper;
 
-  @Mock private PayrollSlipMapper payrollSlipMapper;
-
   @Mock private FormRecordMapper formRecordMapper;
 
   @Mock private OperationLogMapper operationLogMapper;
-
-  @Mock private ConstructionLogSummaryMapper constructionLogMapper;
-
-  @Mock private InjuryClaimMapper injuryClaimMapper;
 
   @Mock private org.springframework.context.ApplicationEventPublisher eventPublisher;
 
@@ -237,104 +231,6 @@ class RetentionServiceTest {
     assertThat(taskId).isNull();
     verify(reminderMapper, times(1)).selectById(reminderId);
     verify(exportTaskMapper, never()).insert(any());
-  }
-
-  @Test
-  @DisplayName("每日扫描 - 策略触发 30 天警告时应创建提醒")
-  void dailyScan_whenPolicyTriggersWarning_shouldCreateReminder() {
-    LocalDate oldestDate = LocalDate.of(2023, 1, 1);
-
-    RetentionPolicy policy = new RetentionPolicy();
-    policy.setId(1L);
-    policy.setDataType("PAYROLL_SLIP");
-    policy.setRetentionYears(1);
-    policy.setWarnBeforeDays(30);
-
-    when(policyMapper.findAllActive()).thenReturn(Collections.singletonList(policy));
-
-    PayrollSlip oldestSlip = new PayrollSlip();
-    oldestSlip.setCreatedAt(oldestDate.atStartOfDay());
-    when(payrollSlipMapper.selectOne(any())).thenReturn(oldestSlip);
-    when(reminderMapper.selectCount(any())).thenReturn(0L);
-    when(reminderMapper.insert(any(RetentionReminder.class))).thenReturn(1);
-
-    retentionService.dailyScan();
-
-    verify(policyMapper, times(1)).findAllActive();
-    verify(payrollSlipMapper, times(1)).selectOne(any());
-    verify(reminderMapper, times(1)).insert(any(RetentionReminder.class));
-    verify(eventPublisher, times(1)).publishEvent(any());
-  }
-
-  @Test
-  @DisplayName("每日扫描 - 无旧数据时不创建提醒")
-  void dailyScan_whenNoOldData_shouldNotCreateReminder() {
-    RetentionPolicy policy = new RetentionPolicy();
-    policy.setId(1L);
-    policy.setDataType("PAYROLL_SLIP");
-    policy.setRetentionYears(1);
-    policy.setWarnBeforeDays(30);
-
-    when(policyMapper.findAllActive()).thenReturn(Collections.singletonList(policy));
-    when(payrollSlipMapper.selectOne(any())).thenReturn(null);
-
-    retentionService.dailyScan();
-
-    verify(policyMapper, times(1)).findAllActive();
-    verify(payrollSlipMapper, times(1)).selectOne(any());
-    verify(reminderMapper, never()).insert(any());
-    verify(eventPublisher, never()).publishEvent(any());
-  }
-
-  @Test
-  @DisplayName("每日扫描 - 提醒已存在时不重复创建")
-  void dailyScan_whenReminderAlreadyExists_shouldNotCreateDuplicate() {
-    LocalDate oldestDate = LocalDate.of(2023, 1, 1);
-
-    RetentionPolicy policy = new RetentionPolicy();
-    policy.setId(1L);
-    policy.setDataType("PAYROLL_SLIP");
-    policy.setRetentionYears(1);
-    policy.setWarnBeforeDays(30);
-
-    when(policyMapper.findAllActive()).thenReturn(Collections.singletonList(policy));
-
-    PayrollSlip oldestSlip = new PayrollSlip();
-    oldestSlip.setCreatedAt(oldestDate.atStartOfDay());
-    when(payrollSlipMapper.selectOne(any())).thenReturn(oldestSlip);
-    when(reminderMapper.selectCount(any())).thenReturn(1L);
-
-    retentionService.dailyScan();
-
-    verify(policyMapper, times(1)).findAllActive();
-    verify(payrollSlipMapper, times(1)).selectOne(any());
-    verify(reminderMapper, never()).insert(any());
-    verify(eventPublisher, never()).publishEvent(any());
-  }
-
-  @Test
-  @DisplayName("每日扫描 - 未到达警告日期时不创建提醒")
-  void dailyScan_whenNotReachedWarnDate_shouldNotCreateReminder() {
-    LocalDate oldestDate = LocalDate.of(2019, 1, 1);
-
-    RetentionPolicy policy = new RetentionPolicy();
-    policy.setId(1L);
-    policy.setDataType("PAYROLL_SLIP");
-    policy.setRetentionYears(10);
-    policy.setWarnBeforeDays(30);
-
-    when(policyMapper.findAllActive()).thenReturn(Collections.singletonList(policy));
-
-    PayrollSlip oldestSlip = new PayrollSlip();
-    oldestSlip.setCreatedAt(oldestDate.atStartOfDay());
-    when(payrollSlipMapper.selectOne(any())).thenReturn(oldestSlip);
-
-    retentionService.dailyScan();
-
-    verify(policyMapper, times(1)).findAllActive();
-    verify(payrollSlipMapper, times(1)).selectOne(any());
-    verify(reminderMapper, never()).insert(any());
-    verify(eventPublisher, never()).publishEvent(any());
   }
 
   @Test
@@ -711,63 +607,6 @@ class RetentionServiceTest {
   }
 
   @Test
-  @DisplayName("启动导出并删除 - CONSTRUCTION_LOG 数据类型应创建任务")
-  void startExportAndDelete_withConstructionLogType_shouldCreateTask() {
-    Long reminderId = 1L;
-    Long initiatorId = 2L;
-
-    RetentionReminder reminder = new RetentionReminder();
-    reminder.setId(reminderId);
-    reminder.setDataType("CONSTRUCTION_LOG");
-    reminder.setStatus("PENDING");
-    reminder.setDeleted(0);
-    reminder.setExpectedDeleteDate(LocalDate.now());
-
-    when(reminderMapper.selectById(reminderId)).thenReturn(reminder);
-    when(exportTaskMapper.insert(any(ExportBackupTask.class)))
-        .thenAnswer(
-            invocation -> {
-              ExportBackupTask task = invocation.getArgument(0);
-              task.setId(103L);
-              return 1;
-            });
-
-    Long taskId = retentionService.startExportAndDelete(reminderId, initiatorId);
-
-    assertThat(taskId).isEqualTo(103L);
-    verify(exportTaskMapper)
-        .insert(argThat(task -> task.getDataTypes().equals("CONSTRUCTION_LOG")));
-  }
-
-  @Test
-  @DisplayName("启动导出并删除 - INJURY_CLAIM 数据类型应创建任务")
-  void startExportAndDelete_withInjuryClaimType_shouldCreateTask() {
-    Long reminderId = 1L;
-    Long initiatorId = 2L;
-
-    RetentionReminder reminder = new RetentionReminder();
-    reminder.setId(reminderId);
-    reminder.setDataType("INJURY_CLAIM");
-    reminder.setStatus("PENDING");
-    reminder.setDeleted(0);
-    reminder.setExpectedDeleteDate(LocalDate.now());
-
-    when(reminderMapper.selectById(reminderId)).thenReturn(reminder);
-    when(exportTaskMapper.insert(any(ExportBackupTask.class)))
-        .thenAnswer(
-            invocation -> {
-              ExportBackupTask task = invocation.getArgument(0);
-              task.setId(104L);
-              return 1;
-            });
-
-    Long taskId = retentionService.startExportAndDelete(reminderId, initiatorId);
-
-    assertThat(taskId).isEqualTo(104L);
-    verify(exportTaskMapper).insert(argThat(task -> task.getDataTypes().equals("INJURY_CLAIM")));
-  }
-
-  @Test
   @DisplayName("每日扫描 - 无策略时不创建提醒")
   void dailyScan_whenNoPolicies_shouldNotCreateReminder() {
     when(policyMapper.findAllActive()).thenReturn(Collections.emptyList());
@@ -777,43 +616,6 @@ class RetentionServiceTest {
     verify(policyMapper, times(1)).findAllActive();
     verify(reminderMapper, never()).insert(any());
     verify(eventPublisher, never()).publishEvent(any());
-  }
-
-  @Test
-  @DisplayName("每日扫描 - 多个数据类型同时过期应创建多个提醒")
-  void dailyScan_withMultipleExpiredTypes_shouldCreateMultipleReminders() {
-    LocalDate oldestDate = LocalDate.of(2023, 1, 1);
-
-    RetentionPolicy policy1 = new RetentionPolicy();
-    policy1.setId(1L);
-    policy1.setDataType("PAYROLL_SLIP");
-    policy1.setRetentionYears(1);
-    policy1.setWarnBeforeDays(30);
-
-    RetentionPolicy policy2 = new RetentionPolicy();
-    policy2.setId(2L);
-    policy2.setDataType("FORM_RECORD");
-    policy2.setRetentionYears(1);
-    policy2.setWarnBeforeDays(30);
-
-    when(policyMapper.findAllActive()).thenReturn(Arrays.asList(policy1, policy2));
-
-    PayrollSlip oldestSlip = new PayrollSlip();
-    oldestSlip.setCreatedAt(oldestDate.atStartOfDay());
-    when(payrollSlipMapper.selectOne(any())).thenReturn(oldestSlip);
-
-    FormRecord oldestRecord = new FormRecord();
-    oldestRecord.setCreatedAt(oldestDate.atStartOfDay());
-    when(formRecordMapper.selectOne(any())).thenReturn(oldestRecord);
-
-    when(reminderMapper.selectCount(any())).thenReturn(0L);
-    when(reminderMapper.insert(any(RetentionReminder.class))).thenReturn(1);
-
-    retentionService.dailyScan();
-
-    verify(policyMapper, times(1)).findAllActive();
-    verify(reminderMapper, times(2)).insert(any(RetentionReminder.class));
-    verify(eventPublisher, times(2)).publishEvent(any());
   }
 
   @Test
@@ -869,58 +671,6 @@ class RetentionServiceTest {
   }
 
   @Test
-  @DisplayName("每日扫描 - CONSTRUCTION_LOG 类型应正确查找最旧记录")
-  void dailyScan_withConstructionLogType_shouldFindOldestDate() {
-    LocalDate oldestDate = LocalDate.of(2023, 1, 1);
-
-    RetentionPolicy policy = new RetentionPolicy();
-    policy.setId(1L);
-    policy.setDataType("CONSTRUCTION_LOG");
-    policy.setRetentionYears(1);
-    policy.setWarnBeforeDays(30);
-
-    when(policyMapper.findAllActive()).thenReturn(Collections.singletonList(policy));
-
-    ConstructionLogSummary oldestLog = new ConstructionLogSummary();
-    oldestLog.setCreatedAt(oldestDate.atStartOfDay());
-    when(constructionLogMapper.selectOne(any())).thenReturn(oldestLog);
-
-    when(reminderMapper.selectCount(any())).thenReturn(0L);
-    when(reminderMapper.insert(any(RetentionReminder.class))).thenReturn(1);
-
-    retentionService.dailyScan();
-
-    verify(constructionLogMapper, times(1)).selectOne(any());
-    verify(reminderMapper, times(1)).insert(any(RetentionReminder.class));
-  }
-
-  @Test
-  @DisplayName("每日扫描 - INJURY_CLAIM 类型应正确查找最旧记录")
-  void dailyScan_withInjuryClaimType_shouldFindOldestDate() {
-    LocalDate oldestDate = LocalDate.of(2023, 1, 1);
-
-    RetentionPolicy policy = new RetentionPolicy();
-    policy.setId(1L);
-    policy.setDataType("INJURY_CLAIM");
-    policy.setRetentionYears(1);
-    policy.setWarnBeforeDays(30);
-
-    when(policyMapper.findAllActive()).thenReturn(Collections.singletonList(policy));
-
-    InjuryClaim oldestClaim = new InjuryClaim();
-    oldestClaim.setCreatedAt(oldestDate.atStartOfDay());
-    when(injuryClaimMapper.selectOne(any())).thenReturn(oldestClaim);
-
-    when(reminderMapper.selectCount(any())).thenReturn(0L);
-    when(reminderMapper.insert(any(RetentionReminder.class))).thenReturn(1);
-
-    retentionService.dailyScan();
-
-    verify(injuryClaimMapper, times(1)).selectOne(any());
-    verify(reminderMapper, times(1)).insert(any(RetentionReminder.class));
-  }
-
-  @Test
   @DisplayName("每日扫描 - 未知数据类型应记录警告且不创建提醒")
   void dailyScan_withUnknownDataType_shouldLogWarning() {
     RetentionPolicy policy = new RetentionPolicy();
@@ -934,26 +684,6 @@ class RetentionServiceTest {
     retentionService.dailyScan();
 
     verify(policyMapper, times(1)).findAllActive();
-    verify(reminderMapper, never()).insert(any());
-  }
-
-  @Test
-  @DisplayName("每日扫描 - 最旧记录 createdAt 为 null 应跳过")
-  void dailyScan_withNullCreatedAt_shouldSkip() {
-    RetentionPolicy policy = new RetentionPolicy();
-    policy.setId(1L);
-    policy.setDataType("PAYROLL_SLIP");
-    policy.setRetentionYears(1);
-    policy.setWarnBeforeDays(30);
-
-    when(policyMapper.findAllActive()).thenReturn(Collections.singletonList(policy));
-
-    PayrollSlip oldestSlip = new PayrollSlip();
-    oldestSlip.setCreatedAt(null);
-    when(payrollSlipMapper.selectOne(any())).thenReturn(oldestSlip);
-
-    retentionService.dailyScan();
-
     verify(reminderMapper, never()).insert(any());
   }
 

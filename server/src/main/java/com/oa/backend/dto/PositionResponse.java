@@ -21,5 +21,4 @@ public record PositionResponse(
     String socialInsuranceMode,
     Boolean requiresConstructionLog,
     Boolean hasPerformanceBonus,
-    List<PositionLevelResponse> levels,
-    List<SocialInsuranceItemResponse> socialInsuranceItems) {}
+    List<PositionLevelResponse> levels) {}

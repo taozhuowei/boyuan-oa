@@ -322,32 +322,14 @@ public class FormService {
 
   /** 生成表单编号 */
   private String generateFormNo(String formType, Long id) {
-    String prefix =
-        switch (formType) {
-          case "LEAVE" -> "L";
-          case "OVERTIME" -> "OT";
-          case "INJURY" -> "INJ";
-          case "LOG" -> "LOG";
-          case "EXPENSE" -> "EXP";
-          default -> "F";
-        };
-    return prefix
+    return formType
         + LocalDateTime.now().toLocalDate().toString().replace("-", "")
         + String.format("%04d", id);
   }
 
   /** 获取表单类型名称 */
   private String getFormTypeName(String formType) {
-    return switch (formType) {
-      case "LEAVE" -> "请假申请";
-      case "OVERTIME" -> "加班申请";
-      case "INJURY" -> "工伤补偿";
-      case "LOG" -> "施工日志";
-      case "EXPENSE" -> "费用报销";
-      case "PAYROLL_BONUS" -> "临时薪资调整";
-      case "PAYROLL_CORRECTION" -> "薪资更正";
-      default -> formType;
-    };
+    return formType;
   }
 
   /** 写入操作日志 */

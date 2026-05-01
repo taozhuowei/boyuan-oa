@@ -1,15 +1,16 @@
 package com.oa.backend.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
-import com.oa.backend.dto.*;
+import com.oa.backend.dto.PositionLevelResponse;
+import com.oa.backend.dto.PositionLevelUpsertRequest;
+import com.oa.backend.dto.PositionResponse;
+import com.oa.backend.dto.PositionUpsertRequest;
 import com.oa.backend.entity.Employee;
 import com.oa.backend.entity.Position;
 import com.oa.backend.entity.PositionLevel;
-import com.oa.backend.entity.SocialInsuranceItem;
 import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.PositionLevelMapper;
 import com.oa.backend.mapper.PositionMapper;
-import com.oa.backend.mapper.SocialInsuranceItemMapper;
 import com.oa.backend.service.PositionService;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,7 +29,6 @@ public class PositionServiceImpl implements PositionService {
 
   private final PositionMapper positionMapper;
   private final PositionLevelMapper positionLevelMapper;
-  private final SocialInsuranceItemMapper socialInsuranceItemMapper;
   private final EmployeeMapper employeeMapper;
 
   @Override
@@ -52,9 +52,6 @@ public class PositionServiceImpl implements PositionService {
     // 查询等级列表
     List<PositionLevelResponse> levels = listLevels(id);
 
-    // 查询社保项目列表
-    List<SocialInsuranceItemResponse> items = listSocialInsuranceItems(id);
-
     return new PositionResponse(
         baseResponse.id(),
         baseResponse.positionCode(),
@@ -72,8 +69,7 @@ public class PositionServiceImpl implements PositionService {
         baseResponse.socialInsuranceMode(),
         baseResponse.requiresConstructionLog(),
         baseResponse.hasPerformanceBonus(),
-        levels,
-        items);
+        levels);
   }
 
   @Override
@@ -285,17 +281,6 @@ public class PositionServiceImpl implements PositionService {
     positionLevelMapper.deleteById(levelId);
   }
 
-  /** 查询社保项目列表 */
-  private List<SocialInsuranceItemResponse> listSocialInsuranceItems(Long positionId) {
-    QueryWrapper<SocialInsuranceItem> wrapper = new QueryWrapper<>();
-    wrapper.eq("position_id", positionId);
-    wrapper.eq("deleted", 0);
-    wrapper.orderByAsc("display_order");
-    return socialInsuranceItemMapper.selectList(wrapper).stream()
-        .map(this::toInsuranceItemResponse)
-        .collect(Collectors.toList());
-  }
-
   /** 生成岗位编码：POS + 4位序号 */
   private String generatePositionCode() {
     // Use raw SQL (bypasses @TableLogic) so soft-deleted codes are also considered.
@@ -330,7 +315,6 @@ public class PositionServiceImpl implements PositionService {
         p.getSocialInsuranceMode(),
         p.getRequiresConstructionLog(),
         p.getHasPerformanceBonus(),
-        null,
         null);
   }
 
@@ -346,14 +330,4 @@ public class PositionServiceImpl implements PositionService {
         l.getAnnualLeaveOverride());
   }
 
-  private SocialInsuranceItemResponse toInsuranceItemResponse(SocialInsuranceItem i) {
-    return new SocialInsuranceItemResponse(
-        i.getId(),
-        i.getPositionId(),
-        i.getName(),
-        i.getEmployeeRate(),
-        i.getCompanyRate(),
-        i.getIsEnabled(),
-        i.getDisplayOrder());
-  }
 }

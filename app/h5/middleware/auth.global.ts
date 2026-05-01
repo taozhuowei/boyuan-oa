@@ -8,7 +8,7 @@ import type { SessionUser } from '@shared/types/auth'
 
 /**
  * Page access whitelist — maps each restricted route to the roles that MAY access it.
- * Routes not listed here are accessible to all authenticated users (e.g. /workbench, /me, /notifications, /todo, /forms, /expense/apply, /expense/records).
+ * Routes not listed here are accessible to all authenticated users (e.g. /workbench, /me, /notifications, /todo, /forms).
  * Role codes returned by the backend: 'ceo', 'hr', 'finance', 'project_manager', 'department_manager', 'employee', 'worker', 'general_manager', 'sys_admin'.
  * Source of truth: DESIGN.md §5.
  */
@@ -19,26 +19,11 @@ const PAGE_ACCESS: Record<string, string[]> = {
   '/employees': ['ceo', 'hr', 'finance', 'project_manager', 'department_manager'],
   '/positions': ['ceo', 'hr', 'finance'],
   '/retention': ['ceo'],
-  '/allowances': ['ceo'],
-  '/leave_types': ['ceo', 'hr'],
   '/directory': ['ceo', 'hr', 'finance'],
   '/team': ['ceo', 'hr', 'project_manager', 'department_manager'],
   '/operation_logs': ['ceo', 'sys_admin'],
   '/data_export': ['ceo', 'sys_admin'],
   '/data_viewer': ['ceo', 'sys_admin'],
-  '/attendance': [
-    'ceo',
-    'hr',
-    'finance',
-    'project_manager',
-    'department_manager',
-    'employee',
-    'worker',
-  ],
-  '/payroll': ['ceo', 'finance', 'worker', 'employee'],
-  '/projects': ['ceo', 'finance', 'project_manager', 'employee', 'general_manager'],
-  '/construction_log': ['ceo', 'project_manager', 'worker'],
-  '/injury': ['ceo', 'finance', 'worker', 'project_manager'],
 }
 
 export default defineNuxtRouteMiddleware(async (to) => {

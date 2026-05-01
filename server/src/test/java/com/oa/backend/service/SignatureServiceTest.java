@@ -30,17 +30,7 @@ class SignatureServiceTest {
 
   @Mock private EmployeeSignatureMapper signatureMapper;
 
-  @Mock private EvidenceChainMapper evidenceChainMapper;
-
-  @Mock private PayrollSlipMapper slipMapper;
-
-  @Mock private PayrollSlipItemMapper slipItemMapper;
-
-  @Mock private PayrollItemDefMapper itemDefMapper;
-
   @Mock private EmployeeMapper employeeMapper;
-
-  @Mock private SalaryConfirmationAgreementMapper agreementMapper;
 
   @Mock private BCryptPasswordEncoder passwordEncoder;
 
@@ -49,7 +39,6 @@ class SignatureServiceTest {
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
   private static final String TEST_PIN = "123456";
   private static final Long TEST_EMPLOYEE_ID = 1L;
-  private static final Long TEST_SLIP_ID = 100L;
 
   @BeforeEach
   void setUp() {
@@ -139,161 +128,6 @@ class SignatureServiceTest {
     boolean result = service.verifyPin(TEST_EMPLOYEE_ID, TEST_PIN);
 
     assertFalse(result);
-  }
-
-  // ─── confirmPayrollSlip ──────────────────────────────────────
-
-  @Test
-  @DisplayName("confirmPayrollSlip：PIN 错误抛出 IllegalArgumentException")
-  void confirmPayrollSlip_wrongPin() {
-    when(signatureMapper.findByEmployeeId(TEST_EMPLOYEE_ID)).thenReturn(null);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> service.confirmPayrollSlip(TEST_EMPLOYEE_ID, TEST_SLIP_ID, "wrongPin"));
-    assertTrue(ex.getMessage().contains("PIN 码错误") || ex.getMessage().contains("未绑定签名"));
-  }
-
-  @Test
-  @DisplayName("confirmPayrollSlip：工资条非 PUBLISHED 状态抛出 IllegalStateException")
-  void confirmPayrollSlip_slipNotPublished() {
-    // Setup signature for PIN verification
-    EmployeeSignature signature = new EmployeeSignature();
-    signature.setPinHash("hashedPin123");
-    when(signatureMapper.findByEmployeeId(TEST_EMPLOYEE_ID)).thenReturn(signature);
-    when(passwordEncoder.matches(TEST_PIN, "hashedPin123")).thenReturn(true);
-
-    // Setup slip with wrong status
-    PayrollSlip slip = new PayrollSlip();
-    slip.setId(TEST_SLIP_ID);
-    slip.setEmployeeId(TEST_EMPLOYEE_ID);
-    slip.setStatus("CONFIRMED"); // Already confirmed
-    slip.setDeleted(0);
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(slip);
-
-    IllegalStateException ex =
-        assertThrows(
-            IllegalStateException.class,
-            () -> service.confirmPayrollSlip(TEST_EMPLOYEE_ID, TEST_SLIP_ID, TEST_PIN));
-    assertTrue(ex.getMessage().contains("PUBLISHED") || ex.getMessage().contains("状态"));
-  }
-
-  @Test
-  @DisplayName("confirmPayrollSlip：正常确认，工资条状态更新，存证链记录创建")
-  void confirmPayrollSlip_success() {
-    // Setup signature for PIN verification
-    EmployeeSignature signature = new EmployeeSignature();
-    signature.setPinHash("hashedPin123");
-    when(signatureMapper.findByEmployeeId(TEST_EMPLOYEE_ID)).thenReturn(signature);
-    when(passwordEncoder.matches(TEST_PIN, "hashedPin123")).thenReturn(true);
-
-    // Setup slip
-    PayrollSlip slip = new PayrollSlip();
-    slip.setId(TEST_SLIP_ID);
-    slip.setEmployeeId(TEST_EMPLOYEE_ID);
-    slip.setStatus("PUBLISHED");
-    slip.setCycleId(10L);
-    slip.setDeleted(0);
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(slip);
-
-    // Setup agreement
-    SalaryConfirmationAgreement agreement = new SalaryConfirmationAgreement();
-    agreement.setId(1L);
-    agreement.setVersion("v1.0");
-    when(agreementMapper.findActive()).thenReturn(agreement);
-
-    // Setup evidence chain insert
-    when(evidenceChainMapper.insert(any()))
-        .thenAnswer(
-            inv -> {
-              EvidenceChain ev = inv.getArgument(0);
-              ev.setId(999L);
-              return 1;
-            });
-
-    Long evidenceId = service.confirmPayrollSlip(TEST_EMPLOYEE_ID, TEST_SLIP_ID, TEST_PIN);
-
-    // Verify slip updated
-    ArgumentCaptor<PayrollSlip> slipCaptor = ArgumentCaptor.forClass(PayrollSlip.class);
-    verify(slipMapper).updateById(slipCaptor.capture());
-    PayrollSlip updatedSlip = slipCaptor.getValue();
-    assertEquals("CONFIRMED", updatedSlip.getStatus());
-    assertNotNull(updatedSlip.getUpdatedAt());
-
-    // Verify evidence chain created
-    ArgumentCaptor<EvidenceChain> evidenceCaptor = ArgumentCaptor.forClass(EvidenceChain.class);
-    verify(evidenceChainMapper).insert(evidenceCaptor.capture());
-    EvidenceChain evidence = evidenceCaptor.getValue();
-    assertEquals(TEST_SLIP_ID, evidence.getSlipId());
-    assertEquals(TEST_EMPLOYEE_ID, evidence.getEmployeeId());
-    assertNotNull(evidence.getContentHash());
-    assertNotNull(evidence.getConfirmedAt());
-    assertEquals("v1.0", evidence.getAgreementVersion());
-
-    // Verify returned ID
-    assertNotNull(evidenceId);
-    assertEquals(999L, evidenceId);
-  }
-
-  @Test
-  @DisplayName("confirmPayrollSlip：无活跃协议时使用默认版本 v1.0")
-  void confirmPayrollSlip_noActiveAgreement() {
-    // Setup signature
-    EmployeeSignature signature = new EmployeeSignature();
-    signature.setPinHash("hashedPin123");
-    when(signatureMapper.findByEmployeeId(TEST_EMPLOYEE_ID)).thenReturn(signature);
-    when(passwordEncoder.matches(TEST_PIN, "hashedPin123")).thenReturn(true);
-
-    // Setup slip
-    PayrollSlip slip = new PayrollSlip();
-    slip.setId(TEST_SLIP_ID);
-    slip.setEmployeeId(TEST_EMPLOYEE_ID);
-    slip.setStatus("PUBLISHED");
-    slip.setDeleted(0);
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(slip);
-
-    // No active agreement
-    when(agreementMapper.findActive()).thenReturn(null);
-
-    // Setup evidence chain insert
-    when(evidenceChainMapper.insert(any()))
-        .thenAnswer(
-            inv -> {
-              EvidenceChain ev = inv.getArgument(0);
-              ev.setId(888L);
-              return 1;
-            });
-
-    service.confirmPayrollSlip(TEST_EMPLOYEE_ID, TEST_SLIP_ID, TEST_PIN);
-
-    ArgumentCaptor<EvidenceChain> evidenceCaptor = ArgumentCaptor.forClass(EvidenceChain.class);
-    verify(evidenceChainMapper).insert(evidenceCaptor.capture());
-    assertEquals("v1.0", evidenceCaptor.getValue().getAgreementVersion());
-  }
-
-  @Test
-  @DisplayName("confirmPayrollSlip：无权操作他人工资条抛出 IllegalArgumentException")
-  void confirmPayrollSlip_notOwner() {
-    // Setup signature
-    EmployeeSignature signature = new EmployeeSignature();
-    signature.setPinHash("hashedPin123");
-    when(signatureMapper.findByEmployeeId(TEST_EMPLOYEE_ID)).thenReturn(signature);
-    when(passwordEncoder.matches(TEST_PIN, "hashedPin123")).thenReturn(true);
-
-    // Setup slip owned by different employee
-    PayrollSlip slip = new PayrollSlip();
-    slip.setId(TEST_SLIP_ID);
-    slip.setEmployeeId(999L); // Different employee
-    slip.setStatus("PUBLISHED");
-    slip.setDeleted(0);
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(slip);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> service.confirmPayrollSlip(TEST_EMPLOYEE_ID, TEST_SLIP_ID, TEST_PIN));
-    assertTrue(ex.getMessage().contains("无权"));
   }
 
   // ─── Additional Tests for Coverage ───────────────────────────
@@ -429,140 +263,6 @@ class SignatureServiceTest {
     assertFalse(result);
   }
 
-  @Test
-  @DisplayName("confirmPayrollSlip：工资条不存在抛出 IllegalArgumentException")
-  void confirmPayrollSlip_slipNotFoundThrowsException() {
-    // Setup signature for PIN verification
-    EmployeeSignature signature = new EmployeeSignature();
-    signature.setPinHash("hashedPin123");
-    when(signatureMapper.findByEmployeeId(TEST_EMPLOYEE_ID)).thenReturn(signature);
-    when(passwordEncoder.matches(TEST_PIN, "hashedPin123")).thenReturn(true);
-
-    // Slip not found
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(null);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> service.confirmPayrollSlip(TEST_EMPLOYEE_ID, TEST_SLIP_ID, TEST_PIN));
-    assertTrue(ex.getMessage().contains("不存在"));
-  }
-
-  @Test
-  @DisplayName("confirmPayrollSlip：工资条已逻辑删除抛出 IllegalArgumentException")
-  void confirmPayrollSlip_slipDeletedThrowsException() {
-    // Setup signature for PIN verification
-    EmployeeSignature signature = new EmployeeSignature();
-    signature.setPinHash("hashedPin123");
-    when(signatureMapper.findByEmployeeId(TEST_EMPLOYEE_ID)).thenReturn(signature);
-    when(passwordEncoder.matches(TEST_PIN, "hashedPin123")).thenReturn(true);
-
-    // Slip is logically deleted
-    PayrollSlip slip = new PayrollSlip();
-    slip.setId(TEST_SLIP_ID);
-    slip.setEmployeeId(TEST_EMPLOYEE_ID);
-    slip.setStatus("PUBLISHED");
-    slip.setDeleted(1);
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(slip);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> service.confirmPayrollSlip(TEST_EMPLOYEE_ID, TEST_SLIP_ID, TEST_PIN));
-    assertTrue(ex.getMessage().contains("不存在"));
-  }
-
-  @Test
-  @DisplayName("generateEvidencePdf：工资条不存在抛出 IllegalArgumentException")
-  void generateEvidencePdf_slipNotFoundThrowsException() {
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(null);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class, () -> service.generateEvidencePdf(TEST_SLIP_ID));
-    assertTrue(ex.getMessage().contains("不存在"));
-  }
-
-  @Test
-  @DisplayName("generateEvidencePdf：工资条已逻辑删除抛出 IllegalArgumentException")
-  void generateEvidencePdf_slipDeletedThrowsException() {
-    PayrollSlip slip = new PayrollSlip();
-    slip.setId(TEST_SLIP_ID);
-    slip.setDeleted(1);
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(slip);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class, () -> service.generateEvidencePdf(TEST_SLIP_ID));
-    assertTrue(ex.getMessage().contains("不存在"));
-  }
-
-  @Test
-  @DisplayName("generateEvidencePdf：员工不存在抛出 IllegalArgumentException")
-  void generateEvidencePdf_employeeNotFoundThrowsException() {
-    PayrollSlip slip = new PayrollSlip();
-    slip.setId(TEST_SLIP_ID);
-    slip.setEmployeeId(TEST_EMPLOYEE_ID);
-    slip.setDeleted(0);
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(slip);
-    when(employeeMapper.selectById(TEST_EMPLOYEE_ID)).thenReturn(null);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class, () -> service.generateEvidencePdf(TEST_SLIP_ID));
-    assertTrue(ex.getMessage().contains("员工不存在"));
-  }
-
-  @Test
-  @DisplayName("generateEvidencePdf：员工未绑定签名抛出 IllegalArgumentException")
-  void generateEvidencePdf_noSignatureThrowsException() {
-    Employee employee = new Employee();
-    employee.setId(TEST_EMPLOYEE_ID);
-    employee.setName("Test Employee");
-
-    PayrollSlip slip = new PayrollSlip();
-    slip.setId(TEST_SLIP_ID);
-    slip.setEmployeeId(TEST_EMPLOYEE_ID);
-    slip.setDeleted(0);
-
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(slip);
-    when(employeeMapper.selectById(TEST_EMPLOYEE_ID)).thenReturn(employee);
-    when(signatureMapper.findByEmployeeId(TEST_EMPLOYEE_ID)).thenReturn(null);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class, () -> service.generateEvidencePdf(TEST_SLIP_ID));
-    assertTrue(ex.getMessage().contains("未绑定签名"));
-  }
-
-  @Test
-  @DisplayName("generateEvidencePdf：无存证记录抛出 IllegalArgumentException")
-  void generateEvidencePdf_noEvidenceThrowsException() {
-    Employee employee = new Employee();
-    employee.setId(TEST_EMPLOYEE_ID);
-    employee.setName("Test Employee");
-
-    EmployeeSignature signature = new EmployeeSignature();
-    signature.setId(1L);
-    signature.setEmployeeId(TEST_EMPLOYEE_ID);
-    signature.setSignatureImageEncrypted("encryptedData");
-
-    PayrollSlip slip = new PayrollSlip();
-    slip.setId(TEST_SLIP_ID);
-    slip.setEmployeeId(TEST_EMPLOYEE_ID);
-    slip.setDeleted(0);
-
-    when(slipMapper.selectById(TEST_SLIP_ID)).thenReturn(slip);
-    when(employeeMapper.selectById(TEST_EMPLOYEE_ID)).thenReturn(employee);
-    when(signatureMapper.findByEmployeeId(TEST_EMPLOYEE_ID)).thenReturn(signature);
-    when(evidenceChainMapper.findBySlipId(TEST_SLIP_ID)).thenReturn(null);
-
-    IllegalArgumentException ex =
-        assertThrows(
-            IllegalArgumentException.class, () -> service.generateEvidencePdf(TEST_SLIP_ID));
-    assertTrue(ex.getMessage().contains("尚未确认"));
-  }
-
   // ─── private helpers via reflection ──────────────────────
 
   @Test
@@ -599,17 +299,6 @@ class SignatureServiceTest {
     @SuppressWarnings("unchecked")
     List<String> empty = (List<String>) m.invoke(service, "", 10);
     assertTrue(empty.isEmpty());
-  }
-
-  @Test
-  @DisplayName("formatPeriod：返回包含 cycleId 的字符串")
-  void formatPeriod_returnsCycleInfo() throws Exception {
-    Method m = SignatureService.class.getDeclaredMethod("formatPeriod", PayrollSlip.class);
-    m.setAccessible(true);
-    PayrollSlip slip = new PayrollSlip();
-    slip.setCycleId(42L);
-    String result = (String) m.invoke(service, slip);
-    assertTrue(result.contains("42"));
   }
 
   @Test

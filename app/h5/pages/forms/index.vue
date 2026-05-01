@@ -149,14 +149,8 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import { request } from '~/utils/http'
-import {
-  getFieldLabel,
-  getLeaveTypeLabel,
-  getOvertimeTypeLabel,
-  getExpenseTypeLabel,
-} from '../../../shared/utils/formLabels'
+import { getFieldLabel } from '../../../shared/utils/formLabels'
 
 // Types
 interface HistoryItem {
@@ -255,19 +249,7 @@ function formatKey(key: string): string {
   return getFieldLabel(key)
 }
 
-function formatValue(value: unknown, fieldKey?: string): string {
-  // 对于请假类型字段，转换为中文
-  if (fieldKey === 'leaveType' && typeof value === 'string') {
-    return getLeaveTypeLabel(value) || String(value)
-  }
-  // 对于加班类型字段，转换为中文
-  if (fieldKey === 'overtimeType' && typeof value === 'string') {
-    return getOvertimeTypeLabel(value) || String(value)
-  }
-  // 对于报销类型字段，转换为中文
-  if (fieldKey === 'expenseType' && typeof value === 'string') {
-    return getExpenseTypeLabel(value) || String(value)
-  }
+function formatValue(value: unknown, _fieldKey?: string): string {
   if (value === null || value === undefined) return '—'
   if (typeof value === 'boolean') return value ? '是' : '否'
   return String(value)
@@ -282,7 +264,7 @@ async function loadForms() {
   loading.value = true
   try {
     const data = await request<FormRecord[]>({
-      url: '/forms/history?formTypes=LEAVE,OVERTIME,EXPENSE',
+      url: '/forms/history',
     })
     // For now, backend filters by role; we assign to both tabs
     submissions.value = data ?? []
@@ -296,13 +278,6 @@ async function loadForms() {
 }
 
 onMounted(() => {
-  // Pre-select tab based on ?type= query param from workbench quick-action links.
-  // Supported values: 'leave' and 'overtime'; anything else is ignored.
-  const route = useRoute()
-  const type = route.query.type
-  if (type === 'leave' || type === 'overtime') {
-    activeTab.value = type
-  }
   loadForms()
 })
 </script>

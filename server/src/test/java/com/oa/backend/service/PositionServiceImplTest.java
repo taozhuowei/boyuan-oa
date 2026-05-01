@@ -13,7 +13,6 @@ import com.oa.backend.entity.PositionLevel;
 import com.oa.backend.mapper.EmployeeMapper;
 import com.oa.backend.mapper.PositionLevelMapper;
 import com.oa.backend.mapper.PositionMapper;
-import com.oa.backend.mapper.SocialInsuranceItemMapper;
 import com.oa.backend.service.impl.PositionServiceImpl;
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -40,8 +39,6 @@ class PositionServiceImplTest {
   @Mock private PositionMapper positionMapper;
 
   @Mock private PositionLevelMapper positionLevelMapper;
-
-  @Mock private SocialInsuranceItemMapper socialInsuranceItemMapper;
 
   @Mock private EmployeeMapper employeeMapper;
 
@@ -144,7 +141,6 @@ class PositionServiceImplTest {
     existing.setEmployeeCategory("OFFICE");
     when(positionMapper.selectById(1L)).thenReturn(existing);
     when(positionLevelMapper.selectList(any())).thenReturn(List.of());
-    when(socialInsuranceItemMapper.selectList(any())).thenReturn(List.of());
 
     // 只传 positionName，其余均 null
     PositionUpsertRequest req = emptyReqWithName("新名称");
@@ -165,13 +161,11 @@ class PositionServiceImplTest {
     Position p = position(1L, "管理岗");
     when(positionMapper.selectById(1L)).thenReturn(p);
     when(positionLevelMapper.selectList(any())).thenReturn(List.of());
-    when(socialInsuranceItemMapper.selectList(any())).thenReturn(List.of());
 
     PositionResponse result = service.getPosition(1L);
 
     assertEquals("管理岗", result.positionName());
     verify(positionLevelMapper).selectList(any());
-    verify(socialInsuranceItemMapper).selectList(any());
   }
 
   @Test
@@ -242,7 +236,6 @@ class PositionServiceImplTest {
     Position existing = position(1L, "原名称");
     when(positionMapper.selectById(1L)).thenReturn(existing);
     when(positionLevelMapper.selectList(any())).thenReturn(List.of());
-    when(socialInsuranceItemMapper.selectList(any())).thenReturn(List.of());
     when(positionMapper.updateById(any())).thenReturn(1);
 
     PositionUpsertRequest req = emptyReqWithName("新名称");

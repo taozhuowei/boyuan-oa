@@ -4,11 +4,8 @@
     <h2 class="page-title">系统配置</h2>
 
     <div class="cards-container">
-      <AttendanceUnitConfig :is-c-e-o="isCEO" />
       <ApprovalFlowConfig :is-c-e-o="isCEO" />
-      <BonusApprovalConfig :is-c-e-o="isCEO" />
       <CompanyInfo :is-c-e-o="isCEO" />
-      <PayrollCycleConfig :is-c-e-o="isCEO" />
       <RetentionConfig :is-c-e-o="isCEO" />
     </div>
   </div>
@@ -22,11 +19,8 @@
  */
 import { computed } from 'vue'
 import { useUserStore } from '~/stores/user'
-import AttendanceUnitConfig from './sections/AttendanceUnitConfig.vue'
 import ApprovalFlowConfig from './sections/ApprovalFlowConfig.vue'
-import BonusApprovalConfig from './sections/BonusApprovalConfig.vue'
 import CompanyInfo from './sections/CompanyInfo.vue'
-import PayrollCycleConfig from './sections/PayrollCycleConfig.vue'
 import RetentionConfig from './sections/RetentionConfig.vue'
 
 const user_store = useUserStore()

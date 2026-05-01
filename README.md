@@ -1,84 +1,58 @@
-# 博渊 OA 工作台
+# 博渊 OA 系统
 
-面向中小型建筑施工企业的内部办公协同系统，包含 H5 管理后台和微信小程序端。
+博渊OA系统是面向定制化开发的企业办公自动化平台，由 Web 端、小程序端、后端服务组成。
 
-## 核心架构
+- 后端：Spring Boot 3 + MyBatis-Plus
+- Web 端：Nuxt 3 + Ant Design Vue 4
+- 小程序端：uni-app + Vant 4
 
-```
-┌─────────────┐    ┌─────────────┐
-│  小程序端    │    │   H5 端     │
-│  (uni-app)  │    │  (Nuxt 3)   │
-└──────┬──────┘    └──────┬──────┘
-       │                  │
-       └────────┬─────────┘
-                │ HTTP / REST
-                ▼
-       ┌─────────────────┐
-       │  Spring Boot    │
-       │  PostgreSQL     │
-       └─────────────────┘
-```
+## 文档目录
 
-## 目录结构
+### 架构文档
 
-| 目录 | 说明 |
-|------|------|
-| [app/h5/](./app/h5/) | H5 前端（Nuxt 3 + Ant Design Vue） |
-| [app/mp/](./app/mp/) | 小程序前端（uni-app） |
-| [app/shared/](./app/shared/) | 前端共享类型和工具 |
-| [server/](./server/) | 后端服务（Spring Boot + MyBatis-Plus） |
-| [test/](./test/) | 测试设计文档和集成测试 |
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | 系统架构设计 |
-| [DESIGN.md](./DESIGN.md) | 产品设计与业务文档 |
-| [TODO.md](./TODO.md) | 项目 Roadmap 与待办事项 |
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — 系统架构、模块设计、通信规则、数据库迁移策略
 
-## 快速开始
+### 基石模块文档
+
+- [core.auth](./docs/core/auth.md) — 认证与授权
+- [core.employee](./docs/core/employee.md) — 员工管理
+- [core.org](./docs/core/org.md) — 组织架构
+- [core.form](./docs/core/form.md) — 表单引擎
+- [core.approval](./docs/core/approval.md) — 审批流引擎
+- [core.notification](./docs/core/notification.md) — 通知系统
+- [core.file](./docs/core/file.md) — 文件存储
+- [core.config](./docs/core/config.md) — 系统配置
+- [core.setup](./docs/core/setup.md) — 初始化向导
+- [core.retention](./docs/core/retention.md) — 数据保留策略
+- [core.bus](./docs/core/bus.md) — 模块间通信总线
+- [core.error](./docs/core/error.md) — 统一错误处理
+- [core.tracking](./docs/core/tracking.md) — 操作追踪
+- [core.logging](./docs/core/logging.md) — 审计日志
+- [core.health](./docs/core/health.md) — 健康检查与监控
+
+### 业务模块文档（待集成）
+
+- [payroll](./docs/modules/payroll.md) — 薪资管理（待集成）
+- [attendance](./docs/modules/attendance.md) — 考勤管理（待集成）
+- [project](./docs/modules/project.md) — 项目管理（待集成）
+- [expense](./docs/modules/expense.md) — 报销管理（待集成）
+- [injury](./docs/modules/injury.md) — 工伤管理（待集成）
+
+### 前端文档
+
+- [前端设计规范](./app/README.md) — 跨端规范、共享类型、约定
+- [Web 端组件规范](./app/h5/README.md) — Nuxt 3 组件开发规范
+- [小程序端组件规范](./app/mp/README.md) — uni-app 组件开发规范
+
+## 快速启动
 
 ```bash
-# 后端（dev profile 启用 H2 console + show-sql + DEBUG 日志）
-cd server && mvn spring-boot:run -Dspring-boot.run.profiles=dev
+# 后端
+cd server && mvn spring-boot:run
 
-# H5 前端
-cd app/h5 && npm run dev
+# Web 前端
+cd app/h5 && yarn dev
 
-# 小程序
-cd app/mp && npm run dev
-```
-
-## 运行测试
-
-```bash
-# 后端单元测试
+# 运行测试
 cd server && mvn test
-
-# H5 前端单元测试
-cd app/h5 && yarn test
-
-# API 集成测试（需后端运行中）
-yarn test:integration
-
-# E2E 测试（需前后端均运行中）
-yarn playwright test
-
-# E2E 冒烟（快速验证核心链路）
-yarn playwright test --grep @smoke
 ```
-
-**测试设计文档**：[test/TEST_DESIGN.md](./test/TEST_DESIGN.md)（主文档）、[test/e2e/TEST_DESIGN.md](./test/e2e/TEST_DESIGN.md)（E2E 用例详情）
-
----
-
-## 部署
-
-> 部署方案待 Phase D 启动后设计，详见 [TODO.md](./TODO.md) Phase D。
-
-## 调试
-
-测试发现问题时，按症状（页面跳转/403/404/Toast 报错等）直接定位代码文件：[test/BUG_LOCATOR.md](./test/BUG_LOCATOR.md)
-
----
-
-## 声明
-
-- 本项目为私有项目，未经授权不得使用
-- 详见 [docs/](./docs/) 目录下的架构设计和业务文档

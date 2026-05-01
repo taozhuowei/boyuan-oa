@@ -4,9 +4,21 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import com.oa.backend.entity.*;
+import com.oa.backend.entity.CleanupTask;
+import com.oa.backend.entity.Employee;
+import com.oa.backend.entity.ExportBackupTask;
+import com.oa.backend.entity.FormRecord;
+import com.oa.backend.entity.OperationLog;
+import com.oa.backend.entity.RetentionPolicy;
+import com.oa.backend.entity.RetentionReminder;
 import com.oa.backend.event.RetentionExpiredEvent;
-import com.oa.backend.mapper.*;
+import com.oa.backend.mapper.CleanupTaskMapper;
+import com.oa.backend.mapper.EmployeeMapper;
+import com.oa.backend.mapper.ExportBackupTaskMapper;
+import com.oa.backend.mapper.FormRecordMapper;
+import com.oa.backend.mapper.OperationLogMapper;
+import com.oa.backend.mapper.RetentionPolicyMapper;
+import com.oa.backend.mapper.RetentionReminderMapper;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -51,11 +63,8 @@ public class RetentionService {
   private final RetentionReminderMapper reminderMapper;
   private final ExportBackupTaskMapper exportTaskMapper;
   private final CleanupTaskMapper cleanupTaskMapper;
-  private final PayrollSlipMapper payrollSlipMapper;
   private final FormRecordMapper formRecordMapper;
   private final OperationLogMapper operationLogMapper;
-  private final ConstructionLogSummaryMapper constructionLogMapper;
-  private final InjuryClaimMapper injuryClaimMapper;
   private final ApplicationEventPublisher eventPublisher;
   private final NotificationService notificationService;
   private final EmployeeMapper employeeMapper;
@@ -72,11 +81,8 @@ public class RetentionService {
 
   private static final Map<String, String> DATA_TYPE_LABELS =
       Map.of(
-          "PAYROLL_SLIP", "工资条",
           "FORM_RECORD", "表单记录",
           "ATTENDANCE_RECORD", "考勤记录",
-          "CONSTRUCTION_LOG", "施工日志",
-          "INJURY_CLAIM", "工伤理赔",
           "OPERATION_LOG", "操作日志");
 
   /**
@@ -305,11 +311,6 @@ public class RetentionService {
     LocalDateTime beforeDateTime = beforeDate.atTime(23, 59, 59);
 
     return switch (dataType) {
-      case "PAYROLL_SLIP" ->
-          payrollSlipMapper.selectList(
-              new LambdaQueryWrapper<PayrollSlip>()
-                  .le(PayrollSlip::getCreatedAt, beforeDateTime)
-                  .eq(PayrollSlip::getDeleted, 0));
       case "FORM_RECORD" ->
           formRecordMapper.selectList(
               new LambdaQueryWrapper<FormRecord>()
@@ -318,16 +319,6 @@ public class RetentionService {
       case "OPERATION_LOG" ->
           operationLogMapper.selectList(
               new LambdaQueryWrapper<OperationLog>().le(OperationLog::getActedAt, beforeDateTime));
-      case "CONSTRUCTION_LOG" ->
-          constructionLogMapper.selectList(
-              new LambdaQueryWrapper<ConstructionLogSummary>()
-                  .le(ConstructionLogSummary::getCreatedAt, beforeDateTime)
-                  .eq(ConstructionLogSummary::getDeleted, 0));
-      case "INJURY_CLAIM" ->
-          injuryClaimMapper.selectList(
-              new LambdaQueryWrapper<InjuryClaim>()
-                  .le(InjuryClaim::getCreatedAt, beforeDateTime)
-                  .eq(InjuryClaim::getDeleted, 0));
       default -> {
         log.warn("未知的数据类型: {}", dataType);
         yield new ArrayList<>();
@@ -346,11 +337,6 @@ public class RetentionService {
     LocalDateTime beforeDateTime = beforeDate.atTime(23, 59, 59);
 
     return switch (dataType) {
-      case "PAYROLL_SLIP" ->
-          payrollSlipMapper.delete(
-              new LambdaQueryWrapper<PayrollSlip>()
-                  .le(PayrollSlip::getCreatedAt, beforeDateTime)
-                  .eq(PayrollSlip::getDeleted, 0));
       case "FORM_RECORD" ->
           formRecordMapper.delete(
               new LambdaQueryWrapper<FormRecord>()
@@ -359,16 +345,6 @@ public class RetentionService {
       case "OPERATION_LOG" ->
           operationLogMapper.delete(
               new LambdaQueryWrapper<OperationLog>().le(OperationLog::getActedAt, beforeDateTime));
-      case "CONSTRUCTION_LOG" ->
-          constructionLogMapper.delete(
-              new LambdaQueryWrapper<ConstructionLogSummary>()
-                  .le(ConstructionLogSummary::getCreatedAt, beforeDateTime)
-                  .eq(ConstructionLogSummary::getDeleted, 0));
-      case "INJURY_CLAIM" ->
-          injuryClaimMapper.delete(
-              new LambdaQueryWrapper<InjuryClaim>()
-                  .le(InjuryClaim::getCreatedAt, beforeDateTime)
-                  .eq(InjuryClaim::getDeleted, 0));
       default -> {
         log.warn("未知的数据类型，无法删除: {}", dataType);
         yield 0;
@@ -494,17 +470,6 @@ public class RetentionService {
    */
   private LocalDate findOldestDate(String dataType) {
     return switch (dataType) {
-      case "PAYROLL_SLIP" -> {
-        PayrollSlip slip =
-            payrollSlipMapper.selectOne(
-                new LambdaQueryWrapper<PayrollSlip>()
-                    .eq(PayrollSlip::getDeleted, 0)
-                    .orderByAsc(PayrollSlip::getCreatedAt)
-                    .last("LIMIT 1"));
-        yield slip != null && slip.getCreatedAt() != null
-            ? slip.getCreatedAt().toLocalDate()
-            : null;
-      }
       case "FORM_RECORD" -> {
         FormRecord record =
             formRecordMapper.selectOne(
@@ -526,26 +491,6 @@ public class RetentionService {
         yield logs.isEmpty() || logs.get(0).getActedAt() == null
             ? null
             : logs.get(0).getActedAt().toLocalDate();
-      }
-      case "CONSTRUCTION_LOG" -> {
-        ConstructionLogSummary log =
-            constructionLogMapper.selectOne(
-                new LambdaQueryWrapper<ConstructionLogSummary>()
-                    .eq(ConstructionLogSummary::getDeleted, 0)
-                    .orderByAsc(ConstructionLogSummary::getCreatedAt)
-                    .last("LIMIT 1"));
-        yield log != null && log.getCreatedAt() != null ? log.getCreatedAt().toLocalDate() : null;
-      }
-      case "INJURY_CLAIM" -> {
-        InjuryClaim claim =
-            injuryClaimMapper.selectOne(
-                new LambdaQueryWrapper<InjuryClaim>()
-                    .eq(InjuryClaim::getDeleted, 0)
-                    .orderByAsc(InjuryClaim::getCreatedAt)
-                    .last("LIMIT 1"));
-        yield claim != null && claim.getCreatedAt() != null
-            ? claim.getCreatedAt().toLocalDate()
-            : null;
       }
       default -> {
         log.warn("未知的数据类型，无法查找最旧日期: {}", dataType);
