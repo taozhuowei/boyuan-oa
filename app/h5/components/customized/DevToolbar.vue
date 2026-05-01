@@ -225,23 +225,23 @@ async function quickLogin(user: QuickUser) {
 }
 
 .dev-fab {
-  background: rgba(30, 41, 59, 0.95);
+  background: rgba(30, 41, 59, 0.65);
   color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   padding: 10px 16px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   transition: all 0.2s ease;
   backdrop-filter: blur(8px);
 }
 
 .dev-fab:hover {
-  background: rgba(51, 65, 85, 0.95);
+  background: rgba(51, 65, 85, 0.75);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 .dev-fab:active {
@@ -253,11 +253,11 @@ async function quickLogin(user: QuickUser) {
   max-height: calc(100vh - 40px);
   display: flex;
   flex-direction: column;
-  background: rgba(30, 41, 59, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(30, 41, 59, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(16px);
   overflow: hidden;
 }
 
@@ -332,9 +332,9 @@ async function quickLogin(user: QuickUser) {
 }
 
 .dev-btn {
-  background: rgba(51, 65, 85, 0.8);
+  background: rgba(51, 65, 85, 0.55);
   color: #e2e8f0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 12px;
@@ -345,8 +345,8 @@ async function quickLogin(user: QuickUser) {
 }
 
 .dev-btn:hover:not(:disabled) {
-  background: rgba(71, 85, 105, 0.9);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(71, 85, 105, 0.7);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .dev-btn:active:not(:disabled) {
@@ -364,7 +364,7 @@ async function quickLogin(user: QuickUser) {
 
 /* Passive code display — appears after any "send code" action */
 .code-display {
-  background: rgba(15, 23, 42, 0.8);
+  background: rgba(15, 23, 42, 0.5);
   border: 1px solid rgba(59, 130, 246, 0.4);
   border-radius: 6px;
   padding: 10px 12px;
