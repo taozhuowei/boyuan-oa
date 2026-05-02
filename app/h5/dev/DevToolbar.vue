@@ -120,25 +120,19 @@ onMounted(() => {
 
 let didDrag = false
 
-function startDrag(e: MouseEvent, source: 'fab' | 'panel') {
+function startDrag(e: MouseEvent, _source: 'fab' | 'panel') {
   const startX = e.clientX
   const startY = e.clientY
   const originX = pos.value.x
   const originY = pos.value.y
   didDrag = false
 
-  const PANEL_W = source === 'fab' ? 44 : 240
-  const PANEL_H = source === 'fab' ? 44 : 300
-
   const onMove = (ev: MouseEvent) => {
     const dx = ev.clientX - startX
     const dy = ev.clientY - startY
     if (!didDrag && (Math.abs(dx) > 4 || Math.abs(dy) > 4)) didDrag = true
     if (didDrag) {
-      pos.value = {
-        x: Math.max(0, Math.min(window.innerWidth - PANEL_W, originX + dx)),
-        y: Math.max(0, Math.min(window.innerHeight - PANEL_H, originY + dy)),
-      }
+      pos.value = { x: originX + dx, y: originY + dy }
     }
   }
 
