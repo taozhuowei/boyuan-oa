@@ -7,7 +7,7 @@
     </NuxtLayout>
   </a-config-provider>
   <!-- Dev-only floating toolbar: tree-shaken in production build -->
-  <CustomizedDevToolbar />
+  <DevToolbar />
 </template>
 
 <script setup lang="ts">
@@ -20,6 +20,7 @@ import { computed, onMounted } from 'vue'
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
+import DevToolbar from '~/dev/DevToolbar.vue'
 
 // 设置 dayjs 为中文（模块级同步调用，确保首次渲染前生效）
 dayjs.locale('zh-cn')
