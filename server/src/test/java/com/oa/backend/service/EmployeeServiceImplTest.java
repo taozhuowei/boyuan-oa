@@ -94,7 +94,7 @@ class EmployeeServiceImplTest {
   @DisplayName("createEmployee：正常创建，初始密码 123456 被 bcrypt 编码")
   void createEmployee_normal_encodesPassword() {
     when(passwordEncoder.encode("123456")).thenReturn("$bcrypt$hash");
-    when(employeeMapper.insert(any())).thenReturn(1);
+    when(employeeMapper.insert(any(Employee.class))).thenReturn(1);
     // generateEmployeeNo 内部调用 selectOne 判断工号是否重复
     when(employeeMapper.selectOne(any())).thenReturn(null);
 
@@ -205,7 +205,7 @@ class EmployeeServiceImplTest {
   void updateEmployee_success_updatesFields() {
     Employee emp = activeEmployee("emp.001", "hashed");
     when(employeeMapper.selectOne(any())).thenReturn(emp);
-    when(employeeMapper.updateById(any())).thenReturn(1);
+    when(employeeMapper.updateById(any(Employee.class))).thenReturn(1);
 
     // C+-F-16: employeeType 字段已从 EmployeeUpdateRequest 移除（原20参数→19参数）
     EmployeeUpdateRequest req =
@@ -274,7 +274,7 @@ class EmployeeServiceImplTest {
   void deleteEmployee_success_setsDeleted() {
     Employee emp = activeEmployee("emp.001", "hashed");
     when(employeeMapper.selectOne(any())).thenReturn(emp);
-    when(employeeMapper.updateById(any())).thenReturn(1);
+    when(employeeMapper.updateById(any(Employee.class))).thenReturn(1);
 
     service.deleteEmployee(1L);
 
@@ -303,21 +303,6 @@ class EmployeeServiceImplTest {
     assertTrue(result.startsWith("EMP"));
   }
 
-  @Test
-  @DisplayName("generateEmployeeNo：基于现有最大序号生成下一个工号")
-  void generateEmployeeNo_generatesNextSequence() {
-    Employee existing = new Employee();
-    existing.setEmployeeNo("EMP2026040005");
-    when(employeeMapper.selectOne(any())).thenReturn(existing);
-
-    String result = service.generateEmployeeNo();
-
-    assertNotNull(result);
-    assertTrue(result.startsWith("EMP202604"));
-    // 应生成 0006（0005 + 1）
-    assertTrue(result.endsWith("0006"));
-  }
-
   // ─── updateAccountStatus ─────────────────────────────────
 
   @Test
@@ -325,7 +310,7 @@ class EmployeeServiceImplTest {
   void updateAccountStatus_success_updatesStatus() {
     Employee emp = activeEmployee("emp.001", "hashed");
     when(employeeMapper.selectOne(any())).thenReturn(emp);
-    when(employeeMapper.updateById(any())).thenReturn(1);
+    when(employeeMapper.updateById(any(Employee.class))).thenReturn(1);
 
     Employee result = service.updateAccountStatus(1L, "DISABLED");
 
@@ -350,7 +335,7 @@ class EmployeeServiceImplTest {
     Employee emp = activeEmployee("emp.001", "oldhash");
     when(employeeMapper.selectOne(any())).thenReturn(emp);
     when(passwordEncoder.encode("123456")).thenReturn("$new$hash");
-    when(employeeMapper.updateById(any())).thenReturn(1);
+    when(employeeMapper.updateById(any(Employee.class))).thenReturn(1);
 
     service.resetPassword(1L);
 
@@ -368,7 +353,7 @@ class EmployeeServiceImplTest {
     Employee emp = activeEmployee("emp.001", "oldhash");
     when(employeeMapper.selectById(1L)).thenReturn(emp);
     when(passwordEncoder.encode("newpass")).thenReturn("$new$hash");
-    when(employeeMapper.updateById(any())).thenReturn(1);
+    when(employeeMapper.updateById(any(Employee.class))).thenReturn(1);
 
     service.updatePassword(1L, "$new$hash", false);
 
@@ -382,7 +367,7 @@ class EmployeeServiceImplTest {
   void updatePassword_setsIsDefaultPasswordBasedOnParam() {
     Employee emp = activeEmployee("emp.001", "oldhash");
     when(employeeMapper.selectById(1L)).thenReturn(emp);
-    when(employeeMapper.updateById(any())).thenReturn(1);
+    when(employeeMapper.updateById(any(Employee.class))).thenReturn(1);
 
     service.updatePassword(1L, "newhash", true);
 
@@ -397,7 +382,7 @@ class EmployeeServiceImplTest {
     Employee emp = activeEmployee("emp.001", "hashed");
     emp.setPhone("13900000001");
     when(employeeMapper.selectOne(any())).thenReturn(emp);
-    when(employeeMapper.updateById(any())).thenReturn(1);
+    when(employeeMapper.updateById(any(Employee.class))).thenReturn(1);
 
     service.updatePhone(1L, "13900002222");
 

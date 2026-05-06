@@ -31,7 +31,7 @@ class NotificationServiceTest {
   @Test
   @DisplayName("send: creates notification with correct fields")
   void send_createsNotification() {
-    when(notificationMapper.insert(any()))
+    when(notificationMapper.insert(any(Notification.class)))
         .thenAnswer(
             inv -> {
               Notification n = inv.getArgument(0);
@@ -66,7 +66,7 @@ class NotificationServiceTest {
   @Test
   @DisplayName("send: handles null content")
   void send_nullContent() {
-    when(notificationMapper.insert(any()))
+    when(notificationMapper.insert(any(Notification.class)))
         .thenAnswer(
             inv -> {
               Notification n = inv.getArgument(0);
@@ -151,7 +151,7 @@ class NotificationServiceTest {
     boolean result = notificationService.markRead(1L, 5L);
 
     assertFalse(result);
-    verify(notificationMapper, never()).updateById(any());
+    verify(notificationMapper, never()).updateById(any(Notification.class));
   }
 
   @Test
@@ -164,7 +164,7 @@ class NotificationServiceTest {
     boolean result = notificationService.markRead(1L, 5L);
 
     assertFalse(result);
-    verify(notificationMapper, never()).updateById(any());
+    verify(notificationMapper, never()).updateById(any(Notification.class));
   }
 
   @Test
@@ -176,7 +176,7 @@ class NotificationServiceTest {
     boolean result = notificationService.markRead(1L, 5L);
 
     assertFalse(result);
-    verify(notificationMapper, never()).updateById(any());
+    verify(notificationMapper, never()).updateById(any(Notification.class));
   }
 
   @Test

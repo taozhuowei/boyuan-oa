@@ -8,7 +8,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.11</version>
+        <version>3.5.12</version>
         <relativePath/>
     </parent>
 
@@ -20,7 +20,7 @@
 
     <properties>
         <java.version>21</java.version>
-        <mybatis-plus.version>3.5.6</mybatis-plus.version>
+        <mybatis-plus.version>3.5.10.1</mybatis-plus.version>
         <jwt.version>4.4.0</jwt.version>
     </properties>
 
@@ -58,19 +58,22 @@
         </dependency>
 
         <!-- Database - PostgreSQL（dev/test/prod 统一使用 PostgreSQL） -->
-        <!-- Pin to 42.6.2 which is already in local Maven cache -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
-            <version>42.6.2</version>
+            <version>42.7.11</version>
             <scope>runtime</scope>
         </dependency>
 
         <!-- Flyway — schema migration; version managed by spring-boot-starter-parent BOM -->
-        <!-- flyway-core 9.x has built-in PostgreSQL support; no extra module needed -->
+        <!-- Flyway 11.x requires database-specific module for PostgreSQL -->
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
         <!-- H2: runtime for default profile (local dev); test for unit tests.
@@ -92,6 +95,13 @@
         <dependency>
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-boot-starter</artifactId>
+            <version>${mybatis-plus.version}</version>
+        </dependency>
+
+        <!-- MyBatis Plus JSqlParser — required since 3.5.9 for PaginationInnerInterceptor (split out as separate module) -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-jsqlparser</artifactId>
             <version>${mybatis-plus.version}</version>
         </dependency>
 
@@ -130,7 +140,7 @@
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>2.5.0</version>
+            <version>2.8.10</version>
         </dependency>
 
         <!-- Spring Mail — email sending for D-F-23 email verification and D-F-16 password reset -->

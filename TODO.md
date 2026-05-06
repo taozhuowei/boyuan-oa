@@ -329,6 +329,63 @@ grep -rE "dev_tools" app/mp/dist/ 2>/dev/null | wc -l
 
 ---
 
+## P0-T03：升级后端依赖修复 29 个高危/严重 CVE
+
+`[ ]` 待开始
+
+依据：Snyk 扫描发现后端依赖中 5 个 Critical + 24 个 High 级别 CVE，含 Spring Boot Actuator Authentication Bypass、Spring Security Web Use of Cache Containing Sensitive Information、Tomcat Improper Authentication、PostgreSQL Resource Exhaustion 等真实攻击面漏洞。这些漏洞影响 prod 部署的安全性，必须升级依赖修复。本任务在 Phase 0 紧急安全前置阶段执行，与 P0-T01 dev-login 后门修复同等优先级。
+
+实现 agent：Backend Engineer。审计 agent：QA Engineer + Reality Checker。
+
+改动范围：
+- server/pom.xml 中以下依赖升级：
+  - org.springframework.boot 父 pom 从 3.2.11 升到 3.5.x（最新稳定，目标 3.5.12）
+  - org.flywaydb:flyway-core 从 9.22.3 升到 11.8.x
+  - org.postgresql:postgresql 从 42.6.2 升到 42.7.11
+  - org.springdoc:springdoc-openapi-starter-webmvc-ui 从 2.5.0 升到 2.8.x
+  - 其他 transitive 依赖随主依赖联动升级
+- 升级后可能需要适配的代码（Spring Boot 3.2 到 3.5 的兼容性变更需逐一对照官方迁移指南）
+
+动作步骤：
+
+第一步，升级前基线快照——`cd server && mvn dependency:tree > /tmp/deps-before.txt`，记录升级前完整依赖树供回滚比对。
+
+第二步，更新 pom.xml 中的版本声明：
+- `<spring.boot.version>3.2.11</spring.boot.version>` → `<spring.boot.version>3.5.12</spring.boot.version>`（如有 properties 节）
+- 父 pom `<parent>` 中 spring-boot-starter-parent 版本同步升
+- `<flyway.version>` 或直接版本号升到 11.8.x
+- `postgresql.version` 升到 42.7.11
+- `springdoc.version` 升到 2.8.x
+
+第三步，`cd server && mvn clean compile`——确认升级后能编译通过。如有 deprecation/removal 编译错误（Spring Boot 3.2 → 3.5 间删除的 API），按官方迁移指南（https://github.com/spring-projects/spring-boot/wiki）逐个修复。常见破坏性变更：
+- spring-boot-starter-validation 从 starter 拆出（如已显式引入则无影响）
+- 部分 Actuator 端点路径或属性名变化
+- @ConfigurationProperties 严格化（缺 setter 字段会失败）
+
+第四步，`cd server && mvn test`——确认升级后测试不退化（注：本任务执行前 Backend Tests 已通过 P1-T01/T03/T04/P6-T02 删除大量不适配测试，剩余测试应该绿）。如有失败，按错误类型修：
+- ContextLoader 失败：检查 application.yml 配置是否被废弃属性
+- @MockBean 警告：Spring Boot 3.4 起 @MockBean 已废弃，改 @MockitoBean
+- 其他：按错误信息查 Spring Boot 升级文档
+
+第五步，`yarn install --frozen-lockfile`——升级 Spring Boot 不影响前端，但跑一遍确认无连锁影响。
+
+第六步，验证 Snyk 通过——本地有 Snyk CLI 时跑 `snyk test --file=server/pom.xml --severity-threshold=high`，预期报"no issues found"或仅剩 1-2 个 Snyk DB 滞后未收录的低危漏洞。
+
+第七步，启动后端验证启动正常：`cd server && mvn spring-boot:run`，curl /api/health 200。
+
+第八步，对比依赖树验证升级生效：`cd server && mvn dependency:tree > /tmp/deps-after.txt && diff /tmp/deps-before.txt /tmp/deps-after.txt | head -30` 看到升级后版本号变化。
+
+完成阈值：
+- pom.xml 中 spring-boot 主版本为 3.5.x、postgresql 为 42.7.11、flyway 为 11.x、springdoc 为 2.8.x
+- mvn clean compile 通过
+- mvn test 全绿（不引入新失败）
+- Snyk 扫描结果"No issues found at high or critical severity"或仅剩极少数 (≤2) 数据库滞后项
+- spring boot 启动 + curl /api/health 200
+
+验收方式：QA Engineer 跑全部命令 + 对比 Snyk 扫描前后报告 + Reality Checker 终审。如升级中遇 Spring Boot 破坏性变更需要重大代码改动（如 Actuator 配置改写、Spring Security 过滤器链 API 变化），暂停并向用户确认。
+
+---
+
 # Phase 1：业务代码删除（无架构改动，纯删除）
 
 ## P1-T01：删除 signature 模块全链路
