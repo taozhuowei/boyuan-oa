@@ -2,17 +2,70 @@
 # Controls which vulnerabilities are ignored / patched during snyk test.
 # Severity threshold is set on the command line (--severity-threshold=high); this file only
 # lists specific vulnerability IDs to suppress when we've accepted the risk.
+#
+# 维护规则：
+# - 每条 ignore 必须含 reason（为什么接受风险）与 expires（到期日，强制到期复查）
+# - 到期前必须重新评估：若 Spring Boot / 上游已发修复版则升级移除 ignore；若仍未修复则评估是否续期
+# - 决不长期忽略一个 CVE 不动；expires 是"逼自己定期复查"的机制不是"永久放行"
 
 version: v1.25.0
 
-# Ignore specific vulnerabilities — add entries when we decide to accept a risk.
-# Format:
-#   ignore:
-#     'SNYK-XX-YYYY':
-#       - '* > some-package':
-#           reason: why we accepted this risk
-#           expires: 'YYYY-MM-DD'
-ignore: {}
+ignore:
+  # ─────────────────────────────────────────────────────────────────────
+  # 以下 9 个 CVE 在 Spring Boot 3.5.12 BOM 锁的 transitive 依赖中存在，
+  # Spring Boot 官方暂未在 3.5.x 系列发布修复版本（可能在 3.5.13/3.5.14 发布）。
+  # 已采取的措施：
+  #   1. 升级 Spring Boot 父 pom 到 3.5.12（最新 stable），将 CVE 数量从 29 降到 10
+  #   2. 用 dependencyManagement override commons-lang3 到 3.20.0（修复其中 1 个）
+  #   3. jackson-core/databind/annotations 因 flyway-parent 注册的 GitHub Packages
+  #      私有 repo 401 阻塞 Maven 从 Central 拉新版，暂无法 override
+  # 复查策略：每月 Spring Boot 发新 patch 时同步评估，移除已修复的 ignore
+  # 下次复查时间：2026-06-15（约 40 天后，给 SB 1-2 个 patch 周期）
+  # ─────────────────────────────────────────────────────────────────────
+
+  # jackson-core 2.19.4 (managed by Spring Boot 3.5.12)
+  'SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924':
+    - '*':
+        reason: 'Allocation of Resources Without Limits or Throttling. SB 3.5.12 BOM-managed; 等待 SB 升级 jackson 至 2.20+ 修复版。Maven Central 有 2.21.3 但本仓库 flyway-parent 注册 GitHub Packages 私有 repo 401 阻塞 override'
+        expires: '2026-06-15'
+  'SNYK-JAVA-COMFASTERXMLJACKSONCORE-15907551':
+    - '*':
+        reason: '同上一条，jackson-core 2.19.4 资源分配类 CVE'
+        expires: '2026-06-15'
+
+  # tomcat-embed-core 10.1.52 (managed by Spring Boot 3.5.12)
+  'SNYK-JAVA-ORGAPACHETOMCATEMBED-15989820':
+    - '*':
+        reason: 'Improper Authentication. SB 3.5.12 BOM-managed tomcat 10.1.52；等待 SB 升级 tomcat patch 版本'
+        expires: '2026-06-15'
+  'SNYK-JAVA-ORGAPACHETOMCATEMBED-15989808':
+    - '*':
+        reason: 'Improper Authentication (separate code path)。同上'
+        expires: '2026-06-15'
+  'SNYK-JAVA-ORGAPACHETOMCATEMBED-15990059':
+    - '*':
+        reason: 'Use of Broken or Risky Cryptographic Algorithm。同上'
+        expires: '2026-06-15'
+  'SNYK-JAVA-ORGAPACHETOMCATEMBED-15990633':
+    - '*':
+        reason: 'HTTP Request Smuggling。本项目当前不在反向代理后部署（dev/prod 都是 Spring Boot 直接监听端口），smuggling 需要前置代理才能利用。但仍等 SB 升级 tomcat 后移除 ignore，不长期接受'
+        expires: '2026-06-15'
+
+  # spring-web 6.2.17 (managed by Spring Boot 3.5.12)
+  'SNYK-JAVA-ORGSPRINGFRAMEWORK-16109615':
+    - '*':
+        reason: 'Incomplete Cleanup in spring-web。SB 3.5.12 BOM-managed；等待 SB 升级'
+        expires: '2026-06-15'
+
+  # spring-boot 3.5.12 自身
+  'SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16191649':
+    - '*':
+        reason: 'Use of Cryptographically Weak PRNG. Spring Boot 3.5.12 自身漏洞，等待 3.5.13 或更高 patch 版本修复'
+        expires: '2026-06-15'
+  'SNYK-JAVA-ORGSPRINGFRAMEWORKBOOT-16198880':
+    - '*':
+        reason: 'Insecure Temporary File. Spring Boot 3.5.12 自身漏洞，等待 SB 修复版本。本项目使用 multipart upload（附件），但 prod 部署应配置专用临时目录权限。等 SB 修复后移除 ignore'
+        expires: '2026-06-15'
 
 # Patches applied by `snyk wizard` — none currently.
 patch: {}

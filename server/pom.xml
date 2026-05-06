@@ -24,6 +24,31 @@
         <jwt.version>4.4.0</jwt.version>
     </properties>
 
+    <!--
+        dependencyManagement: 显式 override Spring Boot BOM 管的 transitive 依赖版本。
+        理由：Spring Boot 3.5.12 BOM 锁的版本在 Snyk 中仍有 high 级 CVE，需手工升级到修复版。
+        每条 override 须附 Snyk CVE 编号与目标版本的修复说明，定期复查（建议每月升 SB 时同步评估是否仍需 override）。
+
+        注：jackson-* override 需要 Maven 能从中央仓库拉取。当前环境因 flyway-parent 注册的
+        flyway-community-db-support GitHub Packages repo 401（私有需 auth），导致 Maven 无法
+        fallback 到 central 拉 jackson 升级版。短期处理：jackson 不 override，剩余 2 个 jackson high CVE
+        在 Spring Boot 下个 patch（3.5.13）发布后随之修复。已记 .snyk 文件含过期日期复查机制。
+    -->
+    <dependencyManagement>
+        <dependencies>
+            <!--
+                commons-lang3: springdoc 2.8.10 拉的 transitive 3.17.0 含
+                SNYK-JAVA-ORGAPACHECOMMONS-10734078 (CVE-2025-48924, Uncontrolled Recursion)。
+                升级到 3.20.0（最新 stable，已修复）。commons-lang3 在本地缓存中无 401 问题，可正常 override。
+            -->
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>3.20.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
         <!-- Spring Boot Starters -->
         <dependency>
