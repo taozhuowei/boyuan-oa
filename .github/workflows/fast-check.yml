@@ -143,14 +143,15 @@ jobs:
         run: semgrep --config p/typescript app/h5 --error || true
 
       # Snyk backend — only runs when SNYK_TOKEN secret is present
+      # --policy-path 显式指向仓库根的 .snyk 文件（CLI 默认仅在项目目录找，但项目目录是 server/）
       - name: Snyk test — backend (pom.xml)
         if: env.SNYK_TOKEN != ''
-        run: npx snyk@latest test --file=server/pom.xml --severity-threshold=high
+        run: npx snyk@latest test --file=server/pom.xml --severity-threshold=high --policy-path=.snyk
 
       # Snyk frontend — only runs when SNYK_TOKEN secret is present
       - name: Snyk test — H5 frontend (package.json)
         if: env.SNYK_TOKEN != ''
-        run: npx snyk@latest test --file=app/h5/package.json --severity-threshold=high
+        run: npx snyk@latest test --file=app/h5/package.json --severity-threshold=high --policy-path=.snyk
 
   build-verify:
     name: Build Verification
