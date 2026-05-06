@@ -329,5 +329,4 @@ public class PositionServiceImpl implements PositionService {
         l.getPerformanceBonusOverride(),
         l.getAnnualLeaveOverride());
   }
-
 }

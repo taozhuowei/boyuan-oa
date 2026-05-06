@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
  * 附件访问控制服务 职责：判断当前用户是否有权访问指定附件。 规则： - 上传者本人可访问 - 审计角色 CEO / FINANCE / HR 可访问任意附件 -
  * DEPARTMENT_MANAGER 仅当业务记录提交人与自己同部门 - 其它情况拒绝
  *
- * <p>业务类型（businessType）→ 归属解析： LEAVE / OVERTIME 经由 form_record 表，businessId = form_record.id；
- * 从 form_record 取 project_id + submitter_id GENERAL 或未识别类型：无归属信息，仅上传者/审计角色放行
+ * <p>业务类型（businessType）→ 归属解析： LEAVE / OVERTIME 经由 form_record 表，businessId = form_record.id； 从
+ * form_record 取 project_id + submitter_id GENERAL 或未识别类型：无归属信息，仅上传者/审计角色放行
  */
 @Service
 @RequiredArgsConstructor
@@ -88,5 +88,4 @@ public class AttachmentAccessService {
     }
     return new BusinessOwnership(form.getProjectId(), submitterId, submitterDepartmentId);
   }
-
 }

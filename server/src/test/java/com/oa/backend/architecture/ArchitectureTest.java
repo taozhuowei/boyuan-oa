@@ -10,7 +10,10 @@ import com.tngtech.archunit.lang.syntax.ArchRuleDefinition;
 @AnalyzeClasses(packages = "com.oa.backend")
 class ArchitectureTest {
 
-  /** Rule 1: Controllers must not directly inject MyBatis Mapper beans (types in com.oa.backend.mapper). */
+  /**
+   * Rule 1: Controllers must not directly inject MyBatis Mapper beans (types in
+   * com.oa.backend.mapper).
+   */
   @ArchTest
   static final ArchRule no_mapper_injection_in_controllers =
       ArchRuleDefinition.noFields()
