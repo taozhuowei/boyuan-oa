@@ -148,6 +148,18 @@ jobs:
         if: env.SNYK_TOKEN != ''
         run: npx snyk@latest test --file=server/pom.xml --severity-threshold=high --policy-path=.snyk
 
+      # Snyk frontend 需要 node_modules 才能扫，先装 Node + yarn 依赖
+      - name: Setup Node.js 22
+        if: env.SNYK_TOKEN != ''
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+
+      - name: Install frontend dependencies
+        if: env.SNYK_TOKEN != ''
+        run: yarn install --frozen-lockfile
+
       # Snyk frontend — only runs when SNYK_TOKEN secret is present
       - name: Snyk test — H5 frontend (package.json)
         if: env.SNYK_TOKEN != ''
