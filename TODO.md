@@ -386,6 +386,392 @@ grep -rE "dev_tools" app/mp/dist/ 2>/dev/null | wc -l
 
 ---
 
+## P0-T04：SonarCloud sonar.organization 配置
+
+`[ ]` 待开始
+
+依据：Full Test workflow 中 SonarCloud Analysis job 因 `sonar-project.properties` 缺 `sonar.organization` 报 "You must define the following mandatory properties for 'com.oa:oa-backend': sonar.organization" 失败。job 配 continue-on-error 不阻塞 workflow 整体绿灯，但 UI 上显示 X 误导观感且失去 SonarCloud 真实分析价值。
+
+实现 agent：DevOps Engineer。审计 agent：QA Engineer。
+
+改动范围：sonar-project.properties。
+
+动作步骤：
+1. 在 SonarCloud（https://sonarcloud.io）确认或创建 organization（一般是 GitHub username/org，如 `taozhuowei`）；
+2. 在 sonar-project.properties 加一行 `sonar.organization=<your-organization>`；
+3. 推一个测试 commit 让 Full Test workflow 跑一次；
+4. SonarCloud Analysis job 应变绿、SonarCloud dashboard 应能看到 oa-backend 项目报告。
+
+完成阈值：
+- sonar-project.properties 含 `sonar.organization` 一行；
+- SonarCloud Analysis job 在最近 push 中 ✓；
+- SonarCloud web dashboard 含本项目最新分析报告。
+
+验收方式：QA Engineer 推 dummy commit 看 CI 状态 + 浏览 SonarCloud 看 dashboard。
+
+---
+
+## P0-T05：pre-push hook 加 SNYK_TOKEN 存在守卫
+
+`[ ]` 待开始
+
+依据：本机 pre-push 跑 `snyk test` 时无 SNYK_TOKEN 环境变量（CLI 用 GitHub Secret 只在 CI 注入），每次 push 输出两段 401 错误噪音。`|| true` 兜底不阻塞但显眼。
+
+实现 agent：DevOps Engineer。审计 agent：QA Engineer。
+
+改动范围：.husky/pre-push。
+
+动作步骤：
+1. 修改 .husky/pre-push，给 snyk 步骤加 token 存在守卫：
+
+```bash
+# Snyk dependency audit (conditional: installed in C+-D-06)
+if [ -n "$SNYK_TOKEN" ] && command -v snyk > /dev/null 2>&1; then
+  snyk test --file=app/h5/package.json --severity-threshold=high || true
+  snyk test --file=server/pom.xml --severity-threshold=high || true
+fi
+```
+
+2. 本地 push 验证 hook 输出无 401 噪音；
+3. CI（有 SNYK_TOKEN secret）仍能跑 Snyk（CI 用 fast-check.yml 不依赖此 hook）。
+
+完成阈值：
+- .husky/pre-push 含 token 守卫；
+- 本机 push 无 401 噪音输出。
+
+验收方式：本地 git push 看 hook 输出。
+
+---
+
+## P0-T06：Semgrep 无效 config 修复
+
+`[ ]` 待开始
+
+依据：CI Fast Check 日志含 "invalid configuration file found (1 configs were invalid)" 警告。`|| true` 兜底不阻塞但是真实质量信号被掩盖。
+
+实现 agent：DevOps Engineer。审计 agent：QA Engineer。
+
+改动范围：.github/workflows/fast-check.yml 中 Semgrep 步骤的 `--config` 参数。
+
+动作步骤：
+1. 本地跑 `semgrep --config p/spring-boot --config p/owasp-top-ten server/src --error` 看哪个 config 报无效；
+2. 用 `--no-rewrite-rule-ids --validate` 单独验证每个 config 文件；
+3. 移除或更新无效的 config（可能是 semgrep registry 中老 ruleset 已删除）；
+4. 重跑 CI 看 invalid config 警告是否消失。
+
+完成阈值：
+- CI Semgrep 步骤无 "invalid configuration file" 警告；
+- 报告内容仅含真实代码扫描结果。
+
+验收方式：QA Engineer 跑 semgrep 本地验证 + 推 commit 看 CI 输出。
+
+---
+
+## P0-T07：Maven Central 优先级显式声明
+
+`[ ]` 待开始
+
+依据：本地 mvn 操作时 flyway-parent pom 注册的 GitHub Packages 私有 repo `flyway-community-db-support` 401 阻塞 Maven 从 Central 拉取新版本依赖（如 jackson 升级 override）。CI 环境是否同样问题待验证。
+
+实现 agent：Backend Engineer。审计 agent：QA Engineer。
+
+改动范围：server/pom.xml（添加 `<repositories>` 块）或仓库根的 .mvn/settings.xml。
+
+动作步骤：
+1. 在 server/pom.xml 顶层添加 `<repositories>` 块显式声明 Maven Central 与必需的 flyway 仓库，控制顺序优先级：
+
+```xml
+<repositories>
+    <repository>
+        <id>maven-central</id>
+        <url>https://repo.maven.apache.org/maven2</url>
+        <releases><enabled>true</enabled></releases>
+        <snapshots><enabled>false</enabled></snapshots>
+    </repository>
+    <!-- flyway-community-db-support 不需要拉 jackson 等通用依赖，仅用于 flyway 自身组件 -->
+    <!-- 通过 <repository><id>...</id> 限定优先级 -->
+</repositories>
+```
+
+2. 本地验证 `mvn -U dependency:get -Dartifact=com.fasterxml.jackson.core:jackson-core:2.21.3` 能成功（之前 401 失败）；
+3. 测试 jackson override 能正常下载与解析；
+4. mvn test 通过，无回归。
+
+完成阈值：
+- pom.xml 含明确 `<repositories>` 块；
+- jackson 2.21.3 可从 Maven Central 下载；
+- mvn test 全绿。
+
+验收方式：QA Engineer 跑本地 dependency:get 验证 + mvn test。
+
+---
+
+## P0-T08：GitHub Actions 升级到支持 Node 24 的版本
+
+`[ ]` 待开始
+
+依据：CI annotation 持续警告 `actions/checkout@v4`、`actions/setup-node@v4`、`actions/setup-java@v4`、`actions/cache@v4`、`actions/upload-artifact@v4` 等都是 Node 20 版本，GitHub 公告 2026-06-02 默认切 Node 24、2026-09-16 删除 Node 20 runner。当前距硬截止 4 个月，不修复会在 9 月 16 日后突然全部红灯。
+
+实现 agent：DevOps Engineer。审计 agent：QA Engineer。
+
+改动范围：所有 .github/workflows/*.yml（ci.yml、fast-check.yml、full-test.yml、nightly.yml、release.yml）。
+
+动作步骤：
+1. 调研每个 action 的 Node 24 兼容版本：
+   - `actions/checkout@v5`（最新版支持 Node 24）
+   - `actions/setup-node@v5`
+   - `actions/setup-java@v5`
+   - `actions/cache@v5`
+   - `actions/upload-artifact@v5`
+   - `actions/setup-python@v6`（如使用）
+2. 每份 yml 中所有 `@v4` 升到对应 `@v5+`；
+3. 推 PR 到 GitHub 验证 CI 全绿、annotations 无 Node 20 deprecation；
+4. 如某 action 升级有破坏性变更（如 cache key 格式改变），按官方迁移文档调整。
+
+完成阈值：
+- 所有 workflows 中无 `@v4`（特定不支持 v5 的 action 可保留并在注释说明）；
+- CI annotations 无 Node 20 deprecation 警告；
+- 所有 workflow 跑通。
+
+验收方式：QA Engineer 推 dummy commit 看 CI annotations 与状态。
+
+---
+
+## P0-T09：启用 GitHub Dependabot 自动依赖升级
+
+`[ ]` 待开始
+
+依据：业内做法（Snyk 官方博客）推荐"Snyk 扫描漏洞 + Dependabot 自动 PR 升级"配套使用。当前 Dependabot 未启用，依赖更新全靠手工。Dependabot 免费、GitHub 原生支持、对 npm + Maven + GitHub Actions 三个生态都能自动开升级 PR。
+
+实现 agent：DevOps Engineer。审计 agent：QA Engineer。
+
+改动范围：新建 .github/dependabot.yml。
+
+动作步骤：
+1. 新建 .github/dependabot.yml 配置三个生态：
+
+```yaml
+version: 2
+updates:
+  - package-ecosystem: "maven"
+    directory: "/server"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "backend"]
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    labels: ["dependencies", "frontend"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    labels: ["dependencies", "ci"]
+```
+
+2. commit + push 让 GitHub 识别配置；
+3. 几小时内观察 GitHub PR 列表是否出现 Dependabot 自动开的升级 PR。
+
+完成阈值：
+- .github/dependabot.yml 就位；
+- GitHub 仓库 Insights → Dependency graph → Dependabot 显示已激活；
+- 观察一周内有 Dependabot PR 出现（可能为 0 if 当前所有依赖已最新）。
+
+验收方式：QA Engineer 检查 GitHub 仓库 Settings → Code security and analysis 确认 Dependabot alerts 与 security updates 启用。
+
+---
+
+## P0-T10：清理仓库根 sonar-scanner.zip 工作区残留
+
+`[ ]` 待开始
+
+依据：仓库根存在 sonar-scanner.zip（57MB）。已在 .gitignore 中（git ls-files 不追踪），但占用本地与新 clone 后的磁盘空间，且对开发体验无价值。
+
+实现 agent：Backend Engineer。审计 agent：QA Engineer。
+
+改动范围：物理删除 sonar-scanner.zip 与 sonar-scanner*/ 目录（如有）。
+
+动作步骤：
+1. `rm -f sonar-scanner.zip && rm -rf sonar-scanner*`；
+2. 验证 sonar-project.properties 与 CI workflow 不依赖本地 sonar-scanner.zip（CI 使用 mvn sonar:sonar 不依赖）。
+
+完成阈值：
+- sonar-scanner.zip 不存在；
+- CI 不受影响（推 commit 看 SonarCloud Analysis 仍能跑）。
+
+验收方式：QA Engineer ls + 推 commit 验证 CI。
+
+---
+
+## P0-T11：Snyk 扫描阈值降到 medium 处理中低危漏洞
+
+`[ ]` 待开始
+
+依据：当前 Snyk 用 `--severity-threshold=high` 仅扫高危/严重，medium 与 low 级别依赖漏洞被默默忽略。完整安全姿态要求至少把 medium 也纳入持续监控；low 可暂不阻塞但需周期回顾。
+
+实现 agent：Backend Engineer + DevOps Engineer。审计 agent：QA Engineer。
+
+改动范围：
+- .github/workflows/fast-check.yml 中 Snyk 步骤参数
+- .snyk 文件可能新增 medium 级别 ignore 条目
+
+动作步骤：
+1. 把 fast-check.yml 中两条 snyk test 命令的 `--severity-threshold=high` 改为 `--severity-threshold=medium`；
+2. 推 commit 触发 CI，看 Snyk 报告 medium 级新增条目数量；
+3. 评估 medium 条目逐个：能修复升级则升级（参考 P0-T03 + P2-T15/T16 经验）、不能修则评估 reachability 写 .snyk ignore 含 reason+expires；
+4. CI 通过后保持 medium 阈值作为新基线。
+
+完成阈值：
+- 阈值降到 medium；
+- CI Snyk 步骤通过（无未处理 medium）；
+- 新增的 .snyk ignore 条目均含完整 reason 与 expires。
+
+验收方式：QA Engineer 跑 CI + 通读 .snyk 新增条目。
+
+---
+
+## P0-T12：清理 husky hook 中过时项目编号注释
+
+`[ ]` 待开始
+
+依据：.husky/pre-commit 与 pre-push 含旧 9 阶段路线的任务编号注释（如 "C+-D-09/13/14"、"C+-D-06"），原 TODO.md 早已重写，这些引用是已废弃的过时信息会误导读者。
+
+实现 agent：DevOps Engineer。审计 agent：QA Engineer。
+
+改动范围：
+- .husky/pre-commit
+- .husky/commit-msg
+- .husky/pre-push
+
+动作步骤：
+1. 通读三个 hook 文件，把含 "C+-D-XX" 与"in C+-D-XX phase"等过时引用的注释删除或改写成与新 TODO.md 任务编号对齐的引用（或干脆改为不引用具体任务编号，只描述 hook 的当前职责）；
+2. 重新跑一次本地 git commit + push 确认 hook 行为不变。
+
+完成阈值：
+- grep -E "C\+-D-[0-9]+" .husky/ 输出为空；
+- hook 行为正常。
+
+验收方式：QA Engineer grep + 本机 push 验证。
+
+---
+
+## P0-T13：正式配置 lint-staged + ESLint + Prettier + Spotless
+
+`[ ]` 待开始
+
+依据：当前 package.json 的 `lint-staged` 字段为 `{ "*.{ts,vue,js,json}": [], "*.java": [] }`——空数组等于不做任何 lint。pre-commit hook 跑 lint-staged 也实际不执行任何检查，等同摆设。lint-staged + ESLint + Prettier + Spotless 是业内标准的"提交前格式与 lint 守门"组合，必须正式配置。
+
+实现 agent：DevOps Engineer + Frontend Engineer + Backend Engineer。审计 agent：QA Engineer。
+
+改动范围：
+- package.json 的 lint-staged 字段
+- app/h5/eslint.config.mjs（已存在，需确认正常工作）
+- 仓库根新建 .prettierrc.json（如不存在）
+- server/pom.xml 中 spotless-maven-plugin 配置（已配在 pre-commit 中调用，需确认 pom 中 plugin 已声明）
+
+动作步骤：
+1. 确认 ESLint 与 Prettier 各自独立可用：`yarn workspace oa-h5 lint`、`yarn format:check`；
+2. 配置 lint-staged：
+
+```json
+"lint-staged": {
+  "*.{ts,vue,js}": ["eslint --fix", "prettier --write"],
+  "*.{json,md,yml,yaml}": ["prettier --write"],
+  "server/**/*.java": ["bash -c 'cd server && mvn spotless:apply -DspotlessFiles=$0'"]
+}
+```
+
+3. 修改 .husky/pre-commit 让 lint-staged 真正运行（删除原 `|| true` 兜底，让 lint 失败实际阻塞 commit）；
+4. 测试场景：
+   - 故意改一个 .ts 文件含格式问题 → git add → git commit 应自动 fix 后通过；
+   - 故意改一个 .ts 含 ESLint 错误 → git commit 应被阻塞；
+   - 故意改一个 .java 文件含格式问题 → git commit 应自动 spotless apply 后通过；
+5. CI 端 Backend Checks 与 Frontend Checks 已含 spotless:check + eslint，与 hook 形成"本地 + CI 双保险"。
+
+完成阈值：
+- lint-staged 配置非空；
+- 4 种测试场景行为正确；
+- CI 跑通。
+
+验收方式：QA Engineer 跑 4 种测试场景。
+
+---
+
+## P0-T14：knip 配置加 mp workspace
+
+`[ ]` 待开始
+
+依据：knip.json 当前只配 `.` 与 `app/h5` workspace，没有 `app/mp`。mp 端死代码检测不工作，可能积累未使用 export。P1-T08 后 mp 端保留平台壳并准备未来业务回填，期间 knip 应该工作。
+
+实现 agent：Frontend Engineer。审计 agent：QA Engineer。
+
+改动范围：knip.json。
+
+动作步骤：
+1. 在 knip.json 的 workspaces 字段加 `app/mp`：
+
+```json
+"app/mp": {
+  "entry": [
+    "src/main.ts",
+    "src/App.vue",
+    "src/pages.json",
+    "src/manifest.json",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "project": ["src/**/*.{ts,vue}"],
+  "ignore": [
+    "node_modules/**",
+    "dist/**",
+    ".vite/**"
+  ]
+}
+```
+
+2. 跑 `yarn knip` 验证 mp workspace 也被扫到；
+3. 处理 knip 报告中的死代码（删除或加注释说明保留原因）。
+
+完成阈值：
+- knip.json 含 mp workspace 配置；
+- yarn knip 输出含 mp 端结果；
+- 死代码项已处理或写明保留原因。
+
+验收方式：QA Engineer 跑 yarn knip。
+
+---
+
+## P0-T15：.env.example 字段完整性审计
+
+`[ ]` 待开始
+
+依据：.env.example 是新部署者的 ENV 配置模板。当前有 SERVER_PORT、JWT_SECRET、DB_URL、DB_USERNAME、DB_PASSWORD 五个字段。但 prod 部署可能还需要 SONAR_TOKEN、SNYK_TOKEN（本机开发不需要但 CI 需要在 GitHub Secrets 配置，README 应说明）、邮件配置（spring.mail.*）、企微集成 API 配置（未来 P0-T01 dev_tools clock 模块）等。如未来部署者按 .env.example 配置，可能漏配关键字段。
+
+实现 agent：Backend Engineer + DevOps Engineer。审计 agent：QA Engineer。
+
+改动范围：.env.example。
+
+动作步骤：
+1. 通读 application.yml、application-dev.yml、application-prod.yml、application-test.yml，列出所有 `${ENV_VAR}` 占位符；
+2. 列出所有 GitHub Actions secrets 需配的字段（SONAR_TOKEN、SNYK_TOKEN 等）；
+3. 把上述全部字段加入 .env.example，按用途分组（应用端口、认证密钥、数据库、邮件、SaaS 工具 token 等）；
+4. 每个字段加占位值（`<your_xxx>` 风格）+ 简短注释说明用途与是否必需；
+5. README.md 引用 .env.example 作为部署说明的起点（与 P5-T01 README 重写整合）。
+
+完成阈值：
+- .env.example 含所有 application*.yml 中引用的 ENV 变量；
+- 所有 CI 需要的 secret 名也列出（注释说明是 GitHub Secret 不是本地 ENV）；
+- 字段分组与注释清晰。
+
+验收方式：QA Engineer 通读 .env.example + 跑 grep 确认没有遗漏 ENV 引用。
+
+---
+
 # Phase 1：业务代码删除（无架构改动，纯删除）
 
 ## P1-T01：删除 signature 模块全链路
@@ -629,16 +1015,18 @@ rm -f server/src/test/java/com/oa/backend/service/SystemConfigServiceTest.java
 2. `grep -rn "attendance\|payroll\|expense\|project\|injury\|leave\|overtime\|signature" app/mp` 找残留，逐一清理（业务相关的全删，与平台共存的（如 utils/org.ts）只删业务部分留通用部分）；
 3. pages.json 中删除已删页面对应的路由条目；
 4. 修改 AppShell 或 workbench 入口的硬编码业务跳转（如有）为占位或读未来的 module registry；
-5. `yarn workspace oa-mp build`（或 uni-app 对应命令）通过；
-6. mp 端登录与工作台壳能正常打开（用 demo 账号登录后看到平台菜单、无业务条目）。
+5. `yarn workspace oa-mp build:mp-weixin` 通过（如 package.json 缺此 script 先在 mp 端 package.json 加上）；
+6. `yarn workspace oa-mp test` 通过（验证 mp 端 vitest 配置仍可工作，剩余测试无业务依赖）；
+7. mp 端登录与工作台壳能正常打开（用 demo 账号登录后看到平台菜单、无业务条目）。
 
 完成阈值：
 - 业务页与业务工具与业务组件全部删除；
 - 平台壳完整保留并能 build；
 - grep 业务关键字在 app/mp/ 下输出仅剩 pages.json 中的占位（如有）；
-- mp 端能登录并看到空业务的平台壳。
+- mp 端能登录并看到空业务的平台壳；
+- yarn workspace oa-mp build 与 test 两条命令均通过（与 h5 端对称验证）。
 
-验收方式：QA Engineer 跑 grep + build + 浏览器或微信开发者工具走查 mp 登录后页面。
+验收方式：QA Engineer 跑 grep + build + test + 浏览器或微信开发者工具走查 mp 登录后页面。
 
 ---
 
@@ -1377,6 +1765,92 @@ if (!password) {
 - CI 跑通 PostgreSQL 集成测试。
 
 验收方式：QA Engineer 推一个测试 PR 看 CI 状态。
+
+---
+
+## P2-T15：MybatisPlus DbType 从 H2 改为 POSTGRE_SQL
+
+`[ ]` 待开始
+
+依据：`server/src/main/java/com/oa/backend/config/MybatisPlusConfig.java:20` 写 `new PaginationInnerInterceptor(DbType.H2)`，但 dev/test/prod 三个 profile 实际都连 PostgreSQL（不是 H2）。当前 H2 方言生成的 `LIMIT n OFFSET m` 巧合也被 PostgreSQL 支持所以未崩，但属于"配置错误但跑得起来"的潜在隐患。如果未来用 PG 方言专属优化（如 keyset pagination）需要正确 DbType。
+
+实现 agent：Backend Engineer。审计 agent：QA Engineer。
+
+改动范围：server/src/main/java/com/oa/backend/config/MybatisPlusConfig.java（在 P3-T01 重组后路径变为 com/oa/platform/shared/config/）。
+
+动作步骤：
+1. 把 `new PaginationInnerInterceptor(DbType.H2)` 改为 `new PaginationInnerInterceptor(DbType.POSTGRE_SQL)`；
+2. mvn test 全绿（分页相关测试覆盖到分页 SQL 行为）；
+3. 启动 spring boot dev profile 验证分页查询（如 GET /api/employees?page=1&size=10）能正常返回；
+4. 检查 mvn dependency:tree 确认 mybatis-plus 含 PG 方言支持（默认含）。
+
+完成阈值：
+- 代码改为 DbType.POSTGRE_SQL；
+- mvn test 全绿；
+- 浏览器或 curl 验证分页 API 行为正常。
+
+验收方式：QA Engineer 跑 mvn test + curl 分页接口。
+
+---
+
+## P2-T16：默认 profile 启动 V2 ON CONFLICT 兼容性问题
+
+`[ ]` 待开始
+
+依据：本机不指定 profile 跑 `mvn spring-boot:run` 时 spring boot 用默认配置启动 H2 内存数据库，但 V2_init_data.sql 含 PostgreSQL 专属 `ON CONFLICT (id) DO NOTHING` 语法，H2 解析报错崩溃。CLAUDE.md 已知 B-INFRA-01 issue。dev profile 用 PostgreSQL 没事、CI 用 PostgreSQL 没事，仅本机不带 profile 启动会崩。
+
+实现 agent：Backend Engineer。审计 agent：QA Engineer。
+
+改动范围：选其一——
+
+方案 A（推荐，与 P2-T08 V1+V2 重写整合）：P2-T08b 写新 V2__seed_data.sql 时使用 H2/PG 双兼容语法。H2 1.4.200+ 支持 `MERGE INTO`，PostgreSQL 9.5+ 支持 `INSERT ... ON CONFLICT`。改用 ANSI SQL `MERGE` 或拆为两条独立 SQL（"插入若不存在"模式），两数据库都能解析。
+
+方案 B：移除默认 profile 的 H2 自动激活逻辑，强制要求启动时显式指定 `-Dspring-boot.run.profiles=dev`。修改 application.yml 或 application-default.yml 让默认 profile 与 dev profile 行为一致（连 PostgreSQL）。
+
+实现 agent：Backend Engineer。审计 agent：QA Engineer。
+
+动作步骤（方案 A 与 P2-T08b 整合）：
+1. 在 P2-T08b 写新 V2__seed_data.sql 时用 H2/PG 双兼容语法；
+2. 启动 spring boot 不指定 profile（默认）验证 V2 跑通不报错；
+3. 启动 dev profile（PostgreSQL）也通过；
+4. 启动 mock prod profile 也通过。
+
+完成阈值：
+- 新 V2 文件 H2 与 PostgreSQL 都能跑过；
+- 三 profile 启动均成功。
+
+验收方式：QA Engineer 跑三 profile 启动验证。
+
+依赖关系：本任务与 P2-T08b 整合执行（不独立做）。如果选方案 B 则独立执行——本任务条目就是这条决策的承载位置。
+
+---
+
+## P2-T17：处理 Spring Boot 升级后 deprecation 警告
+
+`[ ]` 待开始
+
+依据：Spring Boot 3.2.11 → 3.5.12 升级后 `mvn compile` 输出含 "uses or overrides a deprecated API" 与 "unchecked operations" 警告，影响文件包括 ApprovalFlowService、FormService、EmployeeServiceImplTest 等。这些 deprecation 警告未来 SB 主版本（如 3.6 或 4.0）升级时会变成编译错误。当前阶段把它们清掉避免技术债积累。
+
+实现 agent：Backend Engineer。审计 agent：QA Engineer。
+
+改动范围：mvn compile 报警的所有 .java 文件。
+
+动作步骤：
+1. `cd server && mvn compile -Xlint:deprecation -Xlint:unchecked > /tmp/compile.log 2>&1` 收集所有 deprecation 与 unchecked 警告；
+2. 按警告类型分组：
+   - @MockBean → @MockitoBean（Spring Boot 3.4+ 推荐）
+   - 其他 deprecated method → 查 Spring Boot 3.5 文档替代 API
+   - unchecked 泛型 → 加显式类型参数或 @SuppressWarnings("unchecked") 含理由注释
+3. 按文件批次修，每批 mvn compile 通过；
+4. 全部修完后 mvn compile 输出无 deprecation 与 unchecked 警告（或仅剩有理由保留的）；
+5. mvn test 全绿。
+
+完成阈值：
+- mvn compile 输出无未处理的 deprecation 警告；
+- mvn test 全绿；
+- 任何 @SuppressWarnings 都含 // reason: 注释说明为什么不能消除。
+
+验收方式：QA Engineer 跑 mvn compile -Xlint:all + mvn test。
 
 ---
 
