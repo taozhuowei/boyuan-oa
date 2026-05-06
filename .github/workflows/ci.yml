@@ -12,6 +12,41 @@ permissions:
   contents: read
 
 jobs:
+  git-hooks:
+    name: Git Hooks Validation
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify hooks have executable bit
+        run: |
+          set -e
+          for hook in .husky/pre-commit .husky/commit-msg .husky/pre-push; do
+            if [ ! -x "$hook" ]; then
+              echo "ERROR: $hook is not executable."
+              echo "Fix locally: git update-index --chmod=+x $hook && git commit -m 'chore(hooks): mark $(basename $hook) executable'"
+              exit 1
+            fi
+            echo "OK: $hook is executable"
+          done
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Run commit-msg hook against last commit
+        run: |
+          git log -1 --pretty=%B > /tmp/last-commit-msg
+          ./.husky/commit-msg /tmp/last-commit-msg
+
   backend-test:
     name: Backend Tests
     runs-on: ubuntu-latest
